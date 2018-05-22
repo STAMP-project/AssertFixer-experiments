@@ -1,0 +1,263 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+    <head>
+        <title>Gaulois-pipe Config File</title>
+    </head>
+    <body>
+        <h2>Config File</h2>
+        <p>This section explains how a gaulois-pipe config file must be, and how it is
+            interpreted.</p>
+        <h3>Namespace</h3>
+        <p>The whole config file is in </p><pre>http://efl.fr/chaine/saxon-pipe/config</pre>
+        <p>There is no element or attributes outside of this namespace.</p>
+        <h3>Sample file</h3>
+        <div class="source">
+            <pre>&lt;config xmlns="http://efl.fr/chaine/saxon-pipe/config"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://efl.fr/chaine/saxon-pipe/config
+                        ../../../src/main/resources/fr/efl/chaine/xslt/schemas/saxon-pipe_config.xsd"&gt;
+    &lt;pipe mutiThreadMaxSourceSize="24349456" nbThreads="4" traceOutput="logs/trace.log">
+        &lt;xslt href="./src/test/resources/step1.xsl">
+            &lt;param name="p-step1" value="step1"/>
+        &lt;/xslt>
+        &lt;tee>
+            &lt;pipe1>
+                &lt;xslt href="./src/test/resources/step2.xsl" traceActive="true">
+                    &lt;param name="p-step2" value="step2"/>
+                &lt;/xslt>
+                &lt;output id="step1">
+                    &lt;folder relative="./target/generated-test-files" to="${user.dir}"/>
+                    &lt;fileName name="step1-output.xml"/>
+                &lt;/output>
+            &lt;/pipe1>
+            &lt;pipe2>
+                &lt;tee>
+                    &lt;pipe1>
+                        &lt;xslt href="./src/test/resources/step3.xsl">
+                            &lt;param name="p-step3" value="step3"/>
+                        &lt;/xslt>
+                        &lt;output id="step3">
+                            &lt;folder relative="./target/generated-test-files" to="${user.dir}"/>
+                            &lt;fileName name="step3-output.xml"/>
+                        &lt;/output>
+                    &lt;/pipe1>
+                    &lt;pipe2>
+                        &lt;output id="step2">
+                            &lt;folder relative="./target/generated-test-files" to="${user.dir}"/>
+                            &lt;fileName name="step2-output.xml"/>
+                        &lt;/output>
+                    &lt;/pipe2>
+                &lt;/tee>
+            &lt;/pipe2>
+        &lt;/tee>
+    &lt;/pipe>
+    &lt;params>
+        &lt;param name="p-general" value="GENERAL"/>
+    &lt;/params>
+    &lt;sources>
+        &lt;folder href="./src/test/resources" pattern="source.*xml"/>
+    &lt;/sources>
+&lt;/config></pre>
+        </div>
+        <p>Under <span class="code">&lt;config&gt;</span> element, we may have :</p>
+        <ul>
+            <li>A <span class="code"><a href="#pipe">pipe</a></span></li>
+            <li>A <span class="code"><a href="#params">params</a></span></li>
+            <li>A <span class="code"><a href="#sources">sources</a></span></li>
+        </ul>
+        <h3><a id="pipe"></a>pipe</h3>
+        <h4>Attributes</h4>
+        <table>
+            <thead>
+                <tr>
+                    <th>Attribute</th>
+                    <th>Required ?</th>
+                    <th>Value</th>
+                    <th>Value if omitted</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>nbThreads</td>
+                    <td>No</td>
+                    <td>positive integer</td>
+                    <td>1</td>
+                </tr>
+                <tr>
+                    <td>mutiThreadMaxSourceSize</td>
+                    <td>No</td>
+                    <td>file size in bytes</td>
+                    <td>10485760 (10Mb)</td>
+                </tr>
+                <tr>
+                    <td>traceOutput</td>
+                    <td>No</td>
+                    <td>The location where to store traces. valid values are :<ul><li>#logger to use default logger of gaulois-pipe, i.e. the log4j logger</li><li><tt>#standard</tt> to use default Saxon logger, as defined in Saxon configuration</li><li>any absolute or relative writable URL.</li></ul></td>
+                    <td>None</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h4>Elements</h4>
+        <p>The pipe <strong>must</strong> start with a <a href="#xslt"><span class="code"
+                    >xslt</span></a>. Then, it may have <a href="#xslt"><span class="code"
+                    >xslt</span></a>, <a href="#java"><span class="code">java</span></a>. A pipe is
+            terminated with either a <a href="#tee"><span class="code">tee</span></a> or a<a
+                href="#output"><span class="code">output</span></a>.</p>
+        <p><strong>Nothing can</strong> follow an <a href="#output"><span class="code"
+                >output</span></a> ; output is always a terminal node.</p>
+
+        <h5><a id="xslt"></a>xslt</h5>
+        <p>A <span class="code">&lt;xslt&gt;</span> is a step where transformation is made by a XSL
+            transformation. <span class="code">@href</span> specifies the XSL location ; it may be
+            an absolute URL or a relative URL. Relative URL are relative to <span class="code"
+                >System.getProperty(&quot;user.dir&quot;)</span>. <span
+                style="text-decoration: underline;">This will change in a future minor
+                release</span>.</p>
+        <p>There is no restriction on XSL you use, except the Saxon Release you use must be
+            compliant with your XSL. You may want to change the Saxon Release you use with
+            Gaulois-pipe : create your own maven project, add a dependency to gaulois-pipe, and add
+            exception on <span style="font-family: 'Courier New', monospace;"
+                >net.sf.saxon:Saxon-HE</span> ; do not forget to add your own Saxon dependency, and
+            the license, if required.</p>
+        <p>You can add a <tt>traceActive="true"</tt> attribute, to allow traces generated by <a href="https://www.w3.org/TR/xpath-functions-30/#func-trace">fn:trace()</a> XPath function to be stored. If used, <tt>ancestor::pipe/@traceOutput</tt> must be present.</p>
+        <p>You can set the <tt>debug="true"</tt> attribute - you must define the <tt>@id</tt> attribute in this case - the result of the Xslt will be written in the current directoy or in the directory defined in system property <tt>gaulois.debug.dir</tt>, in a name called <tt>id-$[input-name]</tt>.</p>
+        <p>A <span class="code">&lt;xsl&gt;</span> may have parameters defined as <span class="code"
+                    ><a href="#param">param</a></span> sub-elements.</p>
+
+        <h5><a id="java"></a>java</h5>
+        <p>A <span class="code">&lt;java&gt;</span> step is a class that may filter or transform the
+            events send by Saxon processor. A Java Step must extends <a
+                href="apidocs/fr/efl/chaine/xslt/StepJava.html">fr.efl.chaine.xslt.StepJava</a>.</p>
+        <p>When used into a &lt;pipe&gt;, a java step must not be a terminal step or a initial step,
+            and so its <a
+                href="apidocs/fr/efl/chaine/xslt/StepJava.html#getNextReceiver(net.sf.saxon.Configuration)"
+                >getNextReceiver</a> method must not return null.<br />
+            <a href="apidocs/fr/efl/chaine/xslt/utils/FileAppenderStep.html">FileAppenderStep</a> is
+            such a step sample you can use.</p>
+        <p>When used in a <a href="#source">&lt;source&gt;</a>, the step is either an initial step
+            and a terminal step, and so underlying <span class="code"><a
+                    href="http://www.saxonica.com/html/documentation/javadoc/net/sf/saxon/event/Receiver.html"
+                    >Receiver</a></span> must not be a <a
+                href="http://www.saxonica.com/html/documentation/javadoc/net/sf/saxon/event/ProxyReceiver.html"
+                >ProxyReceiver</a>. <a
+                href="apidocs/fr/efl/chaine/xslt/utils/FileAppenderTerminalStep.html"
+                >FileAppenderTerminalStep</a> is such a step sample you can use.</p>
+        <p>A <span class="code">&lt;java&gt;</span> may have parameters defined as <span
+                class="code"><a href="#param">param</a></span> sub-elements.</p>
+
+        <h5><a id="choose"/>choose</h5>
+        <p>A choose allows you to control the structure of the pipe, depending on XPath expression evaluations. It's very similar to XSL 
+            syntax, except that otherwise is required. A choose must always "return" a sub-pipe.</p>
+        <pre>
+            &lt;xslt href="cp:/pre-process.xsl"/>
+            &lt;choose>
+                &lt;when test="/mydoc/meta/@pubYear/xs:integer(.) lt 2000">
+                    &lt;xslt href="cp:/very-old-fashion.xsl"/>
+                &lt;/when>
+                &lt;when test="/mydoc/meta/@pubYear/xs:integer(.) lt 2000">
+                    &lt;xslt href="cp:/old-fashion.xsl"/>
+                &lt;/when>
+                &lt;otherwise>
+                    &lt;xsl href="cp:/current.xsl"/>
+                &lt;/otherwise>
+            &lt;/choose>
+            &lt;output id="main">...&lt;/output>
+        </pre>
+        <p>The XPath expressions are evaluated on the input document, and are not evaluated on the result document of the previous step.</p>
+
+        <h5><a id="tee"></a>tee</h5>
+        <p>A <span class="code">&lt;tee&gt;</span> allows to fork the pipe to two or plus other
+            destinations, each destination terminated by an <a href="output">output</a>. 
+            You must provide a <span class="code">pipe[2,...]</span> sub-pipes.</p>
+        <p><strong>Warning: </strong> there is no backward compatibility from previous releases, where you used
+            <span class="code">pipe1</span> and <span class="code">pipe2</span> childs.</p>
+
+        <h5><a id="output"></a>output</h5>
+        <p>An <span class="code">&lt;output&gt;</span> is used to define where the pipe result have
+            to be written. An <span class="code">&lt;output&gt;</span> is defined by a <a
+                href="#outputFolder">folder</a> and a <a href="#fileName">fileName</a>, or is a null output, 
+            and contains only a <a href="#nullOutput">null</a>. It may
+            define as attributes all the saxon-supported output properties. See <a
+                href="http://www.saxonica.com/html/documentation/javadoc/net/sf/saxon/lib/SaxonOutputKeys.html"
+                >SaxonOutputKeys</a>.</p>
+        <h6><a id="nullOutput"></a>null</h6>
+        <p><span class="code">&lt;null /&gt;</span> defines that output is lost and must not be written. When using null, all other elements
+        or forbidden.</p>
+        <h6><a id="outputFolder"></a>folder</h6>
+        <p><span class="code">&lt;folder&gt;</span> defines the folder where to write output files.
+            It can be a relative reference, or an absolute URI. If <span class="code"
+                >relative</span> attribute is defined (it must be a relative URI), then the <span
+                class="code">to</span> attribute must be also defined. You can use parameters
+            values, with the <span class="code">$[param]</span> syntax, and also use System
+            properties, with the <span class="code">${system.property}</span> syntax.</p>
+        <h6><a id="fileName"></a>fileName</h6>
+        <p><span class="code">&lt;fileName&gt;</span> allows to define a rule to calculate the
+            target file name. The rule is to concatenate a <span class="code">prefix</span>, a <span
+                class="code">name</span>, and a <span class="code">suffix</span>. The name attribute
+            is required, prefix and suffix are optionals. You can use parameters values, system
+            properties, with the appropriate escape syntax, and three special properties are
+            available, with the system property escape syntax :</p>
+        <ul>
+            <li><span class="code">name</span>: the original source file name</li>
+            <li><span class="code">basename</span>: the original source file name, without
+                extension</li>
+            <li><span class="code">extension</span>: the original source file extension</li>
+        </ul>
+        <h3><a id="params"></a>params</h3>
+        <p><span class="code>">&lt;params&gt;</span> are used to define parameters that are given at
+            all XSL and Java steps. Defined here, they are global parameters. They may be
+            overwritten by command-line parameters.</p>
+        <p>Once a param is defined, you can use it everywhere, with this escape syntax : <span
+                class="code">$[paramName]</span></p>
+        <p>Few predefined parameters may be used everywhere in the pipe :</p>
+        <ul>
+            <li><span class="code">$[input-name]</span> : the input file name currently processed</li>
+            <li><span class="code">$[input-basename]</span> : the input file basename (without extension) currently processed</li>
+            <li><span class="code">$[input-extension]</span> : the input file name extension currently processed</li>
+            <li><span class="code">$[input-absolute]</span> : the absolute file path currently processed</li>
+            <li><span class="code">$[input-relative-file]</span> : if file was loaded from <tt>//sources/folder</tt> it contains the relative file path to <tt>folder/@href</tt> in an URI form (/delimited), else it is the absolute URI of input file</li>
+            <li><span class="code">$[input-relative-dir]</span> : if file was loaded from <tt>//sources/folder</tt> it contains the relative dir path to <tt>folder/@href</tt> in an URI form (/delimited), else it is the absolute URI of input file parent directory</li>
+        </ul>
+        <h3><a id="sources"></a>sources</h3>
+        <p><span class="code">&lt;sources&gt;</span> allows to define which files are to be
+            processed by the pipeline. </p>
+        <p>Files may be specified one by one, via the <a href="#file">file</a> element, by folder,
+            via the <a href="#folder">element</a>, or a HTTP listener can be started to listen to
+            files to process, when you don't know which files to process when you start
+            gaulois-pipe.</p>
+        <h5><a id="file"></a>file</h5>
+        <p><span class="code">&lt;file&gt;</span> specifies only one file, via an absolute URI on
+            the <span class="code">href</span> attribute. You may use elsewhere-defined parameters
+            in the URI. You may add parameters inside ; those parameters will be passed to XSL and
+            Java steps when processing this file.</p>
+        <h5><a id="folder"></a>folder</h5>
+        <p><span class="code">&lt;folder&gt;</span> allows to select many files in a folder. Specify
+            the folder absolute URI in the <span class="code">href</span> attribute, specify to
+            recuse or not in the <span class="code">recurse</span> attribute, and specify the
+            pattern to match files in the <span class="code">pattern</span> attribute. You can only
+            specify one pattern per folder, but you may specify the same folder URI many times. You
+            may use elsewhere-defined parameters in the URI. You may add parameters inside ; those
+            parameters will be passed to XSL and Java steps when processing this file.</p>
+        <h5><a id="listener"></a>listener</h5>
+        <p>A listener allows to start gaulois-pipe as a waiting http server. You specify the <span
+                class="code">port</span> (default is 8888), the keyword that must be used to stop
+            the server.</p>
+        <p>When definig a listener in gaulois-pipe, gaulois-pipe does not stop when all files
+            defined with <a href="#file">file</a> or <a href="#folder">folder</a> ; gaulois-pipe
+            keep working until he receives a <span class="code">DELETE</span> http request, with a
+            keyword parameter ; keyword parameter value must be the one defined in the <span
+                class="code">keyword</span> attribute.</p>
+        <div class="source"><pre>http://localhost:8888/?keyword=STOP [DELETE http method]</pre></div>
+        <p>To add files, send a http PUT request, defining a <span class="code">url</span> parameter
+            that contains the absolute url of the file to process. It <strong>must</strong> be an
+            URL on the <strong>file:</strong> protocol. If you have parameters to pass to steps,
+            define all the additional parameters you need.</p>
+        <div class="source"
+            ><pre>http://localhost:8888/?url=file%3A%2Fhome%2Fcmarchand%2Fdata%2Fcollection.xml&amp;ciType=actu [PUT http method]</pre></div>
+        <p>When the DELETE request is received, and if it is valid, the server does not accepts
+            anymore files, the http server stops, and gaulois-pipe stops when all input files have
+            been processed.</p>
+    </body>
+</html>
