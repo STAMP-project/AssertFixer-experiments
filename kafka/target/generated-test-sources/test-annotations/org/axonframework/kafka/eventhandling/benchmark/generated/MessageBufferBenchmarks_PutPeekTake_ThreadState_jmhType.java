@@ -1,0 +1,4 @@
+package org.axonframework.kafka.eventhandling.benchmark.generated;
+public class MessageBufferBenchmarks_PutPeekTake_ThreadState_jmhType extends MessageBufferBenchmarks_PutPeekTake_ThreadState_jmhType_B3 {
+}
+

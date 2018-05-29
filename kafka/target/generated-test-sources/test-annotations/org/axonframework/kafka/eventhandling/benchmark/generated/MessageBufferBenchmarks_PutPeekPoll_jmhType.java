@@ -1,0 +1,4 @@
+package org.axonframework.kafka.eventhandling.benchmark.generated;
+public class MessageBufferBenchmarks_PutPeekPoll_jmhType extends MessageBufferBenchmarks_PutPeekPoll_jmhType_B3 {
+}
+
