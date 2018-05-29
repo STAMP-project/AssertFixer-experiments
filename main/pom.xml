@@ -1,0 +1,254 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+		 xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+		 xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<parent>
+		<artifactId>mmo-game-server</artifactId>
+		<groupId>com.jukusoft</groupId>
+		<version>1.0.0-SNAPSHOT</version>
+	</parent>
+	<modelVersion>4.0.0</modelVersion>
+
+	<artifactId>gs-main</artifactId>
+
+	<properties>
+		<mainClass>com.jukusoft.mmo.gameserver.main.ServerMain</mainClass>
+
+		<!-- format maven build timestamp to add to manifest -->
+		<timestamp>${maven.build.timestamp}</timestamp>
+		<maven.build.timestamp.format>yyyy-MM-dd HH:mm:ss</maven.build.timestamp.format>
+	</properties>
+
+	<scm>
+		<url>https://github.com/JuKu/mmo-game-server</url>
+		<connection>scm:git:git://github.com/JuKu/mmo-game-server.git</connection>
+		<developerConnection>git@github.com:JuKu/mmo-game-server.git</developerConnection>
+	</scm>
+
+	<dependencies>
+		<!-- gs-commons -->
+		<dependency>
+			<groupId>com.jukusoft</groupId>
+			<artifactId>gs-commons</artifactId>
+			<version>${project.version}</version>
+		</dependency>
+
+		<!-- gs-core -->
+		<dependency>
+			<groupId>com.jukusoft</groupId>
+			<artifactId>gs-core</artifactId>
+			<version>${project.version}</version>
+		</dependency>
+
+		<!-- gs-database -->
+		<dependency>
+			<groupId>com.jukusoft</groupId>
+			<artifactId>gs-database</artifactId>
+			<version>${project.version}</version>
+		</dependency>
+
+		<!-- gs-frontend -->
+		<dependency>
+			<groupId>com.jukusoft</groupId>
+			<artifactId>gs-frontend</artifactId>
+			<version>${project.version}</version>
+		</dependency>
+
+		<!-- library for high performance Real-Time and Embedded Systems -->
+		<!-- <dependency>
+			<groupId>org.javolution</groupId>
+			<artifactId>javolution</artifactId>
+			<version>${javolution.version}</version>
+		</dependency> -->
+
+		<!-- log4j logging implementation -->
+		<!-- <dependency>
+			<groupId>org.apache.logging.log4j</groupId>
+			<artifactId>log4j-core</artifactId>
+			<version>${log4j.version}</version>
+		</dependency> -->
+
+		<dependency>
+			<groupId>org.slf4j</groupId>
+			<artifactId>slf4j-log4j12</artifactId>
+			<version>1.7.25</version>
+		</dependency>
+
+		<!-- https://mvnrepository.com/artifact/io.vertx/vertx-core -->
+		<dependency>
+			<groupId>io.vertx</groupId>
+			<artifactId>vertx-core</artifactId>
+			<version>${vertx.version}</version>
+		</dependency>
+
+		<!-- Hazelcast -->
+		<dependency>
+			<groupId>com.hazelcast</groupId>
+			<artifactId>hazelcast</artifactId>
+			<version>${hazelcast.version}</version>
+		</dependency>
+
+		<!-- Vert.x Cluster-Management with Hazelcast -->
+		<dependency>
+			<groupId>io.vertx</groupId>
+			<artifactId>vertx-hazelcast</artifactId>
+			<version>${vertx.version}</version>
+		</dependency>
+
+		<!-- jdbc client -->
+		<dependency>
+			<groupId>io.vertx</groupId>
+			<artifactId>vertx-jdbc-client</artifactId>
+			<version>${vertx.version}</version>
+		</dependency>
+
+		<!-- MySQL connector -->
+		<dependency>
+			<groupId>mysql</groupId>
+			<artifactId>mysql-connector-java</artifactId>
+			<version>${mysql.connector.version}</version>
+		</dependency>
+	</dependencies>
+
+	<build>
+		<plugins>
+			<!-- set Java version -->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-compiler-plugin</artifactId>
+				<version>3.7.0</version>
+				<configuration>
+					<source>${java.version}</source>
+					<target>${java.version}</target>
+				</configuration>
+			</plugin>
+
+			<!-- copy dependencies to lib directory -->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-dependency-plugin</artifactId>
+				<version>2.10</version>
+				<executions>
+					<execution>
+						<id>copy-dependencies</id>
+						<phase>prepare-package</phase>
+						<goals>
+							<goal>copy-dependencies</goal>
+						</goals>
+						<configuration>
+							<outputDirectory>${project.build.directory}/lib</outputDirectory>
+							<useBaseVersion>false</useBaseVersion>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
+
+			<!-- Write the current git revision into ${buildnumber} and populate ${scmBranch} -->
+			<plugin>
+				<groupId>org.codehaus.mojo</groupId>
+				<artifactId>buildnumber-maven-plugin</artifactId>
+				<version>1.4</version>
+				<executions>
+					<execution>
+						<goals>
+							<goal>create</goal>
+						</goals>
+					</execution>
+				</executions>
+				<configuration>
+					<!-- Get the scm revision once for all modules -->
+					<getRevisionOnlyOnce>true</getRevisionOnlyOnce>
+					<!-- Don't fail on modified local resources -->
+					<doCheck>false</doCheck>
+					<!-- Don't update SCM -->
+					<doUpdate>false</doUpdate>
+					<!-- Use short version of git revision -->
+					<shortRevisionLength>7</shortRevisionLength>
+				</configuration>
+			</plugin>
+
+			<!-- create jar artifact, add classpath and set main class -->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-jar-plugin</artifactId>
+				<version>3.0.2</version>
+				<configuration>
+					<archive>
+						<manifest>
+							<addClasspath>true</addClasspath>
+							<classpathPrefix>lib/</classpathPrefix>
+							<mainClass>${mainClass}</mainClass>
+
+							<!-- update dependencie versions in MANIFEST.MF -->
+							<addDefaultImplementationEntries>true</addDefaultImplementationEntries>
+							<addDefaultSpecificationEntries>true</addDefaultSpecificationEntries>
+						</manifest>
+						<manifestEntries>
+							<!-- https://www.youtube.com/watch?v=Rnmq_Jv-pe4 -->
+							<!-- http://www.javacreed.com/how-to-add-splash-screen-using-maven/ -->
+							<SplashScreen-Image>splash_screen.png</SplashScreen-Image>
+
+							<!-- http://maven.apache.org/shared/maven-archiver/index.html -->
+
+							<!-- <key>value</key> -->
+							<Implementation-Time>${maven.build.timestamp}</Implementation-Time>
+
+							<Implementation-Build>${buildNumber}-${scmBranch}</Implementation-Build>
+						</manifestEntries>
+					</archive>
+				</configuration>
+			</plugin>
+
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-failsafe-plugin</artifactId>
+				<version>2.19.1</version>
+				<executions>
+					<execution>
+						<goals>
+							<goal>integration-test</goal>
+							<goal>verify</goal>
+						</goals>
+						<configuration>
+							<skipTests>${skip.tests}</skipTests>
+							<argLine>${argLine} -Duser.timezone=UTC -Xms256m -Xmx256m</argLine>
+							<includes>
+								<includes>**/*Test*</includes>
+							</includes>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
+
+			<!-- create zip archive -->
+			<!-- <plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-assembly-plugin</artifactId>
+				<version>3.1.0</version>
+				<configuration>
+					<archive>
+						<manifest>
+							<addClasspath>true</addClasspath>
+							<classpathPrefix>lib/</classpathPrefix>
+							<mainClass>${mainClass}</mainClass>
+						</manifest>
+					</archive>
+					<descriptors>
+						<descriptor>src/main/assembly/assembly.xml</descriptor>
+					</descriptors>
+				</configuration>
+				<executions>
+					<execution>
+						<id>create-archive</id>
+						<phase>package</phase>
+						<goals>
+							<goal>single</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin> -->
+		</plugins>
+	</build>
+
+
+</project>
