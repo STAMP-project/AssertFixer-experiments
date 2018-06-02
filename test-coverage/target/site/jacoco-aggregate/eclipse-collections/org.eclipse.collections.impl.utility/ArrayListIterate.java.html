@@ -1,0 +1,2054 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>ArrayListIterate.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Eclipse Collections Test Coverage Aggregation</a> &gt; <a href="../index.html" class="el_bundle">eclipse-collections</a> &gt; <a href="index.source.html" class="el_package">org.eclipse.collections.impl.utility</a> &gt; <span class="el_source">ArrayListIterate.java</span></div><h1>ArrayListIterate.java</h1><pre class="source lang-java linenums">/*
+ * Copyright (c) 2018 Goldman Sachs and others.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * and Eclipse Distribution License v. 1.0 which accompany this distribution.
+ * The Eclipse Public License is available at http://www.eclipse.org/legal/epl-v10.html
+ * and the Eclipse Distribution License is available at
+ * http://www.eclipse.org/org/documents/edl-v10.php.
+ */
+
+package org.eclipse.collections.impl.utility;
+
+import java.lang.reflect.Field;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Optional;
+
+import org.eclipse.collections.api.RichIterable;
+import org.eclipse.collections.api.block.HashingStrategy;
+import org.eclipse.collections.api.block.function.Function;
+import org.eclipse.collections.api.block.function.Function0;
+import org.eclipse.collections.api.block.function.Function2;
+import org.eclipse.collections.api.block.function.Function3;
+import org.eclipse.collections.api.block.function.primitive.BooleanFunction;
+import org.eclipse.collections.api.block.function.primitive.ByteFunction;
+import org.eclipse.collections.api.block.function.primitive.CharFunction;
+import org.eclipse.collections.api.block.function.primitive.DoubleFunction;
+import org.eclipse.collections.api.block.function.primitive.DoubleObjectToDoubleFunction;
+import org.eclipse.collections.api.block.function.primitive.FloatFunction;
+import org.eclipse.collections.api.block.function.primitive.FloatObjectToFloatFunction;
+import org.eclipse.collections.api.block.function.primitive.IntFunction;
+import org.eclipse.collections.api.block.function.primitive.IntObjectToIntFunction;
+import org.eclipse.collections.api.block.function.primitive.LongFunction;
+import org.eclipse.collections.api.block.function.primitive.LongObjectToLongFunction;
+import org.eclipse.collections.api.block.function.primitive.ShortFunction;
+import org.eclipse.collections.api.block.predicate.Predicate;
+import org.eclipse.collections.api.block.predicate.Predicate2;
+import org.eclipse.collections.api.block.procedure.Procedure;
+import org.eclipse.collections.api.block.procedure.Procedure2;
+import org.eclipse.collections.api.block.procedure.primitive.ObjectIntProcedure;
+import org.eclipse.collections.api.collection.primitive.MutableBooleanCollection;
+import org.eclipse.collections.api.collection.primitive.MutableByteCollection;
+import org.eclipse.collections.api.collection.primitive.MutableCharCollection;
+import org.eclipse.collections.api.collection.primitive.MutableDoubleCollection;
+import org.eclipse.collections.api.collection.primitive.MutableFloatCollection;
+import org.eclipse.collections.api.collection.primitive.MutableIntCollection;
+import org.eclipse.collections.api.collection.primitive.MutableLongCollection;
+import org.eclipse.collections.api.collection.primitive.MutableShortCollection;
+import org.eclipse.collections.api.list.MutableList;
+import org.eclipse.collections.api.list.primitive.MutableBooleanList;
+import org.eclipse.collections.api.list.primitive.MutableByteList;
+import org.eclipse.collections.api.list.primitive.MutableCharList;
+import org.eclipse.collections.api.list.primitive.MutableDoubleList;
+import org.eclipse.collections.api.list.primitive.MutableFloatList;
+import org.eclipse.collections.api.list.primitive.MutableIntList;
+import org.eclipse.collections.api.list.primitive.MutableLongList;
+import org.eclipse.collections.api.list.primitive.MutableShortList;
+import org.eclipse.collections.api.map.MutableMap;
+import org.eclipse.collections.api.multimap.MutableMultimap;
+import org.eclipse.collections.api.partition.list.PartitionMutableList;
+import org.eclipse.collections.api.set.MutableSet;
+import org.eclipse.collections.api.tuple.Pair;
+import org.eclipse.collections.api.tuple.Twin;
+import org.eclipse.collections.impl.block.factory.Comparators;
+import org.eclipse.collections.impl.block.factory.HashingStrategies;
+import org.eclipse.collections.impl.block.procedure.MutatingAggregationProcedure;
+import org.eclipse.collections.impl.block.procedure.NonMutatingAggregationProcedure;
+import org.eclipse.collections.impl.factory.Lists;
+import org.eclipse.collections.impl.list.mutable.FastList;
+import org.eclipse.collections.impl.list.mutable.primitive.BooleanArrayList;
+import org.eclipse.collections.impl.list.mutable.primitive.ByteArrayList;
+import org.eclipse.collections.impl.list.mutable.primitive.CharArrayList;
+import org.eclipse.collections.impl.list.mutable.primitive.DoubleArrayList;
+import org.eclipse.collections.impl.list.mutable.primitive.FloatArrayList;
+import org.eclipse.collections.impl.list.mutable.primitive.IntArrayList;
+import org.eclipse.collections.impl.list.mutable.primitive.LongArrayList;
+import org.eclipse.collections.impl.list.mutable.primitive.ShortArrayList;
+import org.eclipse.collections.impl.map.mutable.UnifiedMap;
+import org.eclipse.collections.impl.multimap.list.FastListMultimap;
+import org.eclipse.collections.impl.partition.list.PartitionFastList;
+import org.eclipse.collections.impl.set.mutable.UnifiedSet;
+import org.eclipse.collections.impl.set.strategy.mutable.UnifiedSetWithHashingStrategy;
+import org.eclipse.collections.impl.tuple.Tuples;
+import org.eclipse.collections.impl.utility.internal.InternalArrayIterate;
+import org.eclipse.collections.impl.utility.internal.RandomAccessListIterate;
+
+/**
+ * This utility class provides optimized iteration pattern implementations that work with java.util.ArrayList.
+ */
+public final class ArrayListIterate
+{
+    private static final Field ELEMENT_DATA_FIELD;
+    private static final Field SIZE_FIELD;
+    private static final int MIN_DIRECT_ARRAY_ACCESS_SIZE = 100;
+
+    static
+    {
+<span class="nc" id="L103">        Field data = null;</span>
+<span class="nc" id="L104">        Field size = null;</span>
+        try
+        {
+<span class="nc" id="L107">            data = ArrayList.class.getDeclaredField(&quot;elementData&quot;);</span>
+<span class="nc" id="L108">            size = ArrayList.class.getDeclaredField(&quot;size&quot;);</span>
+<span class="nc" id="L109">            data.setAccessible(true);</span>
+<span class="nc" id="L110">            size.setAccessible(true);</span>
+        }
+<span class="nc" id="L112">        catch (Exception ignored)</span>
+        {
+<span class="nc" id="L114">            data = null;</span>
+<span class="nc" id="L115">            size = null;</span>
+<span class="nc" id="L116">        }</span>
+<span class="nc" id="L117">        ELEMENT_DATA_FIELD = data;</span>
+<span class="nc" id="L118">        SIZE_FIELD = size;</span>
+<span class="nc" id="L119">    }</span>
+
+    private ArrayListIterate()
+<span class="nc" id="L122">    {</span>
+<span class="nc" id="L123">        throw new AssertionError(&quot;Suppress default constructor for noninstantiability&quot;);</span>
+    }
+
+    /**
+     * @see Iterate#select(Iterable, Predicate)
+     */
+    public static &lt;T&gt; ArrayList&lt;T&gt; select(ArrayList&lt;T&gt; list, Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L131">        return ArrayListIterate.select(list, predicate, new ArrayList&lt;&gt;());</span>
+    }
+
+    /**
+     * @see Iterate#selectWith(Iterable, Predicate2, Object)
+     */
+    public static &lt;T, IV&gt; ArrayList&lt;T&gt; selectWith(
+            ArrayList&lt;T&gt; list,
+            Predicate2&lt;? super T, ? super IV&gt; predicate,
+            IV injectedValue)
+    {
+<span class="nc" id="L142">        return ArrayListIterate.selectWith(list, predicate, injectedValue, new ArrayList&lt;&gt;());</span>
+    }
+
+    /**
+     * @see Iterate#select(Iterable, Predicate, Collection)
+     */
+    public static &lt;T, R extends Collection&lt;T&gt;&gt; R select(
+            ArrayList&lt;T&gt; list,
+            Predicate&lt;? super T&gt; predicate,
+            R targetCollection)
+    {
+<span class="nc" id="L153">        int size = list.size();</span>
+<span class="nc bnc" id="L154" title="All 2 branches missed.">        if (ArrayListIterate.isOptimizableArrayList(list, size))</span>
+        {
+<span class="nc" id="L156">            T[] elements = ArrayListIterate.getInternalArray(list);</span>
+<span class="nc bnc" id="L157" title="All 2 branches missed.">            for (int i = 0; i &lt; size; i++)</span>
+            {
+<span class="nc bnc" id="L159" title="All 2 branches missed.">                if (predicate.accept(elements[i]))</span>
+                {
+<span class="nc" id="L161">                    targetCollection.add(elements[i]);</span>
+                }
+            }
+<span class="nc" id="L164">            return targetCollection;</span>
+        }
+<span class="nc" id="L166">        return RandomAccessListIterate.select(list, predicate, targetCollection);</span>
+    }
+
+    /**
+     * @see Iterate#selectWith(Iterable, Predicate2, Object, Collection)
+     */
+    public static &lt;T, P, R extends Collection&lt;T&gt;&gt; R selectWith(
+            ArrayList&lt;T&gt; list,
+            Predicate2&lt;? super T, ? super P&gt; predicate,
+            P parameter,
+            R targetCollection)
+    {
+<span class="nc" id="L178">        int size = list.size();</span>
+<span class="nc bnc" id="L179" title="All 2 branches missed.">        if (ArrayListIterate.isOptimizableArrayList(list, size))</span>
+        {
+<span class="nc" id="L181">            T[] elements = ArrayListIterate.getInternalArray(list);</span>
+<span class="nc bnc" id="L182" title="All 2 branches missed.">            for (int i = 0; i &lt; size; i++)</span>
+            {
+<span class="nc bnc" id="L184" title="All 2 branches missed.">                if (predicate.accept(elements[i], parameter))</span>
+                {
+<span class="nc" id="L186">                    targetCollection.add(elements[i]);</span>
+                }
+            }
+<span class="nc" id="L189">            return targetCollection;</span>
+        }
+<span class="nc" id="L191">        return RandomAccessListIterate.selectWith(list, predicate, parameter, targetCollection);</span>
+    }
+
+    /**
+     * @see Iterate#selectInstancesOf(Iterable, Class)
+     */
+    public static &lt;T&gt; MutableList&lt;T&gt; selectInstancesOf(
+            ArrayList&lt;?&gt; list,
+            Class&lt;T&gt; clazz)
+    {
+<span class="nc" id="L201">        int size = list.size();</span>
+<span class="nc" id="L202">        FastList&lt;T&gt; result = FastList.newList(size);</span>
+<span class="nc bnc" id="L203" title="All 2 branches missed.">        if (ArrayListIterate.isOptimizableArrayList(list, size))</span>
+        {
+<span class="nc" id="L205">            Object[] elements = ArrayListIterate.getInternalArray(list);</span>
+<span class="nc bnc" id="L206" title="All 2 branches missed.">            for (int i = 0; i &lt; size; i++)</span>
+            {
+<span class="nc" id="L208">                Object element = elements[i];</span>
+<span class="nc bnc" id="L209" title="All 2 branches missed.">                if (clazz.isInstance(element))</span>
+                {
+<span class="nc" id="L211">                    result.add((T) element);</span>
+                }
+            }
+<span class="nc" id="L214">            result.trimToSize();</span>
+<span class="nc" id="L215">            return result;</span>
+        }
+<span class="nc" id="L217">        return RandomAccessListIterate.selectInstancesOf(list, clazz);</span>
+    }
+
+    /**
+     * @see Iterate#count(Iterable, Predicate)
+     */
+    public static &lt;T&gt; int count(ArrayList&lt;T&gt; list, Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L225">        int size = list.size();</span>
+<span class="nc bnc" id="L226" title="All 2 branches missed.">        if (ArrayListIterate.isOptimizableArrayList(list, size))</span>
+        {
+<span class="nc" id="L228">            int count = 0;</span>
+<span class="nc" id="L229">            T[] elements = ArrayListIterate.getInternalArray(list);</span>
+<span class="nc bnc" id="L230" title="All 2 branches missed.">            for (int i = 0; i &lt; size; i++)</span>
+            {
+<span class="nc bnc" id="L232" title="All 2 branches missed.">                if (predicate.accept(elements[i]))</span>
+                {
+<span class="nc" id="L234">                    count++;</span>
+                }
+            }
+<span class="nc" id="L237">            return count;</span>
+        }
+<span class="nc" id="L239">        return RandomAccessListIterate.count(list, predicate);</span>
+    }
+
+    /**
+     * @see Iterate#countWith(Iterable, Predicate2, Object)
+     */
+    public static &lt;T, P&gt; int countWith(
+            ArrayList&lt;T&gt; list,
+            Predicate2&lt;? super T, ? super P&gt; predicate,
+            P parameter)
+    {
+<span class="nc" id="L250">        int size = list.size();</span>
+<span class="nc bnc" id="L251" title="All 2 branches missed.">        if (ArrayListIterate.isOptimizableArrayList(list, size))</span>
+        {
+<span class="nc" id="L253">            int count = 0;</span>
+<span class="nc" id="L254">            T[] elements = ArrayListIterate.getInternalArray(list);</span>
+<span class="nc bnc" id="L255" title="All 2 branches missed.">            for (int i = 0; i &lt; size; i++)</span>
+            {
+<span class="nc bnc" id="L257" title="All 2 branches missed.">                if (predicate.accept(elements[i], parameter))</span>
+                {
+<span class="nc" id="L259">                    count++;</span>
+                }
+            }
+<span class="nc" id="L262">            return count;</span>
+        }
+<span class="nc" id="L264">        return RandomAccessListIterate.countWith(list, predicate, parameter);</span>
+    }
+
+    /**
+     * @see Iterate#collectIf(Iterable, Predicate, Function)
+     */
+    public static &lt;T, A&gt; ArrayList&lt;A&gt; collectIf(
+            ArrayList&lt;T&gt; list,
+            Predicate&lt;? super T&gt; predicate,
+            Function&lt;? super T, ? extends A&gt; function)
+    {
+<span class="nc" id="L275">        return ArrayListIterate.collectIf(list, predicate, function, new ArrayList&lt;&gt;());</span>
+    }
+
+    /**
+     * @see Iterate#collectIf(Iterable, Predicate, Function, Collection)
+     */
+    public static &lt;T, A, R extends Collection&lt;A&gt;&gt; R collectIf(
+            ArrayList&lt;T&gt; list,
+            Predicate&lt;? super T&gt; predicate,
+            Function&lt;? super T, ? extends A&gt; function,
+            R targetCollection)
+    {
+<span class="nc" id="L287">        int size = list.size();</span>
+<span class="nc bnc" id="L288" title="All 2 branches missed.">        if (ArrayListIterate.isOptimizableArrayList(list, size))</span>
+        {
+<span class="nc" id="L290">            T[] elements = ArrayListIterate.getInternalArray(list);</span>
+<span class="nc bnc" id="L291" title="All 2 branches missed.">            for (int i = 0; i &lt; size; i++)</span>
+            {
+<span class="nc bnc" id="L293" title="All 2 branches missed.">                if (predicate.accept(elements[i]))</span>
+                {
+<span class="nc" id="L295">                    targetCollection.add(function.valueOf(elements[i]));</span>
+                }
+            }
+<span class="nc" id="L298">            return targetCollection;</span>
+        }
+<span class="nc" id="L300">        return RandomAccessListIterate.collectIf(list, predicate, function, targetCollection);</span>
+    }
+
+    /**
+     * @see Iterate#reject(Iterable, Predicate)
+     */
+    public static &lt;T&gt; ArrayList&lt;T&gt; reject(ArrayList&lt;T&gt; list, Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L308">        return ArrayListIterate.reject(list, predicate, new ArrayList&lt;&gt;());</span>
+    }
+
+    /**
+     * @see Iterate#rejectWith(Iterable, Predicate2, Object)
+     */
+    public static &lt;T, IV&gt; ArrayList&lt;T&gt; rejectWith(
+            ArrayList&lt;T&gt; list,
+            Predicate2&lt;? super T, ? super IV&gt; predicate,
+            IV injectedValue)
+    {
+<span class="nc" id="L319">        return ArrayListIterate.rejectWith(list, predicate, injectedValue, new ArrayList&lt;&gt;());</span>
+    }
+
+    /**
+     * @see Iterate#reject(Iterable, Predicate, Collection)
+     */
+    public static &lt;T, R extends Collection&lt;T&gt;&gt; R reject(
+            ArrayList&lt;T&gt; list,
+            Predicate&lt;? super T&gt; predicate,
+            R targetCollection)
+    {
+<span class="nc" id="L330">        int size = list.size();</span>
+<span class="nc bnc" id="L331" title="All 2 branches missed.">        if (ArrayListIterate.isOptimizableArrayList(list, size))</span>
+        {
+<span class="nc" id="L333">            T[] elements = ArrayListIterate.getInternalArray(list);</span>
+<span class="nc bnc" id="L334" title="All 2 branches missed.">            for (int i = 0; i &lt; size; i++)</span>
+            {
+<span class="nc bnc" id="L336" title="All 2 branches missed.">                if (!predicate.accept(elements[i]))</span>
+                {
+<span class="nc" id="L338">                    targetCollection.add(elements[i]);</span>
+                }
+            }
+<span class="nc" id="L341">            return targetCollection;</span>
+        }
+<span class="nc" id="L343">        return RandomAccessListIterate.reject(list, predicate, targetCollection);</span>
+    }
+
+    /**
+     * @see Iterate#reject(Iterable, Predicate, Collection)
+     */
+    public static &lt;T, P, R extends Collection&lt;T&gt;&gt; R rejectWith(
+            ArrayList&lt;T&gt; list,
+            Predicate2&lt;? super T, ? super P&gt; predicate,
+            P injectedValue,
+            R targetCollection)
+    {
+<span class="nc" id="L355">        int size = list.size();</span>
+<span class="nc bnc" id="L356" title="All 2 branches missed.">        if (ArrayListIterate.isOptimizableArrayList(list, size))</span>
+        {
+<span class="nc" id="L358">            T[] elements = ArrayListIterate.getInternalArray(list);</span>
+<span class="nc bnc" id="L359" title="All 2 branches missed.">            for (int i = 0; i &lt; size; i++)</span>
+            {
+<span class="nc bnc" id="L361" title="All 2 branches missed.">                if (!predicate.accept(elements[i], injectedValue))</span>
+                {
+<span class="nc" id="L363">                    targetCollection.add(elements[i]);</span>
+                }
+            }
+<span class="nc" id="L366">            return targetCollection;</span>
+        }
+<span class="nc" id="L368">        return RandomAccessListIterate.rejectWith(list, predicate, injectedValue, targetCollection);</span>
+    }
+
+    /**
+     * @see Iterate#collect(Iterable, Function)
+     */
+    public static &lt;T, A&gt; ArrayList&lt;A&gt; collect(
+            ArrayList&lt;T&gt; list,
+            Function&lt;? super T, ? extends A&gt; function)
+    {
+<span class="nc" id="L378">        return ArrayListIterate.collect(list, function, new ArrayList&lt;&gt;(list.size()));</span>
+    }
+
+    /**
+     * @see Iterate#collectBoolean(Iterable, BooleanFunction)
+     */
+    public static &lt;T&gt; MutableBooleanList collectBoolean(
+            ArrayList&lt;T&gt; list,
+            BooleanFunction&lt;? super T&gt; booleanFunction)
+    {
+<span class="nc" id="L388">        int size = list.size();</span>
+<span class="nc bnc" id="L389" title="All 2 branches missed.">        if (ArrayListIterate.isOptimizableArrayList(list, size))</span>
+        {
+<span class="nc" id="L391">            MutableBooleanList result = new BooleanArrayList(size);</span>
+<span class="nc" id="L392">            return ArrayListIterate.collectBooleanFromInternalArray(list, booleanFunction, size, result);</span>
+        }
+<span class="nc" id="L394">        return RandomAccessListIterate.collectBoolean(list, booleanFunction);</span>
+    }
+
+    /**
+     * @see Iterate#collectBoolean(Iterable, BooleanFunction, MutableBooleanCollection)
+     */
+    public static &lt;T, R extends MutableBooleanCollection&gt; R collectBoolean(ArrayList&lt;T&gt; list, BooleanFunction&lt;? super T&gt; booleanFunction, R target)
+    {
+<span class="nc" id="L402">        int size = list.size();</span>
+<span class="nc bnc" id="L403" title="All 2 branches missed.">        if (ArrayListIterate.isOptimizableArrayList(list, size))</span>
+        {
+<span class="nc" id="L405">            return ArrayListIterate.collectBooleanFromInternalArray(list, booleanFunction, size, target);</span>
+        }
+<span class="nc" id="L407">        return RandomAccessListIterate.collectBoolean(list, booleanFunction, target);</span>
+    }
+
+    private static &lt;T, R extends MutableBooleanCollection&gt; R collectBooleanFromInternalArray(ArrayList&lt;T&gt; source, BooleanFunction&lt;? super T&gt; booleanFunction, int elementsToCollect, R target)
+    {
+<span class="nc" id="L412">        T[] elements = ArrayListIterate.getInternalArray(source);</span>
+<span class="nc bnc" id="L413" title="All 2 branches missed.">        for (int i = 0; i &lt; elementsToCollect; i++)</span>
+        {
+<span class="nc" id="L415">            target.add(booleanFunction.booleanValueOf(elements[i]));</span>
+        }
+<span class="nc" id="L417">        return target;</span>
+    }
+
+    /**
+     * @see Iterate#collectByte(Iterable, ByteFunction)
+     */
+    public static &lt;T&gt; MutableByteList collectByte(
+            ArrayList&lt;T&gt; list,
+            ByteFunction&lt;? super T&gt; byteFunction)
+    {
+<span class="nc" id="L427">        int size = list.size();</span>
+<span class="nc bnc" id="L428" title="All 2 branches missed.">        if (ArrayListIterate.isOptimizableArrayList(list, size))</span>
+        {
+<span class="nc" id="L430">            MutableByteList result = new ByteArrayList(size);</span>
+<span class="nc" id="L431">            return ArrayListIterate.collectByteFromInternalArray(list, byteFunction, size, result);</span>
+        }
+<span class="nc" id="L433">        return RandomAccessListIterate.collectByte(list, byteFunction);</span>
+    }
+
+    /**
+     * @see Iterate#collectByte(Iterable, ByteFunction, MutableByteCollection)
+     */
+    public static &lt;T, R extends MutableByteCollection&gt; R collectByte(ArrayList&lt;T&gt; list, ByteFunction&lt;? super T&gt; byteFunction, R target)
+    {
+<span class="nc" id="L441">        int size = list.size();</span>
+<span class="nc bnc" id="L442" title="All 2 branches missed.">        if (ArrayListIterate.isOptimizableArrayList(list, size))</span>
+        {
+<span class="nc" id="L444">            return ArrayListIterate.collectByteFromInternalArray(list, byteFunction, size, target);</span>
+        }
+<span class="nc" id="L446">        return RandomAccessListIterate.collectByte(list, byteFunction, target);</span>
+    }
+
+    private static &lt;T, R extends MutableByteCollection&gt; R collectByteFromInternalArray(
+            ArrayList&lt;T&gt; source,
+            ByteFunction&lt;? super T&gt; byteFunction,
+            int elementsToCollect,
+            R target)
+    {
+<span class="nc" id="L455">        T[] elements = ArrayListIterate.getInternalArray(source);</span>
+<span class="nc bnc" id="L456" title="All 2 branches missed.">        for (int i = 0; i &lt; elementsToCollect; i++)</span>
+        {
+<span class="nc" id="L458">            target.add(byteFunction.byteValueOf(elements[i]));</span>
+        }
+<span class="nc" id="L460">        return target;</span>
+    }
+
+    /**
+     * @see Iterate#collectChar(Iterable, CharFunction)
+     */
+    public static &lt;T&gt; MutableCharList collectChar(
+            ArrayList&lt;T&gt; list,
+            CharFunction&lt;? super T&gt; charFunction)
+    {
+<span class="nc" id="L470">        int size = list.size();</span>
+<span class="nc bnc" id="L471" title="All 2 branches missed.">        if (ArrayListIterate.isOptimizableArrayList(list, size))</span>
+        {
+<span class="nc" id="L473">            MutableCharList result = new CharArrayList(size);</span>
+<span class="nc" id="L474">            return ArrayListIterate.collectCharFromInternalArray(list, charFunction, size, result);</span>
+        }
+<span class="nc" id="L476">        return RandomAccessListIterate.collectChar(list, charFunction);</span>
+    }
+
+    /**
+     * @see Iterate#collectChar(Iterable, CharFunction, MutableCharCollection)
+     */
+    public static &lt;T, R extends MutableCharCollection&gt; R collectChar(ArrayList&lt;T&gt; list, CharFunction&lt;? super T&gt; charFunction, R target)
+    {
+<span class="nc" id="L484">        int size = list.size();</span>
+<span class="nc bnc" id="L485" title="All 2 branches missed.">        if (ArrayListIterate.isOptimizableArrayList(list, size))</span>
+        {
+<span class="nc" id="L487">            return ArrayListIterate.collectCharFromInternalArray(list, charFunction, size, target);</span>
+        }
+<span class="nc" id="L489">        return RandomAccessListIterate.collectChar(list, charFunction, target);</span>
+    }
+
+    private static &lt;T, R extends MutableCharCollection&gt; R collectCharFromInternalArray(
+            ArrayList&lt;T&gt; source,
+            CharFunction&lt;? super T&gt; charFunction,
+            int elementsToCollect,
+            R target)
+    {
+<span class="nc" id="L498">        T[] elements = ArrayListIterate.getInternalArray(source);</span>
+<span class="nc bnc" id="L499" title="All 2 branches missed.">        for (int i = 0; i &lt; elementsToCollect; i++)</span>
+        {
+<span class="nc" id="L501">            target.add(charFunction.charValueOf(elements[i]));</span>
+        }
+<span class="nc" id="L503">        return target;</span>
+    }
+
+    /**
+     * @see Iterate#collectDouble(Iterable, DoubleFunction)
+     */
+    public static &lt;T&gt; MutableDoubleList collectDouble(
+            ArrayList&lt;T&gt; list,
+            DoubleFunction&lt;? super T&gt; doubleFunction)
+    {
+<span class="nc" id="L513">        int size = list.size();</span>
+<span class="nc bnc" id="L514" title="All 2 branches missed.">        if (ArrayListIterate.isOptimizableArrayList(list, size))</span>
+        {
+<span class="nc" id="L516">            MutableDoubleList result = new DoubleArrayList(size);</span>
+<span class="nc" id="L517">            return ArrayListIterate.collectDoubleFromInternalArray(list, doubleFunction, size, result);</span>
+        }
+<span class="nc" id="L519">        return RandomAccessListIterate.collectDouble(list, doubleFunction);</span>
+    }
+
+    /**
+     * @see Iterate#collectDouble(Iterable, DoubleFunction, MutableDoubleCollection)
+     */
+    public static &lt;T, R extends MutableDoubleCollection&gt; R collectDouble(ArrayList&lt;T&gt; list, DoubleFunction&lt;? super T&gt; doubleFunction, R target)
+    {
+<span class="nc" id="L527">        int size = list.size();</span>
+<span class="nc bnc" id="L528" title="All 2 branches missed.">        if (ArrayListIterate.isOptimizableArrayList(list, size))</span>
+        {
+<span class="nc" id="L530">            return ArrayListIterate.collectDoubleFromInternalArray(list, doubleFunction, size, target);</span>
+        }
+<span class="nc" id="L532">        return RandomAccessListIterate.collectDouble(list, doubleFunction, target);</span>
+    }
+
+    private static &lt;T, R extends MutableDoubleCollection&gt; R collectDoubleFromInternalArray(
+            ArrayList&lt;T&gt; source,
+            DoubleFunction&lt;? super T&gt; doubleFunction,
+            int elementsToCollect,
+            R target)
+    {
+<span class="nc" id="L541">        T[] elements = ArrayListIterate.getInternalArray(source);</span>
+<span class="nc bnc" id="L542" title="All 2 branches missed.">        for (int i = 0; i &lt; elementsToCollect; i++)</span>
+        {
+<span class="nc" id="L544">            target.add(doubleFunction.doubleValueOf(elements[i]));</span>
+        }
+<span class="nc" id="L546">        return target;</span>
+    }
+
+    /**
+     * @see Iterate#collectFloat(Iterable, FloatFunction)
+     */
+    public static &lt;T&gt; MutableFloatList collectFloat(
+            ArrayList&lt;T&gt; list,
+            FloatFunction&lt;? super T&gt; floatFunction)
+    {
+<span class="nc" id="L556">        int size = list.size();</span>
+<span class="nc bnc" id="L557" title="All 2 branches missed.">        if (ArrayListIterate.isOptimizableArrayList(list, size))</span>
+        {
+<span class="nc" id="L559">            MutableFloatList result = new FloatArrayList(size);</span>
+<span class="nc" id="L560">            return ArrayListIterate.collectFloatFromInternalArray(list, floatFunction, size, result);</span>
+        }
+<span class="nc" id="L562">        return RandomAccessListIterate.collectFloat(list, floatFunction);</span>
+    }
+
+    /**
+     * @see Iterate#collectFloat(Iterable, FloatFunction, MutableFloatCollection)
+     */
+    public static &lt;T, R extends MutableFloatCollection&gt; R collectFloat(ArrayList&lt;T&gt; list, FloatFunction&lt;? super T&gt; floatFunction, R target)
+    {
+<span class="nc" id="L570">        int size = list.size();</span>
+<span class="nc bnc" id="L571" title="All 2 branches missed.">        if (ArrayListIterate.isOptimizableArrayList(list, size))</span>
+        {
+<span class="nc" id="L573">            return ArrayListIterate.collectFloatFromInternalArray(list, floatFunction, size, target);</span>
+        }
+<span class="nc" id="L575">        return RandomAccessListIterate.collectFloat(list, floatFunction, target);</span>
+    }
+
+    private static &lt;T, R extends MutableFloatCollection&gt; R collectFloatFromInternalArray(
+            ArrayList&lt;T&gt; source,
+            FloatFunction&lt;? super T&gt; floatFunction,
+            int elementsToCollect,
+            R target)
+    {
+<span class="nc" id="L584">        T[] elements = ArrayListIterate.getInternalArray(source);</span>
+<span class="nc bnc" id="L585" title="All 2 branches missed.">        for (int i = 0; i &lt; elementsToCollect; i++)</span>
+        {
+<span class="nc" id="L587">            target.add(floatFunction.floatValueOf(elements[i]));</span>
+        }
+<span class="nc" id="L589">        return target;</span>
+    }
+
+    /**
+     * @see Iterate#collectInt(Iterable, IntFunction)
+     */
+    public static &lt;T&gt; MutableIntList collectInt(
+            ArrayList&lt;T&gt; list,
+            IntFunction&lt;? super T&gt; intFunction)
+    {
+<span class="nc" id="L599">        int size = list.size();</span>
+<span class="nc bnc" id="L600" title="All 2 branches missed.">        if (ArrayListIterate.isOptimizableArrayList(list, size))</span>
+        {
+<span class="nc" id="L602">            MutableIntList result = new IntArrayList(size);</span>
+<span class="nc" id="L603">            return ArrayListIterate.collectIntFromInternalArray(list, intFunction, size, result);</span>
+        }
+<span class="nc" id="L605">        return RandomAccessListIterate.collectInt(list, intFunction);</span>
+    }
+
+    /**
+     * @see Iterate#collectInt(Iterable, IntFunction, MutableIntCollection)
+     */
+    public static &lt;T, R extends MutableIntCollection&gt; R collectInt(ArrayList&lt;T&gt; list, IntFunction&lt;? super T&gt; intFunction, R target)
+    {
+<span class="nc" id="L613">        int size = list.size();</span>
+<span class="nc bnc" id="L614" title="All 2 branches missed.">        if (ArrayListIterate.isOptimizableArrayList(list, size))</span>
+        {
+<span class="nc" id="L616">            return ArrayListIterate.collectIntFromInternalArray(list, intFunction, size, target);</span>
+        }
+<span class="nc" id="L618">        return RandomAccessListIterate.collectInt(list, intFunction, target);</span>
+    }
+
+    private static &lt;T, R extends MutableIntCollection&gt; R collectIntFromInternalArray(ArrayList&lt;T&gt; source, IntFunction&lt;? super T&gt; intFunction, int elementsToCollect, R target)
+    {
+<span class="nc" id="L623">        T[] elements = ArrayListIterate.getInternalArray(source);</span>
+<span class="nc bnc" id="L624" title="All 2 branches missed.">        for (int i = 0; i &lt; elementsToCollect; i++)</span>
+        {
+<span class="nc" id="L626">            target.add(intFunction.intValueOf(elements[i]));</span>
+        }
+<span class="nc" id="L628">        return target;</span>
+    }
+
+    /**
+     * @see Iterate#collectLong(Iterable, LongFunction)
+     */
+    public static &lt;T&gt; MutableLongList collectLong(
+            ArrayList&lt;T&gt; list,
+            LongFunction&lt;? super T&gt; longFunction)
+    {
+<span class="nc" id="L638">        int size = list.size();</span>
+<span class="nc bnc" id="L639" title="All 2 branches missed.">        if (ArrayListIterate.isOptimizableArrayList(list, size))</span>
+        {
+<span class="nc" id="L641">            MutableLongList result = new LongArrayList(size);</span>
+<span class="nc" id="L642">            return ArrayListIterate.collectLongFromInternalArray(list, longFunction, size, result);</span>
+        }
+<span class="nc" id="L644">        return RandomAccessListIterate.collectLong(list, longFunction);</span>
+    }
+
+    /**
+     * @see Iterate#collectLong(Iterable, LongFunction, MutableLongCollection)
+     */
+    public static &lt;T, R extends MutableLongCollection&gt; R collectLong(ArrayList&lt;T&gt; list, LongFunction&lt;? super T&gt; longFunction, R target)
+    {
+<span class="nc" id="L652">        int size = list.size();</span>
+<span class="nc bnc" id="L653" title="All 2 branches missed.">        if (ArrayListIterate.isOptimizableArrayList(list, size))</span>
+        {
+<span class="nc" id="L655">            return ArrayListIterate.collectLongFromInternalArray(list, longFunction, size, target);</span>
+        }
+<span class="nc" id="L657">        return RandomAccessListIterate.collectLong(list, longFunction, target);</span>
+    }
+
+    private static &lt;T, R extends MutableLongCollection&gt; R collectLongFromInternalArray(
+            ArrayList&lt;T&gt; source,
+            LongFunction&lt;? super T&gt; longFunction,
+            int elementsToCollect,
+            R target)
+    {
+<span class="nc" id="L666">        T[] elements = ArrayListIterate.getInternalArray(source);</span>
+<span class="nc bnc" id="L667" title="All 2 branches missed.">        for (int i = 0; i &lt; elementsToCollect; i++)</span>
+        {
+<span class="nc" id="L669">            target.add(longFunction.longValueOf(elements[i]));</span>
+        }
+<span class="nc" id="L671">        return target;</span>
+    }
+
+    /**
+     * @see Iterate#collectShort(Iterable, ShortFunction)
+     */
+    public static &lt;T&gt; MutableShortList collectShort(
+            ArrayList&lt;T&gt; list,
+            ShortFunction&lt;? super T&gt; shortFunction)
+    {
+<span class="nc" id="L681">        int size = list.size();</span>
+<span class="nc bnc" id="L682" title="All 2 branches missed.">        if (ArrayListIterate.isOptimizableArrayList(list, size))</span>
+        {
+<span class="nc" id="L684">            MutableShortList result = new ShortArrayList(size);</span>
+<span class="nc" id="L685">            return ArrayListIterate.collectShortFromInternalArray(list, shortFunction, size, result);</span>
+        }
+<span class="nc" id="L687">        return RandomAccessListIterate.collectShort(list, shortFunction);</span>
+    }
+
+    /**
+     * @see Iterate#collectShort(Iterable, ShortFunction, MutableShortCollection)
+     */
+    public static &lt;T, R extends MutableShortCollection&gt; R collectShort(ArrayList&lt;T&gt; list, ShortFunction&lt;? super T&gt; shortFunction, R target)
+    {
+<span class="nc" id="L695">        int size = list.size();</span>
+<span class="nc bnc" id="L696" title="All 2 branches missed.">        if (ArrayListIterate.isOptimizableArrayList(list, size))</span>
+        {
+<span class="nc" id="L698">            return ArrayListIterate.collectShortFromInternalArray(list, shortFunction, size, target);</span>
+        }
+<span class="nc" id="L700">        return RandomAccessListIterate.collectShort(list, shortFunction, target);</span>
+    }
+
+    private static &lt;T, R extends MutableShortCollection&gt; R collectShortFromInternalArray(
+            ArrayList&lt;T&gt; source,
+            ShortFunction&lt;? super T&gt; shortFunction,
+            int elementsToCollect,
+            R target)
+    {
+<span class="nc" id="L709">        T[] elements = ArrayListIterate.getInternalArray(source);</span>
+<span class="nc bnc" id="L710" title="All 2 branches missed.">        for (int i = 0; i &lt; elementsToCollect; i++)</span>
+        {
+<span class="nc" id="L712">            target.add(shortFunction.shortValueOf(elements[i]));</span>
+        }
+<span class="nc" id="L714">        return target;</span>
+    }
+
+    /**
+     * @see Iterate#collect(Iterable, Function, Collection)
+     */
+    public static &lt;T, A, R extends Collection&lt;A&gt;&gt; R collect(
+            ArrayList&lt;T&gt; list,
+            Function&lt;? super T, ? extends A&gt; function,
+            R targetCollection)
+    {
+<span class="nc" id="L725">        int size = list.size();</span>
+<span class="nc bnc" id="L726" title="All 2 branches missed.">        if (ArrayListIterate.isOptimizableArrayList(list, size))</span>
+        {
+<span class="nc" id="L728">            T[] elements = ArrayListIterate.getInternalArray(list);</span>
+<span class="nc bnc" id="L729" title="All 2 branches missed.">            for (int i = 0; i &lt; size; i++)</span>
+            {
+<span class="nc" id="L731">                targetCollection.add(function.valueOf(elements[i]));</span>
+            }
+<span class="nc" id="L733">            return targetCollection;</span>
+        }
+<span class="nc" id="L735">        return RandomAccessListIterate.collect(list, function, targetCollection);</span>
+    }
+
+    /**
+     * @see Iterate#flatCollect(Iterable, Function)
+     */
+    public static &lt;T, A&gt; ArrayList&lt;A&gt; flatCollect(
+            ArrayList&lt;T&gt; list,
+            Function&lt;? super T, ? extends Iterable&lt;A&gt;&gt; function)
+    {
+<span class="nc" id="L745">        return ArrayListIterate.flatCollect(list, function, new ArrayList&lt;&gt;(list.size()));</span>
+    }
+
+    /**
+     * @see Iterate#flatCollect(Iterable, Function, Collection)
+     */
+    public static &lt;T, A, R extends Collection&lt;A&gt;&gt; R flatCollect(
+            ArrayList&lt;T&gt; list,
+            Function&lt;? super T, ? extends Iterable&lt;A&gt;&gt; function,
+            R targetCollection)
+    {
+<span class="nc" id="L756">        int size = list.size();</span>
+<span class="nc bnc" id="L757" title="All 2 branches missed.">        if (ArrayListIterate.isOptimizableArrayList(list, size))</span>
+        {
+<span class="nc" id="L759">            T[] elements = ArrayListIterate.getInternalArray(list);</span>
+<span class="nc bnc" id="L760" title="All 2 branches missed.">            for (int i = 0; i &lt; size; i++)</span>
+            {
+<span class="nc" id="L762">                Iterate.addAllTo(function.valueOf(elements[i]), targetCollection);</span>
+            }
+<span class="nc" id="L764">            return targetCollection;</span>
+        }
+<span class="nc" id="L766">        return RandomAccessListIterate.flatCollect(list, function, targetCollection);</span>
+    }
+
+    /**
+     * @see Iterate#forEach(Iterable, Procedure)
+     */
+    public static &lt;T&gt; void forEach(ArrayList&lt;T&gt; list, Procedure&lt;? super T&gt; procedure)
+    {
+<span class="nc" id="L774">        int size = list.size();</span>
+<span class="nc bnc" id="L775" title="All 2 branches missed.">        if (ArrayListIterate.isOptimizableArrayList(list, size))</span>
+        {
+<span class="nc" id="L777">            T[] elements = ArrayListIterate.getInternalArray(list);</span>
+<span class="nc bnc" id="L778" title="All 2 branches missed.">            for (int i = 0; i &lt; size; i++)</span>
+            {
+<span class="nc" id="L780">                procedure.value(elements[i]);</span>
+            }
+<span class="nc" id="L782">        }</span>
+        else
+        {
+<span class="nc" id="L785">            RandomAccessListIterate.forEach(list, procedure);</span>
+        }
+<span class="nc" id="L787">    }</span>
+
+    /**
+     * Reverses over the List in reverse order executing the Procedure for each element.
+     */
+    public static &lt;T&gt; void reverseForEach(ArrayList&lt;T&gt; list, Procedure&lt;? super T&gt; procedure)
+    {
+<span class="nc bnc" id="L794" title="All 2 branches missed.">        if (!list.isEmpty())</span>
+        {
+<span class="nc" id="L796">            ArrayListIterate.forEach(list, list.size() - 1, 0, procedure);</span>
+        }
+<span class="nc" id="L798">    }</span>
+
+    /**
+     * Reverses over the List in reverse order executing the Procedure with index for each element.
+     */
+    public static &lt;T&gt; void reverseForEachWithIndex(ArrayList&lt;T&gt; list, ObjectIntProcedure&lt;? super T&gt; procedure)
+    {
+<span class="nc bnc" id="L805" title="All 2 branches missed.">        if (!list.isEmpty())</span>
+        {
+<span class="nc" id="L807">            ArrayListIterate.forEachWithIndex(list, list.size() - 1, 0, procedure);</span>
+        }
+<span class="nc" id="L809">    }</span>
+
+    /**
+     * Iterates over the section of the list covered by the specified indexes.  The indexes are both inclusive.  If the
+     * from is less than the to, the list is iterated in forward order. If the from is greater than the to, then the
+     * list is iterated in the reverse order.
+     * &lt;p&gt;
+     * &lt;pre&gt;e.g.
+     * ArrayList&lt;People&gt; people = new ArrayList&amp;lt;People&amp;gt;(FastList.newListWith(ted, mary, bob, sally));
+     * ArrayListIterate.forEach(people, 0, 1, new Procedure&amp;lt;Person&amp;gt;()
+     * {
+     *     public void value(Person person)
+     *     {
+     *          LOGGER.info(person.getName());
+     *     }
+     * });
+     * &lt;/pre&gt;
+     * &lt;p&gt;
+     * This code would output ted and mary's names.
+     */
+    public static &lt;T&gt; void forEach(ArrayList&lt;T&gt; list, int from, int to, Procedure&lt;? super T&gt; procedure)
+    {
+<span class="nc" id="L831">        ListIterate.rangeCheck(from, to, list.size());</span>
+<span class="nc bnc" id="L832" title="All 2 branches missed.">        if (ArrayListIterate.isOptimizableArrayList(list, to - from + 1))</span>
+        {
+<span class="nc" id="L834">            T[] elements = ArrayListIterate.getInternalArray(list);</span>
+
+<span class="nc" id="L836">            InternalArrayIterate.forEachWithoutChecks(elements, from, to, procedure);</span>
+<span class="nc" id="L837">        }</span>
+        else
+        {
+<span class="nc" id="L840">            RandomAccessListIterate.forEach(list, from, to, procedure);</span>
+        }
+<span class="nc" id="L842">    }</span>
+
+    /**
+     * Iterates over the section of the list covered by the specified indexes.  The indexes are both inclusive.  If the
+     * from is less than the to, the list is iterated in forward order. If the from is greater than the to, then the
+     * list is iterated in the reverse order. The index passed into the ObjectIntProcedure is the actual index of the
+     * range.
+     * &lt;p&gt;
+     * &lt;pre&gt;e.g.
+     * ArrayList&lt;People&gt; people = new ArrayList&amp;lt;People&amp;gt;(FastList.newListWith(ted, mary, bob, sally));
+     * ArrayListIterate.forEachWithIndex(people, 0, 1, new ObjectIntProcedure&amp;lt;Person&amp;gt;()
+     * {
+     *     public void value(Person person, int index)
+     *     {
+     *          LOGGER.info(person.getName() + &quot; at index: &quot; + index);
+     *     }
+     * });
+     * &lt;/pre&gt;
+     * &lt;p&gt;
+     * This code would output ted and mary's names.
+     */
+    public static &lt;T&gt; void forEachWithIndex(
+            ArrayList&lt;T&gt; list,
+            int from,
+            int to,
+            ObjectIntProcedure&lt;? super T&gt; objectIntProcedure)
+    {
+<span class="nc" id="L869">        ListIterate.rangeCheck(from, to, list.size());</span>
+<span class="nc bnc" id="L870" title="All 2 branches missed.">        if (ArrayListIterate.isOptimizableArrayList(list, to - from + 1))</span>
+        {
+<span class="nc" id="L872">            T[] elements = ArrayListIterate.getInternalArray(list);</span>
+
+<span class="nc" id="L874">            InternalArrayIterate.forEachWithIndexWithoutChecks(elements, from, to, objectIntProcedure);</span>
+<span class="nc" id="L875">        }</span>
+        else
+        {
+<span class="nc" id="L878">            RandomAccessListIterate.forEachWithIndex(list, from, to, objectIntProcedure);</span>
+        }
+<span class="nc" id="L880">    }</span>
+
+    /**
+     * @see ListIterate#forEachInBoth(List, List, Procedure2)
+     */
+    public static &lt;T1, T2&gt; void forEachInBoth(
+            ArrayList&lt;T1&gt; list1,
+            ArrayList&lt;T2&gt; list2,
+            Procedure2&lt;? super T1, ? super T2&gt; procedure)
+    {
+<span class="nc" id="L890">        RandomAccessListIterate.forEachInBoth(list1, list2, procedure);</span>
+<span class="nc" id="L891">    }</span>
+
+    /**
+     * @see Iterate#forEachWithIndex(Iterable, ObjectIntProcedure)
+     */
+    public static &lt;T&gt; void forEachWithIndex(ArrayList&lt;T&gt; list, ObjectIntProcedure&lt;? super T&gt; objectIntProcedure)
+    {
+<span class="nc" id="L898">        int size = list.size();</span>
+<span class="nc bnc" id="L899" title="All 2 branches missed.">        if (ArrayListIterate.isOptimizableArrayList(list, size))</span>
+        {
+<span class="nc" id="L901">            T[] elements = ArrayListIterate.getInternalArray(list);</span>
+<span class="nc bnc" id="L902" title="All 2 branches missed.">            for (int i = 0; i &lt; size; i++)</span>
+            {
+<span class="nc" id="L904">                objectIntProcedure.value(elements[i], i);</span>
+            }
+<span class="nc" id="L906">        }</span>
+        else
+        {
+<span class="nc" id="L909">            RandomAccessListIterate.forEachWithIndex(list, objectIntProcedure);</span>
+        }
+<span class="nc" id="L911">    }</span>
+
+    /**
+     * @see Iterate#detect(Iterable, Predicate)
+     */
+    public static &lt;T&gt; T detect(ArrayList&lt;T&gt; list, Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L918">        int size = list.size();</span>
+<span class="nc bnc" id="L919" title="All 2 branches missed.">        if (ArrayListIterate.isOptimizableArrayList(list, size))</span>
+        {
+<span class="nc" id="L921">            T[] elements = ArrayListIterate.getInternalArray(list);</span>
+<span class="nc bnc" id="L922" title="All 2 branches missed.">            for (int i = 0; i &lt; size; i++)</span>
+            {
+<span class="nc" id="L924">                T item = elements[i];</span>
+<span class="nc bnc" id="L925" title="All 2 branches missed.">                if (predicate.accept(item))</span>
+                {
+<span class="nc" id="L927">                    return item;</span>
+                }
+            }
+<span class="nc" id="L930">            return null;</span>
+        }
+<span class="nc" id="L932">        return RandomAccessListIterate.detect(list, predicate);</span>
+    }
+
+    /**
+     * @see Iterate#detectWith(Iterable, Predicate2, Object)
+     */
+    public static &lt;T, P&gt; T detectWith(
+            ArrayList&lt;T&gt; list,
+            Predicate2&lt;? super T, ? super P&gt; predicate,
+            P parameter)
+    {
+<span class="nc" id="L943">        int size = list.size();</span>
+<span class="nc bnc" id="L944" title="All 2 branches missed.">        if (ArrayListIterate.isOptimizableArrayList(list, size))</span>
+        {
+<span class="nc" id="L946">            T[] elements = ArrayListIterate.getInternalArray(list);</span>
+<span class="nc bnc" id="L947" title="All 2 branches missed.">            for (int i = 0; i &lt; size; i++)</span>
+            {
+<span class="nc" id="L949">                T item = elements[i];</span>
+<span class="nc bnc" id="L950" title="All 2 branches missed.">                if (predicate.accept(item, parameter))</span>
+                {
+<span class="nc" id="L952">                    return item;</span>
+                }
+            }
+<span class="nc" id="L955">            return null;</span>
+        }
+<span class="nc" id="L957">        return RandomAccessListIterate.detectWith(list, predicate, parameter);</span>
+    }
+
+    /**
+     * @see Iterate#detectOptional(Iterable, Predicate)
+     */
+    public static &lt;T&gt; Optional&lt;T&gt; detectOptional(ArrayList&lt;T&gt; list, Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L965">        int size = list.size();</span>
+<span class="nc bnc" id="L966" title="All 2 branches missed.">        if (ArrayListIterate.isOptimizableArrayList(list, size))</span>
+        {
+<span class="nc" id="L968">            T[] elements = ArrayListIterate.getInternalArray(list);</span>
+<span class="nc bnc" id="L969" title="All 2 branches missed.">            for (int i = 0; i &lt; size; i++)</span>
+            {
+<span class="nc" id="L971">                T item = elements[i];</span>
+<span class="nc bnc" id="L972" title="All 2 branches missed.">                if (predicate.accept(item))</span>
+                {
+<span class="nc" id="L974">                    return Optional.of(item);</span>
+                }
+            }
+<span class="nc" id="L977">            return Optional.empty();</span>
+        }
+<span class="nc" id="L979">        return RandomAccessListIterate.detectOptional(list, predicate);</span>
+    }
+
+    /**
+     * @see Iterate#detectWithOptional(Iterable, Predicate2, Object)
+     */
+    public static &lt;T, P&gt; Optional&lt;T&gt; detectWithOptional(
+            ArrayList&lt;T&gt; list,
+            Predicate2&lt;? super T, ? super P&gt; predicate,
+            P parameter)
+    {
+<span class="nc" id="L990">        int size = list.size();</span>
+<span class="nc bnc" id="L991" title="All 2 branches missed.">        if (ArrayListIterate.isOptimizableArrayList(list, size))</span>
+        {
+<span class="nc" id="L993">            T[] elements = ArrayListIterate.getInternalArray(list);</span>
+<span class="nc bnc" id="L994" title="All 2 branches missed.">            for (int i = 0; i &lt; size; i++)</span>
+            {
+<span class="nc" id="L996">                T item = elements[i];</span>
+<span class="nc bnc" id="L997" title="All 2 branches missed.">                if (predicate.accept(item, parameter))</span>
+                {
+<span class="nc" id="L999">                    return Optional.of(item);</span>
+                }
+            }
+<span class="nc" id="L1002">            return Optional.empty();</span>
+        }
+<span class="nc" id="L1004">        return RandomAccessListIterate.detectWithOptional(list, predicate, parameter);</span>
+    }
+
+    /**
+     * @see Iterate#detectIfNone(Iterable, Predicate, Object)
+     */
+    public static &lt;T&gt; T detectIfNone(ArrayList&lt;T&gt; list, Predicate&lt;? super T&gt; predicate, T ifNone)
+    {
+<span class="nc" id="L1012">        T result = ArrayListIterate.detect(list, predicate);</span>
+<span class="nc bnc" id="L1013" title="All 2 branches missed.">        return result == null ? ifNone : result;</span>
+    }
+
+    /**
+     * @see Iterate#detectWithIfNone(Iterable, Predicate2, Object, Object)
+     */
+    public static &lt;T, IV&gt; T detectWithIfNone(
+            ArrayList&lt;T&gt; list,
+            Predicate2&lt;? super T, ? super IV&gt; predicate,
+            IV injectedValue,
+            T ifNone)
+    {
+<span class="nc" id="L1025">        T result = ArrayListIterate.detectWith(list, predicate, injectedValue);</span>
+<span class="nc bnc" id="L1026" title="All 2 branches missed.">        return result == null ? ifNone : result;</span>
+    }
+
+    /**
+     * @see Iterate#injectInto(Object, Iterable, Function2)
+     */
+    public static &lt;T, IV&gt; IV injectInto(
+            IV injectValue,
+            ArrayList&lt;T&gt; list,
+            Function2&lt;? super IV, ? super T, ? extends IV&gt; function)
+    {
+<span class="nc" id="L1037">        int size = list.size();</span>
+<span class="nc bnc" id="L1038" title="All 2 branches missed.">        if (ArrayListIterate.isOptimizableArrayList(list, size))</span>
+        {
+<span class="nc" id="L1040">            IV result = injectValue;</span>
+<span class="nc" id="L1041">            T[] elements = ArrayListIterate.getInternalArray(list);</span>
+<span class="nc bnc" id="L1042" title="All 2 branches missed.">            for (int i = 0; i &lt; size; i++)</span>
+            {
+<span class="nc" id="L1044">                result = function.value(result, elements[i]);</span>
+            }
+<span class="nc" id="L1046">            return result;</span>
+        }
+<span class="nc" id="L1048">        return RandomAccessListIterate.injectInto(injectValue, list, function);</span>
+    }
+
+    /**
+     * @see Iterate#injectInto(int, Iterable, IntObjectToIntFunction)
+     */
+    public static &lt;T&gt; int injectInto(
+            int injectValue,
+            ArrayList&lt;T&gt; list,
+            IntObjectToIntFunction&lt;? super T&gt; function)
+    {
+<span class="nc" id="L1059">        int size = list.size();</span>
+<span class="nc bnc" id="L1060" title="All 2 branches missed.">        if (ArrayListIterate.isOptimizableArrayList(list, size))</span>
+        {
+<span class="nc" id="L1062">            int result = injectValue;</span>
+<span class="nc" id="L1063">            T[] elements = ArrayListIterate.getInternalArray(list);</span>
+<span class="nc bnc" id="L1064" title="All 2 branches missed.">            for (int i = 0; i &lt; size; i++)</span>
+            {
+<span class="nc" id="L1066">                result = function.intValueOf(result, elements[i]);</span>
+            }
+<span class="nc" id="L1068">            return result;</span>
+        }
+<span class="nc" id="L1070">        return RandomAccessListIterate.injectInto(injectValue, list, function);</span>
+    }
+
+    /**
+     * @see Iterate#injectInto(long, Iterable, LongObjectToLongFunction)
+     */
+    public static &lt;T&gt; long injectInto(
+            long injectValue,
+            ArrayList&lt;T&gt; list,
+            LongObjectToLongFunction&lt;? super T&gt; function)
+    {
+<span class="nc" id="L1081">        int size = list.size();</span>
+<span class="nc bnc" id="L1082" title="All 2 branches missed.">        if (ArrayListIterate.isOptimizableArrayList(list, size))</span>
+        {
+<span class="nc" id="L1084">            long result = injectValue;</span>
+<span class="nc" id="L1085">            T[] elements = ArrayListIterate.getInternalArray(list);</span>
+<span class="nc bnc" id="L1086" title="All 2 branches missed.">            for (int i = 0; i &lt; size; i++)</span>
+            {
+<span class="nc" id="L1088">                result = function.longValueOf(result, elements[i]);</span>
+            }
+<span class="nc" id="L1090">            return result;</span>
+        }
+<span class="nc" id="L1092">        return RandomAccessListIterate.injectInto(injectValue, list, function);</span>
+    }
+
+    /**
+     * @see Iterate#injectInto(double, Iterable, DoubleObjectToDoubleFunction)
+     */
+    public static &lt;T&gt; double injectInto(
+            double injectValue,
+            ArrayList&lt;T&gt; list,
+            DoubleObjectToDoubleFunction&lt;? super T&gt; function)
+    {
+<span class="nc" id="L1103">        int size = list.size();</span>
+<span class="nc bnc" id="L1104" title="All 2 branches missed.">        if (ArrayListIterate.isOptimizableArrayList(list, size))</span>
+        {
+<span class="nc" id="L1106">            double result = injectValue;</span>
+<span class="nc" id="L1107">            T[] elements = ArrayListIterate.getInternalArray(list);</span>
+<span class="nc bnc" id="L1108" title="All 2 branches missed.">            for (int i = 0; i &lt; size; i++)</span>
+            {
+<span class="nc" id="L1110">                result = function.doubleValueOf(result, elements[i]);</span>
+            }
+<span class="nc" id="L1112">            return result;</span>
+        }
+<span class="nc" id="L1114">        return RandomAccessListIterate.injectInto(injectValue, list, function);</span>
+    }
+
+    /**
+     * @see Iterate#injectInto(float, Iterable, FloatObjectToFloatFunction)
+     */
+    public static &lt;T&gt; float injectInto(
+            float injectValue,
+            ArrayList&lt;T&gt; list,
+            FloatObjectToFloatFunction&lt;? super T&gt; function)
+    {
+<span class="nc" id="L1125">        int size = list.size();</span>
+<span class="nc bnc" id="L1126" title="All 2 branches missed.">        if (ArrayListIterate.isOptimizableArrayList(list, size))</span>
+        {
+<span class="nc" id="L1128">            float result = injectValue;</span>
+<span class="nc" id="L1129">            T[] elements = ArrayListIterate.getInternalArray(list);</span>
+<span class="nc bnc" id="L1130" title="All 2 branches missed.">            for (int i = 0; i &lt; size; i++)</span>
+            {
+<span class="nc" id="L1132">                result = function.floatValueOf(result, elements[i]);</span>
+            }
+<span class="nc" id="L1134">            return result;</span>
+        }
+<span class="nc" id="L1136">        return RandomAccessListIterate.injectInto(injectValue, list, function);</span>
+    }
+
+    /**
+     * @see Iterate#anySatisfy(Iterable, Predicate)
+     */
+    public static &lt;T&gt; boolean anySatisfy(ArrayList&lt;T&gt; list, Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L1144">        int size = list.size();</span>
+<span class="nc bnc" id="L1145" title="All 2 branches missed.">        if (ArrayListIterate.isOptimizableArrayList(list, size))</span>
+        {
+<span class="nc" id="L1147">            T[] elements = ArrayListIterate.getInternalArray(list);</span>
+<span class="nc bnc" id="L1148" title="All 2 branches missed.">            for (int i = 0; i &lt; size; i++)</span>
+            {
+<span class="nc bnc" id="L1150" title="All 2 branches missed.">                if (predicate.accept(elements[i]))</span>
+                {
+<span class="nc" id="L1152">                    return true;</span>
+                }
+            }
+<span class="nc" id="L1155">            return false;</span>
+        }
+<span class="nc" id="L1157">        return RandomAccessListIterate.anySatisfy(list, predicate);</span>
+    }
+
+    /**
+     * @see Iterate#anySatisfyWith(Iterable, Predicate2, Object)
+     */
+    public static &lt;T, P&gt; boolean anySatisfyWith(
+            ArrayList&lt;T&gt; list,
+            Predicate2&lt;? super T, ? super P&gt; predicate,
+            P parameter)
+    {
+<span class="nc" id="L1168">        int size = list.size();</span>
+<span class="nc bnc" id="L1169" title="All 2 branches missed.">        if (ArrayListIterate.isOptimizableArrayList(list, size))</span>
+        {
+<span class="nc" id="L1171">            T[] elements = ArrayListIterate.getInternalArray(list);</span>
+<span class="nc bnc" id="L1172" title="All 2 branches missed.">            for (int i = 0; i &lt; size; i++)</span>
+            {
+<span class="nc bnc" id="L1174" title="All 2 branches missed.">                if (predicate.accept(elements[i], parameter))</span>
+                {
+<span class="nc" id="L1176">                    return true;</span>
+                }
+            }
+<span class="nc" id="L1179">            return false;</span>
+        }
+<span class="nc" id="L1181">        return RandomAccessListIterate.anySatisfyWith(list, predicate, parameter);</span>
+    }
+
+    /**
+     * @see Iterate#allSatisfy(Iterable, Predicate)
+     */
+    public static &lt;T&gt; boolean allSatisfy(ArrayList&lt;T&gt; list, Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L1189">        int size = list.size();</span>
+<span class="nc bnc" id="L1190" title="All 2 branches missed.">        if (ArrayListIterate.isOptimizableArrayList(list, size))</span>
+        {
+<span class="nc" id="L1192">            T[] elements = ArrayListIterate.getInternalArray(list);</span>
+<span class="nc bnc" id="L1193" title="All 2 branches missed.">            for (int i = 0; i &lt; size; i++)</span>
+            {
+<span class="nc bnc" id="L1195" title="All 2 branches missed.">                if (!predicate.accept(elements[i]))</span>
+                {
+<span class="nc" id="L1197">                    return false;</span>
+                }
+            }
+<span class="nc" id="L1200">            return true;</span>
+        }
+<span class="nc" id="L1202">        return RandomAccessListIterate.allSatisfy(list, predicate);</span>
+    }
+
+    /**
+     * @see Iterate#allSatisfyWith(Iterable, Predicate2, Object)
+     */
+    public static &lt;T, IV&gt; boolean allSatisfyWith(
+            ArrayList&lt;T&gt; list,
+            Predicate2&lt;? super T, ? super IV&gt; predicate,
+            IV injectedValue)
+    {
+<span class="nc" id="L1213">        int size = list.size();</span>
+<span class="nc bnc" id="L1214" title="All 2 branches missed.">        if (ArrayListIterate.isOptimizableArrayList(list, size))</span>
+        {
+<span class="nc" id="L1216">            T[] elements = ArrayListIterate.getInternalArray(list);</span>
+<span class="nc bnc" id="L1217" title="All 2 branches missed.">            for (int i = 0; i &lt; size; i++)</span>
+            {
+<span class="nc bnc" id="L1219" title="All 2 branches missed.">                if (!predicate.accept(elements[i], injectedValue))</span>
+                {
+<span class="nc" id="L1221">                    return false;</span>
+                }
+            }
+<span class="nc" id="L1224">            return true;</span>
+        }
+<span class="nc" id="L1226">        return RandomAccessListIterate.allSatisfyWith(list, predicate, injectedValue);</span>
+    }
+
+    /**
+     * @see Iterate#noneSatisfy(Iterable, Predicate)
+     */
+    public static &lt;T&gt; boolean noneSatisfy(ArrayList&lt;T&gt; list, Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L1234">        int size = list.size();</span>
+<span class="nc bnc" id="L1235" title="All 2 branches missed.">        if (ArrayListIterate.isOptimizableArrayList(list, size))</span>
+        {
+<span class="nc" id="L1237">            T[] elements = ArrayListIterate.getInternalArray(list);</span>
+<span class="nc bnc" id="L1238" title="All 2 branches missed.">            for (int i = 0; i &lt; size; i++)</span>
+            {
+<span class="nc bnc" id="L1240" title="All 2 branches missed.">                if (predicate.accept(elements[i]))</span>
+                {
+<span class="nc" id="L1242">                    return false;</span>
+                }
+            }
+<span class="nc" id="L1245">            return true;</span>
+        }
+<span class="nc" id="L1247">        return RandomAccessListIterate.noneSatisfy(list, predicate);</span>
+    }
+
+    /**
+     * @see Iterate#noneSatisfyWith(Iterable, Predicate2, Object)
+     */
+    public static &lt;T, IV&gt; boolean noneSatisfyWith(
+            ArrayList&lt;T&gt; list,
+            Predicate2&lt;? super T, ? super IV&gt; predicate,
+            IV injectedValue)
+    {
+<span class="nc" id="L1258">        int size = list.size();</span>
+<span class="nc bnc" id="L1259" title="All 2 branches missed.">        if (ArrayListIterate.isOptimizableArrayList(list, size))</span>
+        {
+<span class="nc" id="L1261">            T[] elements = ArrayListIterate.getInternalArray(list);</span>
+<span class="nc bnc" id="L1262" title="All 2 branches missed.">            for (int i = 0; i &lt; size; i++)</span>
+            {
+<span class="nc bnc" id="L1264" title="All 2 branches missed.">                if (predicate.accept(elements[i], injectedValue))</span>
+                {
+<span class="nc" id="L1266">                    return false;</span>
+                }
+            }
+<span class="nc" id="L1269">            return true;</span>
+        }
+<span class="nc" id="L1271">        return RandomAccessListIterate.noneSatisfyWith(list, predicate, injectedValue);</span>
+    }
+
+    /**
+     * @see Iterate#selectAndRejectWith(Iterable, Predicate2, Object)
+     */
+    public static &lt;T, P&gt; Twin&lt;MutableList&lt;T&gt;&gt; selectAndRejectWith(
+            ArrayList&lt;T&gt; list,
+            Predicate2&lt;? super T, ? super P&gt; predicate,
+            P parameter)
+    {
+<span class="nc" id="L1282">        int size = list.size();</span>
+<span class="nc bnc" id="L1283" title="All 2 branches missed.">        if (ArrayListIterate.isOptimizableArrayList(list, size))</span>
+        {
+<span class="nc" id="L1285">            MutableList&lt;T&gt; positiveResult = Lists.mutable.empty();</span>
+<span class="nc" id="L1286">            MutableList&lt;T&gt; negativeResult = Lists.mutable.empty();</span>
+<span class="nc" id="L1287">            T[] elements = ArrayListIterate.getInternalArray(list);</span>
+<span class="nc bnc" id="L1288" title="All 2 branches missed.">            for (int i = 0; i &lt; size; i++)</span>
+            {
+<span class="nc bnc" id="L1290" title="All 2 branches missed.">                (predicate.accept(elements[i], parameter) ? positiveResult : negativeResult).add(elements[i]);</span>
+            }
+<span class="nc" id="L1292">            return Tuples.twin(positiveResult, negativeResult);</span>
+        }
+<span class="nc" id="L1294">        return RandomAccessListIterate.selectAndRejectWith(list, predicate, parameter);</span>
+    }
+
+    /**
+     * @see Iterate#partition(Iterable, Predicate)
+     */
+    public static &lt;T&gt; PartitionMutableList&lt;T&gt; partition(ArrayList&lt;T&gt; list, Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L1302">        int size = list.size();</span>
+<span class="nc bnc" id="L1303" title="All 2 branches missed.">        if (ArrayListIterate.isOptimizableArrayList(list, size))</span>
+        {
+<span class="nc" id="L1305">            PartitionFastList&lt;T&gt; partitionFastList = new PartitionFastList&lt;&gt;();</span>
+<span class="nc" id="L1306">            MutableList&lt;T&gt; selected = partitionFastList.getSelected();</span>
+<span class="nc" id="L1307">            MutableList&lt;T&gt; rejected = partitionFastList.getRejected();</span>
+
+<span class="nc" id="L1309">            T[] elements = ArrayListIterate.getInternalArray(list);</span>
+<span class="nc bnc" id="L1310" title="All 2 branches missed.">            for (int i = 0; i &lt; size; i++)</span>
+            {
+<span class="nc" id="L1312">                T each = elements[i];</span>
+<span class="nc bnc" id="L1313" title="All 2 branches missed.">                MutableList&lt;T&gt; bucket = predicate.accept(each) ? selected : rejected;</span>
+<span class="nc" id="L1314">                bucket.add(each);</span>
+            }
+<span class="nc" id="L1316">            return partitionFastList;</span>
+        }
+<span class="nc" id="L1318">        return RandomAccessListIterate.partition(list, predicate);</span>
+    }
+
+    public static &lt;T, P&gt; PartitionMutableList&lt;T&gt; partitionWith(ArrayList&lt;T&gt; list, Predicate2&lt;? super T, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc" id="L1323">        int size = list.size();</span>
+<span class="nc bnc" id="L1324" title="All 2 branches missed.">        if (ArrayListIterate.isOptimizableArrayList(list, size))</span>
+        {
+<span class="nc" id="L1326">            PartitionFastList&lt;T&gt; partitionFastList = new PartitionFastList&lt;&gt;();</span>
+<span class="nc" id="L1327">            MutableList&lt;T&gt; selected = partitionFastList.getSelected();</span>
+<span class="nc" id="L1328">            MutableList&lt;T&gt; rejected = partitionFastList.getRejected();</span>
+
+<span class="nc" id="L1330">            T[] elements = ArrayListIterate.getInternalArray(list);</span>
+<span class="nc bnc" id="L1331" title="All 2 branches missed.">            for (int i = 0; i &lt; size; i++)</span>
+            {
+<span class="nc" id="L1333">                T each = elements[i];</span>
+<span class="nc bnc" id="L1334" title="All 2 branches missed.">                MutableList&lt;T&gt; bucket = predicate.accept(each, parameter) ? selected : rejected;</span>
+<span class="nc" id="L1335">                bucket.add(each);</span>
+            }
+<span class="nc" id="L1337">            return partitionFastList;</span>
+        }
+<span class="nc" id="L1339">        return RandomAccessListIterate.partitionWith(list, predicate, parameter);</span>
+    }
+
+    /**
+     * @see Iterate#detectIndex(Iterable, Predicate)
+     */
+    public static &lt;T&gt; int detectIndex(ArrayList&lt;T&gt; list, Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L1347">        int size = list.size();</span>
+<span class="nc bnc" id="L1348" title="All 2 branches missed.">        if (ArrayListIterate.isOptimizableArrayList(list, size))</span>
+        {
+<span class="nc" id="L1350">            T[] elements = ArrayListIterate.getInternalArray(list);</span>
+<span class="nc bnc" id="L1351" title="All 2 branches missed.">            for (int i = 0; i &lt; size; i++)</span>
+            {
+<span class="nc bnc" id="L1353" title="All 2 branches missed.">                if (predicate.accept(elements[i]))</span>
+                {
+<span class="nc" id="L1355">                    return i;</span>
+                }
+            }
+<span class="nc" id="L1358">            return -1;</span>
+        }
+<span class="nc" id="L1360">        return RandomAccessListIterate.detectIndex(list, predicate);</span>
+    }
+
+    /**
+     * @see Iterate#detectIndexWith(Iterable, Predicate2, Object)
+     */
+    public static &lt;T, P&gt; int detectIndexWith(
+            ArrayList&lt;T&gt; list,
+            Predicate2&lt;? super T, ? super P&gt; predicate,
+            P parameter)
+    {
+<span class="nc" id="L1371">        int size = list.size();</span>
+<span class="nc bnc" id="L1372" title="All 2 branches missed.">        if (ArrayListIterate.isOptimizableArrayList(list, size))</span>
+        {
+<span class="nc" id="L1374">            T[] elements = ArrayListIterate.getInternalArray(list);</span>
+<span class="nc bnc" id="L1375" title="All 2 branches missed.">            for (int i = 0; i &lt; size; i++)</span>
+            {
+<span class="nc bnc" id="L1377" title="All 2 branches missed.">                if (predicate.accept(elements[i], parameter))</span>
+                {
+<span class="nc" id="L1379">                    return i;</span>
+                }
+            }
+<span class="nc" id="L1382">            return -1;</span>
+        }
+<span class="nc" id="L1384">        return RandomAccessListIterate.detectIndexWith(list, predicate, parameter);</span>
+    }
+
+    /**
+     * @see ListIterate#detectLastIndex(List, Predicate)
+     */
+    public static &lt;T&gt; int detectLastIndex(ArrayList&lt;T&gt; list, Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L1392">        int size = list.size();</span>
+<span class="nc bnc" id="L1393" title="All 2 branches missed.">        if (ArrayListIterate.isOptimizableArrayList(list, size))</span>
+        {
+<span class="nc" id="L1395">            T[] elements = ArrayListIterate.getInternalArray(list);</span>
+<span class="nc bnc" id="L1396" title="All 2 branches missed.">            for (int i = size - 1; i &gt;= 0; i--)</span>
+            {
+<span class="nc bnc" id="L1398" title="All 2 branches missed.">                if (predicate.accept(elements[i]))</span>
+                {
+<span class="nc" id="L1400">                    return i;</span>
+                }
+            }
+<span class="nc" id="L1403">            return -1;</span>
+        }
+<span class="nc" id="L1405">        return RandomAccessListIterate.detectLastIndex(list, predicate);</span>
+    }
+
+    /**
+     * @see Iterate#injectIntoWith(Object, Iterable, Function3, Object)
+     */
+    public static &lt;T, IV, P&gt; IV injectIntoWith(
+            IV injectedValue,
+            ArrayList&lt;T&gt; list,
+            Function3&lt;? super IV, ? super T, ? super P, ? extends IV&gt; function,
+            P parameter)
+    {
+<span class="nc" id="L1417">        int size = list.size();</span>
+<span class="nc bnc" id="L1418" title="All 2 branches missed.">        if (ArrayListIterate.isOptimizableArrayList(list, size))</span>
+        {
+<span class="nc" id="L1420">            IV result = injectedValue;</span>
+<span class="nc" id="L1421">            T[] elements = ArrayListIterate.getInternalArray(list);</span>
+<span class="nc bnc" id="L1422" title="All 2 branches missed.">            for (int i = 0; i &lt; size; i++)</span>
+            {
+<span class="nc" id="L1424">                result = function.value(result, elements[i], parameter);</span>
+            }
+<span class="nc" id="L1426">            return result;</span>
+        }
+<span class="nc" id="L1428">        return RandomAccessListIterate.injectIntoWith(injectedValue, list, function, parameter);</span>
+    }
+
+    /**
+     * @see Iterate#forEachWith(Iterable, Procedure2, Object)
+     */
+    public static &lt;T, P&gt; void forEachWith(
+            ArrayList&lt;T&gt; list,
+            Procedure2&lt;? super T, ? super P&gt; procedure,
+            P parameter)
+    {
+<span class="nc" id="L1439">        int size = list.size();</span>
+<span class="nc bnc" id="L1440" title="All 2 branches missed.">        if (ArrayListIterate.isOptimizableArrayList(list, size))</span>
+        {
+<span class="nc" id="L1442">            T[] elements = ArrayListIterate.getInternalArray(list);</span>
+<span class="nc bnc" id="L1443" title="All 2 branches missed.">            for (int i = 0; i &lt; size; i++)</span>
+            {
+<span class="nc" id="L1445">                procedure.value(elements[i], parameter);</span>
+            }
+<span class="nc" id="L1447">        }</span>
+        else
+        {
+<span class="nc" id="L1450">            RandomAccessListIterate.forEachWith(list, procedure, parameter);</span>
+        }
+<span class="nc" id="L1452">    }</span>
+
+    /**
+     * @see Iterate#collectWith(Iterable, Function2, Object)
+     */
+    public static &lt;T, P, A&gt; ArrayList&lt;A&gt; collectWith(
+            ArrayList&lt;T&gt; list,
+            Function2&lt;? super T, ? super P, ? extends A&gt; function,
+            P parameter)
+    {
+<span class="nc" id="L1462">        return ArrayListIterate.collectWith(list, function, parameter, new ArrayList&lt;&gt;(list.size()));</span>
+    }
+
+    /**
+     * @see Iterate#collectWith(Iterable, Function2, Object, Collection)
+     */
+    public static &lt;T, P, A, R extends Collection&lt;A&gt;&gt; R collectWith(
+            ArrayList&lt;T&gt; list,
+            Function2&lt;? super T, ? super P, ? extends A&gt; function,
+            P parameter,
+            R targetCollection)
+    {
+<span class="nc" id="L1474">        int size = list.size();</span>
+<span class="nc bnc" id="L1475" title="All 2 branches missed.">        if (ArrayListIterate.isOptimizableArrayList(list, size))</span>
+        {
+<span class="nc" id="L1477">            T[] elements = ArrayListIterate.getInternalArray(list);</span>
+<span class="nc bnc" id="L1478" title="All 2 branches missed.">            for (int i = 0; i &lt; size; i++)</span>
+            {
+<span class="nc" id="L1480">                targetCollection.add(function.value(elements[i], parameter));</span>
+            }
+<span class="nc" id="L1482">            return targetCollection;</span>
+        }
+<span class="nc" id="L1484">        return RandomAccessListIterate.collectWith(list, function, parameter, targetCollection);</span>
+    }
+
+    /**
+     * @see Iterate#removeIf(Iterable, Predicate)
+     */
+    public static &lt;T&gt; boolean removeIf(ArrayList&lt;T&gt; list, Predicate&lt;? super T&gt; predicate)
+    {
+        boolean changed;
+<span class="nc bnc" id="L1493" title="All 4 branches missed.">        if (list.getClass() == ArrayList.class &amp;&amp; ArrayListIterate.SIZE_FIELD != null)</span>
+        {
+<span class="nc" id="L1495">            int currentFilledIndex = 0;</span>
+<span class="nc" id="L1496">            int size = list.size();</span>
+<span class="nc" id="L1497">            T[] elements = ArrayListIterate.getInternalArray(list);</span>
+<span class="nc bnc" id="L1498" title="All 2 branches missed.">            for (int i = 0; i &lt; size; i++)</span>
+            {
+<span class="nc bnc" id="L1500" title="All 2 branches missed.">                if (!predicate.accept(elements[i]))</span>
+                {
+                    // keep it
+<span class="nc bnc" id="L1503" title="All 2 branches missed.">                    if (currentFilledIndex != i)</span>
+                    {
+<span class="nc" id="L1505">                        elements[currentFilledIndex] = elements[i];</span>
+                    }
+<span class="nc" id="L1507">                    currentFilledIndex++;</span>
+                }
+            }
+<span class="nc bnc" id="L1510" title="All 2 branches missed.">            changed = currentFilledIndex &lt; size;</span>
+<span class="nc" id="L1511">            ArrayListIterate.wipeAndResetTheEnd(currentFilledIndex, size, elements, list);</span>
+<span class="nc" id="L1512">        }</span>
+        else
+        {
+<span class="nc" id="L1515">            return RandomAccessListIterate.removeIf(list, predicate);</span>
+        }
+<span class="nc" id="L1517">        return changed;</span>
+    }
+
+    /**
+     * @see Iterate#removeIfWith(Iterable, Predicate2, Object)
+     */
+    public static &lt;T, P&gt; boolean removeIfWith(
+            ArrayList&lt;T&gt; list,
+            Predicate2&lt;? super T, ? super P&gt; predicate,
+            P parameter)
+    {
+        boolean changed;
+<span class="nc bnc" id="L1529" title="All 4 branches missed.">        if (list.getClass() == ArrayList.class &amp;&amp; ArrayListIterate.SIZE_FIELD != null)</span>
+        {
+<span class="nc" id="L1531">            int currentFilledIndex = 0;</span>
+<span class="nc" id="L1532">            int size = list.size();</span>
+<span class="nc" id="L1533">            T[] elements = ArrayListIterate.getInternalArray(list);</span>
+<span class="nc bnc" id="L1534" title="All 2 branches missed.">            for (int i = 0; i &lt; size; i++)</span>
+            {
+<span class="nc bnc" id="L1536" title="All 2 branches missed.">                if (!predicate.accept(elements[i], parameter))</span>
+                {
+                    // keep it
+<span class="nc bnc" id="L1539" title="All 2 branches missed.">                    if (currentFilledIndex != i)</span>
+                    {
+<span class="nc" id="L1541">                        elements[currentFilledIndex] = elements[i];</span>
+                    }
+<span class="nc" id="L1543">                    currentFilledIndex++;</span>
+                }
+            }
+<span class="nc bnc" id="L1546" title="All 2 branches missed.">            changed = currentFilledIndex &lt; size;</span>
+<span class="nc" id="L1547">            ArrayListIterate.wipeAndResetTheEnd(currentFilledIndex, size, elements, list);</span>
+<span class="nc" id="L1548">        }</span>
+        else
+        {
+<span class="nc" id="L1551">            return RandomAccessListIterate.removeIfWith(list, predicate, parameter);</span>
+        }
+<span class="nc" id="L1553">        return changed;</span>
+    }
+
+    public static &lt;T&gt; ArrayList&lt;T&gt; distinct(ArrayList&lt;T&gt; list)
+    {
+<span class="nc" id="L1558">        return ArrayListIterate.distinct(list, new ArrayList&lt;&gt;());</span>
+    }
+
+    /**
+     * @deprecated in 7.0.
+     */
+    @Deprecated
+    public static &lt;T, R extends List&lt;T&gt;&gt; R distinct(ArrayList&lt;T&gt; list, R targetList)
+    {
+<span class="nc" id="L1567">        int size = list.size();</span>
+<span class="nc bnc" id="L1568" title="All 2 branches missed.">        if (ArrayListIterate.isOptimizableArrayList(list, size))</span>
+        {
+<span class="nc" id="L1570">            MutableSet&lt;T&gt; seenSoFar = UnifiedSet.newSet();</span>
+<span class="nc" id="L1571">            T[] elements = ArrayListIterate.getInternalArray(list);</span>
+<span class="nc bnc" id="L1572" title="All 2 branches missed.">            for (int i = 0; i &lt; size; i++)</span>
+            {
+<span class="nc bnc" id="L1574" title="All 2 branches missed.">                if (seenSoFar.add(elements[i]))</span>
+                {
+<span class="nc" id="L1576">                    targetList.add(elements[i]);</span>
+                }
+            }
+<span class="nc" id="L1579">            return targetList;</span>
+        }
+<span class="nc" id="L1581">        return RandomAccessListIterate.distinct(list, targetList);</span>
+    }
+
+    /**
+     * @since 7.0.
+     */
+    public static &lt;T&gt; ArrayList&lt;T&gt; distinct(ArrayList&lt;T&gt; list, HashingStrategy&lt;? super T&gt; hashingStrategy)
+    {
+<span class="nc" id="L1589">        int size = list.size();</span>
+<span class="nc" id="L1590">        MutableSet&lt;T&gt; seenSoFar = UnifiedSetWithHashingStrategy.newSet(hashingStrategy);</span>
+<span class="nc" id="L1591">        ArrayList&lt;T&gt; result = new ArrayList&lt;&gt;();</span>
+<span class="nc bnc" id="L1592" title="All 2 branches missed.">        if (ArrayListIterate.isOptimizableArrayList(list, size))</span>
+        {
+<span class="nc" id="L1594">            T[] elements = ArrayListIterate.getInternalArray(list);</span>
+<span class="nc bnc" id="L1595" title="All 2 branches missed.">            for (int i = 0; i &lt; size; i++)</span>
+            {
+<span class="nc bnc" id="L1597" title="All 2 branches missed.">                if (seenSoFar.add(elements[i]))</span>
+                {
+<span class="nc" id="L1599">                    result.add(elements[i]);</span>
+                }
+            }
+<span class="nc" id="L1602">        }</span>
+        else
+        {
+<span class="nc bnc" id="L1605" title="All 2 branches missed.">            for (int i = 0; i &lt; size; i++)</span>
+            {
+<span class="nc" id="L1607">                T item = list.get(i);</span>
+<span class="nc bnc" id="L1608" title="All 2 branches missed.">                if (seenSoFar.add(item))</span>
+                {
+<span class="nc" id="L1610">                    result.add(item);</span>
+                }
+            }
+        }
+<span class="nc" id="L1614">        return result;</span>
+    }
+
+    /**
+     * @since 9.0.
+     */
+    public static &lt;T, V&gt; ArrayList&lt;T&gt; distinctBy(ArrayList&lt;T&gt; list, Function&lt;? super T, ? extends V&gt; function)
+    {
+<span class="nc" id="L1622">        return ArrayListIterate.distinct(list, HashingStrategies.fromFunction(function));</span>
+    }
+
+    private static &lt;T&gt; void wipeAndResetTheEnd(
+            int newCurrentFilledIndex,
+            int newSize,
+            T[] newElements,
+            ArrayList&lt;T&gt; list)
+    {
+<span class="nc bnc" id="L1631" title="All 2 branches missed.">        for (int i = newCurrentFilledIndex; i &lt; newSize; i++)</span>
+        {
+<span class="nc" id="L1633">            newElements[i] = null;</span>
+        }
+        try
+        {
+<span class="nc" id="L1637">            ArrayListIterate.SIZE_FIELD.setInt(list, newCurrentFilledIndex);</span>
+        }
+<span class="nc" id="L1639">        catch (IllegalAccessException e)</span>
+        {
+<span class="nc" id="L1641">            throw new RuntimeException(</span>
+                    &quot;Something really bad happened on the way to pounding size into the ArrayList reflectively&quot;,
+                    e);
+<span class="nc" id="L1644">        }</span>
+<span class="nc" id="L1645">    }</span>
+
+    /**
+     * Mutates the internal array of the ArrayList by sorting it and then returns the same ArrayList.
+     */
+    public static &lt;T extends Comparable&lt;? super T&gt;&gt; ArrayList&lt;T&gt; sortThis(ArrayList&lt;T&gt; list)
+    {
+<span class="nc" id="L1652">        return ArrayListIterate.sortThis(list, Comparators.naturalOrder());</span>
+    }
+
+    /**
+     * Mutates the internal array of the ArrayList by sorting it and then returns the same ArrayList.
+     */
+    public static &lt;T&gt; ArrayList&lt;T&gt; sortThis(ArrayList&lt;T&gt; list, Comparator&lt;? super T&gt; comparator)
+    {
+<span class="nc" id="L1660">        int size = list.size();</span>
+<span class="nc bnc" id="L1661" title="All 2 branches missed.">        if (ArrayListIterate.canAccessInternalArray(list))</span>
+        {
+<span class="nc" id="L1663">            Arrays.sort(ArrayListIterate.getInternalArray(list), 0, size, comparator);</span>
+        }
+        else
+        {
+<span class="nc" id="L1667">            Collections.sort(list, comparator);</span>
+        }
+<span class="nc" id="L1669">        return list;</span>
+    }
+
+    public static &lt;T&gt; void toArray(ArrayList&lt;T&gt; list, T[] target, int startIndex, int sourceSize)
+    {
+<span class="nc bnc" id="L1674" title="All 2 branches missed.">        if (ArrayListIterate.canAccessInternalArray(list))</span>
+        {
+<span class="nc" id="L1676">            System.arraycopy(ArrayListIterate.getInternalArray(list), 0, target, startIndex, sourceSize);</span>
+        }
+        else
+        {
+<span class="nc" id="L1680">            RandomAccessListIterate.toArray(list, target, startIndex, sourceSize);</span>
+        }
+<span class="nc" id="L1682">    }</span>
+
+    /**
+     * @see Iterate#take(Iterable, int)
+     */
+    public static &lt;T&gt; ArrayList&lt;T&gt; take(ArrayList&lt;T&gt; list, int count)
+    {
+<span class="nc bnc" id="L1689" title="All 2 branches missed.">        if (count &lt; 0)</span>
+        {
+<span class="nc" id="L1691">            throw new IllegalArgumentException(&quot;Count must be greater than zero, but was: &quot; + count);</span>
+        }
+<span class="nc" id="L1693">        return ArrayListIterate.take(list, count, new ArrayList&lt;&gt;(Math.min(list.size(), count)));</span>
+    }
+
+    /**
+     * @see Iterate#take(Iterable, int)
+     */
+    public static &lt;T, R extends Collection&lt;T&gt;&gt; R take(ArrayList&lt;T&gt; list, int count, R targetList)
+    {
+<span class="nc bnc" id="L1701" title="All 2 branches missed.">        if (count &lt; 0)</span>
+        {
+<span class="nc" id="L1703">            throw new IllegalArgumentException(&quot;Count must be greater than zero, but was: &quot; + count);</span>
+        }
+
+<span class="nc" id="L1706">        int size = list.size();</span>
+<span class="nc bnc" id="L1707" title="All 2 branches missed.">        if (ArrayListIterate.isOptimizableArrayList(list, size))</span>
+        {
+<span class="nc" id="L1709">            T[] elements = ArrayListIterate.getInternalArray(list);</span>
+
+<span class="nc" id="L1711">            int end = Math.min(size, count);</span>
+<span class="nc bnc" id="L1712" title="All 2 branches missed.">            for (int i = 0; i &lt; end; i++)</span>
+            {
+<span class="nc" id="L1714">                targetList.add(elements[i]);</span>
+            }
+<span class="nc" id="L1716">            return targetList;</span>
+        }
+<span class="nc" id="L1718">        return RandomAccessListIterate.take(list, count, targetList);</span>
+    }
+
+    /**
+     * @see Iterate#drop(Iterable, int)
+     */
+    public static &lt;T&gt; ArrayList&lt;T&gt; drop(ArrayList&lt;T&gt; list, int count)
+    {
+<span class="nc bnc" id="L1726" title="All 2 branches missed.">        if (count &lt; 0)</span>
+        {
+<span class="nc" id="L1728">            throw new IllegalArgumentException(&quot;Count must be greater than zero, but was: &quot; + count);</span>
+        }
+<span class="nc" id="L1730">        return ArrayListIterate.drop(list, count, new ArrayList&lt;&gt;(list.size() - Math.min(list.size(), count)));</span>
+    }
+
+    /**
+     * @see Iterate#drop(Iterable, int)
+     */
+    public static &lt;T, R extends Collection&lt;T&gt;&gt; R drop(ArrayList&lt;T&gt; list, int count, R targetList)
+    {
+<span class="nc bnc" id="L1738" title="All 2 branches missed.">        if (count &lt; 0)</span>
+        {
+<span class="nc" id="L1740">            throw new IllegalArgumentException(&quot;Count must be greater than zero, but was: &quot; + count);</span>
+        }
+<span class="nc" id="L1742">        int size = list.size();</span>
+<span class="nc bnc" id="L1743" title="All 2 branches missed.">        if (count &gt;= size)</span>
+        {
+<span class="nc" id="L1745">            return targetList;</span>
+        }
+<span class="nc bnc" id="L1747" title="All 2 branches missed.">        if (ArrayListIterate.isOptimizableArrayList(list, size))</span>
+        {
+<span class="nc" id="L1749">            T[] elements = ArrayListIterate.getInternalArray(list);</span>
+
+<span class="nc bnc" id="L1751" title="All 2 branches missed.">            for (int i = count; i &lt; size; i++)</span>
+            {
+<span class="nc" id="L1753">                targetList.add(elements[i]);</span>
+            }
+<span class="nc" id="L1755">            return targetList;</span>
+        }
+<span class="nc" id="L1757">        return RandomAccessListIterate.drop(list, count, targetList);</span>
+    }
+
+    /**
+     * @see Iterate#groupBy(Iterable, Function)
+     */
+    public static &lt;T, V&gt; FastListMultimap&lt;V, T&gt; groupBy(
+            ArrayList&lt;T&gt; list,
+            Function&lt;? super T, ? extends V&gt; function)
+    {
+<span class="nc" id="L1767">        return ArrayListIterate.groupBy(list, function, FastListMultimap.newMultimap());</span>
+    }
+
+    /**
+     * @see Iterate#groupBy(Iterable, Function, MutableMultimap)
+     */
+    public static &lt;T, V, R extends MutableMultimap&lt;V, T&gt;&gt; R groupBy(
+            ArrayList&lt;T&gt; list,
+            Function&lt;? super T, ? extends V&gt; function,
+            R target)
+    {
+<span class="nc" id="L1778">        int size = list.size();</span>
+<span class="nc bnc" id="L1779" title="All 2 branches missed.">        if (ArrayListIterate.isOptimizableArrayList(list, size))</span>
+        {
+<span class="nc" id="L1781">            T[] elements = ArrayListIterate.getInternalArray(list);</span>
+<span class="nc bnc" id="L1782" title="All 2 branches missed.">            for (int i = 0; i &lt; size; i++)</span>
+            {
+<span class="nc" id="L1784">                target.put(function.valueOf(elements[i]), elements[i]);</span>
+            }
+<span class="nc" id="L1786">            return target;</span>
+        }
+<span class="nc" id="L1788">        return RandomAccessListIterate.groupBy(list, function, target);</span>
+    }
+
+    /**
+     * @see Iterate#groupByEach(Iterable, Function)
+     */
+    public static &lt;T, V&gt; FastListMultimap&lt;V, T&gt; groupByEach(
+            ArrayList&lt;T&gt; list,
+            Function&lt;? super T, ? extends Iterable&lt;V&gt;&gt; function)
+    {
+<span class="nc" id="L1798">        return ArrayListIterate.groupByEach(list, function, FastListMultimap.newMultimap());</span>
+    }
+
+    /**
+     * @see Iterate#groupByEach(Iterable, Function, MutableMultimap)
+     */
+    public static &lt;T, V, R extends MutableMultimap&lt;V, T&gt;&gt; R groupByEach(
+            ArrayList&lt;T&gt; list,
+            Function&lt;? super T, ? extends Iterable&lt;V&gt;&gt; function,
+            R target)
+    {
+<span class="nc" id="L1809">        int size = list.size();</span>
+<span class="nc bnc" id="L1810" title="All 2 branches missed.">        if (ArrayListIterate.isOptimizableArrayList(list, size))</span>
+        {
+<span class="nc" id="L1812">            T[] elements = ArrayListIterate.getInternalArray(list);</span>
+<span class="nc bnc" id="L1813" title="All 2 branches missed.">            for (int i = 0; i &lt; size; i++)</span>
+            {
+<span class="nc" id="L1815">                Iterable&lt;V&gt; iterable = function.valueOf(elements[i]);</span>
+<span class="nc bnc" id="L1816" title="All 2 branches missed.">                for (V key : iterable)</span>
+                {
+<span class="nc" id="L1818">                    target.put(key, elements[i]);</span>
+<span class="nc" id="L1819">                }</span>
+            }
+<span class="nc" id="L1821">            return target;</span>
+        }
+<span class="nc" id="L1823">        return RandomAccessListIterate.groupByEach(list, function, target);</span>
+    }
+
+    /**
+     * @see Iterate#groupByUniqueKey(Iterable, Function)
+     */
+    public static &lt;T, V&gt; MutableMap&lt;V, T&gt; groupByUniqueKey(
+            ArrayList&lt;T&gt; list,
+            Function&lt;? super T, ? extends V&gt; function)
+    {
+<span class="nc" id="L1833">        return ArrayListIterate.groupByUniqueKey(list, function, UnifiedMap.newMap());</span>
+    }
+
+    /**
+     * @see Iterate#groupByUniqueKey(Iterable, Function, MutableMap)
+     */
+    public static &lt;T, V, R extends MutableMap&lt;V, T&gt;&gt; R groupByUniqueKey(
+            ArrayList&lt;T&gt; list,
+            Function&lt;? super T, ? extends V&gt; function,
+            R target)
+    {
+<span class="nc bnc" id="L1844" title="All 2 branches missed.">        if (list == null)</span>
+        {
+<span class="nc" id="L1846">            throw new IllegalArgumentException(&quot;Cannot perform a groupByUniqueKey on null&quot;);</span>
+        }
+
+<span class="nc" id="L1849">        int size = list.size();</span>
+<span class="nc bnc" id="L1850" title="All 2 branches missed.">        if (ArrayListIterate.isOptimizableArrayList(list, size))</span>
+        {
+<span class="nc" id="L1852">            T[] elements = ArrayListIterate.getInternalArray(list);</span>
+<span class="nc bnc" id="L1853" title="All 2 branches missed.">            for (int i = 0; i &lt; size; i++)</span>
+            {
+<span class="nc" id="L1855">                V key = function.valueOf(elements[i]);</span>
+<span class="nc bnc" id="L1856" title="All 2 branches missed.">                if (target.put(key, elements[i]) != null)</span>
+                {
+<span class="nc" id="L1858">                    throw new IllegalStateException(&quot;Key &quot; + key + &quot; already exists in map!&quot;);</span>
+                }
+            }
+<span class="nc" id="L1861">            return target;</span>
+        }
+<span class="nc" id="L1863">        return RandomAccessListIterate.groupByUniqueKey(list, function, target);</span>
+    }
+
+    /**
+     * @see Iterate#zip(Iterable, Iterable)
+     */
+    public static &lt;X, Y&gt; MutableList&lt;Pair&lt;X, Y&gt;&gt; zip(ArrayList&lt;X&gt; xs, Iterable&lt;Y&gt; ys)
+    {
+<span class="nc bnc" id="L1871" title="All 4 branches missed.">        if (ys instanceof Collection || ys instanceof RichIterable)</span>
+        {
+<span class="nc" id="L1873">            int xSize = xs.size();</span>
+<span class="nc" id="L1874">            int ySize = Iterate.sizeOf(ys);</span>
+<span class="nc" id="L1875">            FastList&lt;Pair&lt;X, Y&gt;&gt; target = FastList.newList(Math.min(xSize, ySize));</span>
+<span class="nc" id="L1876">            return ArrayListIterate.zip(xs, ys, target);</span>
+        }
+<span class="nc" id="L1878">        return ArrayListIterate.zip(xs, ys, FastList.newList());</span>
+    }
+
+    /**
+     * @see Iterate#zip(Iterable, Iterable, Collection)
+     */
+    public static &lt;X, Y, R extends Collection&lt;Pair&lt;X, Y&gt;&gt;&gt; R zip(ArrayList&lt;X&gt; xs, Iterable&lt;Y&gt; ys, R targetCollection)
+    {
+<span class="nc" id="L1886">        int size = xs.size();</span>
+<span class="nc bnc" id="L1887" title="All 2 branches missed.">        if (ArrayListIterate.isOptimizableArrayList(xs, size))</span>
+        {
+<span class="nc" id="L1889">            Iterator&lt;Y&gt; yIterator = ys.iterator();</span>
+<span class="nc" id="L1890">            X[] elements = ArrayListIterate.getInternalArray(xs);</span>
+<span class="nc bnc" id="L1891" title="All 4 branches missed.">            for (int i = 0; i &lt; size &amp;&amp; yIterator.hasNext(); i++)</span>
+            {
+<span class="nc" id="L1893">                targetCollection.add(Tuples.pair(elements[i], yIterator.next()));</span>
+            }
+<span class="nc" id="L1895">            return targetCollection;</span>
+        }
+<span class="nc" id="L1897">        return RandomAccessListIterate.zip(xs, ys, targetCollection);</span>
+    }
+
+    /**
+     * @see Iterate#zipWithIndex(Iterable)
+     */
+    public static &lt;T&gt; MutableList&lt;Pair&lt;T, Integer&gt;&gt; zipWithIndex(ArrayList&lt;T&gt; list)
+    {
+<span class="nc" id="L1905">        return ArrayListIterate.zipWithIndex(list, FastList.newList(list.size()));</span>
+    }
+
+    /**
+     * @see Iterate#zipWithIndex(Iterable, Collection)
+     */
+    public static &lt;T, R extends Collection&lt;Pair&lt;T, Integer&gt;&gt;&gt; R zipWithIndex(ArrayList&lt;T&gt; list, R targetCollection)
+    {
+<span class="nc" id="L1913">        int size = list.size();</span>
+<span class="nc bnc" id="L1914" title="All 2 branches missed.">        if (ArrayListIterate.isOptimizableArrayList(list, size))</span>
+        {
+<span class="nc" id="L1916">            T[] elements = ArrayListIterate.getInternalArray(list);</span>
+<span class="nc bnc" id="L1917" title="All 2 branches missed.">            for (int i = 0; i &lt; size; i++)</span>
+            {
+<span class="nc" id="L1919">                targetCollection.add(Tuples.pair(elements[i], i));</span>
+            }
+<span class="nc" id="L1921">            return targetCollection;</span>
+        }
+<span class="nc" id="L1923">        return RandomAccessListIterate.zipWithIndex(list, targetCollection);</span>
+    }
+
+    public static &lt;T&gt; MutableList&lt;T&gt; takeWhile(ArrayList&lt;T&gt; list, Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L1928">        int size = list.size();</span>
+<span class="nc bnc" id="L1929" title="All 2 branches missed.">        if (ArrayListIterate.isOptimizableArrayList(list, size))</span>
+        {
+<span class="nc" id="L1931">            MutableList&lt;T&gt; result = FastList.newList();</span>
+<span class="nc" id="L1932">            T[] elements = ArrayListIterate.getInternalArray(list);</span>
+<span class="nc bnc" id="L1933" title="All 2 branches missed.">            for (int i = 0; i &lt; size; i++)</span>
+            {
+<span class="nc" id="L1935">                T element = elements[i];</span>
+<span class="nc bnc" id="L1936" title="All 2 branches missed.">                if (predicate.accept(element))</span>
+                {
+<span class="nc" id="L1938">                    result.add(element);</span>
+                }
+                else
+                {
+<span class="nc" id="L1942">                    return result;</span>
+                }
+            }
+<span class="nc" id="L1945">            return result;</span>
+        }
+<span class="nc" id="L1947">        return RandomAccessListIterate.takeWhile(list, predicate);</span>
+    }
+
+    public static &lt;T&gt; MutableList&lt;T&gt; dropWhile(ArrayList&lt;T&gt; list, Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L1952">        int size = list.size();</span>
+<span class="nc bnc" id="L1953" title="All 2 branches missed.">        if (ArrayListIterate.isOptimizableArrayList(list, size))</span>
+        {
+<span class="nc" id="L1955">            MutableList&lt;T&gt; result = FastList.newList();</span>
+<span class="nc" id="L1956">            T[] elements = ArrayListIterate.getInternalArray(list);</span>
+<span class="nc bnc" id="L1957" title="All 2 branches missed.">            for (int i = 0; i &lt; size; i++)</span>
+            {
+<span class="nc" id="L1959">                T element = elements[i];</span>
+<span class="nc bnc" id="L1960" title="All 2 branches missed.">                if (!predicate.accept(element))</span>
+                {
+<span class="nc" id="L1962">                    result.add(element);</span>
+<span class="nc bnc" id="L1963" title="All 2 branches missed.">                    for (int j = i + 1; j &lt; size; j++)</span>
+                    {
+<span class="nc" id="L1965">                        T eachNotDropped = elements[j];</span>
+<span class="nc" id="L1966">                        result.add(eachNotDropped);</span>
+                    }
+<span class="nc" id="L1968">                    return result;</span>
+                }
+            }
+<span class="nc" id="L1971">            return result;</span>
+        }
+<span class="nc" id="L1973">        return RandomAccessListIterate.dropWhile(list, predicate);</span>
+    }
+
+    public static &lt;T&gt; PartitionMutableList&lt;T&gt; partitionWhile(ArrayList&lt;T&gt; list, Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L1978">        int size = list.size();</span>
+<span class="nc bnc" id="L1979" title="All 2 branches missed.">        if (ArrayListIterate.isOptimizableArrayList(list, size))</span>
+        {
+<span class="nc" id="L1981">            PartitionMutableList&lt;T&gt; result = new PartitionFastList&lt;&gt;();</span>
+<span class="nc" id="L1982">            MutableList&lt;T&gt; selected = result.getSelected();</span>
+
+<span class="nc" id="L1984">            T[] elements = ArrayListIterate.getInternalArray(list);</span>
+<span class="nc bnc" id="L1985" title="All 2 branches missed.">            for (int i = 0; i &lt; size; i++)</span>
+            {
+<span class="nc" id="L1987">                T each = elements[i];</span>
+<span class="nc bnc" id="L1988" title="All 2 branches missed.">                if (predicate.accept(each))</span>
+                {
+<span class="nc" id="L1990">                    selected.add(each);</span>
+                }
+                else
+                {
+<span class="nc" id="L1994">                    MutableList&lt;T&gt; rejected = result.getRejected();</span>
+<span class="nc" id="L1995">                    rejected.add(each);</span>
+<span class="nc bnc" id="L1996" title="All 2 branches missed.">                    for (int j = i + 1; j &lt; size; j++)</span>
+                    {
+<span class="nc" id="L1998">                        rejected.add(elements[j]);</span>
+                    }
+<span class="nc" id="L2000">                    return result;</span>
+                }
+            }
+<span class="nc" id="L2003">            return result;</span>
+        }
+<span class="nc" id="L2005">        return RandomAccessListIterate.partitionWhile(list, predicate);</span>
+    }
+
+    private static boolean canAccessInternalArray(ArrayList&lt;?&gt; list)
+    {
+<span class="nc bnc" id="L2010" title="All 4 branches missed.">        return ArrayListIterate.ELEMENT_DATA_FIELD != null &amp;&amp; list.getClass() == ArrayList.class;</span>
+    }
+
+    private static boolean isOptimizableArrayList(ArrayList&lt;?&gt; list, int newSize)
+    {
+<span class="nc bnc" id="L2015" title="All 4 branches missed.">        return newSize &gt; MIN_DIRECT_ARRAY_ACCESS_SIZE</span>
+                &amp;&amp; ArrayListIterate.ELEMENT_DATA_FIELD != null
+<span class="nc bnc" id="L2017" title="All 2 branches missed.">                &amp;&amp; list.getClass() == ArrayList.class;</span>
+    }
+
+    private static &lt;T&gt; T[] getInternalArray(ArrayList&lt;T&gt; list)
+    {
+        try
+        {
+<span class="nc" id="L2024">            return (T[]) ArrayListIterate.ELEMENT_DATA_FIELD.get(list);</span>
+        }
+<span class="nc" id="L2026">        catch (IllegalAccessException e)</span>
+        {
+<span class="nc" id="L2028">            throw new RuntimeException(e);</span>
+        }
+    }
+
+    public static &lt;T, K, V&gt; MutableMap&lt;K, V&gt; aggregateInPlaceBy(
+            ArrayList&lt;T&gt; list,
+            Function&lt;? super T, ? extends K&gt; groupBy,
+            Function0&lt;? extends V&gt; zeroValueFactory,
+            Procedure2&lt;? super V, ? super T&gt; mutatingAggregator)
+    {
+<span class="nc" id="L2038">        MutableMap&lt;K, V&gt; map = UnifiedMap.newMap();</span>
+<span class="nc" id="L2039">        ArrayListIterate.forEach(list, new MutatingAggregationProcedure&lt;&gt;(map, groupBy, zeroValueFactory, mutatingAggregator));</span>
+<span class="nc" id="L2040">        return map;</span>
+    }
+
+    public static &lt;T, K, V&gt; MutableMap&lt;K, V&gt; aggregateBy(
+            ArrayList&lt;T&gt; list,
+            Function&lt;? super T, ? extends K&gt; groupBy,
+            Function0&lt;? extends V&gt; zeroValueFactory,
+            Function2&lt;? super V, ? super T, ? extends V&gt; nonMutatingAggregator)
+    {
+<span class="nc" id="L2049">        MutableMap&lt;K, V&gt; map = UnifiedMap.newMap();</span>
+<span class="nc" id="L2050">        ArrayListIterate.forEach(list, new NonMutatingAggregationProcedure&lt;&gt;(map, groupBy, zeroValueFactory, nonMutatingAggregator));</span>
+<span class="nc" id="L2051">        return map;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.0.201801022044</span></div></body></html>

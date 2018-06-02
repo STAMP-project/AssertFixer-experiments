@@ -1,0 +1,172 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>HashBag.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Eclipse Collections Test Coverage Aggregation</a> &gt; <a href="../index.html" class="el_bundle">eclipse-collections</a> &gt; <a href="index.source.html" class="el_package">org.eclipse.collections.impl.bag.mutable</a> &gt; <span class="el_source">HashBag.java</span></div><h1>HashBag.java</h1><pre class="source lang-java linenums">/*
+ * Copyright (c) 2016 Goldman Sachs.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * and Eclipse Distribution License v. 1.0 which accompany this distribution.
+ * The Eclipse Public License is available at http://www.eclipse.org/legal/epl-v10.html
+ * and the Eclipse Distribution License is available at
+ * http://www.eclipse.org/org/documents/edl-v10.php.
+ */
+
+package org.eclipse.collections.impl.bag.mutable;
+
+import java.io.Externalizable;
+import java.io.IOException;
+import java.io.ObjectInput;
+import java.io.ObjectOutput;
+import java.util.Arrays;
+
+import org.eclipse.collections.api.bag.Bag;
+import org.eclipse.collections.api.bag.MutableBag;
+import org.eclipse.collections.api.block.predicate.primitive.IntPredicate;
+import org.eclipse.collections.api.map.primitive.MutableObjectIntMap;
+import org.eclipse.collections.impl.map.mutable.primitive.ObjectIntHashMap;
+import org.eclipse.collections.impl.utility.ArrayIterate;
+import org.eclipse.collections.impl.utility.Iterate;
+
+/**
+ * A HashBag is a MutableBag which uses a Map as its underlying data store.  Each key in the Map represents some item,
+ * and the value in the map represents the current number of occurrences of that item.
+ *
+ * @since 1.0
+ */
+public class HashBag&lt;T&gt;
+        extends AbstractHashBag&lt;T&gt;
+        implements Externalizable
+{
+    private static final long serialVersionUID = 1L;
+
+    public HashBag()
+<span class="nc" id="L40">    {</span>
+<span class="nc" id="L41">        this.items = ObjectIntHashMap.newMap();</span>
+<span class="nc" id="L42">    }</span>
+
+    public HashBag(int size)
+<span class="nc" id="L45">    {</span>
+<span class="nc" id="L46">        this.items = new ObjectIntHashMap&lt;&gt;(size);</span>
+<span class="nc" id="L47">    }</span>
+
+    private HashBag(MutableObjectIntMap&lt;T&gt; map)
+<span class="nc" id="L50">    {</span>
+<span class="nc" id="L51">        this.items = map;</span>
+<span class="nc" id="L52">        this.size = (int) map.sum();</span>
+<span class="nc" id="L53">    }</span>
+
+    public static &lt;E&gt; HashBag&lt;E&gt; newBag()
+    {
+<span class="nc" id="L57">        return new HashBag&lt;&gt;();</span>
+    }
+
+    public static &lt;E&gt; HashBag&lt;E&gt; newBag(int size)
+    {
+<span class="nc" id="L62">        return new HashBag&lt;&gt;(size);</span>
+    }
+
+    public static &lt;E&gt; HashBag&lt;E&gt; newBag(Bag&lt;? extends E&gt; source)
+    {
+<span class="nc" id="L67">        HashBag&lt;E&gt; result = HashBag.newBag(source.sizeDistinct());</span>
+<span class="nc" id="L68">        result.addAllBag(source);</span>
+<span class="nc" id="L69">        return result;</span>
+    }
+
+    public static &lt;E&gt; HashBag&lt;E&gt; newBag(Iterable&lt;? extends E&gt; source)
+    {
+<span class="nc bnc" id="L74" title="All 2 branches missed.">        if (source instanceof Bag)</span>
+        {
+<span class="nc" id="L76">            return HashBag.newBag((Bag&lt;E&gt;) source);</span>
+        }
+<span class="nc" id="L78">        return HashBag.newBagWith((E[]) Iterate.toArray(source));</span>
+    }
+
+    public static &lt;E&gt; HashBag&lt;E&gt; newBagWith(E... elements)
+    {
+<span class="nc" id="L83">        HashBag&lt;E&gt; result = HashBag.newBag();</span>
+<span class="nc" id="L84">        ArrayIterate.addAllTo(elements, result);</span>
+<span class="nc" id="L85">        return result;</span>
+    }
+
+    @Override
+    protected int computeHashCode(T item)
+    {
+<span class="nc" id="L91">        return item.hashCode();</span>
+    }
+
+    @Override
+    public MutableBag&lt;T&gt; selectByOccurrences(IntPredicate predicate)
+    {
+<span class="nc" id="L97">        MutableObjectIntMap&lt;T&gt; map = this.items.select((each, occurrences) -&gt; {</span>
+<span class="nc" id="L98">            return predicate.accept(occurrences);</span>
+        });
+<span class="nc" id="L100">        return new HashBag&lt;&gt;(map);</span>
+    }
+
+    @Override
+    public void writeExternal(ObjectOutput out) throws IOException
+    {
+<span class="nc" id="L106">        ((ObjectIntHashMap&lt;T&gt;) this.items).writeExternal(out);</span>
+<span class="nc" id="L107">    }</span>
+
+    @Override
+    public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException
+    {
+<span class="nc" id="L112">        this.items = new ObjectIntHashMap&lt;&gt;();</span>
+<span class="nc" id="L113">        ((ObjectIntHashMap&lt;T&gt;) this.items).readExternal(in);</span>
+<span class="nc" id="L114">        this.size = (int) this.items.sum();</span>
+<span class="nc" id="L115">    }</span>
+
+    @Override
+    public HashBag&lt;T&gt; without(T element)
+    {
+<span class="nc" id="L120">        this.remove(element);</span>
+<span class="nc" id="L121">        return this;</span>
+    }
+
+    @Override
+    public MutableBag&lt;T&gt; newEmpty()
+    {
+<span class="nc" id="L127">        return HashBag.newBag();</span>
+    }
+
+    @Override
+    public HashBag&lt;T&gt; with(T element)
+    {
+<span class="nc" id="L133">        this.add(element);</span>
+<span class="nc" id="L134">        return this;</span>
+    }
+
+    @Override
+    public HashBag&lt;T&gt; withAll(Iterable&lt;? extends T&gt; iterable)
+    {
+<span class="nc" id="L140">        this.addAllIterable(iterable);</span>
+<span class="nc" id="L141">        return this;</span>
+    }
+
+    @Override
+    public HashBag&lt;T&gt; withoutAll(Iterable&lt;? extends T&gt; iterable)
+    {
+<span class="nc" id="L147">        this.removeAllIterable(iterable);</span>
+<span class="nc" id="L148">        return this;</span>
+    }
+
+    public HashBag&lt;T&gt; with(T... elements)
+    {
+<span class="nc" id="L153">        this.addAll(Arrays.asList(elements));</span>
+<span class="nc" id="L154">        return this;</span>
+    }
+
+    public HashBag&lt;T&gt; with(T element1, T element2)
+    {
+<span class="nc" id="L159">        this.add(element1);</span>
+<span class="nc" id="L160">        this.add(element2);</span>
+<span class="nc" id="L161">        return this;</span>
+    }
+
+    public HashBag&lt;T&gt; with(T element1, T element2, T element3)
+    {
+<span class="nc" id="L166">        this.add(element1);</span>
+<span class="nc" id="L167">        this.add(element2);</span>
+<span class="nc" id="L168">        this.add(element3);</span>
+<span class="nc" id="L169">        return this;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.0.201801022044</span></div></body></html>

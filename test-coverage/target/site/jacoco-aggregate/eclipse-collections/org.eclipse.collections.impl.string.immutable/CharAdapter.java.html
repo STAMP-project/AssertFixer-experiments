@@ -1,0 +1,629 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>CharAdapter.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Eclipse Collections Test Coverage Aggregation</a> &gt; <a href="../index.html" class="el_bundle">eclipse-collections</a> &gt; <a href="index.source.html" class="el_package">org.eclipse.collections.impl.string.immutable</a> &gt; <span class="el_source">CharAdapter.java</span></div><h1>CharAdapter.java</h1><pre class="source lang-java linenums">/*
+ * Copyright (c) 2018 Goldman Sachs and others.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * and Eclipse Distribution License v. 1.0 which accompany this distribution.
+ * The Eclipse Public License is available at http://www.eclipse.org/legal/epl-v10.html
+ * and the Eclipse Distribution License is available at
+ * http://www.eclipse.org/org/documents/edl-v10.php.
+ */
+
+package org.eclipse.collections.impl.string.immutable;
+
+import java.io.IOException;
+import java.io.Serializable;
+import java.util.Iterator;
+import java.util.NoSuchElementException;
+
+import org.eclipse.collections.api.CharIterable;
+import org.eclipse.collections.api.LazyCharIterable;
+import org.eclipse.collections.api.RichIterable;
+import org.eclipse.collections.api.bag.primitive.MutableCharBag;
+import org.eclipse.collections.api.block.function.primitive.CharToCharFunction;
+import org.eclipse.collections.api.block.function.primitive.CharToObjectFunction;
+import org.eclipse.collections.api.block.function.primitive.ObjectCharIntToObjectFunction;
+import org.eclipse.collections.api.block.function.primitive.ObjectCharToObjectFunction;
+import org.eclipse.collections.api.block.predicate.primitive.CharPredicate;
+import org.eclipse.collections.api.block.procedure.primitive.CharIntProcedure;
+import org.eclipse.collections.api.block.procedure.primitive.CharProcedure;
+import org.eclipse.collections.api.iterator.CharIterator;
+import org.eclipse.collections.api.list.ImmutableList;
+import org.eclipse.collections.api.list.MutableList;
+import org.eclipse.collections.api.list.primitive.CharList;
+import org.eclipse.collections.api.list.primitive.ImmutableCharList;
+import org.eclipse.collections.api.list.primitive.MutableCharList;
+import org.eclipse.collections.api.set.primitive.MutableCharSet;
+import org.eclipse.collections.api.tuple.primitive.CharCharPair;
+import org.eclipse.collections.api.tuple.primitive.CharObjectPair;
+import org.eclipse.collections.impl.bag.mutable.primitive.CharHashBag;
+import org.eclipse.collections.impl.factory.Lists;
+import org.eclipse.collections.impl.factory.primitive.CharLists;
+import org.eclipse.collections.impl.lazy.primitive.ReverseCharIterable;
+import org.eclipse.collections.impl.list.mutable.FastList;
+import org.eclipse.collections.impl.list.mutable.primitive.CharArrayList;
+import org.eclipse.collections.impl.primitive.AbstractCharIterable;
+import org.eclipse.collections.impl.set.mutable.primitive.CharHashSet;
+import org.eclipse.collections.impl.tuple.primitive.PrimitiveTuples;
+import org.eclipse.collections.impl.utility.Iterate;
+import org.eclipse.collections.impl.utility.StringIterate;
+
+/**
+ * Provides a view into the char[] stored in a String as an ImmutableCharList.  This is a cleaner more OO way of
+ * providing many of the iterable protocols available in StringIterate for char values.
+ *
+ * @since 7.0
+ */
+public class CharAdapter
+        extends AbstractCharIterable
+        implements CharSequence, ImmutableCharList, Serializable
+{
+    private static final long serialVersionUID = 1L;
+
+    private final String adapted;
+
+    public CharAdapter(String value)
+<span class="nc" id="L65">    {</span>
+<span class="nc" id="L66">        this.adapted = value;</span>
+<span class="nc" id="L67">    }</span>
+
+    public static CharAdapter adapt(String value)
+    {
+<span class="nc" id="L71">        return new CharAdapter(value);</span>
+    }
+
+    public static CharAdapter from(char... chars)
+    {
+<span class="nc" id="L76">        return new CharAdapter(new String(chars));</span>
+    }
+
+    public static CharAdapter from(CharIterable iterable)
+    {
+<span class="nc bnc" id="L81" title="All 2 branches missed.">        if (iterable instanceof CharAdapter)</span>
+        {
+<span class="nc" id="L83">            return new CharAdapter(iterable.toString());</span>
+        }
+<span class="nc" id="L85">        return new CharAdapter(iterable.makeString(&quot;&quot;));</span>
+    }
+
+    @Override
+    public char charAt(int index)
+    {
+<span class="nc" id="L91">        return this.adapted.charAt(index);</span>
+    }
+
+    @Override
+    public int length()
+    {
+<span class="nc" id="L97">        return this.adapted.length();</span>
+    }
+
+    @Override
+    public String subSequence(int start, int end)
+    {
+<span class="nc" id="L103">        return this.adapted.substring(start, end);</span>
+    }
+
+    public StringBuilder toStringBuilder()
+    {
+<span class="nc" id="L108">        return new StringBuilder(this.adapted);</span>
+    }
+
+    /**
+     * The value of toString must be strictly implemented as defined in CharSequence.
+     */
+    @Override
+    public String toString()
+    {
+<span class="nc" id="L117">        return this.adapted;</span>
+    }
+
+    @Override
+    public CharIterator charIterator()
+    {
+<span class="nc" id="L123">        return new InternalCharIterator();</span>
+    }
+
+    @Override
+    public char[] toArray()
+    {
+<span class="nc" id="L129">        return this.adapted.toCharArray();</span>
+    }
+
+    @Override
+    public boolean contains(char expected)
+    {
+<span class="nc bnc" id="L135" title="All 2 branches missed.">        return StringIterate.anySatisfyChar(this.adapted, value -&gt; expected == value);</span>
+    }
+
+    @Override
+    public void forEach(CharProcedure procedure)
+    {
+<span class="nc" id="L141">        this.each(procedure);</span>
+<span class="nc" id="L142">    }</span>
+
+    @Override
+    public void each(CharProcedure procedure)
+    {
+<span class="nc" id="L147">        StringIterate.forEachChar(this.adapted, procedure);</span>
+<span class="nc" id="L148">    }</span>
+
+    @Override
+    public CharAdapter distinct()
+    {
+<span class="nc" id="L153">        StringBuilder builder = new StringBuilder();</span>
+<span class="nc" id="L154">        CharHashSet seenSoFar = new CharHashSet();</span>
+
+<span class="nc" id="L156">        int size = this.size();</span>
+<span class="nc bnc" id="L157" title="All 2 branches missed.">        for (int i = 0; i &lt; size; i++)</span>
+        {
+<span class="nc" id="L159">            char each = this.get(i);</span>
+<span class="nc bnc" id="L160" title="All 2 branches missed.">            if (seenSoFar.add(each))</span>
+            {
+<span class="nc" id="L162">                builder.append(each);</span>
+            }
+        }
+<span class="nc" id="L165">        return new CharAdapter(builder.toString());</span>
+    }
+
+    @Override
+    public CharAdapter newWith(char element)
+    {
+<span class="nc" id="L171">        return new CharAdapter(this.adapted + element);</span>
+    }
+
+    @Override
+    public CharAdapter newWithout(char element)
+    {
+<span class="nc" id="L177">        StringBuilder builder = new StringBuilder(this.adapted);</span>
+<span class="nc" id="L178">        int indexToRemove = this.indexOf(element);</span>
+<span class="nc bnc" id="L179" title="All 2 branches missed.">        if (indexToRemove &lt; 0)</span>
+        {
+<span class="nc" id="L181">            return this;</span>
+        }
+<span class="nc" id="L183">        builder.deleteCharAt(indexToRemove);</span>
+<span class="nc" id="L184">        return new CharAdapter(builder.toString());</span>
+    }
+
+    @Override
+    public CharAdapter newWithAll(CharIterable elements)
+    {
+<span class="nc" id="L190">        MutableCharList mutableCharList = this.toList();</span>
+<span class="nc" id="L191">        mutableCharList.addAll(elements);</span>
+<span class="nc" id="L192">        return new CharAdapter(new String(mutableCharList.toArray()));</span>
+    }
+
+    @Override
+    public CharAdapter newWithoutAll(CharIterable elements)
+    {
+<span class="nc" id="L198">        MutableCharList mutableCharList = this.toList();</span>
+<span class="nc" id="L199">        mutableCharList.removeAll(elements);</span>
+<span class="nc" id="L200">        return new CharAdapter(new String(mutableCharList.toArray()));</span>
+    }
+
+    @Override
+    public CharAdapter toReversed()
+    {
+<span class="nc" id="L206">        StringBuilder builder = new StringBuilder(this.adapted);</span>
+<span class="nc" id="L207">        return new CharAdapter(builder.reverse().toString());</span>
+    }
+
+    @Override
+    public ImmutableCharList subList(int fromIndex, int toIndex)
+    {
+<span class="nc" id="L213">        throw new UnsupportedOperationException(&quot;SubList is not implemented on CharAdapter&quot;);</span>
+    }
+
+    @Override
+    public char get(int index)
+    {
+<span class="nc" id="L219">        return this.adapted.charAt(index);</span>
+    }
+
+    public Character getCharacter(int index)
+    {
+<span class="nc" id="L224">        return Character.valueOf(this.get(index));</span>
+    }
+
+    @Override
+    public long dotProduct(CharList list)
+    {
+<span class="nc" id="L230">        throw new UnsupportedOperationException(&quot;DotProduct is not implemented on CharAdapter&quot;);</span>
+    }
+
+    @Override
+    public int binarySearch(char value)
+    {
+<span class="nc" id="L236">        throw new UnsupportedOperationException(&quot;BinarySearch is not implemented on CharAdapter&quot;);</span>
+    }
+
+    @Override
+    public int lastIndexOf(char value)
+    {
+<span class="nc bnc" id="L242" title="All 2 branches missed.">        for (int i = this.size() - 1; i &gt;= 0; i--)</span>
+        {
+<span class="nc bnc" id="L244" title="All 2 branches missed.">            if (this.get(i) == value)</span>
+            {
+<span class="nc" id="L246">                return i;</span>
+            }
+        }
+<span class="nc" id="L249">        return -1;</span>
+    }
+
+    @Override
+    public ImmutableCharList toImmutable()
+    {
+<span class="nc" id="L255">        return this;</span>
+    }
+
+    @Override
+    public char getLast()
+    {
+<span class="nc" id="L261">        return this.get(this.size() - 1);</span>
+    }
+
+    @Override
+    public LazyCharIterable asReversed()
+    {
+<span class="nc" id="L267">        return ReverseCharIterable.adapt(this);</span>
+    }
+
+    @Override
+    public &lt;T&gt; T injectIntoWithIndex(T injectedValue, ObjectCharIntToObjectFunction&lt;? super T, ? extends T&gt; function)
+    {
+<span class="nc" id="L273">        T result = injectedValue;</span>
+<span class="nc" id="L274">        int size = this.size();</span>
+<span class="nc bnc" id="L275" title="All 2 branches missed.">        for (int i = 0; i &lt; size; i++)</span>
+        {
+<span class="nc" id="L277">            result = function.valueOf(result, this.get(i), i);</span>
+        }
+<span class="nc" id="L279">        return result;</span>
+    }
+
+    @Override
+    public char getFirst()
+    {
+<span class="nc" id="L285">        return this.get(0);</span>
+    }
+
+    @Override
+    public int indexOf(char value)
+    {
+<span class="nc" id="L291">        int size = this.size();</span>
+<span class="nc bnc" id="L292" title="All 2 branches missed.">        for (int i = 0; i &lt; size; i++)</span>
+        {
+<span class="nc bnc" id="L294" title="All 2 branches missed.">            if (this.get(i) == value)</span>
+            {
+<span class="nc" id="L296">                return i;</span>
+            }
+        }
+<span class="nc" id="L299">        return -1;</span>
+    }
+
+    @Override
+    public void forEachWithIndex(CharIntProcedure procedure)
+    {
+<span class="nc" id="L305">        int size = this.size();</span>
+<span class="nc bnc" id="L306" title="All 2 branches missed.">        for (int i = 0; i &lt; size; i++)</span>
+        {
+<span class="nc" id="L308">            procedure.value(this.get(i), i);</span>
+        }
+<span class="nc" id="L310">    }</span>
+
+    @Override
+    public CharAdapter select(CharPredicate predicate)
+    {
+<span class="nc" id="L315">        return new CharAdapter(StringIterate.selectChar(this.adapted, predicate));</span>
+    }
+
+    @Override
+    public CharAdapter reject(CharPredicate predicate)
+    {
+<span class="nc" id="L321">        return new CharAdapter(StringIterate.rejectChar(this.adapted, predicate));</span>
+    }
+
+    @Override
+    public &lt;V&gt; ImmutableList&lt;V&gt; collect(CharToObjectFunction&lt;? extends V&gt; function)
+    {
+<span class="nc" id="L327">        int size = this.size();</span>
+<span class="nc" id="L328">        FastList&lt;V&gt; list = FastList.newList(size);</span>
+<span class="nc bnc" id="L329" title="All 2 branches missed.">        for (int i = 0; i &lt; size; i++)</span>
+        {
+<span class="nc" id="L331">            list.add(function.valueOf(this.get(i)));</span>
+        }
+<span class="nc" id="L333">        return list.toImmutable();</span>
+    }
+
+    public CharAdapter collectChar(CharToCharFunction function)
+    {
+<span class="nc" id="L338">        StringBuilder builder = new StringBuilder(this.length());</span>
+<span class="nc" id="L339">        int size = this.size();</span>
+<span class="nc bnc" id="L340" title="All 2 branches missed.">        for (int i = 0; i &lt; size; i++)</span>
+        {
+<span class="nc" id="L342">            builder.append(function.valueOf(this.get(i)));</span>
+        }
+<span class="nc" id="L344">        return new CharAdapter(builder.toString());</span>
+    }
+
+    @Override
+    public char detectIfNone(CharPredicate predicate, char ifNone)
+    {
+<span class="nc" id="L350">        return StringIterate.detectCharIfNone(this.adapted, predicate, ifNone);</span>
+    }
+
+    @Override
+    public int count(CharPredicate predicate)
+    {
+<span class="nc" id="L356">        return StringIterate.countChar(this.adapted, predicate);</span>
+    }
+
+    @Override
+    public boolean anySatisfy(CharPredicate predicate)
+    {
+<span class="nc" id="L362">        return StringIterate.anySatisfyChar(this.adapted, predicate);</span>
+    }
+
+    @Override
+    public boolean allSatisfy(CharPredicate predicate)
+    {
+<span class="nc" id="L368">        return StringIterate.allSatisfyChar(this.adapted, predicate);</span>
+    }
+
+    @Override
+    public boolean noneSatisfy(CharPredicate predicate)
+    {
+<span class="nc" id="L374">        return StringIterate.noneSatisfyChar(this.adapted, predicate);</span>
+    }
+
+    @Override
+    public MutableCharList toList()
+    {
+<span class="nc" id="L380">        int size = this.size();</span>
+<span class="nc" id="L381">        CharArrayList list = new CharArrayList(size);</span>
+<span class="nc bnc" id="L382" title="All 2 branches missed.">        for (int i = 0; i &lt; size; i++)</span>
+        {
+<span class="nc" id="L384">            list.add(this.get(i));</span>
+        }
+<span class="nc" id="L386">        return list;</span>
+    }
+
+    @Override
+    public MutableCharSet toSet()
+    {
+<span class="nc" id="L392">        int size = this.size();</span>
+<span class="nc" id="L393">        CharHashSet set = new CharHashSet(size);</span>
+<span class="nc bnc" id="L394" title="All 2 branches missed.">        for (int i = 0; i &lt; size; i++)</span>
+        {
+<span class="nc" id="L396">            set.add(this.get(i));</span>
+        }
+<span class="nc" id="L398">        return set;</span>
+    }
+
+    @Override
+    public MutableCharBag toBag()
+    {
+<span class="nc" id="L404">        int size = this.size();</span>
+<span class="nc" id="L405">        CharHashBag bag = new CharHashBag(size);</span>
+<span class="nc bnc" id="L406" title="All 2 branches missed.">        for (int i = 0; i &lt; size; i++)</span>
+        {
+<span class="nc" id="L408">            bag.add(this.get(i));</span>
+        }
+<span class="nc" id="L410">        return bag;</span>
+    }
+
+    @Override
+    public &lt;T&gt; T injectInto(T injectedValue, ObjectCharToObjectFunction&lt;? super T, ? extends T&gt; function)
+    {
+<span class="nc" id="L416">        T result = injectedValue;</span>
+<span class="nc" id="L417">        int size = this.size();</span>
+<span class="nc bnc" id="L418" title="All 2 branches missed.">        for (int i = 0; i &lt; size; i++)</span>
+        {
+<span class="nc" id="L420">            result = function.valueOf(result, this.get(i));</span>
+        }
+<span class="nc" id="L422">        return result;</span>
+    }
+
+    @Override
+    public RichIterable&lt;CharIterable&gt; chunk(int size)
+    {
+<span class="nc bnc" id="L428" title="All 2 branches missed.">        if (size &lt;= 0)</span>
+        {
+<span class="nc" id="L430">            throw new IllegalArgumentException(&quot;Size for groups must be positive but was: &quot; + size);</span>
+        }
+<span class="nc" id="L432">        MutableList&lt;CharIterable&gt; result = Lists.mutable.empty();</span>
+<span class="nc bnc" id="L433" title="All 2 branches missed.">        if (this.notEmpty())</span>
+        {
+<span class="nc" id="L435">            CharIterator iterator = this.charIterator();</span>
+<span class="nc bnc" id="L436" title="All 2 branches missed.">            while (iterator.hasNext())</span>
+            {
+<span class="nc" id="L438">                MutableCharList batch = CharLists.mutable.empty();</span>
+<span class="nc bnc" id="L439" title="All 4 branches missed.">                for (int i = 0; i &lt; size &amp;&amp; iterator.hasNext(); i++)</span>
+                {
+<span class="nc" id="L441">                    batch.add(iterator.next());</span>
+                }
+<span class="nc" id="L443">                result.add(batch);</span>
+<span class="nc" id="L444">            }</span>
+        }
+<span class="nc" id="L446">        return result;</span>
+    }
+
+    @Override
+    public long sum()
+    {
+<span class="nc" id="L452">        long sum = 0;</span>
+<span class="nc" id="L453">        int size = this.size();</span>
+<span class="nc bnc" id="L454" title="All 2 branches missed.">        for (int i = 0; i &lt; size; i++)</span>
+        {
+<span class="nc" id="L456">            sum += this.get(i);</span>
+        }
+<span class="nc" id="L458">        return sum;</span>
+    }
+
+    @Override
+    public char max()
+    {
+<span class="nc bnc" id="L464" title="All 2 branches missed.">        if (this.isEmpty())</span>
+        {
+<span class="nc" id="L466">            throw new NoSuchElementException();</span>
+        }
+<span class="nc" id="L468">        char max = this.get(0);</span>
+<span class="nc" id="L469">        int size = this.size();</span>
+<span class="nc bnc" id="L470" title="All 2 branches missed.">        for (int i = 1; i &lt; size; i++)</span>
+        {
+<span class="nc" id="L472">            char value = this.get(i);</span>
+<span class="nc bnc" id="L473" title="All 2 branches missed.">            if (max &lt; value)</span>
+            {
+<span class="nc" id="L475">                max = value;</span>
+            }
+        }
+<span class="nc" id="L478">        return max;</span>
+    }
+
+    @Override
+    public char min()
+    {
+<span class="nc bnc" id="L484" title="All 2 branches missed.">        if (this.isEmpty())</span>
+        {
+<span class="nc" id="L486">            throw new NoSuchElementException();</span>
+        }
+<span class="nc" id="L488">        char min = this.get(0);</span>
+<span class="nc" id="L489">        int size = this.size();</span>
+<span class="nc bnc" id="L490" title="All 2 branches missed.">        for (int i = 1; i &lt; size; i++)</span>
+        {
+<span class="nc" id="L492">            char value = this.get(i);</span>
+<span class="nc bnc" id="L493" title="All 2 branches missed.">            if (value &lt; min)</span>
+            {
+<span class="nc" id="L495">                min = value;</span>
+            }
+        }
+<span class="nc" id="L498">        return min;</span>
+    }
+
+    @Override
+    public int size()
+    {
+<span class="nc" id="L504">        return this.adapted.length();</span>
+    }
+
+    @Override
+    public void appendString(Appendable appendable, String start, String separator, String end)
+    {
+        try
+        {
+<span class="nc" id="L512">            appendable.append(start);</span>
+<span class="nc" id="L513">            int size = this.size();</span>
+<span class="nc bnc" id="L514" title="All 2 branches missed.">            for (int i = 0; i &lt; size; i++)</span>
+            {
+<span class="nc bnc" id="L516" title="All 2 branches missed.">                if (i &gt; 0)</span>
+                {
+<span class="nc" id="L518">                    appendable.append(separator);</span>
+                }
+<span class="nc" id="L520">                char value = this.get(i);</span>
+<span class="nc" id="L521">                appendable.append(value);</span>
+            }
+<span class="nc" id="L523">            appendable.append(end);</span>
+        }
+<span class="nc" id="L525">        catch (IOException e)</span>
+        {
+<span class="nc" id="L527">            throw new RuntimeException(e);</span>
+<span class="nc" id="L528">        }</span>
+<span class="nc" id="L529">    }</span>
+
+    @Override
+    public boolean equals(Object otherList)
+    {
+<span class="nc bnc" id="L534" title="All 2 branches missed.">        if (otherList == this)</span>
+        {
+<span class="nc" id="L536">            return true;</span>
+        }
+<span class="nc bnc" id="L538" title="All 2 branches missed.">        if (!(otherList instanceof CharList))</span>
+        {
+<span class="nc" id="L540">            return false;</span>
+        }
+<span class="nc" id="L542">        CharList list = (CharList) otherList;</span>
+<span class="nc bnc" id="L543" title="All 2 branches missed.">        if (this.size() != list.size())</span>
+        {
+<span class="nc" id="L545">            return false;</span>
+        }
+<span class="nc bnc" id="L547" title="All 2 branches missed.">        for (int i = 0; i &lt; this.size(); i++)</span>
+        {
+<span class="nc bnc" id="L549" title="All 2 branches missed.">            if (this.get(i) != list.get(i))</span>
+            {
+<span class="nc" id="L551">                return false;</span>
+            }
+        }
+<span class="nc" id="L554">        return true;</span>
+    }
+
+    @Override
+    public int hashCode()
+    {
+<span class="nc" id="L560">        int hashCode = 1;</span>
+<span class="nc bnc" id="L561" title="All 2 branches missed.">        for (int i = 0; i &lt; this.size(); i++)</span>
+        {
+<span class="nc" id="L563">            char item = this.get(i);</span>
+<span class="nc" id="L564">            hashCode = 31 * hashCode + (int) item;</span>
+        }
+<span class="nc" id="L566">        return hashCode;</span>
+    }
+
+    /**
+     * @since 9.1.
+     */
+    @Override
+    public ImmutableList&lt;CharCharPair&gt; zipChar(CharIterable iterable)
+    {
+<span class="nc" id="L575">        int size = this.size();</span>
+<span class="nc" id="L576">        int othersize = iterable.size();</span>
+<span class="nc" id="L577">        MutableList&lt;CharCharPair&gt; target = Lists.mutable.withInitialCapacity(Math.min(size, othersize));</span>
+<span class="nc" id="L578">        CharIterator iterator = iterable.charIterator();</span>
+<span class="nc bnc" id="L579" title="All 4 branches missed.">        for (int i = 0; i &lt; size &amp;&amp; i &lt; othersize; i++)</span>
+        {
+<span class="nc" id="L581">            target.add(PrimitiveTuples.pair(this.get(i), iterator.next()));</span>
+        }
+<span class="nc" id="L583">        return target.toImmutable();</span>
+    }
+
+    /**
+     * @since 9.1.
+     */
+    @Override
+    public &lt;T&gt; ImmutableList&lt;CharObjectPair&lt;T&gt;&gt; zip(Iterable&lt;T&gt; iterable)
+    {
+<span class="nc" id="L592">        int size = this.size();</span>
+<span class="nc" id="L593">        int othersize = Iterate.sizeOf(iterable);</span>
+<span class="nc" id="L594">        MutableList&lt;CharObjectPair&lt;T&gt;&gt; target = Lists.mutable.withInitialCapacity(Math.min(size, othersize));</span>
+<span class="nc" id="L595">        Iterator&lt;T&gt; iterator = iterable.iterator();</span>
+<span class="nc bnc" id="L596" title="All 4 branches missed.">        for (int i = 0; i &lt; size &amp;&amp; i &lt; othersize; i++)</span>
+        {
+<span class="nc" id="L598">            target.add(PrimitiveTuples.pair(this.get(i), iterator.next()));</span>
+        }
+<span class="nc" id="L600">        return target.toImmutable();</span>
+    }
+
+<span class="nc" id="L603">    private class InternalCharIterator implements CharIterator</span>
+    {
+        /**
+         * Index of element to be returned by subsequent call to next.
+         */
+        private int currentIndex;
+
+        @Override
+        public boolean hasNext()
+        {
+<span class="nc bnc" id="L613" title="All 2 branches missed.">            return this.currentIndex != CharAdapter.this.adapted.length();</span>
+        }
+
+        @Override
+        public char next()
+        {
+<span class="nc bnc" id="L619" title="All 2 branches missed.">            if (!this.hasNext())</span>
+            {
+<span class="nc" id="L621">                throw new NoSuchElementException();</span>
+            }
+<span class="nc" id="L623">            char next = CharAdapter.this.adapted.charAt(this.currentIndex);</span>
+<span class="nc" id="L624">            this.currentIndex++;</span>
+<span class="nc" id="L625">            return next;</span>
+        }
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.0.201801022044</span></div></body></html>

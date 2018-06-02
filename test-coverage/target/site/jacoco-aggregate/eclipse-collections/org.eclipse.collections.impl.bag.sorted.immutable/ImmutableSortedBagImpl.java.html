@@ -1,0 +1,796 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>ImmutableSortedBagImpl.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Eclipse Collections Test Coverage Aggregation</a> &gt; <a href="../index.html" class="el_bundle">eclipse-collections</a> &gt; <a href="index.source.html" class="el_package">org.eclipse.collections.impl.bag.sorted.immutable</a> &gt; <span class="el_source">ImmutableSortedBagImpl.java</span></div><h1>ImmutableSortedBagImpl.java</h1><pre class="source lang-java linenums">/*
+ * Copyright (c) 2017 Goldman Sachs and others.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * and Eclipse Distribution License v. 1.0 which accompany this distribution.
+ * The Eclipse Public License is available at http://www.eclipse.org/legal/epl-v10.html
+ * and the Eclipse Distribution License is available at
+ * http://www.eclipse.org/org/documents/edl-v10.php.
+ */
+
+package org.eclipse.collections.impl.bag.sorted.immutable;
+
+import java.io.Serializable;
+import java.lang.reflect.Array;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Comparator;
+import java.util.Iterator;
+import java.util.List;
+import java.util.NoSuchElementException;
+import java.util.Optional;
+import java.util.RandomAccess;
+
+import org.eclipse.collections.api.bag.Bag;
+import org.eclipse.collections.api.bag.sorted.ImmutableSortedBag;
+import org.eclipse.collections.api.bag.sorted.MutableSortedBag;
+import org.eclipse.collections.api.bag.sorted.SortedBag;
+import org.eclipse.collections.api.block.function.Function;
+import org.eclipse.collections.api.block.function.primitive.ObjectIntToObjectFunction;
+import org.eclipse.collections.api.block.predicate.Predicate;
+import org.eclipse.collections.api.block.predicate.Predicate2;
+import org.eclipse.collections.api.block.procedure.Procedure;
+import org.eclipse.collections.api.block.procedure.primitive.ObjectIntProcedure;
+import org.eclipse.collections.api.list.ImmutableList;
+import org.eclipse.collections.api.list.MutableList;
+import org.eclipse.collections.api.map.sorted.MutableSortedMap;
+import org.eclipse.collections.api.ordered.OrderedIterable;
+import org.eclipse.collections.api.partition.bag.sorted.PartitionImmutableSortedBag;
+import org.eclipse.collections.api.set.sorted.ImmutableSortedSet;
+import org.eclipse.collections.api.set.sorted.MutableSortedSet;
+import org.eclipse.collections.impl.Counter;
+import org.eclipse.collections.impl.bag.sorted.mutable.TreeBag;
+import org.eclipse.collections.impl.block.factory.Comparators;
+import org.eclipse.collections.impl.factory.SortedBags;
+import org.eclipse.collections.impl.factory.SortedSets;
+import org.eclipse.collections.impl.list.mutable.FastList;
+import org.eclipse.collections.impl.map.sorted.mutable.TreeSortedMap;
+import org.eclipse.collections.impl.partition.bag.sorted.PartitionImmutableSortedBagImpl;
+import org.eclipse.collections.impl.partition.bag.sorted.PartitionTreeBag;
+import org.eclipse.collections.impl.utility.ArrayIterate;
+import org.eclipse.collections.impl.utility.ListIterate;
+import org.eclipse.collections.impl.utility.internal.SortedBagIterables;
+
+class ImmutableSortedBagImpl&lt;T&gt;
+        extends AbstractImmutableSortedBag&lt;T&gt;
+        implements Serializable
+{
+    private static final long serialVersionUID = 1L;
+    private final T[] elements;
+    private final int[] occurrences;
+    private final Comparator&lt;? super T&gt; comparator;
+    private final int size;
+
+    ImmutableSortedBagImpl(SortedBag&lt;T&gt; sortedBag)
+<span class="nc" id="L65">    {</span>
+<span class="nc bnc" id="L66" title="All 2 branches missed.">        if (sortedBag.isEmpty())</span>
+        {
+<span class="nc" id="L68">            throw new IllegalArgumentException();</span>
+        }
+<span class="nc" id="L70">        this.comparator = sortedBag.comparator();</span>
+<span class="nc" id="L71">        this.elements = (T[]) new Object[sortedBag.sizeDistinct()];</span>
+<span class="nc" id="L72">        this.occurrences = new int[sortedBag.sizeDistinct()];</span>
+<span class="nc" id="L73">        this.size = sortedBag.size();</span>
+
+<span class="nc" id="L75">        sortedBag.forEachWithOccurrences(new ObjectIntProcedure&lt;T&gt;()</span>
+<span class="nc" id="L76">        {</span>
+            private int i;
+
+            public void value(T each, int occurrencesOfEach)
+            {
+<span class="nc" id="L81">                ImmutableSortedBagImpl.this.elements[this.i] = each;</span>
+<span class="nc" id="L82">                ImmutableSortedBagImpl.this.occurrences[this.i] = occurrencesOfEach;</span>
+<span class="nc" id="L83">                this.i++;</span>
+<span class="nc" id="L84">            }</span>
+        });
+<span class="nc" id="L86">    }</span>
+
+    private ImmutableSortedBagImpl(T[] elements, int[] occurrences, Comparator&lt;? super T&gt; comparator)
+<span class="nc" id="L89">    {</span>
+<span class="nc bnc" id="L90" title="All 2 branches missed.">        if (elements.length != occurrences.length)</span>
+        {
+<span class="nc" id="L92">            throw new IllegalArgumentException();</span>
+        }
+
+<span class="nc" id="L95">        this.comparator = comparator;</span>
+<span class="nc" id="L96">        this.elements = elements;</span>
+<span class="nc" id="L97">        this.occurrences = occurrences;</span>
+
+<span class="nc" id="L99">        int size = 0;</span>
+<span class="nc bnc" id="L100" title="All 2 branches missed.">        for (int occurrence : occurrences)</span>
+        {
+<span class="nc" id="L102">            size += occurrence;</span>
+        }
+
+<span class="nc" id="L105">        this.size = size;</span>
+<span class="nc" id="L106">    }</span>
+
+    @Override
+    public ImmutableSortedBag&lt;T&gt; newWith(T element)
+    {
+<span class="nc" id="L111">        int index = Arrays.binarySearch(this.elements, element, this.comparator);</span>
+
+<span class="nc bnc" id="L113" title="All 2 branches missed.">        if (index &gt;= 0)</span>
+        {
+<span class="nc" id="L115">            int[] occurrences = this.occurrences.clone();</span>
+<span class="nc" id="L116">            occurrences[index] += 1;</span>
+<span class="nc" id="L117">            return new ImmutableSortedBagImpl&lt;&gt;(this.elements.clone(), occurrences, this.comparator);</span>
+        }
+
+<span class="nc" id="L120">        int insertionPoint = (index + 1) * -1;</span>
+
+<span class="nc" id="L122">        T[] elements = (T[]) new Object[this.elements.length + 1];</span>
+<span class="nc" id="L123">        int[] occurrences = new int[this.occurrences.length + 1];</span>
+
+<span class="nc" id="L125">        System.arraycopy(this.elements, 0, elements, 0, insertionPoint);</span>
+<span class="nc" id="L126">        System.arraycopy(this.occurrences, 0, occurrences, 0, insertionPoint);</span>
+
+<span class="nc" id="L128">        elements[insertionPoint] = element;</span>
+<span class="nc" id="L129">        occurrences[insertionPoint] = 1;</span>
+
+<span class="nc" id="L131">        System.arraycopy(this.elements, insertionPoint, elements, insertionPoint + 1, this.elements.length - insertionPoint);</span>
+<span class="nc" id="L132">        System.arraycopy(this.occurrences, insertionPoint, occurrences, insertionPoint + 1, this.occurrences.length - insertionPoint);</span>
+
+<span class="nc" id="L134">        return new ImmutableSortedBagImpl&lt;&gt;(elements, occurrences, this.comparator);</span>
+    }
+
+    @Override
+    public ImmutableSortedBag&lt;T&gt; newWithout(T element)
+    {
+<span class="nc" id="L140">        int index = Arrays.binarySearch(this.elements, element, this.comparator);</span>
+
+<span class="nc bnc" id="L142" title="All 2 branches missed.">        if (index &lt; 0)</span>
+        {
+<span class="nc" id="L144">            return this;</span>
+        }
+
+<span class="nc bnc" id="L147" title="All 2 branches missed.">        if (this.occurrences[index] &gt; 1)</span>
+        {
+<span class="nc" id="L149">            int[] occurrences = this.occurrences.clone();</span>
+<span class="nc" id="L150">            occurrences[index] -= 1;</span>
+<span class="nc" id="L151">            return new ImmutableSortedBagImpl&lt;&gt;(this.elements.clone(), occurrences, this.comparator);</span>
+        }
+
+<span class="nc" id="L154">        T[] elements = (T[]) new Object[this.elements.length - 1];</span>
+<span class="nc" id="L155">        int[] occurrences = new int[this.occurrences.length - 1];</span>
+
+<span class="nc" id="L157">        System.arraycopy(this.elements, 0, elements, 0, index);</span>
+<span class="nc" id="L158">        System.arraycopy(this.occurrences, 0, occurrences, 0, index);</span>
+
+<span class="nc" id="L160">        System.arraycopy(this.elements, index + 1, elements, index, elements.length - index);</span>
+<span class="nc" id="L161">        System.arraycopy(this.occurrences, index + 1, occurrences, index, occurrences.length - index);</span>
+
+<span class="nc" id="L163">        return new ImmutableSortedBagImpl&lt;&gt;(elements, occurrences, this.comparator);</span>
+    }
+
+    @Override
+    public ImmutableSortedBag&lt;T&gt; newWithAll(Iterable&lt;? extends T&gt; elements)
+    {
+<span class="nc" id="L169">        MutableSortedBag&lt;T&gt; result = TreeBag.newBag(this);</span>
+<span class="nc" id="L170">        result.addAllIterable(elements);</span>
+<span class="nc" id="L171">        return result.toImmutable();</span>
+    }
+
+    @Override
+    public Comparator&lt;? super T&gt; comparator()
+    {
+<span class="nc" id="L177">        return this.comparator;</span>
+    }
+
+    @Override
+    public T min()
+    {
+<span class="nc" id="L183">        return ArrayIterate.min(this.elements);</span>
+    }
+
+    @Override
+    public T min(Comparator&lt;? super T&gt; comparator)
+    {
+<span class="nc" id="L189">        return ArrayIterate.min(this.elements, comparator);</span>
+    }
+
+    @Override
+    public &lt;V extends Comparable&lt;? super V&gt;&gt; T minBy(Function&lt;? super T, ? extends V&gt; function)
+    {
+<span class="nc" id="L195">        return ArrayIterate.minBy(this.elements, function);</span>
+    }
+
+    @Override
+    public T max()
+    {
+<span class="nc" id="L201">        return ArrayIterate.max(this.elements);</span>
+    }
+
+    @Override
+    public T max(Comparator&lt;? super T&gt; comparator)
+    {
+<span class="nc" id="L207">        return ArrayIterate.max(this.elements, comparator);</span>
+    }
+
+    @Override
+    public &lt;V extends Comparable&lt;? super V&gt;&gt; T maxBy(Function&lt;? super T, ? extends V&gt; function)
+    {
+<span class="nc" id="L213">        return ArrayIterate.maxBy(this.elements, function);</span>
+    }
+
+    @Override
+    public ImmutableSortedBag&lt;T&gt; takeWhile(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L219">        MutableSortedBag&lt;T&gt; bag = TreeBag.newBag(this.comparator);</span>
+<span class="nc bnc" id="L220" title="All 2 branches missed.">        for (int i = 0; i &lt; this.elements.length; i++)</span>
+        {
+<span class="nc bnc" id="L222" title="All 2 branches missed.">            if (predicate.accept(this.elements[i]))</span>
+            {
+<span class="nc" id="L224">                bag.addOccurrences(this.elements[i], this.occurrences[i]);</span>
+            }
+            else
+            {
+<span class="nc" id="L228">                return bag.toImmutable();</span>
+            }
+        }
+<span class="nc" id="L231">        return bag.toImmutable();</span>
+    }
+
+    @Override
+    public ImmutableSortedBag&lt;T&gt; dropWhile(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L237">        MutableSortedBag&lt;T&gt; bag = TreeBag.newBag(this.comparator);</span>
+<span class="nc" id="L238">        int startIndex = this.detectNotIndex(predicate);</span>
+<span class="nc bnc" id="L239" title="All 2 branches missed.">        for (int i = startIndex; i &lt; this.elements.length; i++)</span>
+        {
+<span class="nc" id="L241">            bag.addOccurrences(this.elements[i], this.occurrences[i]);</span>
+        }
+<span class="nc" id="L243">        return bag.toImmutable();</span>
+    }
+
+    @Override
+    public int detectIndex(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L249">        int result = 0;</span>
+<span class="nc bnc" id="L250" title="All 2 branches missed.">        for (int i = 0; i &lt; this.elements.length; i++)</span>
+        {
+<span class="nc bnc" id="L252" title="All 2 branches missed.">            if (predicate.accept(this.elements[i]))</span>
+            {
+<span class="nc" id="L254">                return result;</span>
+            }
+<span class="nc" id="L256">            result += this.occurrences[i];</span>
+        }
+<span class="nc" id="L258">        return -1;</span>
+    }
+
+    private int detectNotIndex(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc bnc" id="L263" title="All 2 branches missed.">        for (int index = 0; index &lt; this.elements.length; index++)</span>
+        {
+<span class="nc bnc" id="L265" title="All 2 branches missed.">            if (!predicate.accept(this.elements[index]))</span>
+            {
+<span class="nc" id="L267">                return index;</span>
+            }
+        }
+<span class="nc" id="L270">        return this.elements.length;</span>
+    }
+
+    @Override
+    public PartitionImmutableSortedBag&lt;T&gt; partitionWhile(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L276">        PartitionTreeBag&lt;T&gt; result = new PartitionTreeBag&lt;&gt;(this.comparator());</span>
+<span class="nc" id="L277">        MutableSortedBag&lt;T&gt; selected = result.getSelected();</span>
+<span class="nc" id="L278">        MutableSortedBag&lt;T&gt; rejected = result.getRejected();</span>
+
+<span class="nc" id="L280">        int partitionIndex = this.detectNotIndex(predicate);</span>
+<span class="nc bnc" id="L281" title="All 2 branches missed.">        for (int i = 0; i &lt; partitionIndex; i++)</span>
+        {
+<span class="nc" id="L283">            selected.addOccurrences(this.elements[i], this.occurrences[i]);</span>
+        }
+<span class="nc bnc" id="L285" title="All 2 branches missed.">        for (int j = partitionIndex; j &lt; this.elements.length; j++)</span>
+        {
+<span class="nc" id="L287">            rejected.addOccurrences(this.elements[j], this.occurrences[j]);</span>
+        }
+<span class="nc" id="L289">        return new PartitionImmutableSortedBagImpl&lt;&gt;(result);</span>
+    }
+
+    @Override
+    public void forEachWithOccurrences(ObjectIntProcedure&lt;? super T&gt; procedure)
+    {
+<span class="nc bnc" id="L295" title="All 2 branches missed.">        for (int i = 0; i &lt; this.occurrences.length; i++)</span>
+        {
+<span class="nc" id="L297">            procedure.value(this.elements[i], this.occurrences[i]);</span>
+        }
+<span class="nc" id="L299">    }</span>
+
+    @Override
+    public int sizeDistinct()
+    {
+<span class="nc" id="L304">        return this.elements.length;</span>
+    }
+
+    @Override
+    public int size()
+    {
+<span class="nc" id="L310">        return this.size;</span>
+    }
+
+    @Override
+    public int indexOf(Object object)
+    {
+<span class="nc" id="L316">        int result = 0;</span>
+<span class="nc bnc" id="L317" title="All 2 branches missed.">        for (int i = 0; i &lt; this.elements.length; i++)</span>
+        {
+<span class="nc bnc" id="L319" title="All 2 branches missed.">            if (object.equals(this.elements[i]))</span>
+            {
+<span class="nc" id="L321">                return result;</span>
+            }
+<span class="nc" id="L323">            result += this.occurrences[i];</span>
+        }
+<span class="nc" id="L325">        return -1;</span>
+    }
+
+    @Override
+    public T getFirst()
+    {
+<span class="nc" id="L331">        return ArrayIterate.getFirst(this.elements);</span>
+    }
+
+    @Override
+    public T getLast()
+    {
+<span class="nc" id="L337">        return ArrayIterate.getLast(this.elements);</span>
+    }
+
+    @Override
+    public void forEach(int fromIndex, int toIndex, Procedure&lt;? super T&gt; procedure)
+    {
+<span class="nc" id="L343">        int index = fromIndex;</span>
+<span class="nc" id="L344">        ListIterate.rangeCheck(index, toIndex, this.size());</span>
+
+<span class="nc bnc" id="L346" title="All 2 branches missed.">        if (index &gt; toIndex)</span>
+        {
+<span class="nc" id="L348">            throw new IllegalArgumentException(&quot;fromIndex must not be greater than toIndex&quot;);</span>
+        }
+<span class="nc" id="L350">        int i = 0;</span>
+<span class="nc" id="L351">        int beginningIndex = 0;</span>
+
+<span class="nc bnc" id="L353" title="All 2 branches missed.">        while (beginningIndex &lt;= index)</span>
+        {
+<span class="nc" id="L355">            beginningIndex += this.occurrences[i];</span>
+<span class="nc bnc" id="L356" title="All 2 branches missed.">            if (beginningIndex &lt;= index)</span>
+            {
+<span class="nc" id="L358">                i++;</span>
+            }
+        }
+<span class="nc" id="L361">        int numberOfIterations = beginningIndex - index;</span>
+
+<span class="nc bnc" id="L363" title="All 4 branches missed.">        for (int j = 0; j &lt; numberOfIterations &amp;&amp; index &lt;= toIndex; j++)</span>
+        {
+<span class="nc" id="L365">            procedure.value(this.elements[i]);</span>
+<span class="nc" id="L366">            index++;</span>
+        }
+
+<span class="nc bnc" id="L369" title="All 2 branches missed.">        while (index &lt;= toIndex)</span>
+        {
+<span class="nc" id="L371">            i++;</span>
+<span class="nc bnc" id="L372" title="All 4 branches missed.">            for (int j = 0; j &lt; this.occurrences[i] &amp;&amp; index &lt;= toIndex; j++)</span>
+            {
+<span class="nc" id="L374">                procedure.value(this.elements[i]);</span>
+<span class="nc" id="L375">                index++;</span>
+            }
+        }
+<span class="nc" id="L378">    }</span>
+
+    @Override
+    public void each(Procedure&lt;? super T&gt; procedure)
+    {
+<span class="nc bnc" id="L383" title="All 2 branches missed.">        for (int i = 0; i &lt; this.elements.length; i++)</span>
+        {
+<span class="nc" id="L385">            T element = this.elements[i];</span>
+<span class="nc" id="L386">            int occurrences = this.occurrences[i];</span>
+<span class="nc bnc" id="L387" title="All 2 branches missed.">            for (int j = 0; j &lt; occurrences; j++)</span>
+            {
+<span class="nc" id="L389">                procedure.value(element);</span>
+            }
+        }
+<span class="nc" id="L392">    }</span>
+
+    @Override
+    public void forEachWithIndex(ObjectIntProcedure&lt;? super T&gt; objectIntProcedure)
+    {
+<span class="nc" id="L397">        int index = 0;</span>
+<span class="nc bnc" id="L398" title="All 2 branches missed.">        for (int i = 0; i &lt; this.elements.length; i++)</span>
+        {
+<span class="nc bnc" id="L400" title="All 2 branches missed.">            for (int j = 0; j &lt; this.occurrences[i]; j++)</span>
+            {
+<span class="nc" id="L402">                objectIntProcedure.value(this.elements[i], index);</span>
+<span class="nc" id="L403">                index++;</span>
+            }
+        }
+<span class="nc" id="L406">    }</span>
+
+    /**
+     * @since 9.1.
+     */
+    @Override
+    public &lt;V&gt; ImmutableList&lt;V&gt; collectWithIndex(ObjectIntToObjectFunction&lt;? super T, ? extends V&gt; function)
+    {
+<span class="nc" id="L414">        return this.collectWithIndex(function, FastList.&lt;V&gt;newList(this.size())).toImmutable();</span>
+    }
+
+    /**
+     * @since 9.1.
+     */
+    @Override
+    public &lt;V, R extends Collection&lt;V&gt;&gt; R collectWithIndex(ObjectIntToObjectFunction&lt;? super T, ? extends V&gt; function, R target)
+    {
+<span class="nc" id="L423">        int index = 0;</span>
+<span class="nc bnc" id="L424" title="All 2 branches missed.">        for (int i = 0; i &lt; this.elements.length; i++)</span>
+        {
+<span class="nc bnc" id="L426" title="All 2 branches missed.">            for (int j = 0; j &lt; this.occurrences[i]; j++)</span>
+            {
+<span class="nc" id="L428">                target.add(function.valueOf(this.elements[i], index));</span>
+<span class="nc" id="L429">                index++;</span>
+            }
+        }
+<span class="nc" id="L432">        return target;</span>
+    }
+
+    @Override
+    public void forEachWithIndex(int fromIndex, int toIndex, ObjectIntProcedure&lt;? super T&gt; objectIntProcedure)
+    {
+<span class="nc" id="L438">        ListIterate.rangeCheck(fromIndex, toIndex, this.size());</span>
+
+<span class="nc bnc" id="L440" title="All 2 branches missed.">        if (fromIndex &gt; toIndex)</span>
+        {
+<span class="nc" id="L442">            throw new IllegalArgumentException(&quot;fromIndex must not be greater than toIndex&quot;);</span>
+        }
+
+<span class="nc" id="L445">        int arrayIndex = 0;</span>
+<span class="nc" id="L446">        int index = fromIndex;</span>
+<span class="nc" id="L447">        int i = 0;</span>
+<span class="nc bnc" id="L448" title="All 2 branches missed.">        while (i &lt;= index)</span>
+        {
+<span class="nc" id="L450">            i += this.occurrences[arrayIndex];</span>
+<span class="nc bnc" id="L451" title="All 2 branches missed.">            if (i &lt;= index)</span>
+            {
+<span class="nc" id="L453">                arrayIndex++;</span>
+            }
+        }
+<span class="nc" id="L456">        int numberOfIterations = i - index;</span>
+
+<span class="nc bnc" id="L458" title="All 4 branches missed.">        for (int j = 0; j &lt; numberOfIterations &amp;&amp; index &lt;= toIndex; j++)</span>
+        {
+<span class="nc" id="L460">            objectIntProcedure.value(this.elements[arrayIndex], index);</span>
+<span class="nc" id="L461">            index++;</span>
+        }
+
+<span class="nc bnc" id="L464" title="All 2 branches missed.">        while (index &lt;= toIndex)</span>
+        {
+<span class="nc" id="L466">            arrayIndex++;</span>
+<span class="nc bnc" id="L467" title="All 4 branches missed.">            for (int j = 0; j &lt; this.occurrences[arrayIndex] &amp;&amp; index &lt;= toIndex; j++)</span>
+            {
+<span class="nc" id="L469">                objectIntProcedure.value(this.elements[arrayIndex], index);</span>
+<span class="nc" id="L470">                index++;</span>
+            }
+        }
+<span class="nc" id="L473">    }</span>
+
+    @Override
+    public int occurrencesOf(Object item)
+    {
+<span class="nc" id="L478">        int index = Arrays.binarySearch(this.elements, (T) item, this.comparator);</span>
+<span class="nc bnc" id="L479" title="All 2 branches missed.">        if (index &gt; -1)</span>
+        {
+<span class="nc" id="L481">            return this.occurrences[index];</span>
+        }
+<span class="nc" id="L483">        return 0;</span>
+    }
+
+    @Override
+    public ImmutableSortedSet&lt;T&gt; distinct()
+    {
+<span class="nc" id="L489">        return SortedSets.immutable.with(this.comparator(), this.elements);</span>
+    }
+
+    @Override
+    public &lt;S&gt; boolean corresponds(OrderedIterable&lt;S&gt; other, Predicate2&lt;? super T, ? super S&gt; predicate)
+    {
+<span class="nc bnc" id="L495" title="All 2 branches missed.">        if (this.size != other.size())</span>
+        {
+<span class="nc" id="L497">            return false;</span>
+        }
+
+<span class="nc bnc" id="L500" title="All 2 branches missed.">        if (other instanceof RandomAccess)</span>
+        {
+<span class="nc" id="L502">            List&lt;S&gt; otherList = (List&lt;S&gt;) other;</span>
+<span class="nc" id="L503">            int otherListIndex = 0;</span>
+<span class="nc bnc" id="L504" title="All 2 branches missed.">            for (int i = 0; i &lt; this.elements.length; i++)</span>
+            {
+<span class="nc bnc" id="L506" title="All 2 branches missed.">                for (int j = 0; j &lt; this.occurrences[i]; j++)</span>
+                {
+<span class="nc bnc" id="L508" title="All 2 branches missed.">                    if (!predicate.accept(this.elements[i], otherList.get(otherListIndex)))</span>
+                    {
+<span class="nc" id="L510">                        return false;</span>
+                    }
+<span class="nc" id="L512">                    otherListIndex++;</span>
+                }
+            }
+<span class="nc" id="L515">            return true;</span>
+        }
+
+<span class="nc" id="L518">        Iterator&lt;S&gt; otherIterator = other.iterator();</span>
+<span class="nc bnc" id="L519" title="All 2 branches missed.">        for (int i = 0; i &lt; this.elements.length; i++)</span>
+        {
+<span class="nc bnc" id="L521" title="All 2 branches missed.">            for (int j = 0; j &lt; this.occurrences[i]; j++)</span>
+            {
+<span class="nc bnc" id="L523" title="All 2 branches missed.">                if (!predicate.accept(this.elements[i], otherIterator.next()))</span>
+                {
+<span class="nc" id="L525">                    return false;</span>
+                }
+            }
+        }
+
+<span class="nc" id="L530">        return true;</span>
+    }
+
+    @Override
+    public MutableList&lt;T&gt; toSortedList()
+    {
+<span class="nc" id="L536">        return this.toSortedList(Comparators.naturalOrder());</span>
+    }
+
+    @Override
+    public MutableSortedSet&lt;T&gt; toSortedSet()
+    {
+<span class="nc" id="L542">        return SortedSets.mutable.with(this.elements);</span>
+    }
+
+    @Override
+    public MutableSortedSet&lt;T&gt; toSortedSet(Comparator&lt;? super T&gt; comparator)
+    {
+<span class="nc" id="L548">        return SortedSets.mutable.with(comparator, this.elements);</span>
+    }
+
+    @Override
+    public Object[] toArray()
+    {
+<span class="nc" id="L554">        Object[] result = new Object[this.size()];</span>
+<span class="nc" id="L555">        this.each(new Procedure&lt;T&gt;()</span>
+<span class="nc" id="L556">        {</span>
+            private int i;
+
+            public void value(T each)
+            {
+<span class="nc" id="L561">                result[this.i] = each;</span>
+<span class="nc" id="L562">                this.i++;</span>
+<span class="nc" id="L563">            }</span>
+        });
+
+<span class="nc" id="L566">        return result;</span>
+    }
+
+    @Override
+    public &lt;E&gt; E[] toArray(E[] array)
+    {
+<span class="nc" id="L572">        E[] array1 = array;</span>
+<span class="nc bnc" id="L573" title="All 2 branches missed.">        if (array1.length &lt; this.size)</span>
+        {
+<span class="nc" id="L575">            array1 = (E[]) Array.newInstance(array1.getClass().getComponentType(), this.size);</span>
+        }
+<span class="nc" id="L577">        T[] items = (T[]) this.toArray();</span>
+<span class="nc" id="L578">        System.arraycopy(items, 0, array1, 0, this.size);</span>
+<span class="nc bnc" id="L579" title="All 2 branches missed.">        if (array1.length &gt; this.size)</span>
+        {
+<span class="nc" id="L581">            array1[this.size] = null;</span>
+        }
+<span class="nc" id="L583">        return array1;</span>
+    }
+
+    @Override
+    public MutableSortedMap&lt;T, Integer&gt; toMapOfItemToCount()
+    {
+<span class="nc" id="L589">        MutableSortedMap&lt;T, Integer&gt; map = TreeSortedMap.newMap(this.comparator());</span>
+<span class="nc" id="L590">        this.forEachWithOccurrences(map::put);</span>
+<span class="nc" id="L591">        return map;</span>
+    }
+
+    @Override
+    public int compareTo(SortedBag&lt;T&gt; otherBag)
+    {
+<span class="nc" id="L597">        return SortedBagIterables.compare(this, otherBag);</span>
+    }
+
+    @Override
+    public boolean allSatisfy(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L603">        return ArrayIterate.allSatisfy(this.elements, predicate);</span>
+    }
+
+    @Override
+    public &lt;P&gt; boolean allSatisfyWith(Predicate2&lt;? super T, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc" id="L609">        return ArrayIterate.allSatisfyWith(this.elements, predicate, parameter);</span>
+    }
+
+    @Override
+    public boolean anySatisfy(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L615">        return ArrayIterate.anySatisfy(this.elements, predicate);</span>
+    }
+
+    @Override
+    public &lt;P&gt; boolean anySatisfyWith(Predicate2&lt;? super T, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc" id="L621">        return ArrayIterate.anySatisfyWith(this.elements, predicate, parameter);</span>
+    }
+
+    @Override
+    public boolean noneSatisfy(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L627">        return ArrayIterate.noneSatisfy(this.elements, predicate);</span>
+    }
+
+    @Override
+    public &lt;P&gt; boolean noneSatisfyWith(Predicate2&lt;? super T, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc" id="L633">        return ArrayIterate.noneSatisfyWith(this.elements, predicate, parameter);</span>
+    }
+
+    @Override
+    public T detect(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L639">        return ArrayIterate.detect(this.elements, predicate);</span>
+    }
+
+    @Override
+    public Optional&lt;T&gt; detectOptional(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L645">        return ArrayIterate.detectOptional(this.elements, predicate);</span>
+    }
+
+    @Override
+    public boolean contains(Object object)
+    {
+<span class="nc bnc" id="L651" title="All 2 branches missed.">        return Arrays.binarySearch(this.elements, (T) object, this.comparator) &gt;= 0;</span>
+    }
+
+    @Override
+    public Iterator&lt;T&gt; iterator()
+    {
+<span class="nc" id="L657">        return new InternalIterator();</span>
+    }
+
+    @Override
+    public ImmutableSortedBag&lt;T&gt; take(int count)
+    {
+<span class="nc bnc" id="L663" title="All 2 branches missed.">        if (count &lt; 0)</span>
+        {
+<span class="nc" id="L665">            throw new IllegalArgumentException(&quot;Count must be greater than zero, but was: &quot; + count);</span>
+        }
+<span class="nc bnc" id="L667" title="All 2 branches missed.">        if (count == 0)</span>
+        {
+<span class="nc" id="L669">            return SortedBags.immutable.empty(this.comparator());</span>
+        }
+<span class="nc bnc" id="L671" title="All 2 branches missed.">        if (count &gt;= this.size())</span>
+        {
+<span class="nc" id="L673">            return this;</span>
+        }
+
+<span class="nc" id="L676">        MutableSortedBag&lt;T&gt; output = TreeBag.newBag(this.comparator());</span>
+<span class="nc" id="L677">        int index = 0;</span>
+<span class="nc bnc" id="L678" title="All 2 branches missed.">        for (int i = 0; i &lt; this.elements.length; i++)</span>
+        {
+<span class="nc bnc" id="L680" title="All 2 branches missed.">            for (int j = 0; j &lt; this.occurrences[i]; j++)</span>
+            {
+<span class="nc" id="L682">                output.add(this.elements[i]);</span>
+<span class="nc" id="L683">                index++;</span>
+<span class="nc bnc" id="L684" title="All 2 branches missed.">                if (index &gt;= count)</span>
+                {
+<span class="nc" id="L686">                    return output.toImmutable();</span>
+                }
+            }
+        }
+
+<span class="nc" id="L691">        throw new AssertionError();</span>
+    }
+
+    @Override
+    public ImmutableSortedBag&lt;T&gt; drop(int count)
+    {
+<span class="nc bnc" id="L697" title="All 2 branches missed.">        if (count &lt; 0)</span>
+        {
+<span class="nc" id="L699">            throw new IllegalArgumentException(&quot;Count must be greater than zero, but was: &quot; + count);</span>
+        }
+<span class="nc bnc" id="L701" title="All 2 branches missed.">        if (count == 0)</span>
+        {
+<span class="nc" id="L703">            return this;</span>
+        }
+<span class="nc bnc" id="L705" title="All 2 branches missed.">        if (count &gt;= this.size())</span>
+        {
+<span class="nc" id="L707">            return SortedBags.immutable.empty(this.comparator());</span>
+        }
+
+<span class="nc" id="L710">        MutableSortedBag&lt;T&gt; output = TreeBag.newBag(this.comparator());</span>
+<span class="nc" id="L711">        int index = 0;</span>
+<span class="nc bnc" id="L712" title="All 2 branches missed.">        for (int i = 0; i &lt; this.elements.length; i++)</span>
+        {
+<span class="nc bnc" id="L714" title="All 2 branches missed.">            for (int j = 0; j &lt; this.occurrences[i]; j++)</span>
+            {
+<span class="nc bnc" id="L716" title="All 2 branches missed.">                if (index &gt;= count)</span>
+                {
+<span class="nc" id="L718">                    output.add(this.elements[i]);</span>
+                }
+<span class="nc" id="L720">                index++;</span>
+            }
+        }
+
+<span class="nc" id="L724">        return output.toImmutable();</span>
+    }
+
+    @Override
+    public boolean equals(Object other)
+    {
+<span class="nc bnc" id="L730" title="All 2 branches missed.">        if (this == other)</span>
+        {
+<span class="nc" id="L732">            return true;</span>
+        }
+<span class="nc bnc" id="L734" title="All 2 branches missed.">        if (!(other instanceof Bag))</span>
+        {
+<span class="nc" id="L736">            return false;</span>
+        }
+<span class="nc" id="L738">        Bag&lt;?&gt; bag = (Bag&lt;?&gt;) other;</span>
+<span class="nc bnc" id="L739" title="All 2 branches missed.">        if (this.sizeDistinct() != bag.sizeDistinct())</span>
+        {
+<span class="nc" id="L741">            return false;</span>
+        }
+
+<span class="nc bnc" id="L744" title="All 2 branches missed.">        for (int i = 0; i &lt; this.elements.length; i++)</span>
+        {
+<span class="nc bnc" id="L746" title="All 2 branches missed.">            if (bag.occurrencesOf(this.elements[i]) != this.occurrences[i])</span>
+            {
+<span class="nc" id="L748">                return false;</span>
+            }
+        }
+<span class="nc" id="L751">        return true;</span>
+    }
+
+    @Override
+    public int hashCode()
+    {
+<span class="nc" id="L757">        Counter counter = new Counter();</span>
+<span class="nc bnc" id="L758" title="All 2 branches missed.">        this.forEachWithOccurrences((each, count) -&gt; counter.add((each == null ? 0 : each.hashCode()) ^ count));</span>
+<span class="nc" id="L759">        return counter.getCount();</span>
+    }
+
+<span class="nc" id="L762">    private class InternalIterator implements Iterator&lt;T&gt;</span>
+    {
+        private int position;
+<span class="nc bnc" id="L765" title="All 2 branches missed.">        private int occurrencesRemaining = ImmutableSortedBagImpl.this.isEmpty() ? 0 : ImmutableSortedBagImpl.this.occurrences[0];</span>
+
+        @Override
+        public boolean hasNext()
+        {
+<span class="nc bnc" id="L770" title="All 4 branches missed.">            return this.position &lt; ImmutableSortedBagImpl.this.elements.length - 1 || this.occurrencesRemaining != 0;</span>
+        }
+
+        @Override
+        public T next()
+        {
+<span class="nc bnc" id="L776" title="All 2 branches missed.">            if (!this.hasNext())</span>
+            {
+<span class="nc" id="L778">                throw new NoSuchElementException();</span>
+            }
+<span class="nc bnc" id="L780" title="All 2 branches missed.">            if (this.occurrencesRemaining == 0)</span>
+            {
+<span class="nc" id="L782">                this.position++;</span>
+<span class="nc" id="L783">                this.occurrencesRemaining = ImmutableSortedBagImpl.this.occurrences[this.position];</span>
+            }
+<span class="nc" id="L785">            this.occurrencesRemaining--;</span>
+<span class="nc" id="L786">            return ImmutableSortedBagImpl.this.elements[this.position];</span>
+        }
+
+        @Override
+        public void remove()
+        {
+<span class="nc" id="L792">            throw new UnsupportedOperationException(&quot;Cannot call remove() on &quot; + this.getClass().getSimpleName());</span>
+        }
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.0.201801022044</span></div></body></html>

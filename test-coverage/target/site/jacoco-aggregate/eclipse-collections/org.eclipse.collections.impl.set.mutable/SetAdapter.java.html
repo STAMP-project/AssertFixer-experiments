@@ -1,0 +1,490 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>SetAdapter.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Eclipse Collections Test Coverage Aggregation</a> &gt; <a href="../index.html" class="el_bundle">eclipse-collections</a> &gt; <a href="index.source.html" class="el_package">org.eclipse.collections.impl.set.mutable</a> &gt; <span class="el_source">SetAdapter.java</span></div><h1>SetAdapter.java</h1><pre class="source lang-java linenums">/*
+ * Copyright (c) 2018 Goldman Sachs and others.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * and Eclipse Distribution License v. 1.0 which accompany this distribution.
+ * The Eclipse Public License is available at http://www.eclipse.org/legal/epl-v10.html
+ * and the Eclipse Distribution License is available at
+ * http://www.eclipse.org/org/documents/edl-v10.php.
+ */
+
+package org.eclipse.collections.impl.set.mutable;
+
+import java.io.Serializable;
+import java.util.Collection;
+import java.util.Set;
+import java.util.concurrent.ExecutorService;
+
+import org.eclipse.collections.api.LazyIterable;
+import org.eclipse.collections.api.RichIterable;
+import org.eclipse.collections.api.block.function.Function;
+import org.eclipse.collections.api.block.function.Function2;
+import org.eclipse.collections.api.block.function.primitive.BooleanFunction;
+import org.eclipse.collections.api.block.function.primitive.ByteFunction;
+import org.eclipse.collections.api.block.function.primitive.CharFunction;
+import org.eclipse.collections.api.block.function.primitive.DoubleFunction;
+import org.eclipse.collections.api.block.function.primitive.FloatFunction;
+import org.eclipse.collections.api.block.function.primitive.IntFunction;
+import org.eclipse.collections.api.block.function.primitive.LongFunction;
+import org.eclipse.collections.api.block.function.primitive.ShortFunction;
+import org.eclipse.collections.api.block.predicate.Predicate;
+import org.eclipse.collections.api.block.predicate.Predicate2;
+import org.eclipse.collections.api.block.procedure.Procedure;
+import org.eclipse.collections.api.ordered.OrderedIterable;
+import org.eclipse.collections.api.partition.set.PartitionMutableSet;
+import org.eclipse.collections.api.set.ImmutableSet;
+import org.eclipse.collections.api.set.MutableSet;
+import org.eclipse.collections.api.set.ParallelUnsortedSetIterable;
+import org.eclipse.collections.api.set.SetIterable;
+import org.eclipse.collections.api.set.UnsortedSetIterable;
+import org.eclipse.collections.api.set.primitive.MutableBooleanSet;
+import org.eclipse.collections.api.set.primitive.MutableByteSet;
+import org.eclipse.collections.api.set.primitive.MutableCharSet;
+import org.eclipse.collections.api.set.primitive.MutableDoubleSet;
+import org.eclipse.collections.api.set.primitive.MutableFloatSet;
+import org.eclipse.collections.api.set.primitive.MutableIntSet;
+import org.eclipse.collections.api.set.primitive.MutableLongSet;
+import org.eclipse.collections.api.set.primitive.MutableShortSet;
+import org.eclipse.collections.api.tuple.Pair;
+import org.eclipse.collections.impl.block.procedure.CollectionAddProcedure;
+import org.eclipse.collections.impl.block.procedure.PartitionPredicate2Procedure;
+import org.eclipse.collections.impl.block.procedure.PartitionProcedure;
+import org.eclipse.collections.impl.block.procedure.SelectInstancesOfProcedure;
+import org.eclipse.collections.impl.block.procedure.primitive.CollectBooleanProcedure;
+import org.eclipse.collections.impl.block.procedure.primitive.CollectByteProcedure;
+import org.eclipse.collections.impl.block.procedure.primitive.CollectCharProcedure;
+import org.eclipse.collections.impl.block.procedure.primitive.CollectDoubleProcedure;
+import org.eclipse.collections.impl.block.procedure.primitive.CollectFloatProcedure;
+import org.eclipse.collections.impl.block.procedure.primitive.CollectIntProcedure;
+import org.eclipse.collections.impl.block.procedure.primitive.CollectLongProcedure;
+import org.eclipse.collections.impl.block.procedure.primitive.CollectShortProcedure;
+import org.eclipse.collections.impl.collection.mutable.AbstractCollectionAdapter;
+import org.eclipse.collections.impl.factory.Sets;
+import org.eclipse.collections.impl.lazy.parallel.set.NonParallelUnsortedSetIterable;
+import org.eclipse.collections.impl.multimap.set.UnifiedSetMultimap;
+import org.eclipse.collections.impl.partition.set.PartitionUnifiedSet;
+import org.eclipse.collections.impl.set.mutable.primitive.BooleanHashSet;
+import org.eclipse.collections.impl.set.mutable.primitive.ByteHashSet;
+import org.eclipse.collections.impl.set.mutable.primitive.CharHashSet;
+import org.eclipse.collections.impl.set.mutable.primitive.DoubleHashSet;
+import org.eclipse.collections.impl.set.mutable.primitive.FloatHashSet;
+import org.eclipse.collections.impl.set.mutable.primitive.IntHashSet;
+import org.eclipse.collections.impl.set.mutable.primitive.LongHashSet;
+import org.eclipse.collections.impl.set.mutable.primitive.ShortHashSet;
+import org.eclipse.collections.impl.utility.ArrayIterate;
+import org.eclipse.collections.impl.utility.Iterate;
+import org.eclipse.collections.impl.utility.internal.SetIterables;
+import org.eclipse.collections.impl.utility.internal.SetIterate;
+
+/**
+ * This class provides a MutableSet wrapper around a JDK Collections Set interface instance.  All of the MutableSet
+ * interface methods are supported in addition to the JDK Set interface methods.
+ * &lt;p&gt;
+ * To create a new wrapper around an existing Set instance, use the {@link #adapt(Set)} factory method.
+ */
+public final class SetAdapter&lt;T&gt;
+        extends AbstractCollectionAdapter&lt;T&gt;
+        implements Serializable, MutableSet&lt;T&gt;
+{
+    private static final long serialVersionUID = 1L;
+    private final Set&lt;T&gt; delegate;
+
+    SetAdapter(Set&lt;T&gt; newDelegate)
+<span class="nc" id="L93">    {</span>
+<span class="nc bnc" id="L94" title="All 2 branches missed.">        if (newDelegate == null)</span>
+        {
+<span class="nc" id="L96">            throw new NullPointerException(&quot;SetAdapter may not wrap null&quot;);</span>
+        }
+<span class="nc" id="L98">        this.delegate = newDelegate;</span>
+<span class="nc" id="L99">    }</span>
+
+    @Override
+    protected Set&lt;T&gt; getDelegate()
+    {
+<span class="nc" id="L104">        return this.delegate;</span>
+    }
+
+    @Override
+    public MutableSet&lt;T&gt; asUnmodifiable()
+    {
+<span class="nc" id="L110">        return UnmodifiableMutableSet.of(this);</span>
+    }
+
+    @Override
+    public MutableSet&lt;T&gt; asSynchronized()
+    {
+<span class="nc" id="L116">        return SynchronizedMutableSet.of(this);</span>
+    }
+
+    @Override
+    public ImmutableSet&lt;T&gt; toImmutable()
+    {
+<span class="nc" id="L122">        return Sets.immutable.withAll(this.delegate);</span>
+    }
+
+    public static &lt;E&gt; MutableSet&lt;E&gt; adapt(Set&lt;E&gt; set)
+    {
+<span class="nc bnc" id="L127" title="All 2 branches missed.">        if (set instanceof MutableSet)</span>
+        {
+<span class="nc" id="L129">            return (MutableSet&lt;E&gt;) set;</span>
+        }
+<span class="nc" id="L131">        return new SetAdapter&lt;&gt;(set);</span>
+    }
+
+    @Override
+    public MutableSet&lt;T&gt; clone()
+    {
+<span class="nc" id="L137">        return UnifiedSet.newSet(this.delegate);</span>
+    }
+
+    @Override
+    public boolean contains(Object o)
+    {
+<span class="nc" id="L143">        return this.delegate.contains(o);</span>
+    }
+
+    @Override
+    public boolean containsAll(Collection&lt;?&gt; collection)
+    {
+<span class="nc" id="L149">        return this.delegate.containsAll(collection);</span>
+    }
+
+    @Override
+    public boolean equals(Object obj)
+    {
+<span class="nc" id="L155">        return this.delegate.equals(obj);</span>
+    }
+
+    @Override
+    public int hashCode()
+    {
+<span class="nc" id="L161">        return this.delegate.hashCode();</span>
+    }
+
+    @Override
+    public SetAdapter&lt;T&gt; with(T element)
+    {
+<span class="nc" id="L167">        this.add(element);</span>
+<span class="nc" id="L168">        return this;</span>
+    }
+
+    public SetAdapter&lt;T&gt; with(T element1, T element2)
+    {
+<span class="nc" id="L173">        this.add(element1);</span>
+<span class="nc" id="L174">        this.add(element2);</span>
+<span class="nc" id="L175">        return this;</span>
+    }
+
+    public SetAdapter&lt;T&gt; with(T element1, T element2, T element3)
+    {
+<span class="nc" id="L180">        this.add(element1);</span>
+<span class="nc" id="L181">        this.add(element2);</span>
+<span class="nc" id="L182">        this.add(element3);</span>
+<span class="nc" id="L183">        return this;</span>
+    }
+
+    public SetAdapter&lt;T&gt; with(T... elements)
+    {
+<span class="nc" id="L188">        ArrayIterate.forEach(elements, CollectionAddProcedure.on(this.delegate));</span>
+<span class="nc" id="L189">        return this;</span>
+    }
+
+    @Override
+    public SetAdapter&lt;T&gt; without(T element)
+    {
+<span class="nc" id="L195">        this.remove(element);</span>
+<span class="nc" id="L196">        return this;</span>
+    }
+
+    @Override
+    public SetAdapter&lt;T&gt; withAll(Iterable&lt;? extends T&gt; elements)
+    {
+<span class="nc" id="L202">        this.addAllIterable(elements);</span>
+<span class="nc" id="L203">        return this;</span>
+    }
+
+    @Override
+    public SetAdapter&lt;T&gt; withoutAll(Iterable&lt;? extends T&gt; elements)
+    {
+<span class="nc" id="L209">        this.removeAllIterable(elements);</span>
+<span class="nc" id="L210">        return this;</span>
+    }
+
+    /**
+     * @deprecated use {@link UnifiedSet#newSet()} instead (inlineable)
+     */
+    @Override
+    @Deprecated
+    public MutableSet&lt;T&gt; newEmpty()
+    {
+<span class="nc" id="L220">        return UnifiedSet.newSet();</span>
+    }
+
+    @Override
+    public MutableSet&lt;T&gt; tap(Procedure&lt;? super T&gt; procedure)
+    {
+<span class="nc" id="L226">        Iterate.forEach(this.delegate, procedure);</span>
+<span class="nc" id="L227">        return this;</span>
+    }
+
+    @Override
+    public MutableSet&lt;T&gt; select(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L233">        return Iterate.select(this.delegate, predicate, UnifiedSet.newSet());</span>
+    }
+
+    @Override
+    public MutableSet&lt;T&gt; reject(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L239">        return Iterate.reject(this.delegate, predicate, UnifiedSet.newSet());</span>
+    }
+
+    @Override
+    public PartitionMutableSet&lt;T&gt; partition(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L245">        PartitionMutableSet&lt;T&gt; partitionUnifiedSet = new PartitionUnifiedSet&lt;&gt;();</span>
+<span class="nc" id="L246">        this.forEach(new PartitionProcedure&lt;&gt;(predicate, partitionUnifiedSet));</span>
+<span class="nc" id="L247">        return partitionUnifiedSet;</span>
+    }
+
+    @Override
+    public &lt;P&gt; PartitionMutableSet&lt;T&gt; partitionWith(Predicate2&lt;? super T, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc" id="L253">        PartitionMutableSet&lt;T&gt; partitionUnifiedSet = new PartitionUnifiedSet&lt;&gt;();</span>
+<span class="nc" id="L254">        this.forEach(new PartitionPredicate2Procedure&lt;&gt;(predicate, parameter, partitionUnifiedSet));</span>
+<span class="nc" id="L255">        return partitionUnifiedSet;</span>
+    }
+
+    @Override
+    public &lt;S&gt; MutableSet&lt;S&gt; selectInstancesOf(Class&lt;S&gt; clazz)
+    {
+<span class="nc" id="L261">        MutableSet&lt;S&gt; result = UnifiedSet.newSet();</span>
+<span class="nc" id="L262">        this.forEach(new SelectInstancesOfProcedure&lt;&gt;(clazz, result));</span>
+<span class="nc" id="L263">        return result;</span>
+    }
+
+    @Override
+    public &lt;V&gt; MutableSet&lt;V&gt; collect(Function&lt;? super T, ? extends V&gt; function)
+    {
+<span class="nc" id="L269">        return Iterate.collect(this.delegate, function, UnifiedSet.newSet());</span>
+    }
+
+    @Override
+    public MutableBooleanSet collectBoolean(BooleanFunction&lt;? super T&gt; booleanFunction)
+    {
+<span class="nc" id="L275">        BooleanHashSet result = new BooleanHashSet();</span>
+<span class="nc" id="L276">        this.forEach(new CollectBooleanProcedure&lt;&gt;(booleanFunction, result));</span>
+<span class="nc" id="L277">        return result;</span>
+    }
+
+    @Override
+    public MutableByteSet collectByte(ByteFunction&lt;? super T&gt; byteFunction)
+    {
+<span class="nc" id="L283">        ByteHashSet result = new ByteHashSet(this.size());</span>
+<span class="nc" id="L284">        this.forEach(new CollectByteProcedure&lt;&gt;(byteFunction, result));</span>
+<span class="nc" id="L285">        return result;</span>
+    }
+
+    @Override
+    public MutableCharSet collectChar(CharFunction&lt;? super T&gt; charFunction)
+    {
+<span class="nc" id="L291">        CharHashSet result = new CharHashSet(this.size());</span>
+<span class="nc" id="L292">        this.forEach(new CollectCharProcedure&lt;&gt;(charFunction, result));</span>
+<span class="nc" id="L293">        return result;</span>
+    }
+
+    @Override
+    public MutableDoubleSet collectDouble(DoubleFunction&lt;? super T&gt; doubleFunction)
+    {
+<span class="nc" id="L299">        DoubleHashSet result = new DoubleHashSet(this.size());</span>
+<span class="nc" id="L300">        this.forEach(new CollectDoubleProcedure&lt;&gt;(doubleFunction, result));</span>
+<span class="nc" id="L301">        return result;</span>
+    }
+
+    @Override
+    public MutableFloatSet collectFloat(FloatFunction&lt;? super T&gt; floatFunction)
+    {
+<span class="nc" id="L307">        FloatHashSet result = new FloatHashSet(this.size());</span>
+<span class="nc" id="L308">        this.forEach(new CollectFloatProcedure&lt;&gt;(floatFunction, result));</span>
+<span class="nc" id="L309">        return result;</span>
+    }
+
+    @Override
+    public MutableIntSet collectInt(IntFunction&lt;? super T&gt; intFunction)
+    {
+<span class="nc" id="L315">        IntHashSet result = new IntHashSet(this.size());</span>
+<span class="nc" id="L316">        this.forEach(new CollectIntProcedure&lt;&gt;(intFunction, result));</span>
+<span class="nc" id="L317">        return result;</span>
+    }
+
+    @Override
+    public MutableLongSet collectLong(LongFunction&lt;? super T&gt; longFunction)
+    {
+<span class="nc" id="L323">        LongHashSet result = new LongHashSet(this.size());</span>
+<span class="nc" id="L324">        this.forEach(new CollectLongProcedure&lt;&gt;(longFunction, result));</span>
+<span class="nc" id="L325">        return result;</span>
+    }
+
+    @Override
+    public MutableShortSet collectShort(ShortFunction&lt;? super T&gt; shortFunction)
+    {
+<span class="nc" id="L331">        ShortHashSet result = new ShortHashSet(this.size());</span>
+<span class="nc" id="L332">        this.forEach(new CollectShortProcedure&lt;&gt;(shortFunction, result));</span>
+<span class="nc" id="L333">        return result;</span>
+    }
+
+    @Override
+    public &lt;V&gt; MutableSet&lt;V&gt; flatCollect(Function&lt;? super T, ? extends Iterable&lt;V&gt;&gt; function)
+    {
+<span class="nc" id="L339">        return Iterate.flatCollect(this.delegate, function, UnifiedSet.newSet());</span>
+    }
+
+    @Override
+    public &lt;V&gt; MutableSet&lt;V&gt; collectIf(
+            Predicate&lt;? super T&gt; predicate,
+            Function&lt;? super T, ? extends V&gt; function)
+    {
+<span class="nc" id="L347">        return Iterate.collectIf(this.delegate, predicate, function, UnifiedSet.newSet());</span>
+    }
+
+    @Override
+    public &lt;V&gt; UnifiedSetMultimap&lt;V, T&gt; groupBy(Function&lt;? super T, ? extends V&gt; function)
+    {
+<span class="nc" id="L353">        return Iterate.groupBy(this.delegate, function, UnifiedSetMultimap.newMultimap());</span>
+    }
+
+    @Override
+    public &lt;V&gt; UnifiedSetMultimap&lt;V, T&gt; groupByEach(Function&lt;? super T, ? extends Iterable&lt;V&gt;&gt; function)
+    {
+<span class="nc" id="L359">        return Iterate.groupByEach(this.delegate, function, UnifiedSetMultimap.newMultimap());</span>
+    }
+
+    @Override
+    public &lt;P&gt; MutableSet&lt;T&gt; selectWith(Predicate2&lt;? super T, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc" id="L365">        return Iterate.selectWith(this.delegate, predicate, parameter, UnifiedSet.newSet());</span>
+    }
+
+    @Override
+    public &lt;P&gt; MutableSet&lt;T&gt; rejectWith(Predicate2&lt;? super T, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc" id="L371">        return Iterate.rejectWith(this.delegate, predicate, parameter, UnifiedSet.newSet());</span>
+    }
+
+    @Override
+    public &lt;P, V&gt; MutableSet&lt;V&gt; collectWith(Function2&lt;? super T, ? super P, ? extends V&gt; function, P parameter)
+    {
+<span class="nc" id="L377">        return Iterate.collectWith(this.delegate, function, parameter, UnifiedSet.newSet());</span>
+    }
+
+    /**
+     * @deprecated in 6.0. Use {@link OrderedIterable#zip(Iterable)} instead.
+     */
+    @Deprecated
+    @Override
+    public &lt;S&gt; MutableSet&lt;Pair&lt;T, S&gt;&gt; zip(Iterable&lt;S&gt; that)
+    {
+<span class="nc bnc" id="L387" title="All 4 branches missed.">        if (that instanceof Collection || that instanceof RichIterable)</span>
+        {
+<span class="nc" id="L389">            int thatSize = Iterate.sizeOf(that);</span>
+<span class="nc" id="L390">            UnifiedSet&lt;Pair&lt;T, S&gt;&gt; target = UnifiedSet.newSet(Math.min(this.size(), thatSize));</span>
+<span class="nc" id="L391">            return Iterate.zip(this, that, target);</span>
+        }
+<span class="nc" id="L393">        return Iterate.zip(this, that, UnifiedSet.newSet());</span>
+    }
+
+    /**
+     * @deprecated in 6.0. Use {@link OrderedIterable#zipWithIndex()} instead.
+     */
+    @Deprecated
+    @Override
+    public MutableSet&lt;Pair&lt;T, Integer&gt;&gt; zipWithIndex()
+    {
+<span class="nc" id="L403">        return Iterate.zipWithIndex(this, UnifiedSet.newSet(this.size()));</span>
+    }
+
+    @Override
+    public boolean removeAllIterable(Iterable&lt;?&gt; iterable)
+    {
+<span class="nc" id="L409">        return SetIterate.removeAllIterable(this, iterable);</span>
+    }
+
+    @Override
+    public MutableSet&lt;T&gt; union(SetIterable&lt;? extends T&gt; set)
+    {
+<span class="nc" id="L415">        return SetIterables.union(this, set);</span>
+    }
+
+    @Override
+    public &lt;R extends Set&lt;T&gt;&gt; R unionInto(SetIterable&lt;? extends T&gt; set, R targetSet)
+    {
+<span class="nc" id="L421">        return SetIterables.unionInto(this, set, targetSet);</span>
+    }
+
+    @Override
+    public MutableSet&lt;T&gt; intersect(SetIterable&lt;? extends T&gt; set)
+    {
+<span class="nc" id="L427">        return SetIterables.intersect(this, set);</span>
+    }
+
+    @Override
+    public &lt;R extends Set&lt;T&gt;&gt; R intersectInto(SetIterable&lt;? extends T&gt; set, R targetSet)
+    {
+<span class="nc" id="L433">        return SetIterables.intersectInto(this, set, targetSet);</span>
+    }
+
+    @Override
+    public MutableSet&lt;T&gt; difference(SetIterable&lt;? extends T&gt; subtrahendSet)
+    {
+<span class="nc" id="L439">        return SetIterables.difference(this, subtrahendSet);</span>
+    }
+
+    @Override
+    public &lt;R extends Set&lt;T&gt;&gt; R differenceInto(SetIterable&lt;? extends T&gt; subtrahendSet, R targetSet)
+    {
+<span class="nc" id="L445">        return SetIterables.differenceInto(this, subtrahendSet, targetSet);</span>
+    }
+
+    @Override
+    public MutableSet&lt;T&gt; symmetricDifference(SetIterable&lt;? extends T&gt; setB)
+    {
+<span class="nc" id="L451">        return SetIterables.symmetricDifference(this, setB);</span>
+    }
+
+    @Override
+    public &lt;R extends Set&lt;T&gt;&gt; R symmetricDifferenceInto(SetIterable&lt;? extends T&gt; set, R targetSet)
+    {
+<span class="nc" id="L457">        return SetIterables.symmetricDifferenceInto(this, set, targetSet);</span>
+    }
+
+    @Override
+    public boolean isSubsetOf(SetIterable&lt;? extends T&gt; candidateSuperset)
+    {
+<span class="nc" id="L463">        return SetIterables.isSubsetOf(this, candidateSuperset);</span>
+    }
+
+    @Override
+    public boolean isProperSubsetOf(SetIterable&lt;? extends T&gt; candidateSuperset)
+    {
+<span class="nc" id="L469">        return SetIterables.isProperSubsetOf(this, candidateSuperset);</span>
+    }
+
+    @Override
+    public MutableSet&lt;UnsortedSetIterable&lt;T&gt;&gt; powerSet()
+    {
+<span class="nc" id="L475">        return (MutableSet&lt;UnsortedSetIterable&lt;T&gt;&gt;) (MutableSet&lt;?&gt;) SetIterables.powerSet(this);</span>
+    }
+
+    @Override
+    public &lt;B&gt; LazyIterable&lt;Pair&lt;T, B&gt;&gt; cartesianProduct(SetIterable&lt;B&gt; set)
+    {
+<span class="nc" id="L481">        return SetIterables.cartesianProduct(this, set);</span>
+    }
+
+    @Override
+    public ParallelUnsortedSetIterable&lt;T&gt; asParallel(ExecutorService executorService, int batchSize)
+    {
+<span class="nc" id="L487">        return new NonParallelUnsortedSetIterable&lt;&gt;(this);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.0.201801022044</span></div></body></html>

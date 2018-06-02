@@ -1,0 +1,49 @@
+/*
+ * Copyright (c) 2018 Goldman Sachs.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * and Eclipse Distribution License v. 1.0 which accompany this distribution.
+ * The Eclipse Public License is available at http://www.eclipse.org/legal/epl-v10.html
+ * and the Eclipse Distribution License is available at
+ * http://www.eclipse.org/org/documents/edl-v10.php.
+ */
+
+package org.eclipse.collections.impl.set.immutable.primitive;
+
+import org.eclipse.collections.api.set.MutableSet;
+import org.eclipse.collections.api.set.primitive.ImmutableLongSet;
+import org.eclipse.collections.api.set.primitive.MutableLongSet;
+import org.eclipse.collections.impl.set.mutable.UnifiedSet;
+import org.eclipse.collections.impl.set.mutable.primitive.AbstractImmutableLongHashSetTestCase;
+import org.eclipse.collections.impl.set.mutable.primitive.LongHashSet;
+
+/**
+ * JUnit test for {@link ImmutableLongHashSet}.
+ * This file was automatically generated from template file immutablePrimitiveHashSetTest.stg.
+ */
+public class ImmutableLongHashSetTest extends AbstractImmutableLongHashSetTestCase
+{
+    @Override
+    protected ImmutableLongSet classUnderTest()
+    {
+        return LongHashSet.newSetWith(1L, 2L, 3L).toImmutable();
+    }
+
+    @Override
+    protected ImmutableLongSet newWith(long... elements)
+    {
+        return LongHashSet.newSetWith(elements).toImmutable();
+    }
+
+    @Override
+    protected MutableLongSet newMutableCollectionWith(long... elements)
+    {
+        return LongHashSet.newSetWith(elements);
+    }
+
+    @Override
+    protected MutableSet<Long> newObjectCollectionWith(Long... elements)
+    {
+        return UnifiedSet.newSetWith(elements);
+    }
+}

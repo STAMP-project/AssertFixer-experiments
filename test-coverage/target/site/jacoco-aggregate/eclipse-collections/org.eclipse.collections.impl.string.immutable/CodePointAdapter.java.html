@@ -1,0 +1,810 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>CodePointAdapter.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Eclipse Collections Test Coverage Aggregation</a> &gt; <a href="../index.html" class="el_bundle">eclipse-collections</a> &gt; <a href="index.source.html" class="el_package">org.eclipse.collections.impl.string.immutable</a> &gt; <span class="el_source">CodePointAdapter.java</span></div><h1>CodePointAdapter.java</h1><pre class="source lang-java linenums">/*
+ * Copyright (c) 2018 Goldman Sachs and others.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * and Eclipse Distribution License v. 1.0 which accompany this distribution.
+ * The Eclipse Public License is available at http://www.eclipse.org/legal/epl-v10.html
+ * and the Eclipse Distribution License is available at
+ * http://www.eclipse.org/org/documents/edl-v10.php.
+ */
+
+package org.eclipse.collections.impl.string.immutable;
+
+import java.io.IOException;
+import java.io.Serializable;
+import java.util.Iterator;
+import java.util.NoSuchElementException;
+
+import org.eclipse.collections.api.IntIterable;
+import org.eclipse.collections.api.LazyIntIterable;
+import org.eclipse.collections.api.RichIterable;
+import org.eclipse.collections.api.bag.primitive.MutableIntBag;
+import org.eclipse.collections.api.block.function.primitive.IntToIntFunction;
+import org.eclipse.collections.api.block.function.primitive.IntToObjectFunction;
+import org.eclipse.collections.api.block.function.primitive.ObjectIntIntToObjectFunction;
+import org.eclipse.collections.api.block.function.primitive.ObjectIntToObjectFunction;
+import org.eclipse.collections.api.block.predicate.primitive.IntPredicate;
+import org.eclipse.collections.api.block.procedure.primitive.IntIntProcedure;
+import org.eclipse.collections.api.block.procedure.primitive.IntProcedure;
+import org.eclipse.collections.api.iterator.IntIterator;
+import org.eclipse.collections.api.list.ImmutableList;
+import org.eclipse.collections.api.list.MutableList;
+import org.eclipse.collections.api.list.primitive.ImmutableIntList;
+import org.eclipse.collections.api.list.primitive.IntList;
+import org.eclipse.collections.api.list.primitive.MutableIntList;
+import org.eclipse.collections.api.set.primitive.MutableIntSet;
+import org.eclipse.collections.api.tuple.primitive.IntIntPair;
+import org.eclipse.collections.api.tuple.primitive.IntObjectPair;
+import org.eclipse.collections.impl.bag.mutable.primitive.IntHashBag;
+import org.eclipse.collections.impl.factory.Lists;
+import org.eclipse.collections.impl.factory.primitive.IntLists;
+import org.eclipse.collections.impl.lazy.primitive.ReverseIntIterable;
+import org.eclipse.collections.impl.list.mutable.FastList;
+import org.eclipse.collections.impl.list.mutable.primitive.IntArrayList;
+import org.eclipse.collections.impl.primitive.AbstractIntIterable;
+import org.eclipse.collections.impl.set.mutable.primitive.IntHashSet;
+import org.eclipse.collections.impl.tuple.primitive.PrimitiveTuples;
+import org.eclipse.collections.impl.utility.Iterate;
+
+/**
+ * Calculates and provides the code points stored in a String as an ImmutableIntList.  This is a cleaner more OO way of
+ * providing many of the iterable protocols available in StringIterate for code points.
+ *
+ * @since 7.0
+ */
+public class CodePointAdapter
+        extends AbstractIntIterable
+        implements CharSequence, ImmutableIntList, Serializable
+{
+    private static final long serialVersionUID = 1L;
+
+    private final String adapted;
+
+    public CodePointAdapter(String value)
+<span class="nc" id="L64">    {</span>
+<span class="nc" id="L65">        this.adapted = value;</span>
+<span class="nc" id="L66">    }</span>
+
+    public static CodePointAdapter adapt(String value)
+    {
+<span class="nc" id="L70">        return new CodePointAdapter(value);</span>
+    }
+
+    public static CodePointAdapter from(int... codePoints)
+    {
+<span class="nc" id="L75">        StringBuilder builder = new StringBuilder();</span>
+<span class="nc bnc" id="L76" title="All 2 branches missed.">        for (int i = 0; i &lt; codePoints.length; i++)</span>
+        {
+<span class="nc" id="L78">            int codePoint = codePoints[i];</span>
+<span class="nc" id="L79">            builder.appendCodePoint(codePoint);</span>
+        }
+<span class="nc" id="L81">        return new CodePointAdapter(builder.toString());</span>
+    }
+
+    public static CodePointAdapter from(IntIterable iterable)
+    {
+<span class="nc bnc" id="L86" title="All 2 branches missed.">        if (iterable instanceof CodePointAdapter)</span>
+        {
+<span class="nc" id="L88">            return new CodePointAdapter(iterable.toString());</span>
+        }
+<span class="nc" id="L90">        StringBuilder builder = iterable.injectInto(new StringBuilder(), StringBuilder::appendCodePoint);</span>
+<span class="nc" id="L91">        return new CodePointAdapter(builder.toString());</span>
+    }
+
+    @Override
+    public char charAt(int index)
+    {
+<span class="nc" id="L97">        return this.adapted.charAt(index);</span>
+    }
+
+    @Override
+    public int length()
+    {
+<span class="nc" id="L103">        return this.adapted.length();</span>
+    }
+
+    @Override
+    public String subSequence(int start, int end)
+    {
+<span class="nc" id="L109">        return this.adapted.substring(start, end);</span>
+    }
+
+    public StringBuilder toStringBuilder()
+    {
+<span class="nc" id="L114">        return new StringBuilder(this.adapted);</span>
+    }
+
+    @Override
+    public String toString()
+    {
+<span class="nc" id="L120">        return this.adapted;</span>
+    }
+
+    @Override
+    public IntIterator intIterator()
+    {
+<span class="nc" id="L126">        return new InternalIntIterator();</span>
+    }
+
+    @Override
+    public int[] toArray()
+    {
+<span class="nc" id="L132">        return this.toList().toArray();</span>
+    }
+
+    @Override
+    public boolean contains(int expected)
+    {
+<span class="nc" id="L138">        int length = this.adapted.length();</span>
+<span class="nc bnc" id="L139" title="All 2 branches missed.">        for (int i = 0; i &lt; length; )</span>
+        {
+<span class="nc" id="L141">            int codePoint = this.adapted.codePointAt(i);</span>
+<span class="nc bnc" id="L142" title="All 2 branches missed.">            if (expected == codePoint)</span>
+            {
+<span class="nc" id="L144">                return true;</span>
+            }
+<span class="nc" id="L146">            i += Character.charCount(codePoint);</span>
+<span class="nc" id="L147">        }</span>
+<span class="nc" id="L148">        return false;</span>
+    }
+
+    @Override
+    public void forEach(IntProcedure procedure)
+    {
+<span class="nc" id="L154">        this.each(procedure);</span>
+<span class="nc" id="L155">    }</span>
+
+    @Override
+    public void each(IntProcedure procedure)
+    {
+<span class="nc" id="L160">        int length = this.adapted.length();</span>
+<span class="nc bnc" id="L161" title="All 2 branches missed.">        for (int i = 0; i &lt; length; )</span>
+        {
+<span class="nc" id="L163">            int codePoint = this.adapted.codePointAt(i);</span>
+<span class="nc" id="L164">            procedure.value(codePoint);</span>
+<span class="nc" id="L165">            i += Character.charCount(codePoint);</span>
+<span class="nc" id="L166">        }</span>
+<span class="nc" id="L167">    }</span>
+
+    @Override
+    public CodePointAdapter distinct()
+    {
+<span class="nc" id="L172">        StringBuilder builder = new StringBuilder();</span>
+<span class="nc" id="L173">        IntHashSet seenSoFar = new IntHashSet();</span>
+
+<span class="nc" id="L175">        int length = this.adapted.length();</span>
+<span class="nc bnc" id="L176" title="All 2 branches missed.">        for (int i = 0; i &lt; length; )</span>
+        {
+<span class="nc" id="L178">            int codePoint = this.adapted.codePointAt(i);</span>
+<span class="nc bnc" id="L179" title="All 2 branches missed.">            if (seenSoFar.add(codePoint))</span>
+            {
+<span class="nc" id="L181">                builder.appendCodePoint(codePoint);</span>
+            }
+<span class="nc" id="L183">            i += Character.charCount(codePoint);</span>
+<span class="nc" id="L184">        }</span>
+<span class="nc" id="L185">        return new CodePointAdapter(builder.toString());</span>
+    }
+
+    @Override
+    public CodePointAdapter newWith(int element)
+    {
+<span class="nc" id="L191">        StringBuilder builder = new StringBuilder(this.adapted);</span>
+<span class="nc" id="L192">        builder.appendCodePoint(element);</span>
+<span class="nc" id="L193">        return new CodePointAdapter(builder.toString());</span>
+    }
+
+    @Override
+    public CodePointAdapter newWithout(int element)
+    {
+<span class="nc" id="L199">        int indexToRemove = this.indexOf(element);</span>
+<span class="nc bnc" id="L200" title="All 2 branches missed.">        if (indexToRemove &lt; 0)</span>
+        {
+<span class="nc" id="L202">            return this;</span>
+        }
+<span class="nc" id="L204">        int currentIndex = 0;</span>
+<span class="nc" id="L205">        int length = this.adapted.length();</span>
+<span class="nc" id="L206">        StringBuilder builder = new StringBuilder();</span>
+<span class="nc bnc" id="L207" title="All 2 branches missed.">        for (int i = 0; i &lt; length; )</span>
+        {
+<span class="nc" id="L209">            int codePoint = this.adapted.codePointAt(i);</span>
+<span class="nc bnc" id="L210" title="All 2 branches missed.">            if (currentIndex++ != indexToRemove)</span>
+            {
+<span class="nc" id="L212">                builder.appendCodePoint(codePoint);</span>
+            }
+<span class="nc" id="L214">            i += Character.charCount(codePoint);</span>
+<span class="nc" id="L215">        }</span>
+<span class="nc" id="L216">        return new CodePointAdapter(builder.toString());</span>
+    }
+
+    @Override
+    public CodePointAdapter newWithAll(IntIterable elements)
+    {
+<span class="nc" id="L222">        StringBuilder builder = new StringBuilder(this.adapted);</span>
+<span class="nc" id="L223">        elements.each(builder::appendCodePoint);</span>
+<span class="nc" id="L224">        return new CodePointAdapter(builder.toString());</span>
+    }
+
+    @Override
+    public CodePointAdapter newWithoutAll(IntIterable elements)
+    {
+<span class="nc" id="L230">        MutableIntList mutableIntList = this.toList();</span>
+<span class="nc" id="L231">        mutableIntList.removeAll(elements);</span>
+<span class="nc" id="L232">        return CodePointAdapter.from(mutableIntList.toArray());</span>
+    }
+
+    @Override
+    public CodePointAdapter toReversed()
+    {
+<span class="nc" id="L238">        StringBuilder builder = new StringBuilder();</span>
+<span class="nc" id="L239">        LazyIntIterable reversed = this.asReversed();</span>
+<span class="nc" id="L240">        reversed.each(builder::appendCodePoint);</span>
+<span class="nc" id="L241">        return new CodePointAdapter(builder.toString());</span>
+    }
+
+    @Override
+    public ImmutableIntList subList(int fromIndex, int toIndex)
+    {
+<span class="nc" id="L247">        throw new UnsupportedOperationException(&quot;SubList is not implemented on CodePointAdapter&quot;);</span>
+    }
+
+    @Override
+    public int get(int index)
+    {
+<span class="nc" id="L253">        int currentIndex = 0;</span>
+<span class="nc bnc" id="L254" title="All 2 branches missed.">        for (int i = 0; i &lt; this.adapted.length(); )</span>
+        {
+<span class="nc" id="L256">            int codePoint = this.adapted.codePointAt(i);</span>
+<span class="nc bnc" id="L257" title="All 2 branches missed.">            if (index == currentIndex)</span>
+            {
+<span class="nc" id="L259">                return codePoint;</span>
+            }
+<span class="nc" id="L261">            i += Character.charCount(codePoint);</span>
+<span class="nc" id="L262">            currentIndex++;</span>
+<span class="nc" id="L263">        }</span>
+<span class="nc" id="L264">        throw new IndexOutOfBoundsException(&quot;Index out of bounds&quot;);</span>
+    }
+
+    @Override
+    public long dotProduct(IntList list)
+    {
+<span class="nc" id="L270">        throw new UnsupportedOperationException(&quot;DotProduct is not implemented on CodePointAdapter&quot;);</span>
+    }
+
+    @Override
+    public int binarySearch(int value)
+    {
+<span class="nc" id="L276">        throw new UnsupportedOperationException(&quot;BinarySearch is not implemented on CodePointAdapter&quot;);</span>
+    }
+
+    @Override
+    public int lastIndexOf(int value)
+    {
+<span class="nc bnc" id="L282" title="All 2 branches missed.">        for (int i = this.size() - 1; i &gt;= 0; i--)</span>
+        {
+<span class="nc" id="L284">            int codePoint = this.get(i);</span>
+<span class="nc bnc" id="L285" title="All 2 branches missed.">            if (codePoint == value)</span>
+            {
+<span class="nc" id="L287">                return i;</span>
+            }
+        }
+<span class="nc" id="L290">        return -1;</span>
+    }
+
+    @Override
+    public ImmutableIntList toImmutable()
+    {
+<span class="nc" id="L296">        return this;</span>
+    }
+
+    @Override
+    public int getLast()
+    {
+<span class="nc" id="L302">        return this.get(this.size() - 1);</span>
+    }
+
+    @Override
+    public LazyIntIterable asReversed()
+    {
+<span class="nc" id="L308">        return ReverseIntIterable.adapt(this);</span>
+    }
+
+    @Override
+    public &lt;T&gt; T injectIntoWithIndex(T injectedValue, ObjectIntIntToObjectFunction&lt;? super T, ? extends T&gt; function)
+    {
+<span class="nc" id="L314">        T result = injectedValue;</span>
+<span class="nc bnc" id="L315" title="All 2 branches missed.">        for (int i = 0; i &lt; this.adapted.length(); )</span>
+        {
+<span class="nc" id="L317">            int codePoint = this.adapted.codePointAt(i);</span>
+<span class="nc" id="L318">            result = function.valueOf(result, codePoint, i);</span>
+<span class="nc" id="L319">            i += Character.charCount(codePoint);</span>
+<span class="nc" id="L320">        }</span>
+<span class="nc" id="L321">        return result;</span>
+    }
+
+    @Override
+    public int getFirst()
+    {
+<span class="nc" id="L327">        return this.get(0);</span>
+    }
+
+    @Override
+    public int indexOf(int value)
+    {
+<span class="nc" id="L333">        int currentIndex = 0;</span>
+<span class="nc bnc" id="L334" title="All 2 branches missed.">        for (int i = 0; i &lt; this.adapted.length(); )</span>
+        {
+<span class="nc" id="L336">            int codePoint = this.adapted.codePointAt(i);</span>
+<span class="nc bnc" id="L337" title="All 2 branches missed.">            if (codePoint == value)</span>
+            {
+<span class="nc" id="L339">                return currentIndex;</span>
+            }
+<span class="nc" id="L341">            i += Character.charCount(codePoint);</span>
+<span class="nc" id="L342">            currentIndex++;</span>
+<span class="nc" id="L343">        }</span>
+<span class="nc" id="L344">        return -1;</span>
+    }
+
+    @Override
+    public void forEachWithIndex(IntIntProcedure procedure)
+    {
+<span class="nc" id="L350">        int currentIndex = 0;</span>
+<span class="nc bnc" id="L351" title="All 2 branches missed.">        for (int i = 0; i &lt; this.adapted.length(); )</span>
+        {
+<span class="nc" id="L353">            int codePoint = this.adapted.codePointAt(i);</span>
+<span class="nc" id="L354">            procedure.value(codePoint, currentIndex);</span>
+<span class="nc" id="L355">            i += Character.charCount(codePoint);</span>
+<span class="nc" id="L356">            currentIndex++;</span>
+<span class="nc" id="L357">        }</span>
+<span class="nc" id="L358">    }</span>
+
+    @Override
+    public CodePointAdapter select(IntPredicate predicate)
+    {
+<span class="nc" id="L363">        StringBuilder selected = new StringBuilder();</span>
+<span class="nc bnc" id="L364" title="All 2 branches missed.">        for (int i = 0; i &lt; this.adapted.length(); )</span>
+        {
+<span class="nc" id="L366">            int codePoint = this.adapted.codePointAt(i);</span>
+<span class="nc bnc" id="L367" title="All 2 branches missed.">            if (predicate.accept(codePoint))</span>
+            {
+<span class="nc" id="L369">                selected.appendCodePoint(codePoint);</span>
+            }
+<span class="nc" id="L371">            i += Character.charCount(codePoint);</span>
+<span class="nc" id="L372">        }</span>
+<span class="nc" id="L373">        return new CodePointAdapter(selected.toString());</span>
+    }
+
+    @Override
+    public CodePointAdapter reject(IntPredicate predicate)
+    {
+<span class="nc" id="L379">        StringBuilder rejected = new StringBuilder();</span>
+<span class="nc bnc" id="L380" title="All 2 branches missed.">        for (int i = 0; i &lt; this.adapted.length(); )</span>
+        {
+<span class="nc" id="L382">            int codePoint = this.adapted.codePointAt(i);</span>
+<span class="nc bnc" id="L383" title="All 2 branches missed.">            if (!predicate.accept(codePoint))</span>
+            {
+<span class="nc" id="L385">                rejected.appendCodePoint(codePoint);</span>
+            }
+<span class="nc" id="L387">            i += Character.charCount(codePoint);</span>
+<span class="nc" id="L388">        }</span>
+<span class="nc" id="L389">        return new CodePointAdapter(rejected.toString());</span>
+    }
+
+    @Override
+    public &lt;V&gt; ImmutableList&lt;V&gt; collect(IntToObjectFunction&lt;? extends V&gt; function)
+    {
+<span class="nc" id="L395">        FastList&lt;V&gt; list = FastList.newList(this.adapted.length());</span>
+<span class="nc bnc" id="L396" title="All 2 branches missed.">        for (int i = 0; i &lt; this.adapted.length(); )</span>
+        {
+<span class="nc" id="L398">            int codePoint = this.adapted.codePointAt(i);</span>
+<span class="nc" id="L399">            list.add(function.valueOf(codePoint));</span>
+<span class="nc" id="L400">            i += Character.charCount(codePoint);</span>
+<span class="nc" id="L401">        }</span>
+<span class="nc" id="L402">        return list.toImmutable();</span>
+    }
+
+    public CodePointAdapter collectInt(IntToIntFunction function)
+    {
+<span class="nc" id="L407">        StringBuilder collected = new StringBuilder(this.length());</span>
+<span class="nc bnc" id="L408" title="All 2 branches missed.">        for (int i = 0; i &lt; this.adapted.length(); )</span>
+        {
+<span class="nc" id="L410">            int codePoint = this.adapted.codePointAt(i);</span>
+<span class="nc" id="L411">            collected.appendCodePoint(function.valueOf(codePoint));</span>
+<span class="nc" id="L412">            i += Character.charCount(codePoint);</span>
+<span class="nc" id="L413">        }</span>
+<span class="nc" id="L414">        return CodePointAdapter.adapt(collected.toString());</span>
+    }
+
+    @Override
+    public int detectIfNone(IntPredicate predicate, int ifNone)
+    {
+<span class="nc bnc" id="L420" title="All 2 branches missed.">        for (int i = 0; i &lt; this.adapted.length(); )</span>
+        {
+<span class="nc" id="L422">            int codePoint = this.adapted.codePointAt(i);</span>
+<span class="nc bnc" id="L423" title="All 2 branches missed.">            if (predicate.accept(codePoint))</span>
+            {
+<span class="nc" id="L425">                return codePoint;</span>
+            }
+<span class="nc" id="L427">            i += Character.charCount(codePoint);</span>
+<span class="nc" id="L428">        }</span>
+<span class="nc" id="L429">        return ifNone;</span>
+    }
+
+    @Override
+    public int count(IntPredicate predicate)
+    {
+<span class="nc" id="L435">        int count = 0;</span>
+<span class="nc bnc" id="L436" title="All 2 branches missed.">        for (int i = 0; i &lt; this.adapted.length(); )</span>
+        {
+<span class="nc" id="L438">            int codePoint = this.adapted.codePointAt(i);</span>
+<span class="nc bnc" id="L439" title="All 2 branches missed.">            if (predicate.accept(codePoint))</span>
+            {
+<span class="nc" id="L441">                count++;</span>
+            }
+<span class="nc" id="L443">            i += Character.charCount(codePoint);</span>
+<span class="nc" id="L444">        }</span>
+<span class="nc" id="L445">        return count;</span>
+    }
+
+    @Override
+    public boolean anySatisfy(IntPredicate predicate)
+    {
+<span class="nc bnc" id="L451" title="All 2 branches missed.">        for (int i = 0; i &lt; this.adapted.length(); )</span>
+        {
+<span class="nc" id="L453">            int codePoint = this.adapted.codePointAt(i);</span>
+<span class="nc bnc" id="L454" title="All 2 branches missed.">            if (predicate.accept(codePoint))</span>
+            {
+<span class="nc" id="L456">                return true;</span>
+            }
+<span class="nc" id="L458">            i += Character.charCount(codePoint);</span>
+<span class="nc" id="L459">        }</span>
+<span class="nc" id="L460">        return false;</span>
+    }
+
+    @Override
+    public boolean allSatisfy(IntPredicate predicate)
+    {
+<span class="nc bnc" id="L466" title="All 2 branches missed.">        for (int i = 0; i &lt; this.adapted.length(); )</span>
+        {
+<span class="nc" id="L468">            int codePoint = this.adapted.codePointAt(i);</span>
+<span class="nc bnc" id="L469" title="All 2 branches missed.">            if (!predicate.accept(codePoint))</span>
+            {
+<span class="nc" id="L471">                return false;</span>
+            }
+<span class="nc" id="L473">            i += Character.charCount(codePoint);</span>
+<span class="nc" id="L474">        }</span>
+<span class="nc" id="L475">        return true;</span>
+    }
+
+    @Override
+    public boolean noneSatisfy(IntPredicate predicate)
+    {
+<span class="nc bnc" id="L481" title="All 2 branches missed.">        for (int i = 0; i &lt; this.adapted.length(); )</span>
+        {
+<span class="nc" id="L483">            int codePoint = this.adapted.codePointAt(i);</span>
+<span class="nc bnc" id="L484" title="All 2 branches missed.">            if (predicate.accept(codePoint))</span>
+            {
+<span class="nc" id="L486">                return false;</span>
+            }
+<span class="nc" id="L488">            i += Character.charCount(codePoint);</span>
+<span class="nc" id="L489">        }</span>
+<span class="nc" id="L490">        return true;</span>
+    }
+
+    @Override
+    public MutableIntList toList()
+    {
+<span class="nc" id="L496">        IntArrayList list = new IntArrayList(this.adapted.length());</span>
+<span class="nc bnc" id="L497" title="All 2 branches missed.">        for (int i = 0; i &lt; this.adapted.length(); )</span>
+        {
+<span class="nc" id="L499">            int codePoint = this.adapted.codePointAt(i);</span>
+<span class="nc" id="L500">            list.add(codePoint);</span>
+<span class="nc" id="L501">            i += Character.charCount(codePoint);</span>
+<span class="nc" id="L502">        }</span>
+<span class="nc" id="L503">        return list;</span>
+    }
+
+    @Override
+    public MutableIntSet toSet()
+    {
+<span class="nc" id="L509">        IntHashSet set = new IntHashSet(this.adapted.length());</span>
+<span class="nc bnc" id="L510" title="All 2 branches missed.">        for (int i = 0; i &lt; this.adapted.length(); )</span>
+        {
+<span class="nc" id="L512">            int codePoint = this.adapted.codePointAt(i);</span>
+<span class="nc" id="L513">            set.add(codePoint);</span>
+<span class="nc" id="L514">            i += Character.charCount(codePoint);</span>
+<span class="nc" id="L515">        }</span>
+<span class="nc" id="L516">        return set;</span>
+    }
+
+    @Override
+    public MutableIntBag toBag()
+    {
+<span class="nc" id="L522">        IntHashBag bag = new IntHashBag(this.adapted.length());</span>
+<span class="nc bnc" id="L523" title="All 2 branches missed.">        for (int i = 0; i &lt; this.adapted.length(); )</span>
+        {
+<span class="nc" id="L525">            int codePoint = this.adapted.codePointAt(i);</span>
+<span class="nc" id="L526">            bag.add(codePoint);</span>
+<span class="nc" id="L527">            i += Character.charCount(codePoint);</span>
+<span class="nc" id="L528">        }</span>
+<span class="nc" id="L529">        return bag;</span>
+    }
+
+    @Override
+    public &lt;T&gt; T injectInto(T injectedValue, ObjectIntToObjectFunction&lt;? super T, ? extends T&gt; function)
+    {
+<span class="nc" id="L535">        T result = injectedValue;</span>
+<span class="nc bnc" id="L536" title="All 2 branches missed.">        for (int i = 0; i &lt; this.adapted.length(); )</span>
+        {
+<span class="nc" id="L538">            int codePoint = this.adapted.codePointAt(i);</span>
+<span class="nc" id="L539">            result = function.valueOf(result, codePoint);</span>
+<span class="nc" id="L540">            i += Character.charCount(codePoint);</span>
+<span class="nc" id="L541">        }</span>
+<span class="nc" id="L542">        return result;</span>
+    }
+
+    @Override
+    public RichIterable&lt;IntIterable&gt; chunk(int size)
+    {
+<span class="nc bnc" id="L548" title="All 2 branches missed.">        if (size &lt;= 0)</span>
+        {
+<span class="nc" id="L550">            throw new IllegalArgumentException(&quot;Size for groups must be positive but was: &quot; + size);</span>
+        }
+<span class="nc" id="L552">        MutableList&lt;IntIterable&gt; result = Lists.mutable.empty();</span>
+<span class="nc bnc" id="L553" title="All 2 branches missed.">        if (this.notEmpty())</span>
+        {
+<span class="nc bnc" id="L555" title="All 2 branches missed.">            if (this.size() &lt;= size)</span>
+            {
+<span class="nc" id="L557">                result.add(IntLists.immutable.withAll(this));</span>
+            }
+            else
+            {
+<span class="nc" id="L561">                IntIterator iterator = this.intIterator();</span>
+<span class="nc bnc" id="L562" title="All 2 branches missed.">                while (iterator.hasNext())</span>
+                {
+<span class="nc" id="L564">                    MutableIntList batch = IntLists.mutable.empty();</span>
+<span class="nc bnc" id="L565" title="All 4 branches missed.">                    for (int i = 0; i &lt; size &amp;&amp; iterator.hasNext(); i++)</span>
+                    {
+<span class="nc" id="L567">                        batch.add(iterator.next());</span>
+                    }
+<span class="nc" id="L569">                    result.add(CodePointList.from(batch));</span>
+<span class="nc" id="L570">                }</span>
+            }
+        }
+<span class="nc" id="L573">        return result.toImmutable();</span>
+    }
+
+    @Override
+    public long sum()
+    {
+<span class="nc" id="L579">        long sum = 0;</span>
+<span class="nc bnc" id="L580" title="All 2 branches missed.">        for (int i = 0; i &lt; this.adapted.length(); )</span>
+        {
+<span class="nc" id="L582">            int codePoint = this.adapted.codePointAt(i);</span>
+<span class="nc" id="L583">            sum += codePoint;</span>
+<span class="nc" id="L584">            i += Character.charCount(codePoint);</span>
+<span class="nc" id="L585">        }</span>
+<span class="nc" id="L586">        return sum;</span>
+    }
+
+    @Override
+    public int max()
+    {
+<span class="nc bnc" id="L592" title="All 2 branches missed.">        if (this.isEmpty())</span>
+        {
+<span class="nc" id="L594">            throw new NoSuchElementException();</span>
+        }
+<span class="nc" id="L596">        int max = this.get(0);</span>
+<span class="nc bnc" id="L597" title="All 2 branches missed.">        for (int i = 0; i &lt; this.adapted.length(); )</span>
+        {
+<span class="nc" id="L599">            int codePoint = this.adapted.codePointAt(i);</span>
+<span class="nc bnc" id="L600" title="All 2 branches missed.">            if (max &lt; codePoint)</span>
+            {
+<span class="nc" id="L602">                max = codePoint;</span>
+            }
+<span class="nc" id="L604">            i += Character.charCount(codePoint);</span>
+<span class="nc" id="L605">        }</span>
+<span class="nc" id="L606">        return max;</span>
+    }
+
+    @Override
+    public int min()
+    {
+<span class="nc bnc" id="L612" title="All 2 branches missed.">        if (this.isEmpty())</span>
+        {
+<span class="nc" id="L614">            throw new NoSuchElementException();</span>
+        }
+<span class="nc" id="L616">        int min = this.get(0);</span>
+<span class="nc bnc" id="L617" title="All 2 branches missed.">        for (int i = 0; i &lt; this.adapted.length(); )</span>
+        {
+<span class="nc" id="L619">            int codePoint = this.adapted.codePointAt(i);</span>
+<span class="nc bnc" id="L620" title="All 2 branches missed.">            if (codePoint &lt; min)</span>
+            {
+<span class="nc" id="L622">                min = codePoint;</span>
+            }
+<span class="nc" id="L624">            i += Character.charCount(codePoint);</span>
+<span class="nc" id="L625">        }</span>
+<span class="nc" id="L626">        return min;</span>
+    }
+
+    @Override
+    public int size()
+    {
+<span class="nc" id="L632">        int size = 0;</span>
+<span class="nc bnc" id="L633" title="All 2 branches missed.">        for (int i = 0; i &lt; this.adapted.length(); )</span>
+        {
+<span class="nc" id="L635">            int codePoint = this.adapted.codePointAt(i);</span>
+<span class="nc" id="L636">            i += Character.charCount(codePoint);</span>
+<span class="nc" id="L637">            size++;</span>
+<span class="nc" id="L638">        }</span>
+<span class="nc" id="L639">        return size;</span>
+    }
+
+    @Override
+    public void appendString(Appendable appendable, String start, String separator, String end)
+    {
+        try
+        {
+<span class="nc" id="L647">            appendable.append(start);</span>
+<span class="nc bnc" id="L648" title="All 2 branches missed.">            for (int i = 0; i &lt; this.adapted.length(); )</span>
+            {
+<span class="nc bnc" id="L650" title="All 2 branches missed.">                if (i &gt; 0)</span>
+                {
+<span class="nc" id="L652">                    appendable.append(separator);</span>
+                }
+<span class="nc" id="L654">                int codePoint = this.adapted.codePointAt(i);</span>
+<span class="nc bnc" id="L655" title="All 2 branches missed.">                if (appendable instanceof StringBuilder)</span>
+                {
+<span class="nc" id="L657">                    ((StringBuilder) appendable).appendCodePoint(codePoint);</span>
+                }
+<span class="nc bnc" id="L659" title="All 2 branches missed.">                else if (appendable instanceof StringBuffer)</span>
+                {
+<span class="nc" id="L661">                    ((StringBuffer) appendable).appendCodePoint(codePoint);</span>
+                }
+                else
+                {
+<span class="nc" id="L665">                    char[] chars = Character.toChars(codePoint);</span>
+<span class="nc bnc" id="L666" title="All 2 branches missed.">                    for (int j = 0; j &lt; chars.length; j++)</span>
+                    {
+<span class="nc" id="L668">                        appendable.append(chars[j]);</span>
+                    }
+                }
+<span class="nc" id="L671">                i += Character.charCount(codePoint);</span>
+<span class="nc" id="L672">            }</span>
+<span class="nc" id="L673">            appendable.append(end);</span>
+        }
+<span class="nc" id="L675">        catch (IOException e)</span>
+        {
+<span class="nc" id="L677">            throw new RuntimeException(e);</span>
+<span class="nc" id="L678">        }</span>
+<span class="nc" id="L679">    }</span>
+
+    @Override
+    public boolean equals(Object otherList)
+    {
+<span class="nc bnc" id="L684" title="All 2 branches missed.">        if (otherList == this)</span>
+        {
+<span class="nc" id="L686">            return true;</span>
+        }
+<span class="nc bnc" id="L688" title="All 2 branches missed.">        if (otherList instanceof CodePointAdapter)</span>
+        {
+<span class="nc" id="L690">            return this.equalsCodePointAdapter((CodePointAdapter) otherList);</span>
+        }
+<span class="nc bnc" id="L692" title="All 2 branches missed.">        if (otherList instanceof IntList)</span>
+        {
+<span class="nc" id="L694">            return this.equalsIntList((IntList) otherList);</span>
+        }
+<span class="nc" id="L696">        return false;</span>
+    }
+
+    public boolean equalsIntList(IntList list)
+    {
+<span class="nc" id="L701">        int size = 0;</span>
+<span class="nc bnc" id="L702" title="All 2 branches missed.">        for (int i = 0; i &lt; this.adapted.length(); )</span>
+        {
+<span class="nc" id="L704">            size++;</span>
+<span class="nc" id="L705">            int codePoint = this.adapted.codePointAt(i);</span>
+<span class="nc bnc" id="L706" title="All 4 branches missed.">            if (size &gt; list.size() || codePoint != list.get(size - 1))</span>
+            {
+<span class="nc" id="L708">                return false;</span>
+            }
+<span class="nc" id="L710">            i += Character.charCount(codePoint);</span>
+<span class="nc" id="L711">        }</span>
+<span class="nc bnc" id="L712" title="All 2 branches missed.">        if (size &lt; list.size())</span>
+        {
+<span class="nc" id="L714">            return false;</span>
+        }
+<span class="nc" id="L716">        return true;</span>
+    }
+
+    private boolean equalsCodePointAdapter(CodePointAdapter adapter)
+    {
+<span class="nc bnc" id="L721" title="All 2 branches missed.">        if (this.adapted.length() != adapter.adapted.length())</span>
+        {
+<span class="nc" id="L723">            return false;</span>
+        }
+<span class="nc bnc" id="L725" title="All 2 branches missed.">        for (int i = 0; i &lt; this.adapted.length(); )</span>
+        {
+<span class="nc" id="L727">            int codePoint = this.adapted.codePointAt(i);</span>
+<span class="nc bnc" id="L728" title="All 2 branches missed.">            if (codePoint != adapter.adapted.codePointAt(i))</span>
+            {
+<span class="nc" id="L730">                return false;</span>
+            }
+<span class="nc" id="L732">            i += Character.charCount(codePoint);</span>
+<span class="nc" id="L733">        }</span>
+<span class="nc" id="L734">        return true;</span>
+    }
+
+    @Override
+    public int hashCode()
+    {
+<span class="nc" id="L740">        int hashCode = 1;</span>
+<span class="nc bnc" id="L741" title="All 2 branches missed.">        for (int i = 0; i &lt; this.adapted.length(); )</span>
+        {
+<span class="nc" id="L743">            int codePoint = this.adapted.codePointAt(i);</span>
+<span class="nc" id="L744">            hashCode = 31 * hashCode + codePoint;</span>
+<span class="nc" id="L745">            i += Character.charCount(codePoint);</span>
+<span class="nc" id="L746">        }</span>
+<span class="nc" id="L747">        return hashCode;</span>
+    }
+
+    /**
+     * @since 9.1.
+     */
+    @Override
+    public ImmutableList&lt;IntIntPair&gt; zipInt(IntIterable iterable)
+    {
+<span class="nc" id="L756">        int size = this.size();</span>
+<span class="nc" id="L757">        int othersize = iterable.size();</span>
+<span class="nc" id="L758">        MutableList&lt;IntIntPair&gt; target = Lists.mutable.withInitialCapacity(Math.min(size, othersize));</span>
+<span class="nc" id="L759">        IntIterator iterator = iterable.intIterator();</span>
+<span class="nc bnc" id="L760" title="All 4 branches missed.">        for (int i = 0; i &lt; size &amp;&amp; i &lt; othersize; i++)</span>
+        {
+<span class="nc" id="L762">            target.add(PrimitiveTuples.pair(this.get(i), iterator.next()));</span>
+        }
+<span class="nc" id="L764">        return target.toImmutable();</span>
+    }
+
+    /**
+     * @since 9.1.
+     */
+    @Override
+    public &lt;T&gt; ImmutableList&lt;IntObjectPair&lt;T&gt;&gt; zip(Iterable&lt;T&gt; iterable)
+    {
+<span class="nc" id="L773">        int size = this.size();</span>
+<span class="nc" id="L774">        int othersize = Iterate.sizeOf(iterable);</span>
+<span class="nc" id="L775">        MutableList&lt;IntObjectPair&lt;T&gt;&gt; target = Lists.mutable.withInitialCapacity(Math.min(size, othersize));</span>
+<span class="nc" id="L776">        Iterator&lt;T&gt; iterator = iterable.iterator();</span>
+<span class="nc bnc" id="L777" title="All 4 branches missed.">        for (int i = 0; i &lt; size &amp;&amp; iterator.hasNext(); i++)</span>
+        {
+<span class="nc" id="L779">            target.add(PrimitiveTuples.pair(this.get(i), iterator.next()));</span>
+        }
+<span class="nc" id="L781">        return target.toImmutable();</span>
+    }
+
+<span class="nc" id="L784">    private class InternalIntIterator implements IntIterator</span>
+    {
+        /**
+         * Index of element to be returned by subsequent call to next.
+         */
+        private int currentIndex;
+
+        @Override
+        public boolean hasNext()
+        {
+<span class="nc bnc" id="L794" title="All 2 branches missed.">            return this.currentIndex != CodePointAdapter.this.adapted.length();</span>
+        }
+
+        @Override
+        public int next()
+        {
+<span class="nc bnc" id="L800" title="All 2 branches missed.">            if (!this.hasNext())</span>
+            {
+<span class="nc" id="L802">                throw new NoSuchElementException();</span>
+            }
+<span class="nc" id="L804">            int next = CodePointAdapter.this.adapted.codePointAt(this.currentIndex);</span>
+<span class="nc" id="L805">            this.currentIndex += Character.charCount(next);</span>
+<span class="nc" id="L806">            return next;</span>
+        }
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.0.201801022044</span></div></body></html>

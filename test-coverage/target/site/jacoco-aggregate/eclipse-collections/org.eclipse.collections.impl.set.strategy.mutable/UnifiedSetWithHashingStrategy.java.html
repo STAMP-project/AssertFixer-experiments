@@ -1,0 +1,2578 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>UnifiedSetWithHashingStrategy.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Eclipse Collections Test Coverage Aggregation</a> &gt; <a href="../index.html" class="el_bundle">eclipse-collections</a> &gt; <a href="index.source.html" class="el_package">org.eclipse.collections.impl.set.strategy.mutable</a> &gt; <span class="el_source">UnifiedSetWithHashingStrategy.java</span></div><h1>UnifiedSetWithHashingStrategy.java</h1><pre class="source lang-java linenums">/*
+ * Copyright (c) 2016 Goldman Sachs.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * and Eclipse Distribution License v. 1.0 which accompany this distribution.
+ * The Eclipse Public License is available at http://www.eclipse.org/legal/epl-v10.html
+ * and the Eclipse Distribution License is available at
+ * http://www.eclipse.org/org/documents/edl-v10.php.
+ */
+
+package org.eclipse.collections.impl.set.strategy.mutable;
+
+import java.io.Externalizable;
+import java.io.IOException;
+import java.io.ObjectInput;
+import java.io.ObjectOutput;
+import java.lang.reflect.Array;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Iterator;
+import java.util.NoSuchElementException;
+import java.util.Optional;
+import java.util.Set;
+import java.util.concurrent.ExecutorService;
+
+import org.eclipse.collections.api.LazyIterable;
+import org.eclipse.collections.api.RichIterable;
+import org.eclipse.collections.api.annotation.Beta;
+import org.eclipse.collections.api.block.HashingStrategy;
+import org.eclipse.collections.api.block.function.Function;
+import org.eclipse.collections.api.block.predicate.Predicate;
+import org.eclipse.collections.api.block.predicate.Predicate2;
+import org.eclipse.collections.api.block.procedure.Procedure;
+import org.eclipse.collections.api.block.procedure.Procedure2;
+import org.eclipse.collections.api.block.procedure.primitive.ObjectIntProcedure;
+import org.eclipse.collections.api.list.MutableList;
+import org.eclipse.collections.api.partition.set.PartitionMutableSet;
+import org.eclipse.collections.api.set.ImmutableSet;
+import org.eclipse.collections.api.set.ParallelUnsortedSetIterable;
+import org.eclipse.collections.api.tuple.Twin;
+import org.eclipse.collections.impl.block.factory.Procedures2;
+import org.eclipse.collections.impl.block.procedure.PartitionPredicate2Procedure;
+import org.eclipse.collections.impl.block.procedure.PartitionProcedure;
+import org.eclipse.collections.impl.block.procedure.SelectInstancesOfProcedure;
+import org.eclipse.collections.impl.factory.HashingStrategySets;
+import org.eclipse.collections.impl.factory.Lists;
+import org.eclipse.collections.impl.lazy.AbstractLazyIterable;
+import org.eclipse.collections.impl.lazy.parallel.AbstractBatch;
+import org.eclipse.collections.impl.lazy.parallel.AbstractParallelIterable;
+import org.eclipse.collections.impl.lazy.parallel.bag.CollectUnsortedBagBatch;
+import org.eclipse.collections.impl.lazy.parallel.bag.FlatCollectUnsortedBagBatch;
+import org.eclipse.collections.impl.lazy.parallel.bag.UnsortedBagBatch;
+import org.eclipse.collections.impl.lazy.parallel.set.AbstractParallelUnsortedSetIterable;
+import org.eclipse.collections.impl.lazy.parallel.set.RootUnsortedSetBatch;
+import org.eclipse.collections.impl.lazy.parallel.set.SelectUnsortedSetBatch;
+import org.eclipse.collections.impl.lazy.parallel.set.UnsortedSetBatch;
+import org.eclipse.collections.impl.multimap.set.strategy.UnifiedSetWithHashingStrategyMultimap;
+import org.eclipse.collections.impl.partition.set.strategy.PartitionUnifiedSetWithHashingStrategy;
+import org.eclipse.collections.impl.set.AbstractUnifiedSet;
+import org.eclipse.collections.impl.tuple.Tuples;
+import org.eclipse.collections.impl.utility.Iterate;
+
+<span class="nc bnc" id="L63" title="All 2 branches missed.">public class UnifiedSetWithHashingStrategy&lt;T&gt;</span>
+        extends AbstractUnifiedSet&lt;T&gt;
+        implements Externalizable
+{
+<span class="nc" id="L67">    protected static final Object NULL_KEY = new Object()</span>
+<span class="nc" id="L68">    {</span>
+        @Override
+        public boolean equals(Object obj)
+        {
+<span class="nc" id="L72">            throw new RuntimeException(&quot;Possible corruption through unsynchronized concurrent modification.&quot;);</span>
+        }
+
+        @Override
+        public int hashCode()
+        {
+<span class="nc" id="L78">            throw new RuntimeException(&quot;Possible corruption through unsynchronized concurrent modification.&quot;);</span>
+        }
+
+        @Override
+        public String toString()
+        {
+<span class="nc" id="L84">            return &quot;UnifiedSetWithHashingStrategy.NULL_KEY&quot;;</span>
+        }
+    };
+
+    private static final long serialVersionUID = 1L;
+
+    protected transient Object[] table;
+
+    protected transient int occupied;
+
+    protected HashingStrategy&lt;? super T&gt; hashingStrategy;
+
+    /**
+     * @deprecated No argument default constructor used for serialization. Instantiating an UnifiedSetWithHashingStrategyMultimap with
+     * this constructor will have a null hashingStrategy and throw NullPointerException when used.
+     */
+    @Deprecated
+    public UnifiedSetWithHashingStrategy()
+<span class="nc" id="L102">    {</span>
+<span class="nc" id="L103">    }</span>
+
+    public UnifiedSetWithHashingStrategy(HashingStrategy&lt;? super T&gt; hashingStrategy)
+<span class="nc" id="L106">    {</span>
+<span class="nc bnc" id="L107" title="All 2 branches missed.">        if (hashingStrategy == null)</span>
+        {
+<span class="nc" id="L109">            throw new IllegalArgumentException(&quot;Cannot Instantiate UnifiedSetWithHashingStrategy with null HashingStrategy&quot;);</span>
+        }
+<span class="nc" id="L111">        this.hashingStrategy = hashingStrategy;</span>
+<span class="nc" id="L112">        this.allocate(DEFAULT_INITIAL_CAPACITY &lt;&lt; 1);</span>
+<span class="nc" id="L113">    }</span>
+
+    public UnifiedSetWithHashingStrategy(HashingStrategy&lt;? super T&gt; hashingStrategy, int initialCapacity)
+    {
+<span class="nc" id="L117">        this(hashingStrategy, initialCapacity, DEFAULT_LOAD_FACTOR);</span>
+<span class="nc" id="L118">    }</span>
+
+    public UnifiedSetWithHashingStrategy(HashingStrategy&lt;? super T&gt; hashingStrategy, int initialCapacity, float loadFactor)
+<span class="nc" id="L121">    {</span>
+<span class="nc bnc" id="L122" title="All 2 branches missed.">        if (initialCapacity &lt; 0)</span>
+        {
+<span class="nc" id="L124">            throw new IllegalArgumentException(&quot;initial capacity cannot be less than 0&quot;);</span>
+        }
+<span class="nc bnc" id="L126" title="All 2 branches missed.">        if (loadFactor &lt;= 0.0)</span>
+        {
+<span class="nc" id="L128">            throw new IllegalArgumentException(&quot;load factor cannot be less than or equal to 0&quot;);</span>
+        }
+<span class="nc bnc" id="L130" title="All 2 branches missed.">        if (loadFactor &gt; 1.0)</span>
+        {
+<span class="nc" id="L132">            throw new IllegalArgumentException(&quot;load factor cannot be greater than 1&quot;);</span>
+        }
+
+<span class="nc" id="L135">        this.hashingStrategy = hashingStrategy;</span>
+<span class="nc" id="L136">        this.loadFactor = loadFactor;</span>
+<span class="nc" id="L137">        this.init(this.fastCeil(initialCapacity / loadFactor));</span>
+<span class="nc" id="L138">    }</span>
+
+    public UnifiedSetWithHashingStrategy(HashingStrategy&lt;? super T&gt; hashingStrategy, Collection&lt;? extends T&gt; collection)
+    {
+<span class="nc" id="L142">        this(hashingStrategy, Math.max(collection.size(), DEFAULT_INITIAL_CAPACITY), DEFAULT_LOAD_FACTOR);</span>
+<span class="nc" id="L143">        this.addAll(collection);</span>
+<span class="nc" id="L144">    }</span>
+
+    public UnifiedSetWithHashingStrategy(HashingStrategy&lt;? super T&gt; hashingStrategy, UnifiedSetWithHashingStrategy&lt;T&gt; set)
+<span class="nc" id="L147">    {</span>
+<span class="nc" id="L148">        this.hashingStrategy = hashingStrategy;</span>
+<span class="nc" id="L149">        this.maxSize = set.maxSize;</span>
+<span class="nc" id="L150">        this.loadFactor = set.loadFactor;</span>
+<span class="nc" id="L151">        this.occupied = set.occupied;</span>
+<span class="nc" id="L152">        this.allocateTable(set.table.length);</span>
+
+<span class="nc bnc" id="L154" title="All 2 branches missed.">        for (int i = 0; i &lt; set.table.length; i++)</span>
+        {
+<span class="nc" id="L156">            Object key = set.table[i];</span>
+<span class="nc bnc" id="L157" title="All 2 branches missed.">            if (key instanceof ChainedBucket)</span>
+            {
+<span class="nc" id="L159">                this.table[i] = ((ChainedBucket) key).copy();</span>
+            }
+<span class="nc bnc" id="L161" title="All 2 branches missed.">            else if (key != null)</span>
+            {
+<span class="nc" id="L163">                this.table[i] = key;</span>
+            }
+        }
+<span class="nc" id="L166">    }</span>
+
+    public static &lt;K&gt; UnifiedSetWithHashingStrategy&lt;K&gt; newSet(HashingStrategy&lt;? super K&gt; hashingStrategy)
+    {
+<span class="nc" id="L170">        return new UnifiedSetWithHashingStrategy&lt;&gt;(hashingStrategy);</span>
+    }
+
+    public static &lt;K&gt; UnifiedSetWithHashingStrategy&lt;K&gt; newSet(UnifiedSetWithHashingStrategy&lt;K&gt; set)
+    {
+<span class="nc" id="L175">        return new UnifiedSetWithHashingStrategy&lt;&gt;(set.hashingStrategy, set);</span>
+    }
+
+    public static &lt;K&gt; UnifiedSetWithHashingStrategy&lt;K&gt; newSet(HashingStrategy&lt;? super K&gt; hashingStrategy, int size)
+    {
+<span class="nc" id="L180">        return new UnifiedSetWithHashingStrategy&lt;&gt;(hashingStrategy, size);</span>
+    }
+
+    public static &lt;K&gt; UnifiedSetWithHashingStrategy&lt;K&gt; newSet(HashingStrategy&lt;? super K&gt; hashingStrategy, Iterable&lt;? extends K&gt; source)
+    {
+<span class="nc bnc" id="L185" title="All 2 branches missed.">        if (source instanceof UnifiedSetWithHashingStrategy&lt;?&gt;)</span>
+        {
+<span class="nc" id="L187">            return new UnifiedSetWithHashingStrategy&lt;&gt;(hashingStrategy, (UnifiedSetWithHashingStrategy&lt;K&gt;) source);</span>
+        }
+<span class="nc bnc" id="L189" title="All 2 branches missed.">        if (source instanceof Collection&lt;?&gt;)</span>
+        {
+<span class="nc" id="L191">            return new UnifiedSetWithHashingStrategy&lt;&gt;(hashingStrategy, (Collection&lt;K&gt;) source);</span>
+        }
+<span class="nc bnc" id="L193" title="All 2 branches missed.">        if (source == null)</span>
+        {
+<span class="nc" id="L195">            throw new NullPointerException();</span>
+        }
+<span class="nc bnc" id="L197" title="All 2 branches missed.">        UnifiedSetWithHashingStrategy&lt;K&gt; result = source instanceof RichIterable&lt;?&gt;</span>
+<span class="nc" id="L198">                ? UnifiedSetWithHashingStrategy.newSet(hashingStrategy, ((RichIterable&lt;?&gt;) source).size())</span>
+<span class="nc" id="L199">                : UnifiedSetWithHashingStrategy.newSet(hashingStrategy);</span>
+<span class="nc" id="L200">        Iterate.forEachWith(source, Procedures2.addToCollection(), result);</span>
+<span class="nc" id="L201">        return result;</span>
+    }
+
+    public static &lt;K&gt; UnifiedSetWithHashingStrategy&lt;K&gt; newSet(HashingStrategy&lt;? super K&gt; hashingStrategy, int size, float loadFactor)
+    {
+<span class="nc" id="L206">        return new UnifiedSetWithHashingStrategy&lt;&gt;(hashingStrategy, size, loadFactor);</span>
+    }
+
+    public static &lt;K&gt; UnifiedSetWithHashingStrategy&lt;K&gt; newSetWith(HashingStrategy&lt;? super K&gt; hashingStrategy, K... elements)
+    {
+<span class="nc" id="L211">        UnifiedSetWithHashingStrategy&lt;K&gt; set = UnifiedSetWithHashingStrategy.newSet(hashingStrategy, elements.length);</span>
+<span class="nc" id="L212">        return set.with(elements);</span>
+    }
+
+    public HashingStrategy&lt;? super T&gt; hashingStrategy()
+    {
+<span class="nc" id="L217">        return this.hashingStrategy;</span>
+    }
+
+    private int fastCeil(float v)
+    {
+<span class="nc" id="L222">        int possibleResult = (int) v;</span>
+<span class="nc bnc" id="L223" title="All 2 branches missed.">        if (v - possibleResult &gt; 0.0F)</span>
+        {
+<span class="nc" id="L225">            possibleResult++;</span>
+        }
+<span class="nc" id="L227">        return possibleResult;</span>
+    }
+
+    @Override
+    protected Object[] getTable()
+    {
+<span class="nc" id="L233">        return this.table;</span>
+    }
+
+    @Override
+    protected void allocateTable(int sizeToAllocate)
+    {
+<span class="nc" id="L239">        this.table = new Object[sizeToAllocate];</span>
+<span class="nc" id="L240">    }</span>
+
+    protected int index(T key)
+    {
+        // This function ensures that hashCodes that differ only by
+        // constant multiples at each bit position have a bounded
+        // number of collisions (approximately 8 at default load factor).
+<span class="nc" id="L247">        int h = this.hashingStrategy.computeHashCode(key);</span>
+<span class="nc" id="L248">        h ^= h &gt;&gt;&gt; 20 ^ h &gt;&gt;&gt; 12;</span>
+<span class="nc" id="L249">        h ^= h &gt;&gt;&gt; 7 ^ h &gt;&gt;&gt; 4;</span>
+<span class="nc" id="L250">        return h &amp; this.table.length - 1;</span>
+    }
+
+    @Override
+    public void clear()
+    {
+<span class="nc bnc" id="L256" title="All 2 branches missed.">        if (this.occupied == 0)</span>
+        {
+<span class="nc" id="L258">            return;</span>
+        }
+<span class="nc" id="L260">        this.occupied = 0;</span>
+<span class="nc" id="L261">        Object[] set = this.table;</span>
+
+<span class="nc bnc" id="L263" title="All 2 branches missed.">        for (int i = set.length; i-- &gt; 0; )</span>
+        {
+<span class="nc" id="L265">            set[i] = null;</span>
+        }
+<span class="nc" id="L267">    }</span>
+
+    @Override
+    public boolean add(T key)
+    {
+<span class="nc" id="L272">        int index = this.index(key);</span>
+<span class="nc" id="L273">        Object cur = this.table[index];</span>
+<span class="nc bnc" id="L274" title="All 2 branches missed.">        if (cur == null)</span>
+        {
+<span class="nc" id="L276">            this.table[index] = UnifiedSetWithHashingStrategy.toSentinelIfNull(key);</span>
+<span class="nc bnc" id="L277" title="All 2 branches missed.">            if (++this.occupied &gt; this.maxSize)</span>
+            {
+<span class="nc" id="L279">                this.rehash();</span>
+            }
+<span class="nc" id="L281">            return true;</span>
+        }
+<span class="nc bnc" id="L283" title="All 4 branches missed.">        if (cur instanceof ChainedBucket || !this.nonNullTableObjectEquals(cur, key))</span>
+        {
+<span class="nc" id="L285">            return this.chainedAdd(key, index);</span>
+        }
+<span class="nc" id="L287">        return false;</span>
+    }
+
+    private boolean chainedAdd(T key, int index)
+    {
+<span class="nc bnc" id="L292" title="All 2 branches missed.">        if (this.table[index] instanceof ChainedBucket)</span>
+        {
+<span class="nc" id="L294">            ChainedBucket bucket = (ChainedBucket) this.table[index];</span>
+            do
+            {
+<span class="nc bnc" id="L297" title="All 2 branches missed.">                if (this.nonNullTableObjectEquals(bucket.zero, key))</span>
+                {
+<span class="nc" id="L299">                    return false;</span>
+                }
+<span class="nc bnc" id="L301" title="All 2 branches missed.">                if (bucket.one == null)</span>
+                {
+<span class="nc" id="L303">                    bucket.one = UnifiedSetWithHashingStrategy.toSentinelIfNull(key);</span>
+<span class="nc bnc" id="L304" title="All 2 branches missed.">                    if (++this.occupied &gt; this.maxSize)</span>
+                    {
+<span class="nc" id="L306">                        this.rehash();</span>
+                    }
+<span class="nc" id="L308">                    return true;</span>
+                }
+<span class="nc bnc" id="L310" title="All 2 branches missed.">                if (this.nonNullTableObjectEquals(bucket.one, key))</span>
+                {
+<span class="nc" id="L312">                    return false;</span>
+                }
+<span class="nc bnc" id="L314" title="All 2 branches missed.">                if (bucket.two == null)</span>
+                {
+<span class="nc" id="L316">                    bucket.two = UnifiedSetWithHashingStrategy.toSentinelIfNull(key);</span>
+<span class="nc bnc" id="L317" title="All 2 branches missed.">                    if (++this.occupied &gt; this.maxSize)</span>
+                    {
+<span class="nc" id="L319">                        this.rehash();</span>
+                    }
+<span class="nc" id="L321">                    return true;</span>
+                }
+<span class="nc bnc" id="L323" title="All 2 branches missed.">                if (this.nonNullTableObjectEquals(bucket.two, key))</span>
+                {
+<span class="nc" id="L325">                    return false;</span>
+                }
+<span class="nc bnc" id="L327" title="All 2 branches missed.">                if (bucket.three instanceof ChainedBucket)</span>
+                {
+<span class="nc" id="L329">                    bucket = (ChainedBucket) bucket.three;</span>
+<span class="nc" id="L330">                    continue;</span>
+                }
+<span class="nc bnc" id="L332" title="All 2 branches missed.">                if (bucket.three == null)</span>
+                {
+<span class="nc" id="L334">                    bucket.three = UnifiedSetWithHashingStrategy.toSentinelIfNull(key);</span>
+<span class="nc bnc" id="L335" title="All 2 branches missed.">                    if (++this.occupied &gt; this.maxSize)</span>
+                    {
+<span class="nc" id="L337">                        this.rehash();</span>
+                    }
+<span class="nc" id="L339">                    return true;</span>
+                }
+<span class="nc bnc" id="L341" title="All 2 branches missed.">                if (this.nonNullTableObjectEquals(bucket.three, key))</span>
+                {
+<span class="nc" id="L343">                    return false;</span>
+                }
+<span class="nc" id="L345">                bucket.three = new ChainedBucket(bucket.three, UnifiedSetWithHashingStrategy.toSentinelIfNull(key));</span>
+<span class="nc bnc" id="L346" title="All 2 branches missed.">                if (++this.occupied &gt; this.maxSize)</span>
+                {
+<span class="nc" id="L348">                    this.rehash();</span>
+                }
+<span class="nc" id="L350">                return true;</span>
+            }
+            while (true);
+        }
+<span class="nc" id="L354">        ChainedBucket newBucket = new ChainedBucket(this.table[index], UnifiedSetWithHashingStrategy.toSentinelIfNull(key));</span>
+<span class="nc" id="L355">        this.table[index] = newBucket;</span>
+<span class="nc bnc" id="L356" title="All 2 branches missed.">        if (++this.occupied &gt; this.maxSize)</span>
+        {
+<span class="nc" id="L358">            this.rehash();</span>
+        }
+<span class="nc" id="L360">        return true;</span>
+    }
+
+    @Override
+    protected void rehash(int newCapacity)
+    {
+<span class="nc" id="L366">        int oldLength = this.table.length;</span>
+<span class="nc" id="L367">        Object[] old = this.table;</span>
+<span class="nc" id="L368">        this.allocate(newCapacity);</span>
+<span class="nc" id="L369">        this.occupied = 0;</span>
+
+<span class="nc bnc" id="L371" title="All 2 branches missed.">        for (int i = 0; i &lt; oldLength; i++)</span>
+        {
+<span class="nc" id="L373">            Object oldKey = old[i];</span>
+<span class="nc bnc" id="L374" title="All 2 branches missed.">            if (oldKey instanceof ChainedBucket)</span>
+            {
+<span class="nc" id="L376">                ChainedBucket bucket = (ChainedBucket) oldKey;</span>
+                do
+                {
+<span class="nc bnc" id="L379" title="All 2 branches missed.">                    if (bucket.zero != null)</span>
+                    {
+<span class="nc" id="L381">                        this.add(this.nonSentinel(bucket.zero));</span>
+                    }
+<span class="nc bnc" id="L383" title="All 2 branches missed.">                    if (bucket.one == null)</span>
+                    {
+<span class="nc" id="L385">                        break;</span>
+                    }
+<span class="nc" id="L387">                    this.add(this.nonSentinel(bucket.one));</span>
+<span class="nc bnc" id="L388" title="All 2 branches missed.">                    if (bucket.two == null)</span>
+                    {
+<span class="nc" id="L390">                        break;</span>
+                    }
+<span class="nc" id="L392">                    this.add(this.nonSentinel(bucket.two));</span>
+<span class="nc bnc" id="L393" title="All 2 branches missed.">                    if (bucket.three != null)</span>
+                    {
+<span class="nc bnc" id="L395" title="All 2 branches missed.">                        if (bucket.three instanceof ChainedBucket)</span>
+                        {
+<span class="nc" id="L397">                            bucket = (ChainedBucket) bucket.three;</span>
+<span class="nc" id="L398">                            continue;</span>
+                        }
+<span class="nc" id="L400">                        this.add(this.nonSentinel(bucket.three));</span>
+                    }
+                    break;
+                }
+                while (true);
+<span class="nc" id="L405">            }</span>
+<span class="nc bnc" id="L406" title="All 2 branches missed.">            else if (oldKey != null)</span>
+            {
+<span class="nc" id="L408">                this.add(this.nonSentinel(oldKey));</span>
+            }
+        }
+<span class="nc" id="L411">    }</span>
+
+    @Override
+    public boolean contains(Object key)
+    {
+<span class="nc" id="L416">        int index = this.index((T) key);</span>
+<span class="nc" id="L417">        Object cur = this.table[index];</span>
+<span class="nc bnc" id="L418" title="All 2 branches missed.">        if (cur == null)</span>
+        {
+<span class="nc" id="L420">            return false;</span>
+        }
+<span class="nc bnc" id="L422" title="All 2 branches missed.">        if (cur instanceof ChainedBucket)</span>
+        {
+<span class="nc" id="L424">            return this.chainContains((ChainedBucket) cur, (T) key);</span>
+        }
+<span class="nc" id="L426">        return this.nonNullTableObjectEquals(cur, (T) key);</span>
+    }
+
+    private boolean chainContains(ChainedBucket bucket, T key)
+    {
+        do
+        {
+<span class="nc bnc" id="L433" title="All 2 branches missed.">            if (this.nonNullTableObjectEquals(bucket.zero, key))</span>
+            {
+<span class="nc" id="L435">                return true;</span>
+            }
+<span class="nc bnc" id="L437" title="All 2 branches missed.">            if (bucket.one == null)</span>
+            {
+<span class="nc" id="L439">                return false;</span>
+            }
+<span class="nc bnc" id="L441" title="All 2 branches missed.">            if (this.nonNullTableObjectEquals(bucket.one, key))</span>
+            {
+<span class="nc" id="L443">                return true;</span>
+            }
+<span class="nc bnc" id="L445" title="All 2 branches missed.">            if (bucket.two == null)</span>
+            {
+<span class="nc" id="L447">                return false;</span>
+            }
+<span class="nc bnc" id="L449" title="All 2 branches missed.">            if (this.nonNullTableObjectEquals(bucket.two, key))</span>
+            {
+<span class="nc" id="L451">                return true;</span>
+            }
+<span class="nc bnc" id="L453" title="All 2 branches missed.">            if (bucket.three == null)</span>
+            {
+<span class="nc" id="L455">                return false;</span>
+            }
+<span class="nc bnc" id="L457" title="All 2 branches missed.">            if (bucket.three instanceof ChainedBucket)</span>
+            {
+<span class="nc" id="L459">                bucket = (ChainedBucket) bucket.three;</span>
+<span class="nc" id="L460">                continue;</span>
+            }
+<span class="nc" id="L462">            return this.nonNullTableObjectEquals(bucket.three, key);</span>
+        }
+        while (true);
+    }
+
+    @Override
+    public void batchForEach(Procedure&lt;? super T&gt; procedure, int sectionIndex, int sectionCount)
+    {
+<span class="nc" id="L470">        Object[] set = this.table;</span>
+<span class="nc" id="L471">        int sectionSize = set.length / sectionCount;</span>
+<span class="nc" id="L472">        int start = sectionSize * sectionIndex;</span>
+<span class="nc bnc" id="L473" title="All 2 branches missed.">        int end = sectionIndex == sectionCount - 1 ? set.length : start + sectionSize;</span>
+<span class="nc bnc" id="L474" title="All 2 branches missed.">        for (int i = start; i &lt; end; i++)</span>
+        {
+<span class="nc" id="L476">            Object cur = set[i];</span>
+<span class="nc bnc" id="L477" title="All 2 branches missed.">            if (cur != null)</span>
+            {
+<span class="nc bnc" id="L479" title="All 2 branches missed.">                if (cur instanceof ChainedBucket)</span>
+                {
+<span class="nc" id="L481">                    this.chainedForEach((ChainedBucket) cur, procedure);</span>
+                }
+                else
+                {
+<span class="nc" id="L485">                    procedure.value(this.nonSentinel(cur));</span>
+                }
+            }
+        }
+<span class="nc" id="L489">    }</span>
+
+    @Override
+    public UnifiedSetWithHashingStrategy&lt;T&gt; tap(Procedure&lt;? super T&gt; procedure)
+    {
+<span class="nc" id="L494">        this.forEach(procedure);</span>
+<span class="nc" id="L495">        return this;</span>
+    }
+
+    @Override
+    public void each(Procedure&lt;? super T&gt; procedure)
+    {
+<span class="nc bnc" id="L501" title="All 2 branches missed.">        for (int i = 0; i &lt; this.table.length; i++)</span>
+        {
+<span class="nc" id="L503">            Object cur = this.table[i];</span>
+<span class="nc bnc" id="L504" title="All 2 branches missed.">            if (cur instanceof ChainedBucket)</span>
+            {
+<span class="nc" id="L506">                this.chainedForEach((ChainedBucket) cur, procedure);</span>
+            }
+<span class="nc bnc" id="L508" title="All 2 branches missed.">            else if (cur != null)</span>
+            {
+<span class="nc" id="L510">                procedure.value(this.nonSentinel(cur));</span>
+            }
+        }
+<span class="nc" id="L513">    }</span>
+
+    private void chainedForEach(ChainedBucket bucket, Procedure&lt;? super T&gt; procedure)
+    {
+        do
+        {
+<span class="nc" id="L519">            procedure.value(this.nonSentinel(bucket.zero));</span>
+<span class="nc bnc" id="L520" title="All 2 branches missed.">            if (bucket.one == null)</span>
+            {
+<span class="nc" id="L522">                return;</span>
+            }
+<span class="nc" id="L524">            procedure.value(this.nonSentinel(bucket.one));</span>
+<span class="nc bnc" id="L525" title="All 2 branches missed.">            if (bucket.two == null)</span>
+            {
+<span class="nc" id="L527">                return;</span>
+            }
+<span class="nc" id="L529">            procedure.value(this.nonSentinel(bucket.two));</span>
+<span class="nc bnc" id="L530" title="All 2 branches missed.">            if (bucket.three == null)</span>
+            {
+<span class="nc" id="L532">                return;</span>
+            }
+<span class="nc bnc" id="L534" title="All 2 branches missed.">            if (bucket.three instanceof ChainedBucket)</span>
+            {
+<span class="nc" id="L536">                bucket = (ChainedBucket) bucket.three;</span>
+<span class="nc" id="L537">                continue;</span>
+            }
+<span class="nc" id="L539">            procedure.value(this.nonSentinel(bucket.three));</span>
+<span class="nc" id="L540">            return;</span>
+        }
+        while (true);
+    }
+
+    @Override
+    public &lt;P&gt; void forEachWith(Procedure2&lt;? super T, ? super P&gt; procedure, P parameter)
+    {
+<span class="nc bnc" id="L548" title="All 2 branches missed.">        for (int i = 0; i &lt; this.table.length; i++)</span>
+        {
+<span class="nc" id="L550">            Object cur = this.table[i];</span>
+<span class="nc bnc" id="L551" title="All 2 branches missed.">            if (cur instanceof ChainedBucket)</span>
+            {
+<span class="nc" id="L553">                this.chainedForEachWith((ChainedBucket) cur, procedure, parameter);</span>
+            }
+<span class="nc bnc" id="L555" title="All 2 branches missed.">            else if (cur != null)</span>
+            {
+<span class="nc" id="L557">                procedure.value(this.nonSentinel(cur), parameter);</span>
+            }
+        }
+<span class="nc" id="L560">    }</span>
+
+    private &lt;P&gt; void chainedForEachWith(
+            ChainedBucket bucket,
+            Procedure2&lt;? super T, ? super P&gt; procedure,
+            P parameter)
+    {
+        do
+        {
+<span class="nc" id="L569">            procedure.value(this.nonSentinel(bucket.zero), parameter);</span>
+<span class="nc bnc" id="L570" title="All 2 branches missed.">            if (bucket.one == null)</span>
+            {
+<span class="nc" id="L572">                return;</span>
+            }
+<span class="nc" id="L574">            procedure.value(this.nonSentinel(bucket.one), parameter);</span>
+<span class="nc bnc" id="L575" title="All 2 branches missed.">            if (bucket.two == null)</span>
+            {
+<span class="nc" id="L577">                return;</span>
+            }
+<span class="nc" id="L579">            procedure.value(this.nonSentinel(bucket.two), parameter);</span>
+<span class="nc bnc" id="L580" title="All 2 branches missed.">            if (bucket.three == null)</span>
+            {
+<span class="nc" id="L582">                return;</span>
+            }
+<span class="nc bnc" id="L584" title="All 2 branches missed.">            if (bucket.three instanceof ChainedBucket)</span>
+            {
+<span class="nc" id="L586">                bucket = (ChainedBucket) bucket.three;</span>
+<span class="nc" id="L587">                continue;</span>
+            }
+<span class="nc" id="L589">            procedure.value(this.nonSentinel(bucket.three), parameter);</span>
+<span class="nc" id="L590">            return;</span>
+        }
+        while (true);
+    }
+
+    @Override
+    public void forEachWithIndex(ObjectIntProcedure&lt;? super T&gt; objectIntProcedure)
+    {
+<span class="nc" id="L598">        int count = 0;</span>
+<span class="nc bnc" id="L599" title="All 2 branches missed.">        for (int i = 0; i &lt; this.table.length; i++)</span>
+        {
+<span class="nc" id="L601">            Object cur = this.table[i];</span>
+<span class="nc bnc" id="L602" title="All 2 branches missed.">            if (cur instanceof ChainedBucket)</span>
+            {
+<span class="nc" id="L604">                count = this.chainedForEachWithIndex((ChainedBucket) cur, objectIntProcedure, count);</span>
+            }
+<span class="nc bnc" id="L606" title="All 2 branches missed.">            else if (cur != null)</span>
+            {
+<span class="nc" id="L608">                objectIntProcedure.value(this.nonSentinel(cur), count++);</span>
+            }
+        }
+<span class="nc" id="L611">    }</span>
+
+    private int chainedForEachWithIndex(ChainedBucket bucket, ObjectIntProcedure&lt;? super T&gt; procedure, int count)
+    {
+        do
+        {
+<span class="nc" id="L617">            procedure.value(this.nonSentinel(bucket.zero), count++);</span>
+<span class="nc bnc" id="L618" title="All 2 branches missed.">            if (bucket.one == null)</span>
+            {
+<span class="nc" id="L620">                return count;</span>
+            }
+<span class="nc" id="L622">            procedure.value(this.nonSentinel(bucket.one), count++);</span>
+<span class="nc bnc" id="L623" title="All 2 branches missed.">            if (bucket.two == null)</span>
+            {
+<span class="nc" id="L625">                return count;</span>
+            }
+<span class="nc" id="L627">            procedure.value(this.nonSentinel(bucket.two), count++);</span>
+<span class="nc bnc" id="L628" title="All 2 branches missed.">            if (bucket.three == null)</span>
+            {
+<span class="nc" id="L630">                return count;</span>
+            }
+<span class="nc bnc" id="L632" title="All 2 branches missed.">            if (bucket.three instanceof ChainedBucket)</span>
+            {
+<span class="nc" id="L634">                bucket = (ChainedBucket) bucket.three;</span>
+<span class="nc" id="L635">                continue;</span>
+            }
+<span class="nc" id="L637">            procedure.value(this.nonSentinel(bucket.three), count++);</span>
+<span class="nc" id="L638">            return count;</span>
+        }
+        while (true);
+    }
+
+    @Override
+    public UnifiedSetWithHashingStrategy&lt;T&gt; newEmpty()
+    {
+<span class="nc" id="L646">        return UnifiedSetWithHashingStrategy.newSet(this.hashingStrategy);</span>
+    }
+
+    @Override
+    public UnifiedSetWithHashingStrategy&lt;T&gt; newEmpty(int size)
+    {
+<span class="nc" id="L652">        return UnifiedSetWithHashingStrategy.newSet(this.hashingStrategy, size, this.loadFactor);</span>
+    }
+
+    @Override
+    public T getFirst()
+    {
+<span class="nc bnc" id="L658" title="All 2 branches missed.">        for (int i = 0; i &lt; this.table.length; i++)</span>
+        {
+<span class="nc" id="L660">            Object cur = this.table[i];</span>
+<span class="nc bnc" id="L661" title="All 2 branches missed.">            if (cur instanceof ChainedBucket)</span>
+            {
+<span class="nc" id="L663">                return this.nonSentinel(((ChainedBucket) cur).zero);</span>
+            }
+<span class="nc bnc" id="L665" title="All 2 branches missed.">            if (cur != null)</span>
+            {
+<span class="nc" id="L667">                return this.nonSentinel(cur);</span>
+            }
+        }
+<span class="nc" id="L670">        return null;</span>
+    }
+
+    @Override
+    public T getLast()
+    {
+<span class="nc bnc" id="L676" title="All 2 branches missed.">        for (int i = this.table.length - 1; i &gt;= 0; i--)</span>
+        {
+<span class="nc" id="L678">            Object cur = this.table[i];</span>
+<span class="nc bnc" id="L679" title="All 2 branches missed.">            if (cur instanceof ChainedBucket)</span>
+            {
+<span class="nc" id="L681">                return this.getLast((ChainedBucket) cur);</span>
+            }
+<span class="nc bnc" id="L683" title="All 2 branches missed.">            if (cur != null)</span>
+            {
+<span class="nc" id="L685">                return this.nonSentinel(cur);</span>
+            }
+        }
+<span class="nc" id="L688">        return null;</span>
+    }
+
+    private T getLast(ChainedBucket bucket)
+    {
+<span class="nc bnc" id="L693" title="All 2 branches missed.">        while (bucket.three instanceof ChainedBucket)</span>
+        {
+<span class="nc" id="L695">            bucket = (ChainedBucket) bucket.three;</span>
+        }
+
+<span class="nc bnc" id="L698" title="All 2 branches missed.">        if (bucket.three != null)</span>
+        {
+<span class="nc" id="L700">            return this.nonSentinel(bucket.three);</span>
+        }
+<span class="nc bnc" id="L702" title="All 2 branches missed.">        if (bucket.two != null)</span>
+        {
+<span class="nc" id="L704">            return this.nonSentinel(bucket.two);</span>
+        }
+<span class="nc bnc" id="L706" title="All 2 branches missed.">        if (bucket.one != null)</span>
+        {
+<span class="nc" id="L708">            return this.nonSentinel(bucket.one);</span>
+        }
+<span class="nc bnc" id="L710" title="All 4 branches missed.">        assert bucket.zero != null;</span>
+<span class="nc" id="L711">        return this.nonSentinel(bucket.zero);</span>
+    }
+
+    @Override
+    public UnifiedSetWithHashingStrategy&lt;T&gt; select(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L717">        return this.select(predicate, this.newEmpty());</span>
+    }
+
+    @Override
+    public &lt;P&gt; UnifiedSetWithHashingStrategy&lt;T&gt; selectWith(
+            Predicate2&lt;? super T, ? super P&gt; predicate,
+            P parameter)
+    {
+<span class="nc" id="L725">        return this.selectWith(predicate, parameter, this.newEmpty());</span>
+    }
+
+    @Override
+    public UnifiedSetWithHashingStrategy&lt;T&gt; reject(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L731">        return this.reject(predicate, this.newEmpty());</span>
+    }
+
+    @Override
+    public &lt;P&gt; UnifiedSetWithHashingStrategy&lt;T&gt; rejectWith(
+            Predicate2&lt;? super T, ? super P&gt; predicate,
+            P parameter)
+    {
+<span class="nc" id="L739">        return this.rejectWith(predicate, parameter, this.newEmpty());</span>
+    }
+
+    @Override
+    public &lt;P&gt; Twin&lt;MutableList&lt;T&gt;&gt; selectAndRejectWith(
+            Predicate2&lt;? super T, ? super P&gt; predicate,
+            P parameter)
+    {
+<span class="nc" id="L747">        MutableList&lt;T&gt; positiveResult = Lists.mutable.empty();</span>
+<span class="nc" id="L748">        MutableList&lt;T&gt; negativeResult = Lists.mutable.empty();</span>
+<span class="nc bnc" id="L749" title="All 2 branches missed.">        this.forEachWith((each, parm) -&gt; (predicate.accept(each, parm) ? positiveResult : negativeResult).add(each), parameter);</span>
+<span class="nc" id="L750">        return Tuples.twin(positiveResult, negativeResult);</span>
+    }
+
+    @Override
+    public PartitionMutableSet&lt;T&gt; partition(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L756">        PartitionMutableSet&lt;T&gt; partitionMutableSet = new PartitionUnifiedSetWithHashingStrategy&lt;&gt;(this.hashingStrategy);</span>
+<span class="nc" id="L757">        this.forEach(new PartitionProcedure&lt;&gt;(predicate, partitionMutableSet));</span>
+<span class="nc" id="L758">        return partitionMutableSet;</span>
+    }
+
+    @Override
+    public &lt;P&gt; PartitionMutableSet&lt;T&gt; partitionWith(Predicate2&lt;? super T, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc" id="L764">        PartitionMutableSet&lt;T&gt; partitionMutableSet = new PartitionUnifiedSetWithHashingStrategy&lt;&gt;(this.hashingStrategy);</span>
+<span class="nc" id="L765">        this.forEach(new PartitionPredicate2Procedure&lt;&gt;(predicate, parameter, partitionMutableSet));</span>
+<span class="nc" id="L766">        return partitionMutableSet;</span>
+    }
+
+    @Override
+    public &lt;S&gt; UnifiedSetWithHashingStrategy&lt;S&gt; selectInstancesOf(Class&lt;S&gt; clazz)
+    {
+<span class="nc" id="L772">        UnifiedSetWithHashingStrategy&lt;S&gt; result = (UnifiedSetWithHashingStrategy&lt;S&gt;) this.newEmpty();</span>
+<span class="nc" id="L773">        this.forEach(new SelectInstancesOfProcedure&lt;&gt;(clazz, result));</span>
+<span class="nc" id="L774">        return result;</span>
+    }
+
+    @Override
+    protected T detect(Predicate&lt;? super T&gt; predicate, int start, int end)
+    {
+<span class="nc bnc" id="L780" title="All 2 branches missed.">        for (int i = start; i &lt; end; i++)</span>
+        {
+<span class="nc" id="L782">            Object cur = this.table[i];</span>
+<span class="nc bnc" id="L783" title="All 2 branches missed.">            if (cur instanceof ChainedBucket)</span>
+            {
+<span class="nc" id="L785">                Object chainedDetect = this.chainedDetect((ChainedBucket) cur, predicate);</span>
+<span class="nc bnc" id="L786" title="All 2 branches missed.">                if (chainedDetect != null)</span>
+                {
+<span class="nc" id="L788">                    return this.nonSentinel(chainedDetect);</span>
+                }
+<span class="nc" id="L790">            }</span>
+<span class="nc bnc" id="L791" title="All 2 branches missed.">            else if (cur != null)</span>
+            {
+<span class="nc" id="L793">                T each = this.nonSentinel(cur);</span>
+<span class="nc bnc" id="L794" title="All 2 branches missed.">                if (predicate.accept(each))</span>
+                {
+<span class="nc" id="L796">                    return each;</span>
+                }
+            }
+        }
+<span class="nc" id="L800">        return null;</span>
+    }
+
+    @Override
+    protected Optional&lt;T&gt; detectOptional(Predicate&lt;? super T&gt; predicate, int start, int end)
+    {
+<span class="nc bnc" id="L806" title="All 2 branches missed.">        for (int i = start; i &lt; end; i++)</span>
+        {
+<span class="nc" id="L808">            Object cur = this.table[i];</span>
+<span class="nc bnc" id="L809" title="All 2 branches missed.">            if (cur instanceof ChainedBucket)</span>
+            {
+<span class="nc" id="L811">                Object chainedDetect = this.chainedDetect((ChainedBucket) cur, predicate);</span>
+<span class="nc bnc" id="L812" title="All 2 branches missed.">                if (chainedDetect != null)</span>
+                {
+<span class="nc" id="L814">                    return Optional.of(this.nonSentinel(chainedDetect));</span>
+                }
+<span class="nc" id="L816">            }</span>
+<span class="nc bnc" id="L817" title="All 2 branches missed.">            else if (cur != null)</span>
+            {
+<span class="nc" id="L819">                T each = this.nonSentinel(cur);</span>
+<span class="nc bnc" id="L820" title="All 2 branches missed.">                if (predicate.accept(each))</span>
+                {
+<span class="nc" id="L822">                    return Optional.of(each);</span>
+                }
+            }
+        }
+<span class="nc" id="L826">        return Optional.empty();</span>
+    }
+
+    private Object chainedDetect(ChainedBucket bucket, Predicate&lt;? super T&gt; predicate)
+    {
+        do
+        {
+<span class="nc bnc" id="L833" title="All 2 branches missed.">            if (predicate.accept(this.nonSentinel(bucket.zero)))</span>
+            {
+<span class="nc" id="L835">                return bucket.zero;</span>
+            }
+<span class="nc bnc" id="L837" title="All 2 branches missed.">            if (bucket.one == null)</span>
+            {
+<span class="nc" id="L839">                return null;</span>
+            }
+<span class="nc bnc" id="L841" title="All 2 branches missed.">            if (predicate.accept(this.nonSentinel(bucket.one)))</span>
+            {
+<span class="nc" id="L843">                return bucket.one;</span>
+            }
+<span class="nc bnc" id="L845" title="All 2 branches missed.">            if (bucket.two == null)</span>
+            {
+<span class="nc" id="L847">                return null;</span>
+            }
+<span class="nc bnc" id="L849" title="All 2 branches missed.">            if (predicate.accept(this.nonSentinel(bucket.two)))</span>
+            {
+<span class="nc" id="L851">                return bucket.two;</span>
+            }
+<span class="nc bnc" id="L853" title="All 2 branches missed.">            if (bucket.three == null)</span>
+            {
+<span class="nc" id="L855">                return null;</span>
+            }
+<span class="nc bnc" id="L857" title="All 2 branches missed.">            if (bucket.three instanceof ChainedBucket)</span>
+            {
+<span class="nc" id="L859">                bucket = (ChainedBucket) bucket.three;</span>
+<span class="nc" id="L860">                continue;</span>
+            }
+<span class="nc bnc" id="L862" title="All 2 branches missed.">            if (predicate.accept(this.nonSentinel(bucket.three)))</span>
+            {
+<span class="nc" id="L864">                return bucket.three;</span>
+            }
+<span class="nc" id="L866">            return null;</span>
+        }
+        while (true);
+    }
+
+    @Override
+    protected boolean shortCircuit(
+            Predicate&lt;? super T&gt; predicate,
+            boolean expected,
+            boolean onShortCircuit,
+            boolean atEnd,
+            int start,
+            int end)
+    {
+<span class="nc bnc" id="L880" title="All 2 branches missed.">        for (int i = start; i &lt; end; i++)</span>
+        {
+<span class="nc" id="L882">            Object cur = this.table[i];</span>
+<span class="nc bnc" id="L883" title="All 2 branches missed.">            if (cur instanceof ChainedBucket)</span>
+            {
+<span class="nc bnc" id="L885" title="All 2 branches missed.">                if (this.chainedShortCircuit((ChainedBucket) cur, predicate, expected))</span>
+                {
+<span class="nc" id="L887">                    return onShortCircuit;</span>
+                }
+            }
+<span class="nc bnc" id="L890" title="All 2 branches missed.">            else if (cur != null)</span>
+            {
+<span class="nc" id="L892">                T each = this.nonSentinel(cur);</span>
+<span class="nc bnc" id="L893" title="All 2 branches missed.">                if (predicate.accept(each) == expected)</span>
+                {
+<span class="nc" id="L895">                    return onShortCircuit;</span>
+                }
+            }
+        }
+<span class="nc" id="L899">        return atEnd;</span>
+    }
+
+    private boolean chainedShortCircuit(
+            ChainedBucket bucket,
+            Predicate&lt;? super T&gt; predicate,
+            boolean expected)
+    {
+        do
+        {
+<span class="nc bnc" id="L909" title="All 2 branches missed.">            if (predicate.accept(this.nonSentinel(bucket.zero)) == expected)</span>
+            {
+<span class="nc" id="L911">                return true;</span>
+            }
+<span class="nc bnc" id="L913" title="All 2 branches missed.">            if (bucket.one == null)</span>
+            {
+<span class="nc" id="L915">                return false;</span>
+            }
+<span class="nc bnc" id="L917" title="All 2 branches missed.">            if (predicate.accept(this.nonSentinel(bucket.one)) == expected)</span>
+            {
+<span class="nc" id="L919">                return true;</span>
+            }
+<span class="nc bnc" id="L921" title="All 2 branches missed.">            if (bucket.two == null)</span>
+            {
+<span class="nc" id="L923">                return false;</span>
+            }
+<span class="nc bnc" id="L925" title="All 2 branches missed.">            if (predicate.accept(this.nonSentinel(bucket.two)) == expected)</span>
+            {
+<span class="nc" id="L927">                return true;</span>
+            }
+<span class="nc bnc" id="L929" title="All 2 branches missed.">            if (bucket.three == null)</span>
+            {
+<span class="nc" id="L931">                return false;</span>
+            }
+<span class="nc bnc" id="L933" title="All 2 branches missed.">            if (bucket.three instanceof ChainedBucket)</span>
+            {
+<span class="nc" id="L935">                bucket = (ChainedBucket) bucket.three;</span>
+<span class="nc" id="L936">                continue;</span>
+            }
+<span class="nc bnc" id="L938" title="All 2 branches missed.">            return predicate.accept(this.nonSentinel(bucket.three)) == expected;</span>
+        }
+        while (true);
+    }
+
+    @Override
+    protected &lt;P&gt; boolean shortCircuitWith(
+            Predicate2&lt;? super T, ? super P&gt; predicate2,
+            P parameter,
+            boolean expected,
+            boolean onShortCircuit,
+            boolean atEnd)
+    {
+<span class="nc bnc" id="L951" title="All 2 branches missed.">        for (int i = 0; i &lt; this.table.length; i++)</span>
+        {
+<span class="nc" id="L953">            Object cur = this.table[i];</span>
+<span class="nc bnc" id="L954" title="All 2 branches missed.">            if (cur instanceof ChainedBucket)</span>
+            {
+<span class="nc bnc" id="L956" title="All 2 branches missed.">                if (this.chainedShortCircuitWith((ChainedBucket) cur, predicate2, parameter, expected))</span>
+                {
+<span class="nc" id="L958">                    return onShortCircuit;</span>
+                }
+            }
+<span class="nc bnc" id="L961" title="All 2 branches missed.">            else if (cur != null)</span>
+            {
+<span class="nc" id="L963">                T each = this.nonSentinel(cur);</span>
+<span class="nc bnc" id="L964" title="All 2 branches missed.">                if (predicate2.accept(each, parameter) == expected)</span>
+                {
+<span class="nc" id="L966">                    return onShortCircuit;</span>
+                }
+            }
+        }
+<span class="nc" id="L970">        return atEnd;</span>
+    }
+
+    private &lt;P&gt; boolean chainedShortCircuitWith(
+            ChainedBucket bucket,
+            Predicate2&lt;? super T, ? super P&gt; predicate,
+            P parameter,
+            boolean expected)
+    {
+        do
+        {
+<span class="nc bnc" id="L981" title="All 2 branches missed.">            if (predicate.accept(this.nonSentinel(bucket.zero), parameter) == expected)</span>
+            {
+<span class="nc" id="L983">                return true;</span>
+            }
+<span class="nc bnc" id="L985" title="All 2 branches missed.">            if (bucket.one == null)</span>
+            {
+<span class="nc" id="L987">                return false;</span>
+            }
+<span class="nc bnc" id="L989" title="All 2 branches missed.">            if (predicate.accept(this.nonSentinel(bucket.one), parameter) == expected)</span>
+            {
+<span class="nc" id="L991">                return true;</span>
+            }
+<span class="nc bnc" id="L993" title="All 2 branches missed.">            if (bucket.two == null)</span>
+            {
+<span class="nc" id="L995">                return false;</span>
+            }
+<span class="nc bnc" id="L997" title="All 2 branches missed.">            if (predicate.accept(this.nonSentinel(bucket.two), parameter) == expected)</span>
+            {
+<span class="nc" id="L999">                return true;</span>
+            }
+<span class="nc bnc" id="L1001" title="All 2 branches missed.">            if (bucket.three == null)</span>
+            {
+<span class="nc" id="L1003">                return false;</span>
+            }
+<span class="nc bnc" id="L1005" title="All 2 branches missed.">            if (bucket.three instanceof ChainedBucket)</span>
+            {
+<span class="nc" id="L1007">                bucket = (ChainedBucket) bucket.three;</span>
+<span class="nc" id="L1008">                continue;</span>
+            }
+<span class="nc bnc" id="L1010" title="All 2 branches missed.">            return predicate.accept(this.nonSentinel(bucket.three), parameter) == expected;</span>
+        }
+        while (true);
+    }
+
+    /**
+     * @deprecated since 3.0. Use {@link #asLazy()}.{@link #select(Predicate)} instead.
+     */
+    @Deprecated
+    public LazyIterable&lt;T&gt; lazySelect(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L1021">        return this.asLazy().select(predicate);</span>
+    }
+
+    /**
+     * @deprecated since 3.0. Use {@link #asLazy()}.{@link #reject(Predicate)} instead.
+     */
+    @Deprecated
+    public LazyIterable&lt;T&gt; lazyReject(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L1030">        return this.asLazy().reject(predicate);</span>
+    }
+
+    /**
+     * @deprecated since 3.0. Use {@link #asLazy()}.{@link #collect(Function)} instead.
+     */
+    @Deprecated
+    public &lt;V&gt; LazyIterable&lt;V&gt; lazyCollect(Function&lt;? super T, ? extends V&gt; function)
+    {
+<span class="nc" id="L1039">        return this.asLazy().collect(function);</span>
+    }
+
+    @Override
+    public ImmutableSet&lt;T&gt; toImmutable()
+    {
+<span class="nc" id="L1045">        return HashingStrategySets.immutable.withAll(this.hashingStrategy, this);</span>
+    }
+
+    @Override
+    public UnifiedSetWithHashingStrategy&lt;T&gt; with(T element)
+    {
+<span class="nc" id="L1051">        this.add(element);</span>
+<span class="nc" id="L1052">        return this;</span>
+    }
+
+    public UnifiedSetWithHashingStrategy&lt;T&gt; with(T element1, T element2)
+    {
+<span class="nc" id="L1057">        this.add(element1);</span>
+<span class="nc" id="L1058">        this.add(element2);</span>
+<span class="nc" id="L1059">        return this;</span>
+    }
+
+    public UnifiedSetWithHashingStrategy&lt;T&gt; with(T element1, T element2, T element3)
+    {
+<span class="nc" id="L1064">        this.add(element1);</span>
+<span class="nc" id="L1065">        this.add(element2);</span>
+<span class="nc" id="L1066">        this.add(element3);</span>
+<span class="nc" id="L1067">        return this;</span>
+    }
+
+    public UnifiedSetWithHashingStrategy&lt;T&gt; with(T... elements)
+    {
+<span class="nc" id="L1072">        this.addAll(Arrays.asList(elements));</span>
+<span class="nc" id="L1073">        return this;</span>
+    }
+
+    @Override
+    public UnifiedSetWithHashingStrategy&lt;T&gt; withAll(Iterable&lt;? extends T&gt; iterable)
+    {
+<span class="nc" id="L1079">        this.addAllIterable(iterable);</span>
+<span class="nc" id="L1080">        return this;</span>
+    }
+
+    @Override
+    public UnifiedSetWithHashingStrategy&lt;T&gt; without(T element)
+    {
+<span class="nc" id="L1086">        this.remove(element);</span>
+<span class="nc" id="L1087">        return this;</span>
+    }
+
+    @Override
+    public UnifiedSetWithHashingStrategy&lt;T&gt; withoutAll(Iterable&lt;? extends T&gt; elements)
+    {
+<span class="nc" id="L1093">        this.removeAllIterable(elements);</span>
+<span class="nc" id="L1094">        return this;</span>
+    }
+
+    @Override
+    public boolean addAllIterable(Iterable&lt;? extends T&gt; iterable)
+    {
+<span class="nc bnc" id="L1100" title="All 2 branches missed.">        if (iterable instanceof UnifiedSetWithHashingStrategy)</span>
+        {
+<span class="nc" id="L1102">            return this.copySet((UnifiedSetWithHashingStrategy&lt;?&gt;) iterable);</span>
+        }
+<span class="nc" id="L1104">        int size = Iterate.sizeOf(iterable);</span>
+<span class="nc" id="L1105">        this.ensureCapacity(size);</span>
+<span class="nc" id="L1106">        int oldSize = this.size();</span>
+<span class="nc" id="L1107">        Iterate.forEachWith(iterable, Procedures2.addToCollection(), this);</span>
+<span class="nc bnc" id="L1108" title="All 2 branches missed.">        return this.size() != oldSize;</span>
+    }
+
+    private void ensureCapacity(int size)
+    {
+<span class="nc bnc" id="L1113" title="All 2 branches missed.">        if (size &gt; this.maxSize)</span>
+        {
+<span class="nc" id="L1115">            size = (int) (size / this.loadFactor) + 1;</span>
+<span class="nc" id="L1116">            int capacity = Integer.highestOneBit(size);</span>
+<span class="nc bnc" id="L1117" title="All 2 branches missed.">            if (size != capacity)</span>
+            {
+<span class="nc" id="L1119">                capacity &lt;&lt;= 1;</span>
+            }
+<span class="nc" id="L1121">            this.rehash(capacity);</span>
+        }
+<span class="nc" id="L1123">    }</span>
+
+    protected boolean copySet(UnifiedSetWithHashingStrategy&lt;?&gt; unifiedset)
+    {
+        //todo: optimize for current size == 0
+<span class="nc" id="L1128">        boolean changed = false;</span>
+<span class="nc bnc" id="L1129" title="All 2 branches missed.">        for (int i = 0; i &lt; unifiedset.table.length; i++)</span>
+        {
+<span class="nc" id="L1131">            Object cur = unifiedset.table[i];</span>
+<span class="nc bnc" id="L1132" title="All 2 branches missed.">            if (cur instanceof ChainedBucket)</span>
+            {
+<span class="nc" id="L1134">                changed |= this.copyChain((ChainedBucket) cur);</span>
+            }
+<span class="nc bnc" id="L1136" title="All 2 branches missed.">            else if (cur != null)</span>
+            {
+<span class="nc" id="L1138">                changed |= this.add(this.nonSentinel(cur));</span>
+            }
+        }
+<span class="nc" id="L1141">        return changed;</span>
+    }
+
+    private boolean copyChain(ChainedBucket bucket)
+    {
+<span class="nc" id="L1146">        boolean changed = false;</span>
+        do
+        {
+<span class="nc" id="L1149">            changed |= this.add(this.nonSentinel(bucket.zero));</span>
+<span class="nc bnc" id="L1150" title="All 2 branches missed.">            if (bucket.one == null)</span>
+            {
+<span class="nc" id="L1152">                return changed;</span>
+            }
+<span class="nc" id="L1154">            changed |= this.add(this.nonSentinel(bucket.one));</span>
+<span class="nc bnc" id="L1155" title="All 2 branches missed.">            if (bucket.two == null)</span>
+            {
+<span class="nc" id="L1157">                return changed;</span>
+            }
+<span class="nc" id="L1159">            changed |= this.add(this.nonSentinel(bucket.two));</span>
+<span class="nc bnc" id="L1160" title="All 2 branches missed.">            if (bucket.three == null)</span>
+            {
+<span class="nc" id="L1162">                return changed;</span>
+            }
+<span class="nc bnc" id="L1164" title="All 2 branches missed.">            if (bucket.three instanceof ChainedBucket)</span>
+            {
+<span class="nc" id="L1166">                bucket = (ChainedBucket) bucket.three;</span>
+<span class="nc" id="L1167">                continue;</span>
+            }
+<span class="nc" id="L1169">            changed |= this.add(this.nonSentinel(bucket.three));</span>
+<span class="nc" id="L1170">            return changed;</span>
+        }
+        while (true);
+    }
+
+    @Override
+    public boolean remove(Object key)
+    {
+<span class="nc" id="L1178">        int index = this.index((T) key);</span>
+
+<span class="nc" id="L1180">        Object cur = this.table[index];</span>
+<span class="nc bnc" id="L1181" title="All 2 branches missed.">        if (cur == null)</span>
+        {
+<span class="nc" id="L1183">            return false;</span>
+        }
+<span class="nc bnc" id="L1185" title="All 2 branches missed.">        if (cur instanceof ChainedBucket)</span>
+        {
+<span class="nc" id="L1187">            return this.removeFromChain((ChainedBucket) cur, (T) key, index);</span>
+        }
+<span class="nc bnc" id="L1189" title="All 2 branches missed.">        if (this.nonNullTableObjectEquals(cur, (T) key))</span>
+        {
+<span class="nc" id="L1191">            this.table[index] = null;</span>
+<span class="nc" id="L1192">            this.occupied--;</span>
+<span class="nc" id="L1193">            return true;</span>
+        }
+<span class="nc" id="L1195">        return false;</span>
+    }
+
+    private boolean removeFromChain(ChainedBucket bucket, T key, int index)
+    {
+<span class="nc bnc" id="L1200" title="All 2 branches missed.">        if (this.nonNullTableObjectEquals(bucket.zero, key))</span>
+        {
+<span class="nc" id="L1202">            bucket.zero = bucket.removeLast(0);</span>
+<span class="nc bnc" id="L1203" title="All 2 branches missed.">            if (bucket.zero == null)</span>
+            {
+<span class="nc" id="L1205">                this.table[index] = null;</span>
+            }
+<span class="nc" id="L1207">            this.occupied--;</span>
+<span class="nc" id="L1208">            return true;</span>
+        }
+<span class="nc bnc" id="L1210" title="All 2 branches missed.">        if (bucket.one == null)</span>
+        {
+<span class="nc" id="L1212">            return false;</span>
+        }
+<span class="nc bnc" id="L1214" title="All 2 branches missed.">        if (this.nonNullTableObjectEquals(bucket.one, key))</span>
+        {
+<span class="nc" id="L1216">            bucket.one = bucket.removeLast(1);</span>
+<span class="nc" id="L1217">            this.occupied--;</span>
+<span class="nc" id="L1218">            return true;</span>
+        }
+<span class="nc bnc" id="L1220" title="All 2 branches missed.">        if (bucket.two == null)</span>
+        {
+<span class="nc" id="L1222">            return false;</span>
+        }
+<span class="nc bnc" id="L1224" title="All 2 branches missed.">        if (this.nonNullTableObjectEquals(bucket.two, key))</span>
+        {
+<span class="nc" id="L1226">            bucket.two = bucket.removeLast(2);</span>
+<span class="nc" id="L1227">            this.occupied--;</span>
+<span class="nc" id="L1228">            return true;</span>
+        }
+<span class="nc bnc" id="L1230" title="All 2 branches missed.">        if (bucket.three == null)</span>
+        {
+<span class="nc" id="L1232">            return false;</span>
+        }
+<span class="nc bnc" id="L1234" title="All 2 branches missed.">        if (bucket.three instanceof ChainedBucket)</span>
+        {
+<span class="nc" id="L1236">            return this.removeDeepChain(bucket, key);</span>
+        }
+<span class="nc bnc" id="L1238" title="All 2 branches missed.">        if (this.nonNullTableObjectEquals(bucket.three, key))</span>
+        {
+<span class="nc" id="L1240">            bucket.three = bucket.removeLast(3);</span>
+<span class="nc" id="L1241">            this.occupied--;</span>
+<span class="nc" id="L1242">            return true;</span>
+        }
+<span class="nc" id="L1244">        return false;</span>
+    }
+
+    private boolean removeDeepChain(ChainedBucket oldBucket, T key)
+    {
+        do
+        {
+<span class="nc" id="L1251">            ChainedBucket bucket = (ChainedBucket) oldBucket.three;</span>
+<span class="nc bnc" id="L1252" title="All 2 branches missed.">            if (this.nonNullTableObjectEquals(bucket.zero, key))</span>
+            {
+<span class="nc" id="L1254">                bucket.zero = bucket.removeLast(0);</span>
+<span class="nc bnc" id="L1255" title="All 2 branches missed.">                if (bucket.zero == null)</span>
+                {
+<span class="nc" id="L1257">                    oldBucket.three = null;</span>
+                }
+<span class="nc" id="L1259">                this.occupied--;</span>
+<span class="nc" id="L1260">                return true;</span>
+            }
+<span class="nc bnc" id="L1262" title="All 2 branches missed.">            if (bucket.one == null)</span>
+            {
+<span class="nc" id="L1264">                return false;</span>
+            }
+<span class="nc bnc" id="L1266" title="All 2 branches missed.">            if (this.nonNullTableObjectEquals(bucket.one, key))</span>
+            {
+<span class="nc" id="L1268">                bucket.one = bucket.removeLast(1);</span>
+<span class="nc" id="L1269">                this.occupied--;</span>
+<span class="nc" id="L1270">                return true;</span>
+            }
+<span class="nc bnc" id="L1272" title="All 2 branches missed.">            if (bucket.two == null)</span>
+            {
+<span class="nc" id="L1274">                return false;</span>
+            }
+<span class="nc bnc" id="L1276" title="All 2 branches missed.">            if (this.nonNullTableObjectEquals(bucket.two, key))</span>
+            {
+<span class="nc" id="L1278">                bucket.two = bucket.removeLast(2);</span>
+<span class="nc" id="L1279">                this.occupied--;</span>
+<span class="nc" id="L1280">                return true;</span>
+            }
+<span class="nc bnc" id="L1282" title="All 2 branches missed.">            if (bucket.three == null)</span>
+            {
+<span class="nc" id="L1284">                return false;</span>
+            }
+<span class="nc bnc" id="L1286" title="All 2 branches missed.">            if (bucket.three instanceof ChainedBucket)</span>
+            {
+<span class="nc" id="L1288">                oldBucket = bucket;</span>
+<span class="nc" id="L1289">                continue;</span>
+            }
+<span class="nc bnc" id="L1291" title="All 2 branches missed.">            if (this.nonNullTableObjectEquals(bucket.three, key))</span>
+            {
+<span class="nc" id="L1293">                bucket.three = bucket.removeLast(3);</span>
+<span class="nc" id="L1294">                this.occupied--;</span>
+<span class="nc" id="L1295">                return true;</span>
+            }
+<span class="nc" id="L1297">            return false;</span>
+        }
+        while (true);
+    }
+
+    @Override
+    public int size()
+    {
+<span class="nc" id="L1305">        return this.occupied;</span>
+    }
+
+    @Override
+    public boolean equals(Object object)
+    {
+<span class="nc bnc" id="L1311" title="All 2 branches missed.">        if (this == object)</span>
+        {
+<span class="nc" id="L1313">            return true;</span>
+        }
+
+<span class="nc bnc" id="L1316" title="All 2 branches missed.">        if (!(object instanceof Set))</span>
+        {
+<span class="nc" id="L1318">            return false;</span>
+        }
+
+<span class="nc" id="L1321">        Set&lt;?&gt; other = (Set&lt;?&gt;) object;</span>
+<span class="nc bnc" id="L1322" title="All 4 branches missed.">        return this.size() == other.size() &amp;&amp; this.containsAll(other);</span>
+    }
+
+    @Override
+    public int hashCode()
+    {
+<span class="nc" id="L1328">        int hashCode = 0;</span>
+<span class="nc bnc" id="L1329" title="All 2 branches missed.">        for (int i = 0; i &lt; this.table.length; i++)</span>
+        {
+<span class="nc" id="L1331">            Object cur = this.table[i];</span>
+<span class="nc bnc" id="L1332" title="All 2 branches missed.">            if (cur instanceof ChainedBucket)</span>
+            {
+<span class="nc" id="L1334">                hashCode += this.chainedHashCode((ChainedBucket) cur);</span>
+            }
+<span class="nc bnc" id="L1336" title="All 2 branches missed.">            else if (cur != null)</span>
+            {
+<span class="nc" id="L1338">                hashCode += this.hashingStrategy.computeHashCode(this.nonSentinel(cur));</span>
+            }
+        }
+<span class="nc" id="L1341">        return hashCode;</span>
+    }
+
+    private int chainedHashCode(ChainedBucket bucket)
+    {
+<span class="nc" id="L1346">        int hashCode = 0;</span>
+        do
+        {
+<span class="nc" id="L1349">            hashCode += this.hashingStrategy.computeHashCode(this.nonSentinel(bucket.zero));</span>
+<span class="nc bnc" id="L1350" title="All 2 branches missed.">            if (bucket.one == null)</span>
+            {
+<span class="nc" id="L1352">                return hashCode;</span>
+            }
+<span class="nc" id="L1354">            hashCode += this.hashingStrategy.computeHashCode(this.nonSentinel(bucket.one));</span>
+<span class="nc bnc" id="L1355" title="All 2 branches missed.">            if (bucket.two == null)</span>
+            {
+<span class="nc" id="L1357">                return hashCode;</span>
+            }
+<span class="nc" id="L1359">            hashCode += this.hashingStrategy.computeHashCode(this.nonSentinel(bucket.two));</span>
+<span class="nc bnc" id="L1360" title="All 2 branches missed.">            if (bucket.three == null)</span>
+            {
+<span class="nc" id="L1362">                return hashCode;</span>
+            }
+<span class="nc bnc" id="L1364" title="All 2 branches missed.">            if (bucket.three instanceof ChainedBucket)</span>
+            {
+<span class="nc" id="L1366">                bucket = (ChainedBucket) bucket.three;</span>
+<span class="nc" id="L1367">                continue;</span>
+            }
+<span class="nc" id="L1369">            hashCode += this.hashingStrategy.computeHashCode(this.nonSentinel(bucket.three));</span>
+<span class="nc" id="L1370">            return hashCode;</span>
+        }
+        while (true);
+    }
+
+    public boolean trimToSize()
+    {
+<span class="nc bnc" id="L1377" title="All 2 branches missed.">        if (this.table.length &lt;= (this.fastCeil(this.occupied / this.loadFactor) &lt;&lt; 1))</span>
+        {
+<span class="nc" id="L1379">            return false;</span>
+        }
+
+<span class="nc" id="L1382">        Object[] temp = this.table;</span>
+<span class="nc" id="L1383">        this.init(this.fastCeil(this.occupied / this.loadFactor));</span>
+<span class="nc bnc" id="L1384" title="All 2 branches missed.">        if (this.isEmpty())</span>
+        {
+<span class="nc" id="L1386">            return true;</span>
+        }
+
+<span class="nc" id="L1389">        int mask = this.table.length - 1;</span>
+<span class="nc bnc" id="L1390" title="All 2 branches missed.">        for (int j = 0; j &lt; temp.length; j++)</span>
+        {
+<span class="nc" id="L1392">            Object cur = temp[j];</span>
+<span class="nc bnc" id="L1393" title="All 2 branches missed.">            if (cur instanceof ChainedBucket)</span>
+            {
+<span class="nc" id="L1395">                ChainedBucket bucket = (ChainedBucket) cur;</span>
+<span class="nc" id="L1396">                this.chainedTrimToSize(bucket, j, mask);</span>
+<span class="nc" id="L1397">            }</span>
+<span class="nc bnc" id="L1398" title="All 2 branches missed.">            else if (cur != null)</span>
+            {
+<span class="nc" id="L1400">                this.addForTrim((T) cur, j, mask);</span>
+            }
+        }
+<span class="nc" id="L1403">        return true;</span>
+    }
+
+    private void chainedTrimToSize(ChainedBucket bucket, int oldIndex, int mask)
+    {
+        do
+        {
+<span class="nc" id="L1410">            this.addForTrim(bucket.zero, oldIndex, mask);</span>
+<span class="nc bnc" id="L1411" title="All 2 branches missed.">            if (bucket.one == null)</span>
+            {
+<span class="nc" id="L1413">                return;</span>
+            }
+<span class="nc" id="L1415">            this.addForTrim(bucket.one, oldIndex, mask);</span>
+<span class="nc bnc" id="L1416" title="All 2 branches missed.">            if (bucket.two == null)</span>
+            {
+<span class="nc" id="L1418">                return;</span>
+            }
+<span class="nc" id="L1420">            this.addForTrim(bucket.two, oldIndex, mask);</span>
+<span class="nc bnc" id="L1421" title="All 2 branches missed.">            if (bucket.three == null)</span>
+            {
+<span class="nc" id="L1423">                return;</span>
+            }
+<span class="nc bnc" id="L1425" title="All 2 branches missed.">            if (bucket.three instanceof ChainedBucket)</span>
+            {
+<span class="nc" id="L1427">                bucket = (ChainedBucket) bucket.three;</span>
+<span class="nc" id="L1428">                continue;</span>
+            }
+<span class="nc" id="L1430">            this.addForTrim(bucket.three, oldIndex, mask);</span>
+<span class="nc" id="L1431">            return;</span>
+        }
+        while (true);
+    }
+
+    private void addForTrim(Object key, int oldIndex, int mask)
+    {
+<span class="nc" id="L1438">        int index = oldIndex &amp; mask;</span>
+<span class="nc" id="L1439">        Object cur = this.table[index];</span>
+<span class="nc bnc" id="L1440" title="All 2 branches missed.">        if (cur == null)</span>
+        {
+<span class="nc" id="L1442">            this.table[index] = key;</span>
+<span class="nc" id="L1443">            return;</span>
+        }
+<span class="nc" id="L1445">        this.chainedAddForTrim(key, index);</span>
+<span class="nc" id="L1446">    }</span>
+
+    private void chainedAddForTrim(Object key, int index)
+    {
+<span class="nc bnc" id="L1450" title="All 2 branches missed.">        if (this.table[index] instanceof ChainedBucket)</span>
+        {
+<span class="nc" id="L1452">            ChainedBucket bucket = (ChainedBucket) this.table[index];</span>
+            do
+            {
+<span class="nc bnc" id="L1455" title="All 2 branches missed.">                if (bucket.one == null)</span>
+                {
+<span class="nc" id="L1457">                    bucket.one = key;</span>
+<span class="nc" id="L1458">                    return;</span>
+                }
+<span class="nc bnc" id="L1460" title="All 2 branches missed.">                if (bucket.two == null)</span>
+                {
+<span class="nc" id="L1462">                    bucket.two = key;</span>
+<span class="nc" id="L1463">                    return;</span>
+                }
+<span class="nc bnc" id="L1465" title="All 2 branches missed.">                if (bucket.three instanceof ChainedBucket)</span>
+                {
+<span class="nc" id="L1467">                    bucket = (ChainedBucket) bucket.three;</span>
+<span class="nc" id="L1468">                    continue;</span>
+                }
+<span class="nc bnc" id="L1470" title="All 2 branches missed.">                if (bucket.three == null)</span>
+                {
+<span class="nc" id="L1472">                    bucket.three = key;</span>
+<span class="nc" id="L1473">                    return;</span>
+                }
+<span class="nc" id="L1475">                bucket.three = new ChainedBucket(bucket.three, key);</span>
+<span class="nc" id="L1476">                return;</span>
+            }
+            while (true);
+        }
+<span class="nc" id="L1480">        ChainedBucket newBucket = new ChainedBucket(this.table[index], key);</span>
+<span class="nc" id="L1481">        this.table[index] = newBucket;</span>
+<span class="nc" id="L1482">    }</span>
+
+    @Override
+    public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException
+    {
+<span class="nc" id="L1487">        this.hashingStrategy = (HashingStrategy&lt;? super T&gt;) in.readObject();</span>
+<span class="nc" id="L1488">        int size = in.readInt();</span>
+<span class="nc" id="L1489">        this.loadFactor = in.readFloat();</span>
+<span class="nc" id="L1490">        this.init(Math.max((int) (size / this.loadFactor) + 1, DEFAULT_INITIAL_CAPACITY));</span>
+<span class="nc bnc" id="L1491" title="All 2 branches missed.">        for (int i = 0; i &lt; size; i++)</span>
+        {
+<span class="nc" id="L1493">            this.add((T) in.readObject());</span>
+        }
+<span class="nc" id="L1495">    }</span>
+
+    @Override
+    public void writeExternal(ObjectOutput out) throws IOException
+    {
+<span class="nc" id="L1500">        out.writeObject(this.hashingStrategy);</span>
+<span class="nc" id="L1501">        out.writeInt(this.size());</span>
+<span class="nc" id="L1502">        out.writeFloat(this.loadFactor);</span>
+<span class="nc bnc" id="L1503" title="All 2 branches missed.">        for (int i = 0; i &lt; this.table.length; i++)</span>
+        {
+<span class="nc" id="L1505">            Object o = this.table[i];</span>
+<span class="nc bnc" id="L1506" title="All 2 branches missed.">            if (o != null)</span>
+            {
+<span class="nc bnc" id="L1508" title="All 2 branches missed.">                if (o instanceof ChainedBucket)</span>
+                {
+<span class="nc" id="L1510">                    this.writeExternalChain(out, (ChainedBucket) o);</span>
+                }
+                else
+                {
+<span class="nc" id="L1514">                    out.writeObject(this.nonSentinel(o));</span>
+                }
+            }
+        }
+<span class="nc" id="L1518">    }</span>
+
+    private void writeExternalChain(ObjectOutput out, ChainedBucket bucket) throws IOException
+    {
+        do
+        {
+<span class="nc" id="L1524">            out.writeObject(this.nonSentinel(bucket.zero));</span>
+<span class="nc bnc" id="L1525" title="All 2 branches missed.">            if (bucket.one == null)</span>
+            {
+<span class="nc" id="L1527">                return;</span>
+            }
+<span class="nc" id="L1529">            out.writeObject(this.nonSentinel(bucket.one));</span>
+<span class="nc bnc" id="L1530" title="All 2 branches missed.">            if (bucket.two == null)</span>
+            {
+<span class="nc" id="L1532">                return;</span>
+            }
+<span class="nc" id="L1534">            out.writeObject(this.nonSentinel(bucket.two));</span>
+<span class="nc bnc" id="L1535" title="All 2 branches missed.">            if (bucket.three == null)</span>
+            {
+<span class="nc" id="L1537">                return;</span>
+            }
+<span class="nc bnc" id="L1539" title="All 2 branches missed.">            if (bucket.three instanceof ChainedBucket)</span>
+            {
+<span class="nc" id="L1541">                bucket = (ChainedBucket) bucket.three;</span>
+<span class="nc" id="L1542">                continue;</span>
+            }
+<span class="nc" id="L1544">            out.writeObject(this.nonSentinel(bucket.three));</span>
+<span class="nc" id="L1545">            return;</span>
+        }
+        while (true);
+    }
+
+    private void addIfFound(T key, UnifiedSetWithHashingStrategy&lt;T&gt; other)
+    {
+<span class="nc" id="L1552">        int index = this.index(key);</span>
+
+<span class="nc" id="L1554">        Object cur = this.table[index];</span>
+<span class="nc bnc" id="L1555" title="All 2 branches missed.">        if (cur == null)</span>
+        {
+<span class="nc" id="L1557">            return;</span>
+        }
+<span class="nc bnc" id="L1559" title="All 2 branches missed.">        if (cur instanceof ChainedBucket)</span>
+        {
+<span class="nc" id="L1561">            this.addIfFoundFromChain((ChainedBucket) cur, key, other);</span>
+<span class="nc" id="L1562">            return;</span>
+        }
+<span class="nc bnc" id="L1564" title="All 2 branches missed.">        if (this.nonNullTableObjectEquals(cur, key))</span>
+        {
+<span class="nc" id="L1566">            other.add(this.nonSentinel(cur));</span>
+        }
+<span class="nc" id="L1568">    }</span>
+
+    private void addIfFoundFromChain(ChainedBucket bucket, T key, UnifiedSetWithHashingStrategy&lt;T&gt; other)
+    {
+        do
+        {
+<span class="nc bnc" id="L1574" title="All 2 branches missed.">            if (this.nonNullTableObjectEquals(bucket.zero, key))</span>
+            {
+<span class="nc" id="L1576">                other.add(this.nonSentinel(bucket.zero));</span>
+<span class="nc" id="L1577">                return;</span>
+            }
+<span class="nc bnc" id="L1579" title="All 2 branches missed.">            if (bucket.one == null)</span>
+            {
+<span class="nc" id="L1581">                return;</span>
+            }
+<span class="nc bnc" id="L1583" title="All 2 branches missed.">            if (this.nonNullTableObjectEquals(bucket.one, key))</span>
+            {
+<span class="nc" id="L1585">                other.add(this.nonSentinel(bucket.one));</span>
+<span class="nc" id="L1586">                return;</span>
+            }
+<span class="nc bnc" id="L1588" title="All 2 branches missed.">            if (bucket.two == null)</span>
+            {
+<span class="nc" id="L1590">                return;</span>
+            }
+<span class="nc bnc" id="L1592" title="All 2 branches missed.">            if (this.nonNullTableObjectEquals(bucket.two, key))</span>
+            {
+<span class="nc" id="L1594">                other.add(this.nonSentinel(bucket.two));</span>
+<span class="nc" id="L1595">                return;</span>
+            }
+<span class="nc bnc" id="L1597" title="All 2 branches missed.">            if (bucket.three == null)</span>
+            {
+<span class="nc" id="L1599">                return;</span>
+            }
+<span class="nc bnc" id="L1601" title="All 2 branches missed.">            if (bucket.three instanceof ChainedBucket)</span>
+            {
+<span class="nc" id="L1603">                bucket = (ChainedBucket) bucket.three;</span>
+<span class="nc" id="L1604">                continue;</span>
+            }
+<span class="nc bnc" id="L1606" title="All 2 branches missed.">            if (this.nonNullTableObjectEquals(bucket.three, key))</span>
+            {
+<span class="nc" id="L1608">                other.add(this.nonSentinel(bucket.three));</span>
+<span class="nc" id="L1609">                return;</span>
+            }
+<span class="nc" id="L1611">            return;</span>
+        }
+        while (true);
+    }
+
+    @Override
+    public boolean retainAllIterable(Iterable&lt;?&gt; iterable)
+    {
+<span class="nc bnc" id="L1619" title="All 2 branches missed.">        if (iterable instanceof Set)</span>
+        {
+<span class="nc" id="L1621">            return this.retainAllFromSet((Set&lt;?&gt;) iterable);</span>
+        }
+<span class="nc" id="L1623">        return this.retainAllFromNonSet(iterable);</span>
+    }
+
+    private boolean retainAllFromNonSet(Iterable&lt;?&gt; iterable)
+    {
+<span class="nc" id="L1628">        int retainedSize = Iterate.sizeOf(iterable);</span>
+<span class="nc" id="L1629">        UnifiedSetWithHashingStrategy&lt;T&gt; retainedCopy = this.newEmpty(retainedSize);</span>
+<span class="nc bnc" id="L1630" title="All 2 branches missed.">        for (Object key : iterable)</span>
+        {
+<span class="nc" id="L1632">            this.addIfFound((T) key, retainedCopy);</span>
+<span class="nc" id="L1633">        }</span>
+<span class="nc bnc" id="L1634" title="All 2 branches missed.">        if (retainedCopy.size() &lt; this.size())</span>
+        {
+<span class="nc" id="L1636">            this.maxSize = retainedCopy.maxSize;</span>
+<span class="nc" id="L1637">            this.occupied = retainedCopy.occupied;</span>
+<span class="nc" id="L1638">            this.table = retainedCopy.table;</span>
+<span class="nc" id="L1639">            return true;</span>
+        }
+<span class="nc" id="L1641">        return false;</span>
+    }
+
+    private boolean retainAllFromSet(Set&lt;?&gt; collection)
+    {
+        // TODO: turn iterator into a loop
+<span class="nc" id="L1647">        boolean result = false;</span>
+<span class="nc" id="L1648">        Iterator&lt;T&gt; e = this.iterator();</span>
+<span class="nc bnc" id="L1649" title="All 2 branches missed.">        while (e.hasNext())</span>
+        {
+<span class="nc bnc" id="L1651" title="All 2 branches missed.">            if (!collection.contains(e.next()))</span>
+            {
+<span class="nc" id="L1653">                e.remove();</span>
+<span class="nc" id="L1654">                result = true;</span>
+            }
+        }
+<span class="nc" id="L1657">        return result;</span>
+    }
+
+    @Override
+    public UnifiedSetWithHashingStrategy&lt;T&gt; clone()
+    {
+<span class="nc" id="L1663">        return new UnifiedSetWithHashingStrategy&lt;&gt;(this.hashingStrategy, this);</span>
+    }
+
+    @Override
+    public Object[] toArray()
+    {
+<span class="nc" id="L1669">        Object[] result = new Object[this.occupied];</span>
+<span class="nc" id="L1670">        this.copyToArray(result);</span>
+<span class="nc" id="L1671">        return result;</span>
+    }
+
+    private void copyToArray(Object[] result)
+    {
+<span class="nc" id="L1676">        Object[] table = this.table;</span>
+<span class="nc" id="L1677">        int count = 0;</span>
+<span class="nc bnc" id="L1678" title="All 2 branches missed.">        for (int i = 0; i &lt; table.length; i++)</span>
+        {
+<span class="nc" id="L1680">            Object cur = table[i];</span>
+<span class="nc bnc" id="L1681" title="All 2 branches missed.">            if (cur != null)</span>
+            {
+<span class="nc bnc" id="L1683" title="All 2 branches missed.">                if (cur instanceof ChainedBucket)</span>
+                {
+<span class="nc" id="L1685">                    ChainedBucket bucket = (ChainedBucket) cur;</span>
+<span class="nc" id="L1686">                    count = this.copyBucketToArray(result, bucket, count);</span>
+<span class="nc" id="L1687">                }</span>
+                else
+                {
+<span class="nc" id="L1690">                    result[count++] = this.nonSentinel(cur);</span>
+                }
+            }
+        }
+<span class="nc" id="L1694">    }</span>
+
+    private int copyBucketToArray(Object[] result, ChainedBucket bucket, int count)
+    {
+        do
+        {
+<span class="nc" id="L1700">            result[count++] = this.nonSentinel(bucket.zero);</span>
+<span class="nc bnc" id="L1701" title="All 2 branches missed.">            if (bucket.one == null)</span>
+            {
+<span class="nc" id="L1703">                break;</span>
+            }
+<span class="nc" id="L1705">            result[count++] = this.nonSentinel(bucket.one);</span>
+<span class="nc bnc" id="L1706" title="All 2 branches missed.">            if (bucket.two == null)</span>
+            {
+<span class="nc" id="L1708">                break;</span>
+            }
+<span class="nc" id="L1710">            result[count++] = this.nonSentinel(bucket.two);</span>
+<span class="nc bnc" id="L1711" title="All 2 branches missed.">            if (bucket.three == null)</span>
+            {
+<span class="nc" id="L1713">                break;</span>
+            }
+<span class="nc bnc" id="L1715" title="All 2 branches missed.">            if (bucket.three instanceof ChainedBucket)</span>
+            {
+<span class="nc" id="L1717">                bucket = (ChainedBucket) bucket.three;</span>
+<span class="nc" id="L1718">                continue;</span>
+            }
+<span class="nc" id="L1720">            result[count++] = this.nonSentinel(bucket.three);</span>
+<span class="nc" id="L1721">            break;</span>
+        }
+        while (true);
+<span class="nc" id="L1724">        return count;</span>
+    }
+
+    @Override
+    public &lt;T&gt; T[] toArray(T[] array)
+    {
+<span class="nc" id="L1730">        int size = this.size();</span>
+<span class="nc bnc" id="L1731" title="All 2 branches missed.">        T[] result = array.length &lt; size</span>
+<span class="nc" id="L1732">                ? (T[]) Array.newInstance(array.getClass().getComponentType(), size)</span>
+                : array;
+
+<span class="nc" id="L1735">        this.copyToArray(result);</span>
+<span class="nc bnc" id="L1736" title="All 2 branches missed.">        if (size &lt; result.length)</span>
+        {
+<span class="nc" id="L1738">            result[size] = null;</span>
+        }
+<span class="nc" id="L1740">        return result;</span>
+    }
+
+    @Override
+    public Iterator&lt;T&gt; iterator()
+    {
+<span class="nc" id="L1746">        return new PositionalIterator();</span>
+    }
+
+<span class="nc" id="L1749">    protected class PositionalIterator implements Iterator&lt;T&gt;</span>
+    {
+        protected int count;
+        protected int position;
+        protected int chainPosition;
+        protected boolean lastReturned;
+
+        @Override
+        public boolean hasNext()
+        {
+<span class="nc bnc" id="L1759" title="All 2 branches missed.">            return this.count &lt; UnifiedSetWithHashingStrategy.this.size();</span>
+        }
+
+        @Override
+        public void remove()
+        {
+<span class="nc bnc" id="L1765" title="All 2 branches missed.">            if (!this.lastReturned)</span>
+            {
+<span class="nc" id="L1767">                throw new IllegalStateException(&quot;next() must be called as many times as remove()&quot;);</span>
+            }
+<span class="nc" id="L1769">            this.count--;</span>
+<span class="nc" id="L1770">            UnifiedSetWithHashingStrategy.this.occupied--;</span>
+
+<span class="nc bnc" id="L1772" title="All 2 branches missed.">            if (this.chainPosition != 0)</span>
+            {
+<span class="nc" id="L1774">                this.removeFromChain();</span>
+<span class="nc" id="L1775">                return;</span>
+            }
+
+<span class="nc" id="L1778">            int pos = this.position - 1;</span>
+<span class="nc" id="L1779">            Object key = UnifiedSetWithHashingStrategy.this.table[pos];</span>
+<span class="nc bnc" id="L1780" title="All 2 branches missed.">            if (key instanceof ChainedBucket)</span>
+            {
+<span class="nc" id="L1782">                this.removeLastFromChain((ChainedBucket) key, pos);</span>
+<span class="nc" id="L1783">                return;</span>
+            }
+<span class="nc" id="L1785">            UnifiedSetWithHashingStrategy.this.table[pos] = null;</span>
+<span class="nc" id="L1786">            this.position = pos;</span>
+<span class="nc" id="L1787">            this.lastReturned = false;</span>
+<span class="nc" id="L1788">        }</span>
+
+        protected void removeFromChain()
+        {
+<span class="nc" id="L1792">            ChainedBucket chain = (ChainedBucket) UnifiedSetWithHashingStrategy.this.table[this.position];</span>
+<span class="nc" id="L1793">            chain.remove(--this.chainPosition);</span>
+<span class="nc" id="L1794">            this.lastReturned = false;</span>
+<span class="nc" id="L1795">        }</span>
+
+        protected void removeLastFromChain(ChainedBucket bucket, int tableIndex)
+        {
+<span class="nc" id="L1799">            bucket.removeLast(0);</span>
+<span class="nc bnc" id="L1800" title="All 2 branches missed.">            if (bucket.zero == null)</span>
+            {
+<span class="nc" id="L1802">                UnifiedSetWithHashingStrategy.this.table[tableIndex] = null;</span>
+            }
+<span class="nc" id="L1804">            this.lastReturned = false;</span>
+<span class="nc" id="L1805">        }</span>
+
+        protected T nextFromChain()
+        {
+<span class="nc" id="L1809">            ChainedBucket bucket = (ChainedBucket) UnifiedSetWithHashingStrategy.this.table[this.position];</span>
+<span class="nc" id="L1810">            Object cur = bucket.get(this.chainPosition);</span>
+<span class="nc" id="L1811">            this.chainPosition++;</span>
+<span class="nc bnc" id="L1812" title="All 2 branches missed.">            if (bucket.get(this.chainPosition) == null)</span>
+            {
+<span class="nc" id="L1814">                this.chainPosition = 0;</span>
+<span class="nc" id="L1815">                this.position++;</span>
+            }
+<span class="nc" id="L1817">            this.lastReturned = true;</span>
+<span class="nc" id="L1818">            return UnifiedSetWithHashingStrategy.this.nonSentinel(cur);</span>
+        }
+
+        @Override
+        public T next()
+        {
+<span class="nc bnc" id="L1824" title="All 2 branches missed.">            if (!this.hasNext())</span>
+            {
+<span class="nc" id="L1826">                throw new NoSuchElementException(&quot;next() called, but the iterator is exhausted&quot;);</span>
+            }
+<span class="nc" id="L1828">            this.count++;</span>
+<span class="nc" id="L1829">            Object[] table = UnifiedSetWithHashingStrategy.this.table;</span>
+<span class="nc bnc" id="L1830" title="All 2 branches missed.">            if (this.chainPosition != 0)</span>
+            {
+<span class="nc" id="L1832">                return this.nextFromChain();</span>
+            }
+<span class="nc bnc" id="L1834" title="All 2 branches missed.">            while (table[this.position] == null)</span>
+            {
+<span class="nc" id="L1836">                this.position++;</span>
+            }
+<span class="nc" id="L1838">            Object cur = table[this.position];</span>
+<span class="nc bnc" id="L1839" title="All 2 branches missed.">            if (cur instanceof ChainedBucket)</span>
+            {
+<span class="nc" id="L1841">                return this.nextFromChain();</span>
+            }
+<span class="nc" id="L1843">            this.position++;</span>
+<span class="nc" id="L1844">            this.lastReturned = true;</span>
+<span class="nc" id="L1845">            return UnifiedSetWithHashingStrategy.this.nonSentinel(cur);</span>
+        }
+    }
+
+    private static final class ChainedBucket
+    {
+        private Object zero;
+        private Object one;
+        private Object two;
+        private Object three;
+
+        private ChainedBucket()
+        {
+        }
+
+        private ChainedBucket(Object first, Object second)
+<span class="nc" id="L1861">        {</span>
+<span class="nc" id="L1862">            this.zero = first;</span>
+<span class="nc" id="L1863">            this.one = second;</span>
+<span class="nc" id="L1864">        }</span>
+
+        public void remove(int i)
+        {
+<span class="nc bnc" id="L1868" title="All 2 branches missed.">            if (i &gt; 3)</span>
+            {
+<span class="nc" id="L1870">                this.removeLongChain(this, i - 3);</span>
+            }
+            else
+            {
+<span class="nc bnc" id="L1874" title="All 5 branches missed.">                switch (i)</span>
+                {
+                    case 0:
+<span class="nc" id="L1877">                        this.zero = this.removeLast(0);</span>
+<span class="nc" id="L1878">                        return;</span>
+                    case 1:
+<span class="nc" id="L1880">                        this.one = this.removeLast(1);</span>
+<span class="nc" id="L1881">                        return;</span>
+                    case 2:
+<span class="nc" id="L1883">                        this.two = this.removeLast(2);</span>
+<span class="nc" id="L1884">                        return;</span>
+                    case 3:
+<span class="nc bnc" id="L1886" title="All 2 branches missed.">                        if (this.three instanceof ChainedBucket)</span>
+                        {
+<span class="nc" id="L1888">                            this.removeLongChain(this, i - 3);</span>
+<span class="nc" id="L1889">                            return;</span>
+                        }
+<span class="nc" id="L1891">                        this.three = null;</span>
+<span class="nc" id="L1892">                        return;</span>
+                    default:
+<span class="nc" id="L1894">                        throw new AssertionError();</span>
+                }
+            }
+<span class="nc" id="L1897">        }</span>
+
+        private void removeLongChain(ChainedBucket oldBucket, int i)
+        {
+            do
+            {
+<span class="nc" id="L1903">                ChainedBucket bucket = (ChainedBucket) oldBucket.three;</span>
+<span class="nc bnc" id="L1904" title="All 5 branches missed.">                switch (i)</span>
+                {
+                    case 0:
+<span class="nc" id="L1907">                        bucket.zero = bucket.removeLast(0);</span>
+<span class="nc" id="L1908">                        return;</span>
+                    case 1:
+<span class="nc" id="L1910">                        bucket.one = bucket.removeLast(1);</span>
+<span class="nc" id="L1911">                        return;</span>
+                    case 2:
+<span class="nc" id="L1913">                        bucket.two = bucket.removeLast(2);</span>
+<span class="nc" id="L1914">                        return;</span>
+                    case 3:
+<span class="nc bnc" id="L1916" title="All 2 branches missed.">                        if (bucket.three instanceof ChainedBucket)</span>
+                        {
+<span class="nc" id="L1918">                            i -= 3;</span>
+<span class="nc" id="L1919">                            oldBucket = bucket;</span>
+<span class="nc" id="L1920">                            continue;</span>
+                        }
+<span class="nc" id="L1922">                        bucket.three = null;</span>
+<span class="nc" id="L1923">                        return;</span>
+                    default:
+<span class="nc bnc" id="L1925" title="All 2 branches missed.">                        if (bucket.three instanceof ChainedBucket)</span>
+                        {
+<span class="nc" id="L1927">                            i -= 3;</span>
+<span class="nc" id="L1928">                            oldBucket = bucket;</span>
+<span class="nc" id="L1929">                            continue;</span>
+                        }
+<span class="nc" id="L1931">                        throw new AssertionError();</span>
+                }
+            }
+            while (true);
+        }
+
+        public Object get(int i)
+        {
+<span class="nc" id="L1939">            ChainedBucket bucket = this;</span>
+<span class="nc bnc" id="L1940" title="All 4 branches missed.">            while (i &gt; 3 &amp;&amp; bucket.three instanceof ChainedBucket)</span>
+            {
+<span class="nc" id="L1942">                bucket = (ChainedBucket) bucket.three;</span>
+<span class="nc" id="L1943">                i -= 3;</span>
+            }
+            do
+            {
+<span class="nc bnc" id="L1947" title="All 6 branches missed.">                switch (i)</span>
+                {
+                    case 0:
+<span class="nc" id="L1950">                        return bucket.zero;</span>
+                    case 1:
+<span class="nc" id="L1952">                        return bucket.one;</span>
+                    case 2:
+<span class="nc" id="L1954">                        return bucket.two;</span>
+                    case 3:
+<span class="nc bnc" id="L1956" title="All 2 branches missed.">                        if (bucket.three instanceof ChainedBucket)</span>
+                        {
+<span class="nc" id="L1958">                            i -= 3;</span>
+<span class="nc" id="L1959">                            bucket = (ChainedBucket) bucket.three;</span>
+<span class="nc" id="L1960">                            continue;</span>
+                        }
+<span class="nc" id="L1962">                        return bucket.three;</span>
+                    case 4:
+<span class="nc" id="L1964">                        return null; // this happens when a bucket is exactly full and we're iterating</span>
+                    default:
+<span class="nc" id="L1966">                        throw new AssertionError();</span>
+                }
+            }
+            while (true);
+        }
+
+        public Object removeLast(int cur)
+        {
+<span class="nc bnc" id="L1974" title="All 2 branches missed.">            if (this.three instanceof ChainedBucket)</span>
+            {
+<span class="nc" id="L1976">                return this.removeLast(this);</span>
+            }
+<span class="nc bnc" id="L1978" title="All 2 branches missed.">            if (this.three != null)</span>
+            {
+<span class="nc" id="L1980">                Object result = this.three;</span>
+<span class="nc" id="L1981">                this.three = null;</span>
+<span class="nc bnc" id="L1982" title="All 2 branches missed.">                return cur == 3 ? null : result;</span>
+            }
+<span class="nc bnc" id="L1984" title="All 2 branches missed.">            if (this.two != null)</span>
+            {
+<span class="nc" id="L1986">                Object result = this.two;</span>
+<span class="nc" id="L1987">                this.two = null;</span>
+<span class="nc bnc" id="L1988" title="All 2 branches missed.">                return cur == 2 ? null : result;</span>
+            }
+<span class="nc bnc" id="L1990" title="All 2 branches missed.">            if (this.one != null)</span>
+            {
+<span class="nc" id="L1992">                Object result = this.one;</span>
+<span class="nc" id="L1993">                this.one = null;</span>
+<span class="nc bnc" id="L1994" title="All 2 branches missed.">                return cur == 1 ? null : result;</span>
+            }
+<span class="nc" id="L1996">            this.zero = null;</span>
+<span class="nc" id="L1997">            return null;</span>
+        }
+
+        private Object removeLast(ChainedBucket oldBucket)
+        {
+            do
+            {
+<span class="nc" id="L2004">                ChainedBucket bucket = (ChainedBucket) oldBucket.three;</span>
+<span class="nc bnc" id="L2005" title="All 2 branches missed.">                if (bucket.three instanceof ChainedBucket)</span>
+                {
+<span class="nc" id="L2007">                    oldBucket = bucket;</span>
+<span class="nc" id="L2008">                    continue;</span>
+                }
+<span class="nc bnc" id="L2010" title="All 2 branches missed.">                if (bucket.three != null)</span>
+                {
+<span class="nc" id="L2012">                    Object result = bucket.three;</span>
+<span class="nc" id="L2013">                    bucket.three = null;</span>
+<span class="nc" id="L2014">                    return result;</span>
+                }
+<span class="nc bnc" id="L2016" title="All 2 branches missed.">                if (bucket.two != null)</span>
+                {
+<span class="nc" id="L2018">                    Object result = bucket.two;</span>
+<span class="nc" id="L2019">                    bucket.two = null;</span>
+<span class="nc" id="L2020">                    return result;</span>
+                }
+<span class="nc bnc" id="L2022" title="All 2 branches missed.">                if (bucket.one != null)</span>
+                {
+<span class="nc" id="L2024">                    Object result = bucket.one;</span>
+<span class="nc" id="L2025">                    bucket.one = null;</span>
+<span class="nc" id="L2026">                    return result;</span>
+                }
+<span class="nc" id="L2028">                Object result = bucket.zero;</span>
+<span class="nc" id="L2029">                oldBucket.three = null;</span>
+<span class="nc" id="L2030">                return result;</span>
+            }
+            while (true);
+        }
+
+        public ChainedBucket copy()
+        {
+<span class="nc" id="L2037">            ChainedBucket result = new ChainedBucket();</span>
+<span class="nc" id="L2038">            ChainedBucket dest = result;</span>
+<span class="nc" id="L2039">            ChainedBucket src = this;</span>
+            do
+            {
+<span class="nc" id="L2042">                dest.zero = src.zero;</span>
+<span class="nc" id="L2043">                dest.one = src.one;</span>
+<span class="nc" id="L2044">                dest.two = src.two;</span>
+<span class="nc bnc" id="L2045" title="All 2 branches missed.">                if (src.three instanceof ChainedBucket)</span>
+                {
+<span class="nc" id="L2047">                    dest.three = new ChainedBucket();</span>
+<span class="nc" id="L2048">                    src = (ChainedBucket) src.three;</span>
+<span class="nc" id="L2049">                    dest = (ChainedBucket) dest.three;</span>
+<span class="nc" id="L2050">                    continue;</span>
+                }
+<span class="nc" id="L2052">                dest.three = src.three;</span>
+<span class="nc" id="L2053">                return result;</span>
+            }
+            while (true);
+        }
+    }
+
+    @Override
+    public &lt;V&gt; UnifiedSetWithHashingStrategyMultimap&lt;V, T&gt; groupBy(
+            Function&lt;? super T, ? extends V&gt; function)
+    {
+<span class="nc" id="L2063">        return this.groupBy(function, UnifiedSetWithHashingStrategyMultimap.newMultimap(this.hashingStrategy));</span>
+    }
+
+    @Override
+    public &lt;V&gt; UnifiedSetWithHashingStrategyMultimap&lt;V, T&gt; groupByEach(Function&lt;? super T, ? extends Iterable&lt;V&gt;&gt; function)
+    {
+<span class="nc" id="L2069">        return this.groupByEach(function, UnifiedSetWithHashingStrategyMultimap.newMultimap(this.hashingStrategy));</span>
+    }
+
+    @Override
+    public T get(T key)
+    {
+<span class="nc" id="L2075">        int index = this.index(key);</span>
+<span class="nc" id="L2076">        Object cur = this.table[index];</span>
+
+<span class="nc bnc" id="L2078" title="All 2 branches missed.">        if (cur == null)</span>
+        {
+<span class="nc" id="L2080">            return null;</span>
+        }
+<span class="nc bnc" id="L2082" title="All 2 branches missed.">        if (cur instanceof ChainedBucket)</span>
+        {
+<span class="nc" id="L2084">            return this.chainedGet(key, (ChainedBucket) cur);</span>
+        }
+<span class="nc bnc" id="L2086" title="All 2 branches missed.">        if (this.nonNullTableObjectEquals(cur, key))</span>
+        {
+<span class="nc" id="L2088">            return (T) cur;</span>
+        }
+<span class="nc" id="L2090">        return null;</span>
+    }
+
+    private T chainedGet(T key, ChainedBucket bucket)
+    {
+        do
+        {
+<span class="nc bnc" id="L2097" title="All 2 branches missed.">            if (this.nonNullTableObjectEquals(bucket.zero, key))</span>
+            {
+<span class="nc" id="L2099">                return this.nonSentinel(bucket.zero);</span>
+            }
+<span class="nc bnc" id="L2101" title="All 2 branches missed.">            if (bucket.one == null)</span>
+            {
+<span class="nc" id="L2103">                return null;</span>
+            }
+<span class="nc bnc" id="L2105" title="All 2 branches missed.">            if (this.nonNullTableObjectEquals(bucket.one, key))</span>
+            {
+<span class="nc" id="L2107">                return this.nonSentinel(bucket.one);</span>
+            }
+<span class="nc bnc" id="L2109" title="All 2 branches missed.">            if (bucket.two == null)</span>
+            {
+<span class="nc" id="L2111">                return null;</span>
+            }
+<span class="nc bnc" id="L2113" title="All 2 branches missed.">            if (this.nonNullTableObjectEquals(bucket.two, key))</span>
+            {
+<span class="nc" id="L2115">                return this.nonSentinel(bucket.two);</span>
+            }
+<span class="nc bnc" id="L2117" title="All 2 branches missed.">            if (bucket.three instanceof ChainedBucket)</span>
+            {
+<span class="nc" id="L2119">                bucket = (ChainedBucket) bucket.three;</span>
+<span class="nc" id="L2120">                continue;</span>
+            }
+<span class="nc bnc" id="L2122" title="All 2 branches missed.">            if (bucket.three == null)</span>
+            {
+<span class="nc" id="L2124">                return null;</span>
+            }
+<span class="nc bnc" id="L2126" title="All 2 branches missed.">            if (this.nonNullTableObjectEquals(bucket.three, key))</span>
+            {
+<span class="nc" id="L2128">                return this.nonSentinel(bucket.three);</span>
+            }
+<span class="nc" id="L2130">            return null;</span>
+        }
+        while (true);
+    }
+
+    @Override
+    public T put(T key)
+    {
+<span class="nc" id="L2138">        int index = this.index(key);</span>
+<span class="nc" id="L2139">        Object cur = this.table[index];</span>
+
+<span class="nc bnc" id="L2141" title="All 2 branches missed.">        if (cur == null)</span>
+        {
+<span class="nc" id="L2143">            this.table[index] = UnifiedSetWithHashingStrategy.toSentinelIfNull(key);</span>
+<span class="nc bnc" id="L2144" title="All 2 branches missed.">            if (++this.occupied &gt; this.maxSize)</span>
+            {
+<span class="nc" id="L2146">                this.rehash();</span>
+            }
+<span class="nc" id="L2148">            return key;</span>
+        }
+
+<span class="nc bnc" id="L2151" title="All 4 branches missed.">        if (cur instanceof ChainedBucket || !this.nonNullTableObjectEquals(cur, key))</span>
+        {
+<span class="nc" id="L2153">            return this.chainedPut(key, index);</span>
+        }
+<span class="nc" id="L2155">        return this.nonSentinel(cur);</span>
+    }
+
+    private T chainedPut(T key, int index)
+    {
+<span class="nc bnc" id="L2160" title="All 2 branches missed.">        if (this.table[index] instanceof ChainedBucket)</span>
+        {
+<span class="nc" id="L2162">            ChainedBucket bucket = (ChainedBucket) this.table[index];</span>
+            do
+            {
+<span class="nc bnc" id="L2165" title="All 2 branches missed.">                if (this.nonNullTableObjectEquals(bucket.zero, key))</span>
+                {
+<span class="nc" id="L2167">                    return this.nonSentinel(bucket.zero);</span>
+                }
+<span class="nc bnc" id="L2169" title="All 2 branches missed.">                if (bucket.one == null)</span>
+                {
+<span class="nc" id="L2171">                    bucket.one = UnifiedSetWithHashingStrategy.toSentinelIfNull(key);</span>
+<span class="nc bnc" id="L2172" title="All 2 branches missed.">                    if (++this.occupied &gt; this.maxSize)</span>
+                    {
+<span class="nc" id="L2174">                        this.rehash();</span>
+                    }
+<span class="nc" id="L2176">                    return key;</span>
+                }
+<span class="nc bnc" id="L2178" title="All 2 branches missed.">                if (this.nonNullTableObjectEquals(bucket.one, key))</span>
+                {
+<span class="nc" id="L2180">                    return this.nonSentinel(bucket.one);</span>
+                }
+<span class="nc bnc" id="L2182" title="All 2 branches missed.">                if (bucket.two == null)</span>
+                {
+<span class="nc" id="L2184">                    bucket.two = UnifiedSetWithHashingStrategy.toSentinelIfNull(key);</span>
+<span class="nc bnc" id="L2185" title="All 2 branches missed.">                    if (++this.occupied &gt; this.maxSize)</span>
+                    {
+<span class="nc" id="L2187">                        this.rehash();</span>
+                    }
+<span class="nc" id="L2189">                    return key;</span>
+                }
+<span class="nc bnc" id="L2191" title="All 2 branches missed.">                if (this.nonNullTableObjectEquals(bucket.two, key))</span>
+                {
+<span class="nc" id="L2193">                    return this.nonSentinel(bucket.two);</span>
+                }
+<span class="nc bnc" id="L2195" title="All 2 branches missed.">                if (bucket.three instanceof ChainedBucket)</span>
+                {
+<span class="nc" id="L2197">                    bucket = (ChainedBucket) bucket.three;</span>
+<span class="nc" id="L2198">                    continue;</span>
+                }
+<span class="nc bnc" id="L2200" title="All 2 branches missed.">                if (bucket.three == null)</span>
+                {
+<span class="nc" id="L2202">                    bucket.three = UnifiedSetWithHashingStrategy.toSentinelIfNull(key);</span>
+<span class="nc bnc" id="L2203" title="All 2 branches missed.">                    if (++this.occupied &gt; this.maxSize)</span>
+                    {
+<span class="nc" id="L2205">                        this.rehash();</span>
+                    }
+<span class="nc" id="L2207">                    return key;</span>
+                }
+<span class="nc bnc" id="L2209" title="All 2 branches missed.">                if (this.nonNullTableObjectEquals(bucket.three, key))</span>
+                {
+<span class="nc" id="L2211">                    return this.nonSentinel(bucket.three);</span>
+                }
+<span class="nc" id="L2213">                bucket.three = new ChainedBucket(bucket.three, key);</span>
+<span class="nc bnc" id="L2214" title="All 2 branches missed.">                if (++this.occupied &gt; this.maxSize)</span>
+                {
+<span class="nc" id="L2216">                    this.rehash();</span>
+                }
+<span class="nc" id="L2218">                return key;</span>
+            }
+            while (true);
+        }
+<span class="nc" id="L2222">        ChainedBucket newBucket = new ChainedBucket(this.table[index], key);</span>
+<span class="nc" id="L2223">        this.table[index] = newBucket;</span>
+<span class="nc bnc" id="L2224" title="All 2 branches missed.">        if (++this.occupied &gt; this.maxSize)</span>
+        {
+<span class="nc" id="L2226">            this.rehash();</span>
+        }
+<span class="nc" id="L2228">        return key;</span>
+    }
+
+    @Override
+    public T removeFromPool(T key)
+    {
+<span class="nc" id="L2234">        int index = this.index(key);</span>
+<span class="nc" id="L2235">        Object cur = this.table[index];</span>
+<span class="nc bnc" id="L2236" title="All 2 branches missed.">        if (cur == null)</span>
+        {
+<span class="nc" id="L2238">            return null;</span>
+        }
+<span class="nc bnc" id="L2240" title="All 2 branches missed.">        if (cur instanceof ChainedBucket)</span>
+        {
+<span class="nc" id="L2242">            return this.removeFromChainForPool((ChainedBucket) cur, key, index);</span>
+        }
+<span class="nc bnc" id="L2244" title="All 2 branches missed.">        if (this.nonNullTableObjectEquals(cur, key))</span>
+        {
+<span class="nc" id="L2246">            this.table[index] = null;</span>
+<span class="nc" id="L2247">            this.occupied--;</span>
+<span class="nc" id="L2248">            return this.nonSentinel(cur);</span>
+        }
+<span class="nc" id="L2250">        return null;</span>
+    }
+
+    private T removeFromChainForPool(ChainedBucket bucket, T key, int index)
+    {
+<span class="nc bnc" id="L2255" title="All 2 branches missed.">        if (this.nonNullTableObjectEquals(bucket.zero, key))</span>
+        {
+<span class="nc" id="L2257">            Object result = bucket.zero;</span>
+<span class="nc" id="L2258">            bucket.zero = bucket.removeLast(0);</span>
+<span class="nc bnc" id="L2259" title="All 2 branches missed.">            if (bucket.zero == null)</span>
+            {
+<span class="nc" id="L2261">                this.table[index] = null;</span>
+            }
+<span class="nc" id="L2263">            this.occupied--;</span>
+<span class="nc" id="L2264">            return this.nonSentinel(result);</span>
+        }
+<span class="nc bnc" id="L2266" title="All 2 branches missed.">        if (bucket.one == null)</span>
+        {
+<span class="nc" id="L2268">            return null;</span>
+        }
+<span class="nc bnc" id="L2270" title="All 2 branches missed.">        if (this.nonNullTableObjectEquals(bucket.one, key))</span>
+        {
+<span class="nc" id="L2272">            Object result = bucket.one;</span>
+<span class="nc" id="L2273">            bucket.one = bucket.removeLast(1);</span>
+<span class="nc" id="L2274">            this.occupied--;</span>
+<span class="nc" id="L2275">            return this.nonSentinel(result);</span>
+        }
+<span class="nc bnc" id="L2277" title="All 2 branches missed.">        if (bucket.two == null)</span>
+        {
+<span class="nc" id="L2279">            return null;</span>
+        }
+<span class="nc bnc" id="L2281" title="All 2 branches missed.">        if (this.nonNullTableObjectEquals(bucket.two, key))</span>
+        {
+<span class="nc" id="L2283">            Object result = bucket.two;</span>
+<span class="nc" id="L2284">            bucket.two = bucket.removeLast(2);</span>
+<span class="nc" id="L2285">            this.occupied--;</span>
+<span class="nc" id="L2286">            return this.nonSentinel(result);</span>
+        }
+<span class="nc bnc" id="L2288" title="All 2 branches missed.">        if (bucket.three == null)</span>
+        {
+<span class="nc" id="L2290">            return null;</span>
+        }
+<span class="nc bnc" id="L2292" title="All 2 branches missed.">        if (bucket.three instanceof ChainedBucket)</span>
+        {
+<span class="nc" id="L2294">            return this.removeDeepChainForPool(bucket, key);</span>
+        }
+<span class="nc bnc" id="L2296" title="All 2 branches missed.">        if (this.nonNullTableObjectEquals(bucket.three, key))</span>
+        {
+<span class="nc" id="L2298">            Object result = bucket.three;</span>
+<span class="nc" id="L2299">            bucket.three = bucket.removeLast(3);</span>
+<span class="nc" id="L2300">            this.occupied--;</span>
+<span class="nc" id="L2301">            return this.nonSentinel(result);</span>
+        }
+<span class="nc" id="L2303">        return null;</span>
+    }
+
+    private T removeDeepChainForPool(ChainedBucket oldBucket, T key)
+    {
+        do
+        {
+<span class="nc" id="L2310">            ChainedBucket bucket = (ChainedBucket) oldBucket.three;</span>
+<span class="nc bnc" id="L2311" title="All 2 branches missed.">            if (this.nonNullTableObjectEquals(bucket.zero, key))</span>
+            {
+<span class="nc" id="L2313">                Object result = bucket.zero;</span>
+<span class="nc" id="L2314">                bucket.zero = bucket.removeLast(0);</span>
+<span class="nc bnc" id="L2315" title="All 2 branches missed.">                if (bucket.zero == null)</span>
+                {
+<span class="nc" id="L2317">                    oldBucket.three = null;</span>
+                }
+<span class="nc" id="L2319">                this.occupied--;</span>
+<span class="nc" id="L2320">                return this.nonSentinel(result);</span>
+            }
+<span class="nc bnc" id="L2322" title="All 2 branches missed.">            if (bucket.one == null)</span>
+            {
+<span class="nc" id="L2324">                return null;</span>
+            }
+<span class="nc bnc" id="L2326" title="All 2 branches missed.">            if (this.nonNullTableObjectEquals(bucket.one, key))</span>
+            {
+<span class="nc" id="L2328">                Object result = bucket.one;</span>
+<span class="nc" id="L2329">                bucket.one = bucket.removeLast(1);</span>
+<span class="nc" id="L2330">                this.occupied--;</span>
+<span class="nc" id="L2331">                return this.nonSentinel(result);</span>
+            }
+<span class="nc bnc" id="L2333" title="All 2 branches missed.">            if (bucket.two == null)</span>
+            {
+<span class="nc" id="L2335">                return null;</span>
+            }
+<span class="nc bnc" id="L2337" title="All 2 branches missed.">            if (this.nonNullTableObjectEquals(bucket.two, key))</span>
+            {
+<span class="nc" id="L2339">                Object result = bucket.two;</span>
+<span class="nc" id="L2340">                bucket.two = bucket.removeLast(2);</span>
+<span class="nc" id="L2341">                this.occupied--;</span>
+<span class="nc" id="L2342">                return this.nonSentinel(result);</span>
+            }
+<span class="nc bnc" id="L2344" title="All 2 branches missed.">            if (bucket.three == null)</span>
+            {
+<span class="nc" id="L2346">                return null;</span>
+            }
+<span class="nc bnc" id="L2348" title="All 2 branches missed.">            if (bucket.three instanceof ChainedBucket)</span>
+            {
+<span class="nc" id="L2350">                oldBucket = bucket;</span>
+<span class="nc" id="L2351">                continue;</span>
+            }
+<span class="nc bnc" id="L2353" title="All 2 branches missed.">            if (this.nonNullTableObjectEquals(bucket.three, key))</span>
+            {
+<span class="nc" id="L2355">                Object result = bucket.three;</span>
+<span class="nc" id="L2356">                bucket.three = bucket.removeLast(3);</span>
+<span class="nc" id="L2357">                this.occupied--;</span>
+<span class="nc" id="L2358">                return this.nonSentinel(result);</span>
+            }
+<span class="nc" id="L2360">            return null;</span>
+        }
+        while (true);
+    }
+
+    private T nonSentinel(Object key)
+    {
+<span class="nc bnc" id="L2367" title="All 2 branches missed.">        return key == NULL_KEY ? null : (T) key;</span>
+    }
+
+    private static Object toSentinelIfNull(Object key)
+    {
+<span class="nc bnc" id="L2372" title="All 2 branches missed.">        if (key == null)</span>
+        {
+<span class="nc" id="L2374">            return NULL_KEY;</span>
+        }
+<span class="nc" id="L2376">        return key;</span>
+    }
+
+    private boolean nonNullTableObjectEquals(Object cur, T key)
+    {
+<span class="nc bnc" id="L2381" title="All 8 branches missed.">        return cur == key || (cur == NULL_KEY ? key == null : this.hashingStrategy.equals(this.nonSentinel(cur), key));</span>
+    }
+
+    @Override
+    @Beta
+    public ParallelUnsortedSetIterable&lt;T&gt; asParallel(ExecutorService executorService, int batchSize)
+    {
+<span class="nc bnc" id="L2388" title="All 2 branches missed.">        if (executorService == null)</span>
+        {
+<span class="nc" id="L2390">            throw new NullPointerException();</span>
+        }
+<span class="nc bnc" id="L2392" title="All 2 branches missed.">        if (batchSize &lt; 1)</span>
+        {
+<span class="nc" id="L2394">            throw new IllegalArgumentException();</span>
+        }
+<span class="nc" id="L2396">        return new UnifiedSetParallelUnsortedIterable(executorService, batchSize);</span>
+    }
+
+    private final class UnifiedUnsortedSetBatch extends AbstractBatch&lt;T&gt; implements RootUnsortedSetBatch&lt;T&gt;
+    {
+        private final int chunkStartIndex;
+        private final int chunkEndIndex;
+
+        private UnifiedUnsortedSetBatch(int chunkStartIndex, int chunkEndIndex)
+<span class="nc" id="L2405">        {</span>
+<span class="nc" id="L2406">            this.chunkStartIndex = chunkStartIndex;</span>
+<span class="nc" id="L2407">            this.chunkEndIndex = chunkEndIndex;</span>
+<span class="nc" id="L2408">        }</span>
+
+        @Override
+        public void forEach(Procedure&lt;? super T&gt; procedure)
+        {
+<span class="nc bnc" id="L2413" title="All 2 branches missed.">            for (int i = this.chunkStartIndex; i &lt; this.chunkEndIndex; i++)</span>
+            {
+<span class="nc" id="L2415">                Object cur = UnifiedSetWithHashingStrategy.this.table[i];</span>
+<span class="nc bnc" id="L2416" title="All 2 branches missed.">                if (cur instanceof ChainedBucket)</span>
+                {
+<span class="nc" id="L2418">                    UnifiedSetWithHashingStrategy.this.chainedForEach((ChainedBucket) cur, procedure);</span>
+                }
+<span class="nc bnc" id="L2420" title="All 2 branches missed.">                else if (cur != null)</span>
+                {
+<span class="nc" id="L2422">                    procedure.value(UnifiedSetWithHashingStrategy.this.nonSentinel(cur));</span>
+                }
+            }
+<span class="nc" id="L2425">        }</span>
+
+        @Override
+        public boolean anySatisfy(Predicate&lt;? super T&gt; predicate)
+        {
+<span class="nc" id="L2430">            return UnifiedSetWithHashingStrategy.this.shortCircuit(predicate, true, true, false, this.chunkStartIndex, this.chunkEndIndex);</span>
+        }
+
+        @Override
+        public boolean allSatisfy(Predicate&lt;? super T&gt; predicate)
+        {
+<span class="nc" id="L2436">            return UnifiedSetWithHashingStrategy.this.shortCircuit(predicate, false, false, true, this.chunkStartIndex, this.chunkEndIndex);</span>
+        }
+
+        @Override
+        public T detect(Predicate&lt;? super T&gt; predicate)
+        {
+<span class="nc" id="L2442">            return UnifiedSetWithHashingStrategy.this.detect(predicate, this.chunkStartIndex, this.chunkEndIndex);</span>
+        }
+
+        @Override
+        public UnsortedSetBatch&lt;T&gt; select(Predicate&lt;? super T&gt; predicate)
+        {
+<span class="nc" id="L2448">            return new SelectUnsortedSetBatch&lt;&gt;(this, predicate);</span>
+        }
+
+        @Override
+        public &lt;V&gt; UnsortedBagBatch&lt;V&gt; collect(Function&lt;? super T, ? extends V&gt; function)
+        {
+<span class="nc" id="L2454">            return new CollectUnsortedBagBatch&lt;&gt;(this, function);</span>
+        }
+
+        @Override
+        public &lt;V&gt; UnsortedBagBatch&lt;V&gt; flatCollect(Function&lt;? super T, ? extends Iterable&lt;V&gt;&gt; function)
+        {
+<span class="nc" id="L2460">            return new FlatCollectUnsortedBagBatch&lt;&gt;(this, function);</span>
+        }
+    }
+
+    private final class UnifiedSetParallelUnsortedIterable extends AbstractParallelUnsortedSetIterable&lt;T, RootUnsortedSetBatch&lt;T&gt;&gt;
+    {
+        private final ExecutorService executorService;
+        private final int batchSize;
+
+        private UnifiedSetParallelUnsortedIterable(ExecutorService executorService, int batchSize)
+<span class="nc" id="L2470">        {</span>
+<span class="nc" id="L2471">            this.executorService = executorService;</span>
+<span class="nc" id="L2472">            this.batchSize = batchSize;</span>
+<span class="nc" id="L2473">        }</span>
+
+        @Override
+        public ExecutorService getExecutorService()
+        {
+<span class="nc" id="L2478">            return this.executorService;</span>
+        }
+
+        @Override
+        public int getBatchSize()
+        {
+<span class="nc" id="L2484">            return this.batchSize;</span>
+        }
+
+        @Override
+        public LazyIterable&lt;RootUnsortedSetBatch&lt;T&gt;&gt; split()
+        {
+<span class="nc" id="L2490">            return new UnifiedSetParallelSplitLazyIterable();</span>
+        }
+
+        @Override
+        public void forEach(Procedure&lt;? super T&gt; procedure)
+        {
+<span class="nc" id="L2496">            AbstractParallelIterable.forEach(this, procedure);</span>
+<span class="nc" id="L2497">        }</span>
+
+        @Override
+        public boolean anySatisfy(Predicate&lt;? super T&gt; predicate)
+        {
+<span class="nc" id="L2502">            return AbstractParallelIterable.anySatisfy(this, predicate);</span>
+        }
+
+        @Override
+        public boolean allSatisfy(Predicate&lt;? super T&gt; predicate)
+        {
+<span class="nc" id="L2508">            return AbstractParallelIterable.allSatisfy(this, predicate);</span>
+        }
+
+        @Override
+        public T detect(Predicate&lt;? super T&gt; predicate)
+        {
+<span class="nc" id="L2514">            return AbstractParallelIterable.detect(this, predicate);</span>
+        }
+
+        @Override
+        public Object[] toArray()
+        {
+            // TODO: Implement in parallel
+<span class="nc" id="L2521">            return UnifiedSetWithHashingStrategy.this.toArray();</span>
+        }
+
+        @Override
+        public &lt;E&gt; E[] toArray(E[] array)
+        {
+            // TODO: Implement in parallel
+<span class="nc" id="L2528">            return UnifiedSetWithHashingStrategy.this.toArray(array);</span>
+        }
+
+<span class="nc" id="L2531">        private class UnifiedSetParallelSplitIterator implements Iterator&lt;RootUnsortedSetBatch&lt;T&gt;&gt;</span>
+        {
+            protected int chunkIndex;
+
+            @Override
+            public boolean hasNext()
+            {
+<span class="nc bnc" id="L2538" title="All 2 branches missed.">                return this.chunkIndex * UnifiedSetParallelUnsortedIterable.this.batchSize &lt; UnifiedSetWithHashingStrategy.this.table.length;</span>
+            }
+
+            @Override
+            public RootUnsortedSetBatch&lt;T&gt; next()
+            {
+<span class="nc" id="L2544">                int chunkStartIndex = this.chunkIndex * UnifiedSetParallelUnsortedIterable.this.batchSize;</span>
+<span class="nc" id="L2545">                int chunkEndIndex = (this.chunkIndex + 1) * UnifiedSetParallelUnsortedIterable.this.batchSize;</span>
+<span class="nc" id="L2546">                int truncatedChunkEndIndex = Math.min(chunkEndIndex, UnifiedSetWithHashingStrategy.this.table.length);</span>
+<span class="nc" id="L2547">                this.chunkIndex++;</span>
+<span class="nc" id="L2548">                return new UnifiedUnsortedSetBatch(chunkStartIndex, truncatedChunkEndIndex);</span>
+            }
+
+            @Override
+            public void remove()
+            {
+<span class="nc" id="L2554">                throw new UnsupportedOperationException(&quot;Cannot call remove() on &quot; + this.getClass().getSimpleName());</span>
+            }
+        }
+
+<span class="nc" id="L2558">        private class UnifiedSetParallelSplitLazyIterable</span>
+                extends AbstractLazyIterable&lt;RootUnsortedSetBatch&lt;T&gt;&gt;
+        {
+            @Override
+            public void each(Procedure&lt;? super RootUnsortedSetBatch&lt;T&gt;&gt; procedure)
+            {
+<span class="nc bnc" id="L2564" title="All 2 branches missed.">                for (RootUnsortedSetBatch&lt;T&gt; chunk : this)</span>
+                {
+<span class="nc" id="L2566">                    procedure.value(chunk);</span>
+<span class="nc" id="L2567">                }</span>
+<span class="nc" id="L2568">            }</span>
+
+            @Override
+            public Iterator&lt;RootUnsortedSetBatch&lt;T&gt;&gt; iterator()
+            {
+<span class="nc" id="L2573">                return new UnifiedSetParallelSplitIterator();</span>
+            }
+        }
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.0.201801022044</span></div></body></html>

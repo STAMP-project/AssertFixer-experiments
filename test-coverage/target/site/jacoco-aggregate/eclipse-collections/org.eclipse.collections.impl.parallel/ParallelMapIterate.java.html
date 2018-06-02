@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>ParallelMapIterate.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Eclipse Collections Test Coverage Aggregation</a> &gt; <a href="../index.html" class="el_bundle">eclipse-collections</a> &gt; <a href="index.source.html" class="el_package">org.eclipse.collections.impl.parallel</a> &gt; <span class="el_source">ParallelMapIterate.java</span></div><h1>ParallelMapIterate.java</h1><pre class="source lang-java linenums">/*
+ * Copyright (c) 2016 Goldman Sachs.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * and Eclipse Distribution License v. 1.0 which accompany this distribution.
+ * The Eclipse Public License is available at http://www.eclipse.org/legal/epl-v10.html
+ * and the Eclipse Distribution License is available at
+ * http://www.eclipse.org/org/documents/edl-v10.php.
+ */
+
+package org.eclipse.collections.impl.parallel;
+
+import java.util.Map;
+import java.util.concurrent.Executor;
+
+import org.eclipse.collections.api.block.procedure.Procedure;
+import org.eclipse.collections.api.block.procedure.Procedure2;
+import org.eclipse.collections.api.tuple.Pair;
+import org.eclipse.collections.impl.utility.MapIterate;
+
+/**
+ * The ParallelMapIterate class contains parallel algorithms that work with Maps.
+ * &lt;p&gt;
+ * The forEachEntry algorithm employs a batching fork and join approach approach which does
+ * not yet allow for specification of a Factory for the blocks or a Combiner for the results.
+ * This means that forEachKeyValue can only support pure forking or forking with a shared
+ * thread-safe data structure collecting results.
+ */
+public final class ParallelMapIterate
+{
+    private ParallelMapIterate()
+<span class="nc" id="L32">    {</span>
+<span class="nc" id="L33">        throw new AssertionError(&quot;Suppress default constructor for noninstantiability&quot;);</span>
+    }
+
+    /**
+     * A parallel form of forEachKeyValue.
+     *
+     * @see MapIterate#forEachKeyValue(Map, Procedure2)
+     * @see ParallelIterate
+     */
+    public static &lt;K, V&gt; void forEachKeyValue(Map&lt;K, V&gt; map, Procedure2&lt;? super K, ? super V&gt; procedure2)
+    {
+<span class="nc" id="L44">        ParallelMapIterate.forEachKeyValue(map, procedure2, 2, map.size());</span>
+<span class="nc" id="L45">    }</span>
+
+    /**
+     * A parallel form of forEachKeyValue.
+     *
+     * @see MapIterate#forEachKeyValue(Map, Procedure2)
+     * @see ParallelIterate
+     */
+    public static &lt;K, V&gt; void forEachKeyValue(
+            Map&lt;K, V&gt; map,
+            Procedure2&lt;? super K, ? super V&gt; procedure,
+            Executor executor)
+    {
+<span class="nc" id="L58">        ParallelMapIterate.forEachKeyValue(map, procedure, 2, map.size(), executor);</span>
+<span class="nc" id="L59">    }</span>
+
+    /**
+     * A parallel form of forEachKeyValue.
+     *
+     * @see MapIterate#forEachKeyValue(Map, Procedure2)
+     * @see ParallelIterate
+     */
+    public static &lt;K, V&gt; void forEachKeyValue(
+            Map&lt;K, V&gt; map,
+            Procedure2&lt;? super K, ? super V&gt; procedure,
+            int minForkSize,
+            int taskCount)
+    {
+<span class="nc bnc" id="L73" title="All 2 branches missed.">        if (map.size() &gt; minForkSize)</span>
+        {
+<span class="nc" id="L75">            Procedure&lt;Pair&lt;K, V&gt;&gt; pairProcedure = new PairProcedure&lt;&gt;(procedure);</span>
+<span class="nc" id="L76">            ParallelIterate.forEach(MapIterate.toListOfPairs(map), new PassThruProcedureFactory&lt;&gt;(pairProcedure), new PassThruCombiner&lt;&gt;(), minForkSize, taskCount);</span>
+<span class="nc" id="L77">        }</span>
+        else
+        {
+<span class="nc" id="L80">            MapIterate.forEachKeyValue(map, procedure);</span>
+        }
+<span class="nc" id="L82">    }</span>
+
+    /**
+     * A parallel form of forEachKeyValue.
+     *
+     * @see MapIterate#forEachKeyValue(Map, Procedure2)
+     * @see ParallelIterate
+     */
+    public static &lt;K, V&gt; void forEachKeyValue(
+            Map&lt;K, V&gt; map,
+            Procedure2&lt;? super K, ? super V&gt; procedure,
+            int minForkSize,
+            int taskCount,
+            Executor executor)
+    {
+<span class="nc bnc" id="L97" title="All 2 branches missed.">        if (map.size() &gt; minForkSize)</span>
+        {
+<span class="nc" id="L99">            Procedure&lt;Pair&lt;K, V&gt;&gt; pairProcedure = new PairProcedure&lt;&gt;(procedure);</span>
+<span class="nc" id="L100">            ParallelIterate.forEachInListOnExecutor(</span>
+<span class="nc" id="L101">                    MapIterate.toListOfPairs(map),</span>
+                    new PassThruProcedureFactory&lt;&gt;(pairProcedure),
+                    new PassThruCombiner&lt;&gt;(),
+                    minForkSize,
+                    taskCount,
+                    executor);
+<span class="nc" id="L107">        }</span>
+        else
+        {
+<span class="nc" id="L110">            MapIterate.forEachKeyValue(map, procedure);</span>
+        }
+<span class="nc" id="L112">    }</span>
+
+    private static final class PairProcedure&lt;T1, T2&gt; implements Procedure&lt;Pair&lt;T1, T2&gt;&gt;
+    {
+        private static final long serialVersionUID = 1L;
+
+        private final Procedure2&lt;? super T1, ? super T2&gt; procedure;
+
+        private PairProcedure(Procedure2&lt;? super T1, ? super T2&gt; procedure)
+<span class="nc" id="L121">        {</span>
+<span class="nc" id="L122">            this.procedure = procedure;</span>
+<span class="nc" id="L123">        }</span>
+
+        @Override
+        public void value(Pair&lt;T1, T2&gt; pair)
+        {
+<span class="nc" id="L128">            this.procedure.value(pair.getOne(), pair.getTwo());</span>
+<span class="nc" id="L129">        }</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.0.201801022044</span></div></body></html>

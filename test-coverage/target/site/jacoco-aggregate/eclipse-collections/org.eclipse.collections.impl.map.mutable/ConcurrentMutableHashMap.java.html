@@ -1,0 +1,453 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>ConcurrentMutableHashMap.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Eclipse Collections Test Coverage Aggregation</a> &gt; <a href="../index.html" class="el_bundle">eclipse-collections</a> &gt; <a href="index.source.html" class="el_package">org.eclipse.collections.impl.map.mutable</a> &gt; <span class="el_source">ConcurrentMutableHashMap.java</span></div><h1>ConcurrentMutableHashMap.java</h1><pre class="source lang-java linenums">/*
+ * Copyright (c) 2016 Goldman Sachs.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * and Eclipse Distribution License v. 1.0 which accompany this distribution.
+ * The Eclipse Public License is available at http://www.eclipse.org/legal/epl-v10.html
+ * and the Eclipse Distribution License is available at
+ * http://www.eclipse.org/org/documents/edl-v10.php.
+ */
+
+package org.eclipse.collections.impl.map.mutable;
+
+import java.io.Serializable;
+import java.util.Collection;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+
+import org.eclipse.collections.api.block.function.Function;
+import org.eclipse.collections.api.block.function.Function0;
+import org.eclipse.collections.api.block.function.Function2;
+import org.eclipse.collections.api.block.procedure.Procedure;
+import org.eclipse.collections.api.block.procedure.Procedure2;
+import org.eclipse.collections.api.block.procedure.primitive.ObjectIntProcedure;
+import org.eclipse.collections.api.map.ConcurrentMutableMap;
+import org.eclipse.collections.api.map.ImmutableMap;
+import org.eclipse.collections.api.map.MutableMap;
+import org.eclipse.collections.api.tuple.Pair;
+import org.eclipse.collections.impl.block.procedure.MapEntryToProcedure2;
+import org.eclipse.collections.impl.factory.Maps;
+import org.eclipse.collections.impl.utility.Iterate;
+import org.eclipse.collections.impl.utility.internal.IterableIterate;
+
+/**
+ * A simple concurrent implementation of MutableMap which uses java.util.concurrent.ConcurrentHashMap for its underlying
+ * concurrent Map implementation.
+ *
+ * @see org.eclipse.collections.impl.map.mutable.ConcurrentHashMap
+ * @deprecated since 2.0
+ */
+@Deprecated
+public final class ConcurrentMutableHashMap&lt;K, V&gt;
+        extends AbstractMutableMap&lt;K, V&gt;
+        implements ConcurrentMutableMap&lt;K, V&gt;, Serializable
+{
+    private static final long serialVersionUID = 1L;
+
+    private final ConcurrentMap&lt;K, V&gt; delegate;
+
+    private ConcurrentMutableHashMap()
+    {
+<span class="nc" id="L54">        this(new ConcurrentHashMap&lt;&gt;());</span>
+<span class="nc" id="L55">    }</span>
+
+    public ConcurrentMutableHashMap(ConcurrentMap&lt;K, V&gt; delegate)
+<span class="nc" id="L58">    {</span>
+<span class="nc" id="L59">        this.delegate = delegate;</span>
+<span class="nc" id="L60">    }</span>
+
+    public static &lt;NK, NV&gt; ConcurrentMutableHashMap&lt;NK, NV&gt; newMap()
+    {
+<span class="nc" id="L64">        return new ConcurrentMutableHashMap&lt;&gt;();</span>
+    }
+
+    public static &lt;NK, NV&gt; ConcurrentMutableHashMap&lt;NK, NV&gt; newMap(int initialCapacity)
+    {
+<span class="nc" id="L69">        return new ConcurrentMutableHashMap&lt;&gt;(new ConcurrentHashMap&lt;&gt;(initialCapacity));</span>
+    }
+
+    public static &lt;NK, NV&gt; ConcurrentMutableHashMap&lt;NK, NV&gt; newMap(int initialCapacity, float loadFactor, int concurrencyLevel)
+    {
+<span class="nc" id="L74">        return new ConcurrentMutableHashMap&lt;&gt;(new ConcurrentHashMap&lt;&gt;(initialCapacity, loadFactor, concurrencyLevel));</span>
+    }
+
+    public static &lt;NK, NV&gt; ConcurrentMutableHashMap&lt;NK, NV&gt; newMap(Map&lt;NK, NV&gt; map)
+    {
+<span class="nc" id="L79">        return new ConcurrentMutableHashMap&lt;&gt;(new ConcurrentHashMap&lt;&gt;(map));</span>
+    }
+
+    @Override
+    public ConcurrentMutableHashMap&lt;K, V&gt; withKeyValue(K key, V value)
+    {
+<span class="nc" id="L85">        return (ConcurrentMutableHashMap&lt;K, V&gt;) super.withKeyValue(key, value);</span>
+    }
+
+    @Override
+    public ConcurrentMutableHashMap&lt;K, V&gt; withAllKeyValues(Iterable&lt;? extends Pair&lt;? extends K, ? extends V&gt;&gt; keyValues)
+    {
+<span class="nc" id="L91">        return (ConcurrentMutableHashMap&lt;K, V&gt;) super.withAllKeyValues(keyValues);</span>
+    }
+
+    @Override
+    public ConcurrentMutableHashMap&lt;K, V&gt; withAllKeyValueArguments(Pair&lt;? extends K, ? extends V&gt;... keyValues)
+    {
+<span class="nc" id="L97">        return (ConcurrentMutableHashMap&lt;K, V&gt;) super.withAllKeyValueArguments(keyValues);</span>
+    }
+
+    @Override
+    public ConcurrentMutableHashMap&lt;K, V&gt; withoutKey(K key)
+    {
+<span class="nc" id="L103">        return (ConcurrentMutableHashMap&lt;K, V&gt;) super.withoutKey(key);</span>
+    }
+
+    @Override
+    public ConcurrentMutableHashMap&lt;K, V&gt; withoutAllKeys(Iterable&lt;? extends K&gt; keys)
+    {
+<span class="nc" id="L109">        return (ConcurrentMutableHashMap&lt;K, V&gt;) super.withoutAllKeys(keys);</span>
+    }
+
+    @Override
+    public String toString()
+    {
+<span class="nc" id="L115">        return this.delegate.toString();</span>
+    }
+
+    @Override
+    public MutableMap&lt;K, V&gt; clone()
+    {
+<span class="nc" id="L121">        return ConcurrentMutableHashMap.newMap(this.delegate);</span>
+    }
+
+    @Override
+    public &lt;K, V&gt; MutableMap&lt;K, V&gt; newEmpty(int capacity)
+    {
+<span class="nc" id="L127">        return ConcurrentMutableHashMap.newMap();</span>
+    }
+
+    @Override
+    public boolean notEmpty()
+    {
+<span class="nc bnc" id="L133" title="All 2 branches missed.">        return !this.delegate.isEmpty();</span>
+    }
+
+    @Override
+    public void forEachWithIndex(ObjectIntProcedure&lt;? super V&gt; objectIntProcedure)
+    {
+<span class="nc" id="L139">        Iterate.forEachWithIndex(this.delegate.values(), objectIntProcedure);</span>
+<span class="nc" id="L140">    }</span>
+
+    @Override
+    public int size()
+    {
+<span class="nc" id="L145">        return this.delegate.size();</span>
+    }
+
+    @Override
+    public boolean isEmpty()
+    {
+<span class="nc" id="L151">        return this.delegate.isEmpty();</span>
+    }
+
+    @Override
+    public Iterator&lt;V&gt; iterator()
+    {
+<span class="nc" id="L157">        return this.delegate.values().iterator();</span>
+    }
+
+    @Override
+    public V remove(Object key)
+    {
+<span class="nc" id="L163">        return this.delegate.remove(key);</span>
+    }
+
+    @Override
+    public Set&lt;K&gt; keySet()
+    {
+<span class="nc" id="L169">        return this.delegate.keySet();</span>
+    }
+
+    @Override
+    public Collection&lt;V&gt; values()
+    {
+<span class="nc" id="L175">        return this.delegate.values();</span>
+    }
+
+    @Override
+    public Set&lt;Entry&lt;K, V&gt;&gt; entrySet()
+    {
+<span class="nc" id="L181">        return this.delegate.entrySet();</span>
+    }
+
+    @Override
+    public void clear()
+    {
+<span class="nc" id="L187">        this.delegate.clear();</span>
+<span class="nc" id="L188">    }</span>
+
+    @Override
+    public MutableMap&lt;K, V&gt; newEmpty()
+    {
+<span class="nc" id="L193">        return ConcurrentMutableHashMap.newMap();</span>
+    }
+
+    @Override
+    public ConcurrentMutableMap&lt;K, V&gt; tap(Procedure&lt;? super V&gt; procedure)
+    {
+<span class="nc" id="L199">        this.each(procedure);</span>
+<span class="nc" id="L200">        return this;</span>
+    }
+
+    @Override
+    public void forEachValue(Procedure&lt;? super V&gt; procedure)
+    {
+<span class="nc" id="L206">        IterableIterate.forEach(this.delegate.values(), procedure);</span>
+<span class="nc" id="L207">    }</span>
+
+    @Override
+    public void forEachKey(Procedure&lt;? super K&gt; procedure)
+    {
+<span class="nc" id="L212">        IterableIterate.forEach(this.delegate.keySet(), procedure);</span>
+<span class="nc" id="L213">    }</span>
+
+    @Override
+    public void forEachKeyValue(Procedure2&lt;? super K, ? super V&gt; procedure)
+    {
+<span class="nc" id="L218">        IterableIterate.forEach(this.delegate.entrySet(), new MapEntryToProcedure2&lt;&gt;(procedure));</span>
+<span class="nc" id="L219">    }</span>
+
+    @Override
+    public V get(Object key)
+    {
+<span class="nc" id="L224">        return this.delegate.get(key);</span>
+    }
+
+    @Override
+    public V put(K key, V value)
+    {
+<span class="nc" id="L230">        return this.delegate.put(key, value);</span>
+    }
+
+    @Override
+    public void putAll(Map&lt;? extends K, ? extends V&gt; map)
+    {
+<span class="nc" id="L236">        this.delegate.putAll(map);</span>
+<span class="nc" id="L237">    }</span>
+
+    @Override
+    public &lt;E&gt; MutableMap&lt;K, V&gt; collectKeysAndValues(
+            Iterable&lt;E&gt; iterable,
+            Function&lt;? super E, ? extends K&gt; keyFunction,
+            Function&lt;? super E, ? extends V&gt; valueFunction)
+    {
+<span class="nc" id="L245">        Iterate.addToMap(iterable, keyFunction, valueFunction, this.delegate);</span>
+<span class="nc" id="L246">        return this;</span>
+    }
+
+    @Override
+    public V removeKey(K key)
+    {
+<span class="nc" id="L252">        return this.delegate.remove(key);</span>
+    }
+
+    @Override
+    public boolean containsKey(Object key)
+    {
+<span class="nc" id="L258">        return this.delegate.containsKey(key);</span>
+    }
+
+    @Override
+    public boolean containsValue(Object value)
+    {
+<span class="nc" id="L264">        return this.delegate.containsValue(value);</span>
+    }
+
+    @Override
+    public V getIfAbsentPut(K key, Function0&lt;? extends V&gt; function)
+    {
+<span class="nc" id="L270">        V result = this.delegate.get(key);</span>
+<span class="nc bnc" id="L271" title="All 2 branches missed.">        if (result == null)</span>
+        {
+<span class="nc" id="L273">            V blockValue = function.value();</span>
+<span class="nc" id="L274">            V putResult = this.delegate.putIfAbsent(key, blockValue);</span>
+<span class="nc bnc" id="L275" title="All 2 branches missed.">            return putResult == null ? blockValue : putResult;</span>
+        }
+<span class="nc" id="L277">        return result;</span>
+    }
+
+    @Override
+    public V getIfAbsentPut(K key, V value)
+    {
+<span class="nc" id="L283">        V result = this.delegate.get(key);</span>
+<span class="nc bnc" id="L284" title="All 2 branches missed.">        if (result == null)</span>
+        {
+<span class="nc" id="L286">            V putResult = this.delegate.putIfAbsent(key, value);</span>
+<span class="nc bnc" id="L287" title="All 2 branches missed.">            return putResult == null ? value : putResult;</span>
+        }
+<span class="nc" id="L289">        return result;</span>
+    }
+
+    @Override
+    public &lt;P&gt; V getIfAbsentPutWith(K key, Function&lt;? super P, ? extends V&gt; function, P parameter)
+    {
+<span class="nc" id="L295">        V result = this.delegate.get(key);</span>
+<span class="nc bnc" id="L296" title="All 2 branches missed.">        if (result == null)</span>
+        {
+<span class="nc" id="L298">            V functionValue = function.valueOf(parameter);</span>
+<span class="nc" id="L299">            V putResult = this.delegate.putIfAbsent(key, functionValue);</span>
+<span class="nc bnc" id="L300" title="All 2 branches missed.">            return putResult == null ? functionValue : putResult;</span>
+        }
+<span class="nc" id="L302">        return result;</span>
+    }
+
+    @Override
+    public V getIfAbsent(K key, Function0&lt;? extends V&gt; function)
+    {
+<span class="nc" id="L308">        V result = this.delegate.get(key);</span>
+<span class="nc bnc" id="L309" title="All 2 branches missed.">        if (result == null)</span>
+        {
+<span class="nc" id="L311">            return function.value();</span>
+        }
+<span class="nc" id="L313">        return result;</span>
+    }
+
+    @Override
+    public V getIfAbsentValue(K key, V value)
+    {
+<span class="nc" id="L319">        V result = this.delegate.get(key);</span>
+<span class="nc bnc" id="L320" title="All 2 branches missed.">        if (result == null)</span>
+        {
+<span class="nc" id="L322">            return value;</span>
+        }
+<span class="nc" id="L324">        return result;</span>
+    }
+
+    @Override
+    public &lt;P&gt; V getIfAbsentWith(
+            K key,
+            Function&lt;? super P, ? extends V&gt; function,
+            P parameter)
+    {
+<span class="nc" id="L333">        V result = this.delegate.get(key);</span>
+<span class="nc bnc" id="L334" title="All 2 branches missed.">        if (result == null)</span>
+        {
+<span class="nc" id="L336">            return function.valueOf(parameter);</span>
+        }
+<span class="nc" id="L338">        return result;</span>
+    }
+
+    public V getIfAbsentPut(K key, Function&lt;? super K, ? extends V&gt; factory)
+    {
+<span class="nc" id="L343">        throw new UnsupportedOperationException(this.getClass().getSimpleName() + &quot;.getIfAbsentPut() not implemented yet&quot;);</span>
+    }
+
+    @Override
+    public &lt;A&gt; A ifPresentApply(K key, Function&lt;? super V, ? extends A&gt; function)
+    {
+<span class="nc" id="L349">        V result = this.delegate.get(key);</span>
+<span class="nc bnc" id="L350" title="All 2 branches missed.">        return result == null ? null : function.valueOf(result);</span>
+    }
+
+    @Override
+    public boolean equals(Object o)
+    {
+<span class="nc" id="L356">        return this.delegate.equals(o);</span>
+    }
+
+    @Override
+    public int hashCode()
+    {
+<span class="nc" id="L362">        return this.delegate.hashCode();</span>
+    }
+
+    @Override
+    public &lt;P&gt; void forEachWith(Procedure2&lt;? super V, ? super P&gt; procedure, P parameter)
+    {
+<span class="nc" id="L368">        Iterate.forEachWith(this.delegate.values(), procedure, parameter);</span>
+<span class="nc" id="L369">    }</span>
+
+    @Override
+    public V putIfAbsent(K key, V value)
+    {
+<span class="nc" id="L374">        return this.delegate.putIfAbsent(key, value);</span>
+    }
+
+    @Override
+    public boolean remove(Object key, Object value)
+    {
+<span class="nc" id="L380">        return this.delegate.remove(key, value);</span>
+    }
+
+    @Override
+    public boolean replace(K key, V oldValue, V newValue)
+    {
+<span class="nc" id="L386">        return this.delegate.replace(key, oldValue, newValue);</span>
+    }
+
+    @Override
+    public V replace(K key, V value)
+    {
+<span class="nc" id="L392">        return this.delegate.replace(key, value);</span>
+    }
+
+    @Override
+    public V updateValue(K key, Function0&lt;? extends V&gt; factory, Function&lt;? super V, ? extends V&gt; function)
+    {
+        while (true)
+        {
+<span class="nc" id="L400">            V originalValue = this.delegate.get(key);</span>
+<span class="nc bnc" id="L401" title="All 2 branches missed.">            if (originalValue == null)</span>
+            {
+<span class="nc" id="L403">                V zero = factory.value();</span>
+<span class="nc" id="L404">                V newValue = function.valueOf(zero);</span>
+<span class="nc bnc" id="L405" title="All 2 branches missed.">                if (this.delegate.putIfAbsent(key, newValue) == null)</span>
+                {
+<span class="nc" id="L407">                    return newValue;</span>
+                }
+<span class="nc" id="L409">            }</span>
+            else
+            {
+<span class="nc" id="L412">                V newValue = function.valueOf(originalValue);</span>
+<span class="nc bnc" id="L413" title="All 2 branches missed.">                if (this.delegate.replace(key, originalValue, newValue))</span>
+                {
+<span class="nc" id="L415">                    return newValue;</span>
+                }
+            }
+<span class="nc" id="L418">        }</span>
+    }
+
+    @Override
+    public &lt;P&gt; V updateValueWith(K key, Function0&lt;? extends V&gt; factory, Function2&lt;? super V, ? super P, ? extends V&gt; function, P parameter)
+    {
+        while (true)
+        {
+<span class="nc" id="L426">            V originalValue = this.delegate.get(key);</span>
+<span class="nc bnc" id="L427" title="All 2 branches missed.">            if (originalValue == null)</span>
+            {
+<span class="nc" id="L429">                V zero = factory.value();</span>
+<span class="nc" id="L430">                V newValue = function.value(zero, parameter);</span>
+<span class="nc bnc" id="L431" title="All 2 branches missed.">                if (this.delegate.putIfAbsent(key, newValue) == null)</span>
+                {
+<span class="nc" id="L433">                    return newValue;</span>
+                }
+<span class="nc" id="L435">            }</span>
+            else
+            {
+<span class="nc" id="L438">                V newValue = function.value(originalValue, parameter);</span>
+<span class="nc bnc" id="L439" title="All 2 branches missed.">                if (this.delegate.replace(key, originalValue, newValue))</span>
+                {
+<span class="nc" id="L441">                    return newValue;</span>
+                }
+            }
+<span class="nc" id="L444">        }</span>
+    }
+
+    @Override
+    public ImmutableMap&lt;K, V&gt; toImmutable()
+    {
+<span class="nc" id="L450">        return Maps.immutable.ofMap(this);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.0.201801022044</span></div></body></html>

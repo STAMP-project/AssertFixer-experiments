@@ -1,0 +1,475 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>SynchronizedMutableMap.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Eclipse Collections Test Coverage Aggregation</a> &gt; <a href="../index.html" class="el_bundle">eclipse-collections</a> &gt; <a href="index.source.html" class="el_package">org.eclipse.collections.impl.map.mutable</a> &gt; <span class="el_source">SynchronizedMutableMap.java</span></div><h1>SynchronizedMutableMap.java</h1><pre class="source lang-java linenums">/*
+ * Copyright (c) 2017 Goldman Sachs and others.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * and Eclipse Distribution License v. 1.0 which accompany this distribution.
+ * The Eclipse Public License is available at http://www.eclipse.org/legal/epl-v10.html
+ * and the Eclipse Distribution License is available at
+ * http://www.eclipse.org/org/documents/edl-v10.php.
+ */
+
+package org.eclipse.collections.impl.map.mutable;
+
+import java.io.Serializable;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Map;
+import java.util.Set;
+
+import org.eclipse.collections.api.RichIterable;
+import org.eclipse.collections.api.bag.MutableBag;
+import org.eclipse.collections.api.bag.primitive.MutableBooleanBag;
+import org.eclipse.collections.api.bag.primitive.MutableByteBag;
+import org.eclipse.collections.api.bag.primitive.MutableCharBag;
+import org.eclipse.collections.api.bag.primitive.MutableDoubleBag;
+import org.eclipse.collections.api.bag.primitive.MutableFloatBag;
+import org.eclipse.collections.api.bag.primitive.MutableIntBag;
+import org.eclipse.collections.api.bag.primitive.MutableLongBag;
+import org.eclipse.collections.api.bag.primitive.MutableShortBag;
+import org.eclipse.collections.api.block.function.Function;
+import org.eclipse.collections.api.block.function.Function2;
+import org.eclipse.collections.api.block.function.primitive.BooleanFunction;
+import org.eclipse.collections.api.block.function.primitive.ByteFunction;
+import org.eclipse.collections.api.block.function.primitive.CharFunction;
+import org.eclipse.collections.api.block.function.primitive.DoubleFunction;
+import org.eclipse.collections.api.block.function.primitive.FloatFunction;
+import org.eclipse.collections.api.block.function.primitive.IntFunction;
+import org.eclipse.collections.api.block.function.primitive.LongFunction;
+import org.eclipse.collections.api.block.function.primitive.ShortFunction;
+import org.eclipse.collections.api.block.predicate.Predicate;
+import org.eclipse.collections.api.block.predicate.Predicate2;
+import org.eclipse.collections.api.block.procedure.Procedure;
+import org.eclipse.collections.api.map.ImmutableMap;
+import org.eclipse.collections.api.map.MutableMap;
+import org.eclipse.collections.api.multimap.bag.MutableBagMultimap;
+import org.eclipse.collections.api.multimap.set.MutableSetMultimap;
+import org.eclipse.collections.api.ordered.OrderedIterable;
+import org.eclipse.collections.api.partition.bag.PartitionMutableBag;
+import org.eclipse.collections.api.set.MutableSet;
+import org.eclipse.collections.api.tuple.Pair;
+import org.eclipse.collections.impl.collection.mutable.SynchronizedMutableCollection;
+import org.eclipse.collections.impl.factory.Maps;
+import org.eclipse.collections.impl.list.fixed.ArrayAdapter;
+import org.eclipse.collections.impl.map.AbstractSynchronizedMapIterable;
+import org.eclipse.collections.impl.set.mutable.SynchronizedMutableSet;
+import org.eclipse.collections.impl.utility.LazyIterate;
+
+/**
+ * A synchronized view of a {@link MutableMap}. It is imperative that the user manually synchronize on the collection when iterating over it using the
+ * standard JDK iterator or JDK 5 for loop, as per {@link Collections#synchronizedCollection(Collection)}.
+ *
+ * @see MutableMap#asSynchronized()
+ */
+public class SynchronizedMutableMap&lt;K, V&gt;
+        extends AbstractSynchronizedMapIterable&lt;K, V&gt; implements MutableMap&lt;K, V&gt;, Serializable
+{
+    private static final long serialVersionUID = 2L;
+
+    public SynchronizedMutableMap(MutableMap&lt;K, V&gt; newMap)
+    {
+<span class="nc" id="L70">        super(newMap);</span>
+<span class="nc" id="L71">    }</span>
+
+    public SynchronizedMutableMap(MutableMap&lt;K, V&gt; newMap, Object newLock)
+    {
+<span class="nc" id="L75">        super(newMap, newLock);</span>
+<span class="nc" id="L76">    }</span>
+
+    /**
+     * This method will take a MutableMap and wrap it directly in a SynchronizedMutableMap.  It will
+     * take any other non-GS-map and first adapt it will a MapAdapter, and then return a
+     * SynchronizedMutableMap that wraps the adapter.
+     */
+    public static &lt;K, V, M extends Map&lt;K, V&gt;&gt; SynchronizedMutableMap&lt;K, V&gt; of(M map)
+    {
+<span class="nc bnc" id="L85" title="All 2 branches missed.">        if (map == null)</span>
+        {
+<span class="nc" id="L87">            throw new IllegalArgumentException(&quot;cannot create a SynchronizedMutableMap for null&quot;);</span>
+        }
+<span class="nc" id="L89">        return new SynchronizedMutableMap&lt;&gt;(MapAdapter.adapt(map));</span>
+    }
+
+    /**
+     * This method will take a MutableMap and wrap it directly in a SynchronizedMutableMap.  It will
+     * take any other non-GS-map and first adapt it will a MapAdapter, and then return a
+     * SynchronizedMutableMap that wraps the adapter. Additionally, a developer specifies which lock to use
+     * with the collection.
+     */
+    public static &lt;K, V, M extends Map&lt;K, V&gt;&gt; SynchronizedMutableMap&lt;K, V&gt; of(M map, Object lock)
+    {
+<span class="nc bnc" id="L100" title="All 2 branches missed.">        if (map == null)</span>
+        {
+<span class="nc" id="L102">            throw new IllegalArgumentException(&quot;cannot create a SynchronizedMutableMap for null&quot;);</span>
+        }
+<span class="nc" id="L104">        return new SynchronizedMutableMap&lt;&gt;(MapAdapter.adapt(map), lock);</span>
+    }
+
+    @Override
+    public MutableMap&lt;K, V&gt; withKeyValue(K key, V value)
+    {
+<span class="nc" id="L110">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L112">            this.put(key, value);</span>
+<span class="nc" id="L113">            return this;</span>
+        }
+    }
+
+    @Override
+    public MutableMap&lt;K, V&gt; withAllKeyValueArguments(Pair&lt;? extends K, ? extends V&gt;... keyValuePairs)
+    {
+<span class="nc" id="L120">        return this.withAllKeyValues(ArrayAdapter.adapt(keyValuePairs));</span>
+    }
+
+    @Override
+    public MutableMap&lt;K, V&gt; withAllKeyValues(Iterable&lt;? extends Pair&lt;? extends K, ? extends V&gt;&gt; keyValues)
+    {
+<span class="nc" id="L126">        synchronized (this.lock)</span>
+        {
+<span class="nc bnc" id="L128" title="All 2 branches missed.">            for (Pair&lt;? extends K, ? extends V&gt; keyValue : keyValues)</span>
+            {
+<span class="nc" id="L130">                this.getDelegate().put(keyValue.getOne(), keyValue.getTwo());</span>
+<span class="nc" id="L131">            }</span>
+<span class="nc" id="L132">            return this;</span>
+        }
+    }
+
+    @Override
+    public MutableMap&lt;K, V&gt; withoutKey(K key)
+    {
+<span class="nc" id="L139">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L141">            this.remove(key);</span>
+<span class="nc" id="L142">            return this;</span>
+        }
+    }
+
+    @Override
+    public MutableMap&lt;K, V&gt; withoutAllKeys(Iterable&lt;? extends K&gt; keys)
+    {
+<span class="nc" id="L149">        synchronized (this.lock)</span>
+        {
+<span class="nc bnc" id="L151" title="All 2 branches missed.">            for (K key : keys)</span>
+            {
+<span class="nc" id="L153">                this.getDelegate().removeKey(key);</span>
+<span class="nc" id="L154">            }</span>
+<span class="nc" id="L155">            return this;</span>
+        }
+    }
+
+    @Override
+    public MutableMap&lt;K, V&gt; newEmpty()
+    {
+<span class="nc" id="L162">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L164">            return this.getDelegate().newEmpty();</span>
+        }
+    }
+
+    @Override
+    public MutableMap&lt;K, V&gt; clone()
+    {
+<span class="nc" id="L171">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L173">            return SynchronizedMutableMap.of(this.getDelegate().clone());</span>
+        }
+    }
+
+    protected Object writeReplace()
+    {
+<span class="nc" id="L179">        return new SynchronizedMapSerializationProxy&lt;&gt;(this.getDelegate());</span>
+    }
+
+    @Override
+    protected MutableMap&lt;K, V&gt; getDelegate()
+    {
+<span class="nc" id="L185">        return (MutableMap&lt;K, V&gt;) super.getDelegate();</span>
+    }
+
+    @Override
+    public &lt;E&gt; MutableMap&lt;K, V&gt; collectKeysAndValues(
+            Iterable&lt;E&gt; iterable,
+            Function&lt;? super E, ? extends K&gt; keyFunction,
+            Function&lt;? super E, ? extends V&gt; function)
+    {
+<span class="nc" id="L194">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L196">            return this.getDelegate().collectKeysAndValues(iterable, keyFunction, function);</span>
+        }
+    }
+
+    @Override
+    public MutableMap&lt;K, V&gt; select(Predicate2&lt;? super K, ? super V&gt; predicate)
+    {
+<span class="nc" id="L203">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L205">            return this.getDelegate().select(predicate);</span>
+        }
+    }
+
+    @Override
+    public MutableMap&lt;K, V&gt; reject(Predicate2&lt;? super K, ? super V&gt; predicate)
+    {
+<span class="nc" id="L212">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L214">            return this.getDelegate().reject(predicate);</span>
+        }
+    }
+
+    @Override
+    public &lt;K2, V2&gt; MutableMap&lt;K2, V2&gt; collect(Function2&lt;? super K, ? super V, Pair&lt;K2, V2&gt;&gt; pairFunction)
+    {
+<span class="nc" id="L221">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L223">            return this.getDelegate().collect(pairFunction);</span>
+        }
+    }
+
+    @Override
+    public &lt;R&gt; MutableMap&lt;K, R&gt; collectValues(Function2&lt;? super K, ? super V, ? extends R&gt; function)
+    {
+<span class="nc" id="L230">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L232">            return this.getDelegate().collectValues(function);</span>
+        }
+    }
+
+    @Override
+    public MutableMap&lt;K, V&gt; tap(Procedure&lt;? super V&gt; procedure)
+    {
+<span class="nc" id="L239">        return (MutableMap&lt;K, V&gt;) super.tap(procedure);</span>
+    }
+
+    @Override
+    public MutableBag&lt;V&gt; select(Predicate&lt;? super V&gt; predicate)
+    {
+<span class="nc" id="L245">        return (MutableBag&lt;V&gt;) super.select(predicate);</span>
+    }
+
+    @Override
+    public &lt;P&gt; MutableBag&lt;V&gt; selectWith(Predicate2&lt;? super V, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc" id="L251">        return (MutableBag&lt;V&gt;) super.selectWith(predicate, parameter);</span>
+    }
+
+    @Override
+    public MutableBag&lt;V&gt; reject(Predicate&lt;? super V&gt; predicate)
+    {
+<span class="nc" id="L257">        return (MutableBag&lt;V&gt;) super.reject(predicate);</span>
+    }
+
+    @Override
+    public &lt;P&gt; MutableBag&lt;V&gt; rejectWith(Predicate2&lt;? super V, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc" id="L263">        return (MutableBag&lt;V&gt;) super.rejectWith(predicate, parameter);</span>
+    }
+
+    @Override
+    public PartitionMutableBag&lt;V&gt; partition(Predicate&lt;? super V&gt; predicate)
+    {
+<span class="nc" id="L269">        return (PartitionMutableBag&lt;V&gt;) super.partition(predicate);</span>
+    }
+
+    /**
+     * @deprecated in 6.0. Use {@link OrderedIterable#zipWithIndex()} instead.
+     */
+    @Override
+    @Deprecated
+    public MutableSet&lt;Pair&lt;V, Integer&gt;&gt; zipWithIndex()
+    {
+<span class="nc" id="L279">        return (MutableSet&lt;Pair&lt;V, Integer&gt;&gt;) super.zipWithIndex();</span>
+    }
+
+    @Override
+    public &lt;P&gt; PartitionMutableBag&lt;V&gt; partitionWith(Predicate2&lt;? super V, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc" id="L285">        return (PartitionMutableBag&lt;V&gt;) super.partitionWith(predicate, parameter);</span>
+    }
+
+    @Override
+    public &lt;S&gt; MutableBag&lt;S&gt; selectInstancesOf(Class&lt;S&gt; clazz)
+    {
+<span class="nc" id="L291">        return (MutableBag&lt;S&gt;) super.selectInstancesOf(clazz);</span>
+    }
+
+    @Override
+    public &lt;A&gt; MutableBag&lt;A&gt; collect(Function&lt;? super V, ? extends A&gt; function)
+    {
+<span class="nc" id="L297">        return (MutableBag&lt;A&gt;) super.collect(function);</span>
+    }
+
+    @Override
+    public MutableBooleanBag collectBoolean(BooleanFunction&lt;? super V&gt; booleanFunction)
+    {
+<span class="nc" id="L303">        return (MutableBooleanBag) super.collectBoolean(booleanFunction);</span>
+    }
+
+    @Override
+    public MutableByteBag collectByte(ByteFunction&lt;? super V&gt; byteFunction)
+    {
+<span class="nc" id="L309">        return (MutableByteBag) super.collectByte(byteFunction);</span>
+    }
+
+    @Override
+    public MutableCharBag collectChar(CharFunction&lt;? super V&gt; charFunction)
+    {
+<span class="nc" id="L315">        return (MutableCharBag) super.collectChar(charFunction);</span>
+    }
+
+    @Override
+    public MutableDoubleBag collectDouble(DoubleFunction&lt;? super V&gt; doubleFunction)
+    {
+<span class="nc" id="L321">        return (MutableDoubleBag) super.collectDouble(doubleFunction);</span>
+    }
+
+    @Override
+    public MutableFloatBag collectFloat(FloatFunction&lt;? super V&gt; floatFunction)
+    {
+<span class="nc" id="L327">        return (MutableFloatBag) super.collectFloat(floatFunction);</span>
+    }
+
+    @Override
+    public MutableIntBag collectInt(IntFunction&lt;? super V&gt; intFunction)
+    {
+<span class="nc" id="L333">        return (MutableIntBag) super.collectInt(intFunction);</span>
+    }
+
+    @Override
+    public MutableLongBag collectLong(LongFunction&lt;? super V&gt; longFunction)
+    {
+<span class="nc" id="L339">        return (MutableLongBag) super.collectLong(longFunction);</span>
+    }
+
+    @Override
+    public MutableShortBag collectShort(ShortFunction&lt;? super V&gt; shortFunction)
+    {
+<span class="nc" id="L345">        return (MutableShortBag) super.collectShort(shortFunction);</span>
+    }
+
+    @Override
+    public &lt;P, A&gt; MutableBag&lt;A&gt; collectWith(Function2&lt;? super V, ? super P, ? extends A&gt; function, P parameter)
+    {
+<span class="nc" id="L351">        return (MutableBag&lt;A&gt;) super.&lt;P, A&gt;collectWith(function, parameter);</span>
+    }
+
+    @Override
+    public &lt;A&gt; MutableBag&lt;A&gt; collectIf(Predicate&lt;? super V&gt; predicate, Function&lt;? super V, ? extends A&gt; function)
+    {
+<span class="nc" id="L357">        return (MutableBag&lt;A&gt;) super.&lt;A&gt;collectIf(predicate, function);</span>
+    }
+
+    @Override
+    public &lt;A&gt; MutableBag&lt;A&gt; flatCollect(Function&lt;? super V, ? extends Iterable&lt;A&gt;&gt; function)
+    {
+<span class="nc" id="L363">        return (MutableBag&lt;A&gt;) super.flatCollect(function);</span>
+    }
+
+    @Override
+    public &lt;KK&gt; MutableBagMultimap&lt;KK, V&gt; groupBy(Function&lt;? super V, ? extends KK&gt; function)
+    {
+<span class="nc" id="L369">        return (MutableBagMultimap&lt;KK, V&gt;) super.&lt;KK&gt;groupBy(function);</span>
+    }
+
+    @Override
+    public &lt;KK&gt; MutableBagMultimap&lt;KK, V&gt; groupByEach(Function&lt;? super V, ? extends Iterable&lt;KK&gt;&gt; function)
+    {
+<span class="nc" id="L375">        return (MutableBagMultimap&lt;KK, V&gt;) super.groupByEach(function);</span>
+    }
+
+    /**
+     * @deprecated in 6.0. Use {@link OrderedIterable#zip(Iterable)} instead.
+     */
+    @Override
+    @Deprecated
+    public &lt;S&gt; MutableBag&lt;Pair&lt;V, S&gt;&gt; zip(Iterable&lt;S&gt; that)
+    {
+<span class="nc" id="L385">        return (MutableBag&lt;Pair&lt;V, S&gt;&gt;) super.zip(that);</span>
+    }
+
+    @Override
+    public &lt;VV&gt; MutableMap&lt;VV, V&gt; groupByUniqueKey(Function&lt;? super V, ? extends VV&gt; function)
+    {
+<span class="nc" id="L391">        return (MutableMap&lt;VV, V&gt;) super.groupByUniqueKey(function);</span>
+    }
+
+    @Override
+    public MutableMap&lt;V, K&gt; flipUniqueValues()
+    {
+<span class="nc" id="L397">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L399">            return this.getDelegate().flipUniqueValues();</span>
+        }
+    }
+
+    @Override
+    public MutableSetMultimap&lt;V, K&gt; flip()
+    {
+<span class="nc" id="L406">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L408">            return this.getDelegate().flip();</span>
+        }
+    }
+
+    @Override
+    public Set&lt;K&gt; keySet()
+    {
+<span class="nc" id="L415">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L417">            return SynchronizedMutableSet.of(this.getDelegate().keySet(), this.lock);</span>
+        }
+    }
+
+    @Override
+    public Collection&lt;V&gt; values()
+    {
+<span class="nc" id="L424">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L426">            return SynchronizedMutableCollection.of(this.getDelegate().values(), this.lock);</span>
+        }
+    }
+
+    @Override
+    public Set&lt;Entry&lt;K, V&gt;&gt; entrySet()
+    {
+<span class="nc" id="L433">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L435">            return SynchronizedMutableSet.of(this.getDelegate().entrySet(), this.lock);</span>
+        }
+    }
+
+    @Override
+    public RichIterable&lt;K&gt; keysView()
+    {
+<span class="nc" id="L442">        return LazyIterate.adapt(this.keySet());</span>
+    }
+
+    @Override
+    public RichIterable&lt;V&gt; valuesView()
+    {
+<span class="nc" id="L448">        return LazyIterate.adapt(this.values());</span>
+    }
+
+    @Override
+    public MutableMap&lt;K, V&gt; asUnmodifiable()
+    {
+<span class="nc" id="L454">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L456">            return UnmodifiableMutableMap.of(this);</span>
+        }
+    }
+
+    @Override
+    public MutableMap&lt;K, V&gt; asSynchronized()
+    {
+<span class="nc" id="L463">        return this;</span>
+    }
+
+    @Override
+    public ImmutableMap&lt;K, V&gt; toImmutable()
+    {
+<span class="nc" id="L469">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L471">            return Maps.immutable.withAll(this);</span>
+        }
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.0.201801022044</span></div></body></html>

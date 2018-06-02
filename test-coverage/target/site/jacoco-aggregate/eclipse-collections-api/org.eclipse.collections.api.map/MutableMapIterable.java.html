@@ -1,0 +1,339 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>MutableMapIterable.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Eclipse Collections Test Coverage Aggregation</a> &gt; <a href="../index.html" class="el_bundle">eclipse-collections-api</a> &gt; <a href="index.source.html" class="el_package">org.eclipse.collections.api.map</a> &gt; <span class="el_source">MutableMapIterable.java</span></div><h1>MutableMapIterable.java</h1><pre class="source lang-java linenums">/*
+ * Copyright (c) 2017 Goldman Sachs and others.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * and Eclipse Distribution License v. 1.0 which accompany this distribution.
+ * The Eclipse Public License is available at http://www.eclipse.org/legal/epl-v10.html
+ * and the Eclipse Distribution License is available at
+ * http://www.eclipse.org/org/documents/edl-v10.php.
+ */
+
+package org.eclipse.collections.api.map;
+
+import java.util.Map;
+
+import org.eclipse.collections.api.bag.MutableBag;
+import org.eclipse.collections.api.block.function.Function;
+import org.eclipse.collections.api.block.function.Function0;
+import org.eclipse.collections.api.block.function.Function2;
+import org.eclipse.collections.api.block.function.primitive.DoubleFunction;
+import org.eclipse.collections.api.block.function.primitive.FloatFunction;
+import org.eclipse.collections.api.block.function.primitive.IntFunction;
+import org.eclipse.collections.api.block.function.primitive.LongFunction;
+import org.eclipse.collections.api.block.predicate.Predicate;
+import org.eclipse.collections.api.block.predicate.Predicate2;
+import org.eclipse.collections.api.block.procedure.Procedure;
+import org.eclipse.collections.api.block.procedure.Procedure2;
+import org.eclipse.collections.api.collection.MutableCollection;
+import org.eclipse.collections.api.map.primitive.MutableObjectDoubleMap;
+import org.eclipse.collections.api.map.primitive.MutableObjectLongMap;
+import org.eclipse.collections.api.multimap.MutableMultimap;
+import org.eclipse.collections.api.partition.PartitionMutableCollection;
+import org.eclipse.collections.api.tuple.Pair;
+
+/**
+ * @since 6.0
+ */
+public interface MutableMapIterable&lt;K, V&gt; extends MapIterable&lt;K, V&gt;, Map&lt;K, V&gt;
+{
+    /**
+     * This method allows mutable map the ability to add an element in the form of Pair&lt;? extends K, ? extends V&gt;.
+     *
+     * @see #put(Object, Object)
+     * @since 9.1.0
+     */
+    default V putPair(Pair&lt;? extends K, ? extends V&gt; keyValuePair)
+    {
+<span class="nc" id="L47">        return this.put(keyValuePair.getOne(), keyValuePair.getTwo());</span>
+    }
+
+    /**
+     * This method allows mutable map the ability to add an element in the form of Pair&lt;? extends K, ? extends V&gt;.
+     *
+     * @return previous value in the map for the key, or null if no value exists for the key.
+     * @see #put(Object, Object)
+     */
+    default V add(Pair&lt;? extends K, ? extends V&gt; keyValuePair)
+    {
+<span class="nc" id="L58">        return this.putPair(keyValuePair);</span>
+    }
+
+    /**
+     * Remove an entry from the map at the specified {@code key}.
+     *
+     * @return The value removed from entry at key, or null if not found.
+     * @see #remove(Object)
+     */
+    V removeKey(K key);
+
+    /**
+     * Get and return the value in the Map at the specified key.  Alternatively, if there is no value in the map at the key,
+     * return the result of evaluating the specified Function0, and put that value in the map at the specified key.
+     */
+    V getIfAbsentPut(K key, Function0&lt;? extends V&gt; function);
+
+    /**
+     * Get and return the value in the Map at the specified key.  Alternatively, if there is no value in the map at the key,
+     * return the specified value, and put that value in the map at the specified key.
+     *
+     * @since 5.0
+     */
+    V getIfAbsentPut(K key, V value);
+
+    /**
+     * Get and return the value in the Map at the specified key.  Alternatively, if there is no value in the map for that key
+     * return the result of evaluating the specified Function using the specified key, and put that value in the
+     * map at the specified key.
+     */
+    V getIfAbsentPutWithKey(K key, Function&lt;? super K, ? extends V&gt; function);
+
+    /**
+     * Get and return the value in the Map at the specified key.  Alternatively, if there is no value in the map for that key
+     * return the result of evaluating the specified Function using the specified parameter, and put that value in the
+     * map at the specified key.
+     */
+    &lt;P&gt; V getIfAbsentPutWith(K key, Function&lt;? super P, ? extends V&gt; function, P parameter);
+
+    /**
+     * Looks up the value associated with {@code key}, applies the {@code function} to it, and replaces the value. If there
+     * is no value associated with {@code key}, starts it off with a value supplied by {@code factory}.
+     */
+    V updateValue(K key, Function0&lt;? extends V&gt; factory, Function&lt;? super V, ? extends V&gt; function);
+
+    /**
+     * Same as {@link #updateValue(Object, Function0, Function)} with a Function2 and specified parameter which is
+     * passed to the function.
+     */
+    &lt;P&gt; V updateValueWith(K key, Function0&lt;? extends V&gt; factory, Function2&lt;? super V, ? super P, ? extends V&gt; function, P parameter);
+
+    /**
+     * This method allows mutable, fixed size, and immutable maps the ability to add elements to their existing
+     * elements.  In order to support fixed size maps, a new instance of a map would have to be returned including the
+     * keys and values of the original plus the additional key and value.  In the case of mutable maps, the original map
+     * is modified and then returned.  In order to use this method properly with mutable and fixed size maps the
+     * following approach must be taken:
+     * &lt;p&gt;
+     * &lt;pre&gt;
+     * map = map.withKeyValue(&quot;new key&quot;, &quot;new value&quot;);
+     * &lt;/pre&gt;
+     * In the case of FixedSizeMap, a new instance will be returned by withKeyValue, and any variables that
+     * previously referenced the original map will need to be redirected to reference the new instance.  In the case
+     * of a FastMap or UnifiedMap, you will be replacing the reference to map with map, since FastMap and UnifiedMap
+     * will both return &quot;this&quot; after calling put on themselves.
+     *
+     * @see #put(Object, Object)
+     */
+    MutableMapIterable&lt;K, V&gt; withKeyValue(K key, V value);
+
+    /**
+     * This method allows mutable, fixed size, and immutable maps the ability to add elements to their existing
+     * elements.  In order to support fixed size maps, a new instance of a map would have to be returned including the
+     * keys and values of the original plus all of the additional keys and values.  In the case of mutable maps, the
+     * original map is modified and then returned.  In order to use this method properly with mutable and fixed size
+     * maps the following approach must be taken:
+     * &lt;p&gt;
+     * &lt;pre&gt;
+     * map = map.withAllKeyValues(FastList.newListWith(PairImpl.of(&quot;new key&quot;, &quot;new value&quot;)));
+     * &lt;/pre&gt;
+     * In the case of FixedSizeMap, a new instance will be returned by withAllKeyValues, and any variables that
+     * previously referenced the original map will need to be redirected to reference the new instance.  In the case
+     * of a FastMap or UnifiedMap, you will be replacing the reference to map with map, since FastMap and UnifiedMap
+     * will both return &quot;this&quot; after calling put on themselves.
+     *
+     * @see #put(Object, Object)
+     */
+    MutableMapIterable&lt;K, V&gt; withAllKeyValues(Iterable&lt;? extends Pair&lt;? extends K, ? extends V&gt;&gt; keyValues);
+
+    /**
+     * Convenience var-args version of withAllKeyValues
+     *
+     * @see #withAllKeyValues(Iterable)
+     */
+    MutableMapIterable&lt;K, V&gt; withAllKeyValueArguments(Pair&lt;? extends K, ? extends V&gt;... keyValuePairs);
+
+    /**
+     * This method allows mutable, fixed size, and immutable maps the ability to remove elements from their existing
+     * elements.  In order to support fixed size maps, a new instance of a map would have to be returned including the
+     * keys and values of the original minus the key and value to be removed.  In the case of mutable maps, the original
+     * map is modified and then returned.  In order to use this method properly with mutable and fixed size maps the
+     * following approach must be taken:
+     * &lt;p&gt;
+     * &lt;pre&gt;
+     * map = map.withoutKey(&quot;key&quot;);
+     * &lt;/pre&gt;
+     * In the case of FixedSizeMap, a new instance will be returned by withoutKey, and any variables that previously
+     * referenced the original map will need to be redirected to reference the new instance.  In the case of a FastMap
+     * or UnifiedMap, you will be replacing the reference to map with map, since FastMap and UnifiedMap will both return
+     * &quot;this&quot; after calling remove on themselves.
+     *
+     * @see #remove(Object)
+     */
+    MutableMapIterable&lt;K, V&gt; withoutKey(K key);
+
+    /**
+     * This method allows mutable, fixed size, and immutable maps the ability to remove elements from their existing
+     * elements.  In order to support fixed size maps, a new instance of a map would have to be returned including the
+     * keys and values of the original minus all of the keys and values to be removed.  In the case of mutable maps, the
+     * original map is modified and then returned.  In order to use this method properly with mutable and fixed size
+     * maps the following approach must be taken:
+     * &lt;p&gt;
+     * &lt;pre&gt;
+     * map = map.withoutAllKeys(FastList.newListWith(&quot;key1&quot;, &quot;key2&quot;));
+     * &lt;/pre&gt;
+     * In the case of FixedSizeMap, a new instance will be returned by withoutAllKeys, and any variables that previously
+     * referenced the original map will need to be redirected to reference the new instance.  In the case of a FastMap
+     * or UnifiedMap, you will be replacing the reference to map with map, since FastMap and UnifiedMap will both return
+     * &quot;this&quot; after calling remove on themselves.
+     *
+     * @see #remove(Object)
+     */
+    MutableMapIterable&lt;K, V&gt; withoutAllKeys(Iterable&lt;? extends K&gt; keys);
+
+    /**
+     * Creates a new instance of the same type, using the default capacity and growth parameters.
+     */
+    MutableMapIterable&lt;K, V&gt; newEmpty();
+
+    /**
+     * Returns an unmodifiable view of this map. This is the equivalent of using
+     * {@code Collections.unmodifiableMap(this)} only with a return type that supports the full
+     * iteration protocols available on {@code MutableMapIterable}.  Methods which would
+     * mutate the underlying map will throw UnsupportedOperationExceptions.
+     *
+     * @return an unmodifiable view of this map.
+     * @see java.util.Collections#unmodifiableMap(Map)
+     */
+    MutableMapIterable&lt;K, V&gt; asUnmodifiable();
+
+    /**
+     * Returns a synchronized wrapper backed by this map.  This is the equivalent of calling
+     * {@code Collections.synchronizedMap(this)} only with the more feature rich return type of
+     * {@code MutableMapIterable}.
+     * &lt;p&gt;
+     * The preferred way of iterating over a synchronized map is to use the forEachKey(), forEachValue()
+     * and forEachKeyValue() methods which are properly synchronized internally.
+     * &lt;pre&gt;
+     *  MutableMap synchedMap = map.asSynchronized();
+     *
+     *  synchedMap.forEachKey(key -&gt; ... );
+     *  synchedMap.forEachValue(value -&gt; ... );
+     *  synchedMap.forEachKeyValue((key, value) -&gt; ... );
+     * &lt;/pre&gt;
+     * &lt;p&gt;
+     * If you want to iterate imperatively over the keySet(), values(), or entrySet(), you will
+     * need to protect the iteration by wrapping the code in a synchronized block on the map.
+     *
+     * @see java.util.Collections#synchronizedMap(Map)
+     */
+    MutableMapIterable&lt;K, V&gt; asSynchronized();
+
+    /**
+     * Returns an immutable copy of this map.
+     * If the map is immutable, it returns itself.
+     */
+    @Override
+    ImmutableMapIterable&lt;K, V&gt; toImmutable();
+
+    // TODO
+    // MutableSetIterable&lt;K&gt; keySet();
+
+    @Override
+    MutableMapIterable&lt;K, V&gt; tap(Procedure&lt;? super V&gt; procedure);
+
+    @Override
+    MutableMapIterable&lt;V, K&gt; flipUniqueValues();
+
+    @Override
+    MutableMultimap&lt;V, K&gt; flip();
+
+    @Override
+    MutableMapIterable&lt;K, V&gt; select(Predicate2&lt;? super K, ? super V&gt; predicate);
+
+    @Override
+    MutableMapIterable&lt;K, V&gt; reject(Predicate2&lt;? super K, ? super V&gt; predicate);
+
+    @Override
+    &lt;K2, V2&gt; MutableMapIterable&lt;K2, V2&gt; collect(Function2&lt;? super K, ? super V, Pair&lt;K2, V2&gt;&gt; function);
+
+    @Override
+    &lt;R&gt; MutableMapIterable&lt;K, R&gt; collectValues(Function2&lt;? super K, ? super V, ? extends R&gt; function);
+
+    @Override
+    MutableCollection&lt;V&gt; select(Predicate&lt;? super V&gt; predicate);
+
+    @Override
+    &lt;P&gt; MutableCollection&lt;V&gt; selectWith(Predicate2&lt;? super V, ? super P&gt; predicate, P parameter);
+
+    @Override
+    MutableCollection&lt;V&gt; reject(Predicate&lt;? super V&gt; predicate);
+
+    @Override
+    &lt;P&gt; MutableCollection&lt;V&gt; rejectWith(Predicate2&lt;? super V, ? super P&gt; predicate, P parameter);
+
+    @Override
+    PartitionMutableCollection&lt;V&gt; partition(Predicate&lt;? super V&gt; predicate);
+
+    @Override
+    &lt;S&gt; MutableCollection&lt;S&gt; selectInstancesOf(Class&lt;S&gt; clazz);
+
+    @Override
+    &lt;V1&gt; MutableObjectLongMap&lt;V1&gt; sumByInt(Function&lt;? super V, ? extends V1&gt; groupBy, IntFunction&lt;? super V&gt; function);
+
+    @Override
+    &lt;V1&gt; MutableObjectDoubleMap&lt;V1&gt; sumByFloat(Function&lt;? super V, ? extends V1&gt; groupBy, FloatFunction&lt;? super V&gt; function);
+
+    @Override
+    &lt;V1&gt; MutableObjectLongMap&lt;V1&gt; sumByLong(Function&lt;? super V, ? extends V1&gt; groupBy, LongFunction&lt;? super V&gt; function);
+
+    @Override
+    &lt;V1&gt; MutableObjectDoubleMap&lt;V1&gt; sumByDouble(Function&lt;? super V, ? extends V1&gt; groupBy, DoubleFunction&lt;? super V&gt; function);
+
+    /**
+     * @since 9.0
+     */
+    @Override
+    default &lt;V1&gt; MutableBag&lt;V1&gt; countBy(Function&lt;? super V, ? extends V1&gt; function)
+    {
+<span class="nc" id="L297">        return this.asLazy().&lt;V1&gt;collect(function).toBag();</span>
+    }
+
+    /**
+     * @since 9.0
+     */
+    @Override
+    default &lt;V1, P&gt; MutableBag&lt;V1&gt; countByWith(Function2&lt;? super V, ? super P, ? extends V1&gt; function, P parameter)
+    {
+<span class="nc" id="L306">        return this.asLazy().&lt;P, V1&gt;collectWith(function, parameter).toBag();</span>
+    }
+
+    /**
+     * @since 10.0.0
+     */
+    @Override
+    default &lt;V1&gt; MutableBag&lt;V1&gt; countByEach(Function&lt;? super V, ? extends Iterable&lt;V1&gt;&gt; function)
+    {
+<span class="nc" id="L315">        return this.asLazy().&lt;V1&gt;flatCollect(function).toBag();</span>
+    }
+
+    @Override
+    &lt;V1&gt; MutableMultimap&lt;V1, V&gt; groupBy(Function&lt;? super V, ? extends V1&gt; function);
+
+    @Override
+    &lt;V1&gt; MutableMultimap&lt;V1, V&gt; groupByEach(Function&lt;? super V, ? extends Iterable&lt;V1&gt;&gt; function);
+
+    @Override
+    &lt;V1&gt; MutableMapIterable&lt;V1, V&gt; groupByUniqueKey(Function&lt;? super V, ? extends V1&gt; function);
+
+    @Override
+    &lt;S&gt; MutableCollection&lt;Pair&lt;V, S&gt;&gt; zip(Iterable&lt;S&gt; that);
+
+    @Override
+    MutableCollection&lt;Pair&lt;V, Integer&gt;&gt; zipWithIndex();
+
+    @Override
+    &lt;KK, VV&gt; MutableMap&lt;KK, VV&gt; aggregateInPlaceBy(Function&lt;? super V, ? extends KK&gt; groupBy, Function0&lt;? extends VV&gt; zeroValueFactory, Procedure2&lt;? super VV, ? super V&gt; mutatingAggregator);
+
+    @Override
+    &lt;KK, VV&gt; MutableMap&lt;KK, VV&gt; aggregateBy(Function&lt;? super V, ? extends KK&gt; groupBy, Function0&lt;? extends VV&gt; zeroValueFactory, Function2&lt;? super VV, ? super V, ? extends VV&gt; nonMutatingAggregator);
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.0.201801022044</span></div></body></html>

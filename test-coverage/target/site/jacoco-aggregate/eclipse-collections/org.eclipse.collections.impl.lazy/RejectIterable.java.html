@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>RejectIterable.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Eclipse Collections Test Coverage Aggregation</a> &gt; <a href="../index.html" class="el_bundle">eclipse-collections</a> &gt; <a href="index.source.html" class="el_package">org.eclipse.collections.impl.lazy</a> &gt; <span class="el_source">RejectIterable.java</span></div><h1>RejectIterable.java</h1><pre class="source lang-java linenums">/*
+ * Copyright (c) 2016 Goldman Sachs.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * and Eclipse Distribution License v. 1.0 which accompany this distribution.
+ * The Eclipse Public License is available at http://www.eclipse.org/legal/epl-v10.html
+ * and the Eclipse Distribution License is available at
+ * http://www.eclipse.org/org/documents/edl-v10.php.
+ */
+
+package org.eclipse.collections.impl.lazy;
+
+import java.util.Iterator;
+import java.util.Optional;
+
+import org.eclipse.collections.api.block.predicate.Predicate;
+import org.eclipse.collections.api.block.procedure.Procedure;
+import org.eclipse.collections.api.block.procedure.Procedure2;
+import org.eclipse.collections.api.block.procedure.primitive.ObjectIntProcedure;
+import org.eclipse.collections.impl.block.factory.Predicates;
+import org.eclipse.collections.impl.block.procedure.IfObjectIntProcedure;
+import org.eclipse.collections.impl.block.procedure.IfProcedure;
+import org.eclipse.collections.impl.block.procedure.IfProcedureWith;
+import org.eclipse.collections.impl.lazy.iterator.SelectIterator;
+import org.eclipse.collections.impl.utility.Iterate;
+
+/**
+ * A RejectIterable is an iterable that filters a source iterable on a negative condition as it iterates.
+ */
+public class RejectIterable&lt;T&gt;
+        extends AbstractLazyIterable&lt;T&gt;
+{
+    private final Iterable&lt;T&gt; adapted;
+    private final Predicate&lt;? super T&gt; predicate;
+
+    public RejectIterable(Iterable&lt;T&gt; newAdapted, Predicate&lt;? super T&gt; newPredicate)
+<span class="nc" id="L37">    {</span>
+<span class="nc" id="L38">        this.adapted = newAdapted;</span>
+<span class="nc" id="L39">        this.predicate = Predicates.not(newPredicate);</span>
+<span class="nc" id="L40">    }</span>
+
+    @Override
+    public void each(Procedure&lt;? super T&gt; procedure)
+    {
+<span class="nc" id="L45">        Iterate.forEach(this.adapted, new IfProcedure&lt;&gt;(this.predicate, procedure));</span>
+<span class="nc" id="L46">    }</span>
+
+    @Override
+    public void forEachWithIndex(ObjectIntProcedure&lt;? super T&gt; objectIntProcedure)
+    {
+<span class="nc" id="L51">        Iterate.forEach(this.adapted, new IfObjectIntProcedure&lt;&gt;(this.predicate, objectIntProcedure));</span>
+<span class="nc" id="L52">    }</span>
+
+    @Override
+    public &lt;P&gt; void forEachWith(Procedure2&lt;? super T, ? super P&gt; procedure, P parameter)
+    {
+<span class="nc" id="L57">        Iterate.forEachWith(this.adapted, new IfProcedureWith&lt;&gt;(this.predicate, procedure), parameter);</span>
+<span class="nc" id="L58">    }</span>
+
+    /**
+     * We use a SelectIterator, since we have already negated the predicate
+     */
+    @Override
+    public Iterator&lt;T&gt; iterator()
+    {
+<span class="nc" id="L66">        return new SelectIterator&lt;&gt;(this.adapted, this.predicate);</span>
+    }
+
+    @Override
+    public boolean anySatisfy(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L72">        return Iterate.anySatisfy(this.adapted, Predicates.and(this.predicate, predicate));</span>
+    }
+
+    @Override
+    public boolean allSatisfy(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L78">        return Iterate.allSatisfy(this.adapted, new AllSatisfyPredicate&lt;&gt;(this.predicate, predicate));</span>
+    }
+
+    @Override
+    public boolean noneSatisfy(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L84">        return Iterate.noneSatisfy(this.adapted, new AllSatisfyPredicate&lt;&gt;(this.predicate, predicate));</span>
+    }
+
+    @Override
+    public T detect(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L90">        return Iterate.detect(this.adapted, Predicates.and(this.predicate, predicate));</span>
+    }
+
+    @Override
+    public Optional&lt;T&gt; detectOptional(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L96">        return Iterate.detectOptional(this.adapted, Predicates.and(this.predicate, predicate));</span>
+    }
+
+    @Override
+    public T getFirst()
+    {
+<span class="nc" id="L102">        return Iterate.detect(this.adapted, this.predicate);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.0.201801022044</span></div></body></html>

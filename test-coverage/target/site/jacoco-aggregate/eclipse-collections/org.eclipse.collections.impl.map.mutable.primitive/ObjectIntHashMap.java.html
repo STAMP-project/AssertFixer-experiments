@@ -1,0 +1,2123 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>ObjectIntHashMap.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Eclipse Collections Test Coverage Aggregation</a> &gt; <a href="../index.html" class="el_bundle">eclipse-collections</a> &gt; <a href="index.source.html" class="el_package">org.eclipse.collections.impl.map.mutable.primitive</a> &gt; <span class="el_source">ObjectIntHashMap.java</span></div><h1>ObjectIntHashMap.java</h1><pre class="source lang-java linenums">/*
+ * Copyright (c) 2018 Goldman Sachs and others.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * and Eclipse Distribution License v. 1.0 which accompany this distribution.
+ * The Eclipse Public License is available at http://www.eclipse.org/legal/epl-v10.html
+ * and the Eclipse Distribution License is available at
+ * http://www.eclipse.org/org/documents/edl-v10.php.
+ */
+
+package org.eclipse.collections.impl.map.mutable.primitive;
+
+import java.io.Externalizable;
+import java.io.IOException;
+import java.io.ObjectInput;
+import java.io.ObjectOutput;
+import java.lang.reflect.Array;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Iterator;
+import java.util.NoSuchElementException;
+import java.util.Set;
+
+import org.eclipse.collections.api.IntIterable;
+import org.eclipse.collections.api.LazyIntIterable;
+import org.eclipse.collections.api.LazyIterable;
+import org.eclipse.collections.api.RichIterable;
+import org.eclipse.collections.api.bag.primitive.MutableIntBag;
+import org.eclipse.collections.api.block.function.primitive.IntFunction;
+import org.eclipse.collections.api.block.function.primitive.IntFunction0;
+import org.eclipse.collections.api.block.function.primitive.IntToIntFunction;
+import org.eclipse.collections.api.block.function.primitive.IntToObjectFunction;
+import org.eclipse.collections.api.block.function.primitive.ObjectIntToObjectFunction;
+import org.eclipse.collections.api.block.predicate.primitive.IntPredicate;
+import org.eclipse.collections.api.block.predicate.primitive.ObjectIntPredicate;
+import org.eclipse.collections.api.block.procedure.Procedure;
+import org.eclipse.collections.api.block.procedure.Procedure2;
+import org.eclipse.collections.api.block.procedure.primitive.IntProcedure;
+import org.eclipse.collections.api.block.procedure.primitive.ObjectIntProcedure;
+import org.eclipse.collections.api.collection.MutableCollection;
+import org.eclipse.collections.api.collection.primitive.ImmutableIntCollection;
+import org.eclipse.collections.api.collection.primitive.MutableIntCollection;
+import org.eclipse.collections.api.iterator.IntIterator;
+import org.eclipse.collections.api.iterator.MutableIntIterator;
+import org.eclipse.collections.api.list.MutableList;
+import org.eclipse.collections.api.list.primitive.MutableIntList;
+import org.eclipse.collections.api.map.primitive.ImmutableObjectIntMap;
+import org.eclipse.collections.api.map.primitive.MutableObjectIntMap;
+import org.eclipse.collections.api.map.primitive.MutableIntObjectMap;
+import org.eclipse.collections.api.map.primitive.ObjectIntMap;
+import org.eclipse.collections.api.set.primitive.IntSet;
+import org.eclipse.collections.api.set.primitive.MutableIntSet;
+import org.eclipse.collections.api.tuple.primitive.ObjectIntPair;
+import org.eclipse.collections.impl.bag.mutable.primitive.IntHashBag;
+import org.eclipse.collections.impl.collection.mutable.primitive.SynchronizedIntCollection;
+import org.eclipse.collections.impl.collection.mutable.primitive.UnmodifiableIntCollection;
+import org.eclipse.collections.impl.factory.Lists;
+import org.eclipse.collections.impl.lazy.AbstractLazyIterable;
+import org.eclipse.collections.impl.factory.primitive.IntBags;
+import org.eclipse.collections.impl.factory.primitive.IntLists;
+import org.eclipse.collections.impl.factory.primitive.ObjectIntMaps;
+import org.eclipse.collections.impl.factory.primitive.IntObjectMaps;
+import org.eclipse.collections.impl.lazy.primitive.LazyIntIterableAdapter;
+import org.eclipse.collections.impl.list.mutable.FastList;
+import org.eclipse.collections.impl.list.mutable.primitive.IntArrayList;
+import org.eclipse.collections.impl.set.mutable.primitive.IntHashSet;
+import org.eclipse.collections.impl.tuple.primitive.PrimitiveTuples;
+/**
+ * This file was automatically generated from template file objectPrimitiveHashMap.stg.
+ *
+ * @since 3.0.
+ */
+public class ObjectIntHashMap&lt;K&gt; implements MutableObjectIntMap&lt;K&gt;, Externalizable
+{
+    public static final int EMPTY_VALUE = 0;
+
+    private static final long serialVersionUID = 1L;
+    private static final int OCCUPIED_DATA_RATIO = 2;
+    private static final int OCCUPIED_SENTINEL_RATIO = 4;
+    private static final int DEFAULT_INITIAL_CAPACITY = 8;
+
+<span class="nc" id="L82">    private static final Object NULL_KEY = new Object()</span>
+<span class="nc" id="L83">    {</span>
+        @Override
+        public boolean equals(Object obj)
+        {
+<span class="nc" id="L87">            throw new RuntimeException(&quot;Possible corruption through unsynchronized concurrent modification.&quot;);</span>
+        }
+
+        @Override
+        public int hashCode()
+        {
+<span class="nc" id="L93">            throw new RuntimeException(&quot;Possible corruption through unsynchronized concurrent modification.&quot;);</span>
+        }
+
+        @Override
+        public String toString()
+        {
+<span class="nc" id="L99">            return &quot;ObjectIntHashMap.NULL_KEY&quot;;</span>
+        }
+    };
+
+<span class="nc" id="L103">    private static final Object REMOVED_KEY = new Object()</span>
+<span class="nc" id="L104">    {</span>
+        @Override
+        public boolean equals(Object obj)
+        {
+<span class="nc" id="L108">            throw new RuntimeException(&quot;Possible corruption through unsynchronized concurrent modification.&quot;);</span>
+        }
+
+        @Override
+        public int hashCode()
+        {
+<span class="nc" id="L114">            throw new RuntimeException(&quot;Possible corruption through unsynchronized concurrent modification.&quot;);</span>
+        }
+
+        @Override
+        public String toString()
+        {
+<span class="nc" id="L120">            return &quot;ObjectIntHashMap.REMOVED_KEY&quot;;</span>
+        }
+    };
+
+    private Object[] keys;
+    private int[] values;
+
+    private int occupiedWithData;
+    private int occupiedWithSentinels;
+
+    public ObjectIntHashMap()
+<span class="nc" id="L131">    {</span>
+<span class="nc" id="L132">        this.allocateTable(DEFAULT_INITIAL_CAPACITY &lt;&lt; 1);</span>
+<span class="nc" id="L133">    }</span>
+
+    public ObjectIntHashMap(int initialCapacity)
+<span class="nc" id="L136">    {</span>
+<span class="nc bnc" id="L137" title="All 2 branches missed.">        if (initialCapacity &lt; 0)</span>
+        {
+<span class="nc" id="L139">            throw new IllegalArgumentException(&quot;initial capacity cannot be less than 0&quot;);</span>
+        }
+<span class="nc" id="L141">        int capacity = this.smallestPowerOfTwoGreaterThan(this.fastCeil(initialCapacity * OCCUPIED_DATA_RATIO));</span>
+<span class="nc" id="L142">        this.allocateTable(capacity);</span>
+<span class="nc" id="L143">    }</span>
+
+    public ObjectIntHashMap(ObjectIntMap&lt;? extends K&gt; map)
+    {
+<span class="nc" id="L147">        this(Math.max(map.size(), DEFAULT_INITIAL_CAPACITY));</span>
+<span class="nc" id="L148">        this.putAll(map);</span>
+<span class="nc" id="L149">    }</span>
+
+    public static &lt;K&gt; ObjectIntHashMap&lt;K&gt; newMap()
+    {
+<span class="nc" id="L153">        return new ObjectIntHashMap&lt;&gt;();</span>
+    }
+
+    public static &lt;K&gt; ObjectIntHashMap&lt;K&gt; newWithKeysValues(K key1, int value1)
+    {
+<span class="nc" id="L158">        return new ObjectIntHashMap&lt;K&gt;(1).withKeyValue(key1, value1);</span>
+    }
+
+    public static &lt;K&gt; ObjectIntHashMap&lt;K&gt; newWithKeysValues(K key1, int value1, K key2, int value2)
+    {
+<span class="nc" id="L163">        return new ObjectIntHashMap&lt;K&gt;(2).withKeysValues(key1, value1, key2, value2);</span>
+    }
+
+    public static &lt;K&gt; ObjectIntHashMap&lt;K&gt; newWithKeysValues(K key1, int value1, K key2, int value2, K key3, int value3)
+    {
+<span class="nc" id="L168">        return new ObjectIntHashMap&lt;K&gt;(3).withKeysValues(key1, value1, key2, value2, key3, value3);</span>
+    }
+
+    public static &lt;K&gt; ObjectIntHashMap&lt;K&gt; newWithKeysValues(K key1, int value1, K key2, int value2, K key3, int value3, K key4, int value4)
+    {
+<span class="nc" id="L173">        return new ObjectIntHashMap&lt;K&gt;(4).withKeysValues(key1, value1, key2, value2, key3, value3, key4, value4);</span>
+    }
+
+    private int smallestPowerOfTwoGreaterThan(int n)
+    {
+<span class="nc bnc" id="L178" title="All 2 branches missed.">        return n &gt; 1 ? Integer.highestOneBit(n - 1) &lt;&lt; 1 : 1;</span>
+    }
+
+    private int fastCeil(float v)
+    {
+<span class="nc" id="L183">        int possibleResult = (int) v;</span>
+<span class="nc bnc" id="L184" title="All 2 branches missed.">        if (v - possibleResult &gt; 0.0F)</span>
+        {
+<span class="nc" id="L186">            possibleResult++;</span>
+        }
+<span class="nc" id="L188">        return possibleResult;</span>
+    }
+
+    @Override
+    public boolean equals(Object obj)
+    {
+<span class="nc bnc" id="L194" title="All 2 branches missed.">        if (this == obj)</span>
+        {
+<span class="nc" id="L196">            return true;</span>
+        }
+
+<span class="nc bnc" id="L199" title="All 2 branches missed.">        if (!(obj instanceof ObjectIntMap))</span>
+        {
+<span class="nc" id="L201">            return false;</span>
+        }
+
+<span class="nc" id="L204">        ObjectIntMap&lt;K&gt; other = (ObjectIntMap&lt;K&gt;) obj;</span>
+
+<span class="nc bnc" id="L206" title="All 2 branches missed.">        if (this.size() != other.size())</span>
+        {
+<span class="nc" id="L208">            return false;</span>
+        }
+
+<span class="nc bnc" id="L211" title="All 2 branches missed.">        for (int i = 0; i &lt; this.keys.length; i++)</span>
+        {
+<span class="nc bnc" id="L213" title="All 6 branches missed.">            if (isNonSentinel(this.keys[i]) &amp;&amp; (!other.containsKey(this.toNonSentinel(this.keys[i])) || this.values[i] != other.getOrThrow(this.toNonSentinel(this.keys[i]))))</span>
+            {
+<span class="nc" id="L215">                return false;</span>
+            }
+        }
+<span class="nc" id="L218">        return true;</span>
+    }
+
+    @Override
+    public int hashCode()
+    {
+<span class="nc" id="L224">        int result = 0;</span>
+
+<span class="nc bnc" id="L226" title="All 2 branches missed.">        for (int i = 0; i &lt; this.keys.length; i++)</span>
+        {
+<span class="nc bnc" id="L228" title="All 2 branches missed.">            if (isNonSentinel(this.keys[i]))</span>
+            {
+<span class="nc bnc" id="L230" title="All 2 branches missed.">                result += (this.toNonSentinel(this.keys[i]) == null ? 0 : this.keys[i].hashCode()) ^ this.values[i];</span>
+            }
+        }
+<span class="nc" id="L233">        return result;</span>
+    }
+
+    @Override
+    public String toString()
+    {
+<span class="nc" id="L239">        StringBuilder appendable = new StringBuilder();</span>
+
+<span class="nc" id="L241">        appendable.append(&quot;{&quot;);</span>
+
+<span class="nc" id="L243">        boolean first = true;</span>
+
+<span class="nc bnc" id="L245" title="All 2 branches missed.">        for (int i = 0; i &lt; this.keys.length; i++)</span>
+        {
+<span class="nc" id="L247">            Object key = this.keys[i];</span>
+<span class="nc bnc" id="L248" title="All 2 branches missed.">            if (isNonSentinel(key))</span>
+            {
+<span class="nc bnc" id="L250" title="All 2 branches missed.">                if (!first)</span>
+                {
+<span class="nc" id="L252">                    appendable.append(&quot;, &quot;);</span>
+                }
+<span class="nc" id="L254">                appendable.append(this.toNonSentinel(key)).append(&quot;=&quot;).append(this.values[i]);</span>
+<span class="nc" id="L255">                first = false;</span>
+            }
+        }
+<span class="nc" id="L258">        appendable.append(&quot;}&quot;);</span>
+
+<span class="nc" id="L260">        return appendable.toString();</span>
+    }
+
+    @Override
+    public int size()
+    {
+<span class="nc" id="L266">        return this.occupiedWithData;</span>
+    }
+
+    @Override
+    public boolean isEmpty()
+    {
+<span class="nc bnc" id="L272" title="All 2 branches missed.">        return this.size() == 0;</span>
+    }
+
+    @Override
+    public boolean notEmpty()
+    {
+<span class="nc bnc" id="L278" title="All 2 branches missed.">        return this.size() != 0;</span>
+    }
+
+    @Override
+    public String makeString()
+    {
+<span class="nc" id="L284">        return this.makeString(&quot;, &quot;);</span>
+    }
+
+    @Override
+    public String makeString(String separator)
+    {
+<span class="nc" id="L290">        return this.makeString(&quot;&quot;, separator, &quot;&quot;);</span>
+    }
+
+    @Override
+    public String makeString(String start, String separator, String end)
+    {
+<span class="nc" id="L296">        Appendable stringBuilder = new StringBuilder();</span>
+<span class="nc" id="L297">        this.appendString(stringBuilder, start, separator, end);</span>
+<span class="nc" id="L298">        return stringBuilder.toString();</span>
+    }
+
+    @Override
+    public void appendString(Appendable appendable)
+    {
+<span class="nc" id="L304">        this.appendString(appendable, &quot;, &quot;);</span>
+<span class="nc" id="L305">    }</span>
+
+    @Override
+    public void appendString(Appendable appendable, String separator)
+    {
+<span class="nc" id="L310">        this.appendString(appendable, &quot;&quot;, separator, &quot;&quot;);</span>
+<span class="nc" id="L311">    }</span>
+
+    @Override
+    public void appendString(Appendable appendable, String start, String separator, String end)
+    {
+        try
+        {
+<span class="nc" id="L318">            appendable.append(start);</span>
+
+<span class="nc" id="L320">            boolean first = true;</span>
+
+<span class="nc bnc" id="L322" title="All 2 branches missed.">            for (int i = 0; i &lt; this.keys.length; i++)</span>
+            {
+<span class="nc" id="L324">                Object key = this.keys[i];</span>
+<span class="nc bnc" id="L325" title="All 2 branches missed.">                if (isNonSentinel(key))</span>
+                {
+<span class="nc bnc" id="L327" title="All 2 branches missed.">                    if (!first)</span>
+                    {
+<span class="nc" id="L329">                        appendable.append(separator);</span>
+                    }
+<span class="nc" id="L331">                    appendable.append(String.valueOf(String.valueOf(this.values[i])));</span>
+<span class="nc" id="L332">                    first = false;</span>
+                }
+            }
+<span class="nc" id="L335">            appendable.append(end);</span>
+        }
+<span class="nc" id="L337">        catch (IOException e)</span>
+        {
+<span class="nc" id="L339">            throw new RuntimeException(e);</span>
+<span class="nc" id="L340">        }</span>
+<span class="nc" id="L341">    }</span>
+
+    @Override
+    public MutableIntIterator intIterator()
+    {
+<span class="nc" id="L346">        return new InternalIntIterator();</span>
+    }
+
+    @Override
+    public int[] toArray()
+    {
+<span class="nc" id="L352">        int[] result = new int[this.size()];</span>
+<span class="nc" id="L353">        int index = 0;</span>
+
+<span class="nc bnc" id="L355" title="All 2 branches missed.">        for (int i = 0; i &lt; this.keys.length; i++)</span>
+        {
+<span class="nc bnc" id="L357" title="All 2 branches missed.">            if (isNonSentinel(this.keys[i]))</span>
+            {
+<span class="nc" id="L359">                result[index] = this.values[i];</span>
+<span class="nc" id="L360">                index++;</span>
+            }
+        }
+<span class="nc" id="L363">        return result;</span>
+    }
+
+    @Override
+    public boolean contains(int value)
+    {
+<span class="nc" id="L369">        return this.containsValue(value);</span>
+    }
+
+    @Override
+    public boolean containsAll(int... source)
+    {
+<span class="nc bnc" id="L375" title="All 2 branches missed.">        for (int item : source)</span>
+        {
+<span class="nc bnc" id="L377" title="All 2 branches missed.">            if (!this.containsValue(item))</span>
+            {
+<span class="nc" id="L379">                return false;</span>
+            }
+        }
+<span class="nc" id="L382">        return true;</span>
+    }
+
+    @Override
+    public boolean containsAll(IntIterable source)
+    {
+<span class="nc" id="L388">        return this.containsAll(source.toArray());</span>
+    }
+
+    @Override
+    public void clear()
+    {
+<span class="nc" id="L394">        this.occupiedWithData = 0;</span>
+<span class="nc" id="L395">        this.occupiedWithSentinels = 0;</span>
+<span class="nc" id="L396">        Arrays.fill(this.keys, null);</span>
+<span class="nc" id="L397">        Arrays.fill(this.values, EMPTY_VALUE);</span>
+<span class="nc" id="L398">    }</span>
+
+    @Override
+    public void put(K key, int value)
+    {
+<span class="nc" id="L403">        int index = this.probe(key);</span>
+
+<span class="nc bnc" id="L405" title="All 4 branches missed.">        if (isNonSentinel(this.keys[index]) &amp;&amp; nullSafeEquals(this.toNonSentinel(this.keys[index]), key))</span>
+        {
+            // key already present in map
+<span class="nc" id="L408">            this.values[index] = value;</span>
+<span class="nc" id="L409">            return;</span>
+        }
+
+<span class="nc" id="L412">        this.addKeyValueAtIndex(key, value, index);</span>
+<span class="nc" id="L413">    }</span>
+
+    @Override
+    public void putAll(ObjectIntMap&lt;? extends K&gt; map)
+    {
+<span class="nc" id="L418">        map.forEachKeyValue(this::put);</span>
+<span class="nc" id="L419">    }</span>
+
+    @Override
+    public void removeKey(K key)
+    {
+<span class="nc" id="L424">        int index = this.probe(key);</span>
+<span class="nc" id="L425">        this.removeKeyAtIndex(key, index);</span>
+<span class="nc" id="L426">    }</span>
+
+    private void removeKeyAtIndex(K key, int index)
+    {
+<span class="nc bnc" id="L430" title="All 4 branches missed.">        if (isNonSentinel(this.keys[index]) &amp;&amp; nullSafeEquals(this.toNonSentinel(this.keys[index]), key))</span>
+        {
+<span class="nc" id="L432">            this.keys[index] = REMOVED_KEY;</span>
+<span class="nc" id="L433">            this.values[index] = EMPTY_VALUE;</span>
+<span class="nc" id="L434">            this.occupiedWithData--;</span>
+<span class="nc" id="L435">            this.occupiedWithSentinels++;</span>
+        }
+<span class="nc" id="L437">    }</span>
+
+    @Override
+    public void remove(Object key)
+    {
+<span class="nc" id="L442">        this.removeKey((K) key);</span>
+<span class="nc" id="L443">    }</span>
+
+    @Override
+    public int removeKeyIfAbsent(K key, int value)
+    {
+<span class="nc" id="L448">        int index = this.probe(key);</span>
+<span class="nc bnc" id="L449" title="All 4 branches missed.">        if (isNonSentinel(this.keys[index]) &amp;&amp; nullSafeEquals(this.toNonSentinel(this.keys[index]), key))</span>
+        {
+<span class="nc" id="L451">            this.keys[index] = REMOVED_KEY;</span>
+<span class="nc" id="L452">            int oldValue = this.values[index];</span>
+<span class="nc" id="L453">            this.values[index] = EMPTY_VALUE;</span>
+<span class="nc" id="L454">            this.occupiedWithData--;</span>
+<span class="nc" id="L455">            this.occupiedWithSentinels++;</span>
+
+<span class="nc" id="L457">            return oldValue;</span>
+        }
+<span class="nc" id="L459">        return value;</span>
+    }
+
+    @Override
+    public int getIfAbsentPut(K key, int value)
+    {
+<span class="nc" id="L465">        int index = this.probe(key);</span>
+<span class="nc bnc" id="L466" title="All 4 branches missed.">        if (isNonSentinel(this.keys[index]) &amp;&amp; nullSafeEquals(this.toNonSentinel(this.keys[index]), key))</span>
+        {
+<span class="nc" id="L468">            return this.values[index];</span>
+        }
+<span class="nc" id="L470">        this.addKeyValueAtIndex(key, value, index);</span>
+<span class="nc" id="L471">        return value;</span>
+    }
+
+    @Override
+    public int getIfAbsentPut(K key, IntFunction0 function)
+    {
+<span class="nc" id="L477">        int index = this.probe(key);</span>
+<span class="nc bnc" id="L478" title="All 4 branches missed.">        if (isNonSentinel(this.keys[index]) &amp;&amp; nullSafeEquals(this.toNonSentinel(this.keys[index]), key))</span>
+        {
+<span class="nc" id="L480">            return this.values[index];</span>
+        }
+<span class="nc" id="L482">        int value = function.value();</span>
+<span class="nc" id="L483">        this.addKeyValueAtIndex(key, value, index);</span>
+<span class="nc" id="L484">        return value;</span>
+    }
+
+    @Override
+    public &lt;P&gt; int getIfAbsentPutWith(K key, IntFunction&lt;? super P&gt; function, P parameter)
+    {
+<span class="nc" id="L490">        int index = this.probe(key);</span>
+<span class="nc bnc" id="L491" title="All 4 branches missed.">        if (isNonSentinel(this.keys[index]) &amp;&amp; nullSafeEquals(this.toNonSentinel(this.keys[index]), key))</span>
+        {
+<span class="nc" id="L493">            return this.values[index];</span>
+        }
+<span class="nc" id="L495">        int value = function.intValueOf(parameter);</span>
+<span class="nc" id="L496">        this.addKeyValueAtIndex(key, value, index);</span>
+<span class="nc" id="L497">        return value;</span>
+    }
+
+    @Override
+    public int getIfAbsentPutWithKey(K key, IntFunction&lt;? super K&gt; function)
+    {
+<span class="nc" id="L503">        int index = this.probe(key);</span>
+<span class="nc bnc" id="L504" title="All 4 branches missed.">        if (isNonSentinel(this.keys[index]) &amp;&amp; nullSafeEquals(this.toNonSentinel(this.keys[index]), key))</span>
+        {
+<span class="nc" id="L506">            return this.values[index];</span>
+        }
+<span class="nc" id="L508">        int value = function.intValueOf(key);</span>
+<span class="nc" id="L509">        this.addKeyValueAtIndex(key, value, index);</span>
+<span class="nc" id="L510">        return value;</span>
+    }
+
+    @Override
+    public int updateValue(K key, int initialValueIfAbsent, IntToIntFunction function)
+    {
+<span class="nc" id="L516">        int index = this.probe(key);</span>
+<span class="nc bnc" id="L517" title="All 4 branches missed.">        if (isNonSentinel(this.keys[index]) &amp;&amp; nullSafeEquals(this.toNonSentinel(this.keys[index]), key))</span>
+        {
+<span class="nc" id="L519">            this.values[index] = function.valueOf(this.values[index]);</span>
+<span class="nc" id="L520">            return this.values[index];</span>
+        }
+<span class="nc" id="L522">        int value = function.valueOf(initialValueIfAbsent);</span>
+<span class="nc" id="L523">        this.addKeyValueAtIndex(key, value, index);</span>
+<span class="nc" id="L524">        return value;</span>
+    }
+
+    private void addKeyValueAtIndex(K key, int value, int index)
+    {
+<span class="nc bnc" id="L529" title="All 2 branches missed.">        if (this.keys[index] == REMOVED_KEY)</span>
+        {
+<span class="nc" id="L531">            --this.occupiedWithSentinels;</span>
+        }
+<span class="nc" id="L533">        this.keys[index] = toSentinelIfNull(key);</span>
+<span class="nc" id="L534">        this.values[index] = value;</span>
+<span class="nc" id="L535">        ++this.occupiedWithData;</span>
+<span class="nc bnc" id="L536" title="All 2 branches missed.">        if (this.occupiedWithData + this.occupiedWithSentinels &gt; this.maxOccupiedWithData())</span>
+        {
+<span class="nc" id="L538">            this.rehashAndGrow();</span>
+        }
+<span class="nc" id="L540">    }</span>
+
+    @Override
+    public int addToValue(K key, int toBeAdded)
+    {
+<span class="nc" id="L545">        int index = this.probe(key);</span>
+<span class="nc bnc" id="L546" title="All 4 branches missed.">        if (isNonSentinel(this.keys[index]) &amp;&amp; nullSafeEquals(this.toNonSentinel(this.keys[index]), key))</span>
+        {
+<span class="nc" id="L548">            this.values[index] += toBeAdded;</span>
+<span class="nc" id="L549">            return this.values[index];</span>
+        }
+<span class="nc" id="L551">        this.addKeyValueAtIndex(key, toBeAdded, index);</span>
+<span class="nc" id="L552">        return toBeAdded;</span>
+    }
+
+    @Override
+    public ObjectIntHashMap&lt;K&gt; withKeyValue(K key1, int value1)
+    {
+<span class="nc" id="L558">        this.put(key1, value1);</span>
+<span class="nc" id="L559">        return this;</span>
+    }
+
+    public ObjectIntHashMap&lt;K&gt; withKeysValues(K key1, int value1, K key2, int value2)
+    {
+<span class="nc" id="L564">        this.put(key1, value1);</span>
+<span class="nc" id="L565">        this.put(key2, value2);</span>
+<span class="nc" id="L566">        return this;</span>
+    }
+
+    public ObjectIntHashMap&lt;K&gt; withKeysValues(K key1, int value1, K key2, int value2, K key3, int value3)
+    {
+<span class="nc" id="L571">        this.put(key1, value1);</span>
+<span class="nc" id="L572">        this.put(key2, value2);</span>
+<span class="nc" id="L573">        this.put(key3, value3);</span>
+<span class="nc" id="L574">        return this;</span>
+    }
+
+    public ObjectIntHashMap&lt;K&gt; withKeysValues(K key1, int value1, K key2, int value2, K key3, int value3, K key4, int value4)
+    {
+<span class="nc" id="L579">        this.put(key1, value1);</span>
+<span class="nc" id="L580">        this.put(key2, value2);</span>
+<span class="nc" id="L581">        this.put(key3, value3);</span>
+<span class="nc" id="L582">        this.put(key4, value4);</span>
+<span class="nc" id="L583">        return this;</span>
+    }
+
+    @Override
+    public ObjectIntHashMap&lt;K&gt; withoutKey(K key)
+    {
+<span class="nc" id="L589">        this.removeKey(key);</span>
+<span class="nc" id="L590">        return this;</span>
+    }
+
+    @Override
+    public ObjectIntHashMap&lt;K&gt; withoutAllKeys(Iterable&lt;? extends K&gt; keys)
+    {
+<span class="nc bnc" id="L596" title="All 2 branches missed.">        for (K key : keys)</span>
+        {
+<span class="nc" id="L598">            this.removeKey(key);</span>
+<span class="nc" id="L599">        }</span>
+<span class="nc" id="L600">        return this;</span>
+    }
+
+    @Override
+    public MutableObjectIntMap&lt;K&gt; asUnmodifiable()
+    {
+<span class="nc" id="L606">        return new UnmodifiableObjectIntMap&lt;&gt;(this);</span>
+    }
+
+    @Override
+    public MutableObjectIntMap&lt;K&gt; asSynchronized()
+    {
+<span class="nc" id="L612">        return new SynchronizedObjectIntMap&lt;&gt;(this);</span>
+    }
+
+    @Override
+    public ImmutableObjectIntMap&lt;K&gt; toImmutable()
+    {
+<span class="nc" id="L618">        return ObjectIntMaps.immutable.withAll(this);</span>
+    }
+
+    @Override
+    public int get(Object key)
+    {
+<span class="nc" id="L624">        return this.getIfAbsent(key, EMPTY_VALUE);</span>
+    }
+
+    @Override
+    public int getOrThrow(Object key)
+    {
+<span class="nc" id="L630">        int index = this.probe(key);</span>
+<span class="nc bnc" id="L631" title="All 2 branches missed.">        if (isNonSentinel(this.keys[index]))</span>
+        {
+<span class="nc" id="L633">            return this.values[index];</span>
+        }
+<span class="nc" id="L635">        throw new IllegalStateException(&quot;Key &quot; + key + &quot; not present.&quot;);</span>
+    }
+
+    @Override
+    public int getIfAbsent(Object key, int ifAbsent)
+    {
+<span class="nc" id="L641">        int index = this.probe(key);</span>
+<span class="nc bnc" id="L642" title="All 4 branches missed.">        if (isNonSentinel(this.keys[index]) &amp;&amp; nullSafeEquals(this.toNonSentinel(this.keys[index]), key))</span>
+        {
+<span class="nc" id="L644">            return this.values[index];</span>
+        }
+<span class="nc" id="L646">        return ifAbsent;</span>
+    }
+
+    @Override
+    public boolean containsKey(Object key)
+    {
+<span class="nc" id="L652">        int index = this.probe(key);</span>
+<span class="nc bnc" id="L653" title="All 4 branches missed.">        return isNonSentinel(this.keys[index]) &amp;&amp; nullSafeEquals(this.toNonSentinel(this.keys[index]), key);</span>
+    }
+
+    @Override
+    public boolean containsValue(int value)
+    {
+<span class="nc bnc" id="L659" title="All 2 branches missed.">        for (int i = 0; i &lt; this.values.length; i++)</span>
+        {
+<span class="nc bnc" id="L661" title="All 4 branches missed.">            if (isNonSentinel(this.keys[i]) &amp;&amp; this.values[i] == value)</span>
+            {
+<span class="nc" id="L663">                return true;</span>
+            }
+        }
+<span class="nc" id="L666">        return false;</span>
+    }
+
+    @Override
+    public void forEach(IntProcedure procedure)
+    {
+<span class="nc" id="L672">        this.each(procedure);</span>
+<span class="nc" id="L673">    }</span>
+
+    /**
+     * @since 7.0.
+     */
+    @Override
+    public void each(IntProcedure procedure)
+    {
+<span class="nc" id="L681">        this.forEachValue(procedure);</span>
+<span class="nc" id="L682">    }</span>
+
+    @Override
+    public void forEachValue(IntProcedure procedure)
+    {
+<span class="nc bnc" id="L687" title="All 2 branches missed.">        for (int i = 0; i &lt; this.keys.length; i++)</span>
+        {
+<span class="nc bnc" id="L689" title="All 2 branches missed.">            if (isNonSentinel(this.keys[i]))</span>
+            {
+<span class="nc" id="L691">                procedure.value(this.values[i]);</span>
+            }
+        }
+<span class="nc" id="L694">    }</span>
+
+    @Override
+    public void forEachKey(Procedure&lt;? super K&gt; procedure)
+    {
+<span class="nc bnc" id="L699" title="All 2 branches missed.">        for (int i = 0; i &lt; this.keys.length; i++)</span>
+        {
+<span class="nc bnc" id="L701" title="All 2 branches missed.">            if (isNonSentinel(this.keys[i]))</span>
+            {
+<span class="nc" id="L703">                procedure.value(this.toNonSentinel(this.keys[i]));</span>
+            }
+        }
+<span class="nc" id="L706">    }</span>
+
+    @Override
+    public void forEachKeyValue(ObjectIntProcedure&lt;? super K&gt; procedure)
+    {
+<span class="nc bnc" id="L711" title="All 2 branches missed.">        for (int i = 0; i &lt; this.keys.length; i++)</span>
+        {
+<span class="nc bnc" id="L713" title="All 2 branches missed.">            if (isNonSentinel(this.keys[i]))</span>
+            {
+<span class="nc" id="L715">                procedure.value(this.toNonSentinel(this.keys[i]), this.values[i]);</span>
+            }
+        }
+<span class="nc" id="L718">    }</span>
+
+    @Override
+    public ObjectIntHashMap&lt;K&gt; select(ObjectIntPredicate&lt;? super K&gt; predicate)
+    {
+<span class="nc" id="L723">        ObjectIntHashMap&lt;K&gt; result = ObjectIntHashMap.newMap();</span>
+
+<span class="nc bnc" id="L725" title="All 2 branches missed.">        for (int i = 0; i &lt; this.keys.length; i++)</span>
+        {
+<span class="nc bnc" id="L727" title="All 4 branches missed.">            if (isNonSentinel(this.keys[i]) &amp;&amp; predicate.accept(this.toNonSentinel(this.keys[i]), this.values[i]))</span>
+            {
+<span class="nc" id="L729">                result.put(this.toNonSentinel(this.keys[i]), this.values[i]);</span>
+            }
+        }
+<span class="nc" id="L732">        return result;</span>
+    }
+
+    @Override
+    public ObjectIntHashMap&lt;K&gt; reject(ObjectIntPredicate&lt;? super K&gt; predicate)
+    {
+<span class="nc" id="L738">        ObjectIntHashMap&lt;K&gt; result = ObjectIntHashMap.newMap();</span>
+
+<span class="nc bnc" id="L740" title="All 2 branches missed.">        for (int i = 0; i &lt; this.keys.length; i++)</span>
+        {
+<span class="nc bnc" id="L742" title="All 4 branches missed.">            if (isNonSentinel(this.keys[i]) &amp;&amp; !predicate.accept(this.toNonSentinel(this.keys[i]), this.values[i]))</span>
+            {
+<span class="nc" id="L744">                result.put(this.toNonSentinel(this.keys[i]), this.values[i]);</span>
+            }
+        }
+<span class="nc" id="L747">        return result;</span>
+    }
+
+    @Override
+    public MutableIntCollection select(IntPredicate predicate)
+    {
+<span class="nc" id="L753">        IntArrayList result = new IntArrayList();</span>
+
+<span class="nc bnc" id="L755" title="All 2 branches missed.">        for (int i = 0; i &lt; this.keys.length; i++)</span>
+        {
+<span class="nc bnc" id="L757" title="All 4 branches missed.">            if (isNonSentinel(this.keys[i]) &amp;&amp; predicate.accept(this.values[i]))</span>
+            {
+<span class="nc" id="L759">                result.add(this.values[i]);</span>
+            }
+        }
+<span class="nc" id="L762">        return result;</span>
+    }
+
+    @Override
+    public MutableIntCollection reject(IntPredicate predicate)
+    {
+<span class="nc" id="L768">        IntArrayList result = new IntArrayList();</span>
+
+<span class="nc bnc" id="L770" title="All 2 branches missed.">        for (int i = 0; i &lt; this.keys.length; i++)</span>
+        {
+<span class="nc bnc" id="L772" title="All 4 branches missed.">            if (isNonSentinel(this.keys[i]) &amp;&amp; !predicate.accept(this.values[i]))</span>
+            {
+<span class="nc" id="L774">                result.add(this.values[i]);</span>
+            }
+        }
+<span class="nc" id="L777">        return result;</span>
+    }
+
+    @Override
+    public int detectIfNone(IntPredicate predicate, int ifNone)
+    {
+<span class="nc bnc" id="L783" title="All 2 branches missed.">        for (int i = 0; i &lt; this.keys.length; i++)</span>
+        {
+<span class="nc bnc" id="L785" title="All 4 branches missed.">            if (isNonSentinel(this.keys[i]) &amp;&amp; predicate.accept(this.values[i]))</span>
+            {
+<span class="nc" id="L787">                return this.values[i];</span>
+            }
+        }
+<span class="nc" id="L790">        return ifNone;</span>
+    }
+
+    @Override
+    public &lt;V&gt; MutableCollection&lt;V&gt; collect(IntToObjectFunction&lt;? extends V&gt; function)
+    {
+<span class="nc" id="L796">        MutableList&lt;V&gt; result = FastList.newList(this.size());</span>
+<span class="nc bnc" id="L797" title="All 2 branches missed.">        for (int i = 0; i &lt; this.keys.length; i++)</span>
+        {
+<span class="nc bnc" id="L799" title="All 2 branches missed.">            if (isNonSentinel(this.keys[i]))</span>
+            {
+<span class="nc" id="L801">                result.add(function.valueOf(this.values[i]));</span>
+            }
+        }
+<span class="nc" id="L804">        return result;</span>
+    }
+
+    @Override
+    public int count(IntPredicate predicate)
+    {
+<span class="nc" id="L810">        int count = 0;</span>
+
+<span class="nc bnc" id="L812" title="All 2 branches missed.">        for (int i = 0; i &lt; this.keys.length; i++)</span>
+        {
+<span class="nc bnc" id="L814" title="All 4 branches missed.">            if (isNonSentinel(this.keys[i]) &amp;&amp; predicate.accept(this.values[i]))</span>
+            {
+<span class="nc" id="L816">                count++;</span>
+            }
+        }
+<span class="nc" id="L819">        return count;</span>
+    }
+
+    @Override
+    public boolean anySatisfy(IntPredicate predicate)
+    {
+<span class="nc bnc" id="L825" title="All 2 branches missed.">        for (int i = 0; i &lt; this.keys.length; i++)</span>
+        {
+<span class="nc bnc" id="L827" title="All 4 branches missed.">            if (isNonSentinel(this.keys[i]) &amp;&amp; predicate.accept(this.values[i]))</span>
+            {
+<span class="nc" id="L829">                return true;</span>
+            }
+        }
+<span class="nc" id="L832">        return false;</span>
+    }
+
+    @Override
+    public boolean allSatisfy(IntPredicate predicate)
+    {
+<span class="nc bnc" id="L838" title="All 2 branches missed.">        for (int i = 0; i &lt; this.keys.length; i++)</span>
+        {
+<span class="nc bnc" id="L840" title="All 4 branches missed.">            if (isNonSentinel(this.keys[i]) &amp;&amp; !predicate.accept(this.values[i]))</span>
+            {
+<span class="nc" id="L842">                return false;</span>
+            }
+        }
+<span class="nc" id="L845">        return true;</span>
+    }
+
+    @Override
+    public boolean noneSatisfy(IntPredicate predicate)
+    {
+<span class="nc bnc" id="L851" title="All 2 branches missed.">        for (int i = 0; i &lt; this.keys.length; i++)</span>
+        {
+<span class="nc bnc" id="L853" title="All 4 branches missed.">            if (isNonSentinel(this.keys[i]) &amp;&amp; predicate.accept(this.values[i]))</span>
+            {
+<span class="nc" id="L855">                return false;</span>
+            }
+        }
+<span class="nc" id="L858">        return true;</span>
+    }
+
+    @Override
+    public &lt;V&gt; V injectInto(V injectedValue, ObjectIntToObjectFunction&lt;? super V, ? extends V&gt; function)
+    {
+<span class="nc" id="L864">        V result = injectedValue;</span>
+
+<span class="nc bnc" id="L866" title="All 2 branches missed.">        for (int i = 0; i &lt; this.keys.length; i++)</span>
+        {
+<span class="nc bnc" id="L868" title="All 2 branches missed.">            if (isNonSentinel(this.keys[i]))</span>
+            {
+<span class="nc" id="L870">                result = function.valueOf(result, this.values[i]);</span>
+            }
+        }
+
+<span class="nc" id="L874">        return result;</span>
+    }
+
+    @Override
+    public RichIterable&lt;IntIterable&gt; chunk(int size)
+    {
+<span class="nc bnc" id="L880" title="All 2 branches missed.">        if (size &lt;= 0)</span>
+        {
+<span class="nc" id="L882">            throw new IllegalArgumentException(&quot;Size for groups must be positive but was: &quot; + size);</span>
+        }
+<span class="nc" id="L884">        MutableList&lt;IntIterable&gt; result = Lists.mutable.empty();</span>
+<span class="nc bnc" id="L885" title="All 2 branches missed.">        if (this.notEmpty())</span>
+        {
+<span class="nc" id="L887">            IntIterator iterator = this.intIterator();</span>
+<span class="nc bnc" id="L888" title="All 2 branches missed.">            while (iterator.hasNext())</span>
+            {
+<span class="nc" id="L890">                MutableIntBag batch = IntBags.mutable.empty();</span>
+<span class="nc bnc" id="L891" title="All 4 branches missed.">                for (int i = 0; i &lt; size &amp;&amp; iterator.hasNext(); i++)</span>
+                {
+<span class="nc" id="L893">                    batch.add(iterator.next());</span>
+                }
+<span class="nc" id="L895">                result.add(batch);</span>
+<span class="nc" id="L896">            }</span>
+        }
+<span class="nc" id="L898">        return result;</span>
+    }
+
+    @Override
+    public long sum()
+    {
+<span class="nc" id="L904">        long result = 0L;</span>
+
+<span class="nc bnc" id="L906" title="All 2 branches missed.">        for (int i = 0; i &lt; this.keys.length; i++)</span>
+        {
+<span class="nc bnc" id="L908" title="All 2 branches missed.">            if (isNonSentinel(this.keys[i]))</span>
+            {
+<span class="nc" id="L910">                result += this.values[i];</span>
+            }
+        }
+<span class="nc" id="L913">        return result;</span>
+    }
+
+    @Override
+    public int max()
+    {
+<span class="nc bnc" id="L919" title="All 2 branches missed.">        if (this.isEmpty())</span>
+        {
+<span class="nc" id="L921">            throw new NoSuchElementException();</span>
+        }
+<span class="nc" id="L923">        int max = 0;</span>
+<span class="nc" id="L924">        boolean isMaxSet = false;</span>
+
+<span class="nc bnc" id="L926" title="All 2 branches missed.">        for (int i = 0; i &lt; this.keys.length; i++)</span>
+        {
+<span class="nc bnc" id="L928" title="All 6 branches missed.">            if (isNonSentinel(this.keys[i]) &amp;&amp; (!isMaxSet || max &lt; this.values[i]))</span>
+            {
+<span class="nc" id="L930">                max = this.values[i];</span>
+<span class="nc" id="L931">                isMaxSet = true;</span>
+            }
+        }
+<span class="nc" id="L934">        return max;</span>
+    }
+
+    @Override
+    public int min()
+    {
+<span class="nc bnc" id="L940" title="All 2 branches missed.">        if (this.isEmpty())</span>
+        {
+<span class="nc" id="L942">            throw new NoSuchElementException();</span>
+        }
+<span class="nc" id="L944">        int min = 0;</span>
+<span class="nc" id="L945">        boolean isMinSet = false;</span>
+
+<span class="nc bnc" id="L947" title="All 2 branches missed.">        for (int i = 0; i &lt; this.keys.length; i++)</span>
+        {
+<span class="nc bnc" id="L949" title="All 6 branches missed.">            if (isNonSentinel(this.keys[i]) &amp;&amp; (!isMinSet || this.values[i] &lt; min))</span>
+            {
+<span class="nc" id="L951">                min = this.values[i];</span>
+<span class="nc" id="L952">                isMinSet = true;</span>
+            }
+        }
+<span class="nc" id="L955">        return min;</span>
+    }
+
+    @Override
+    public int maxIfEmpty(int defaultValue)
+    {
+<span class="nc bnc" id="L961" title="All 2 branches missed.">        if (this.isEmpty())</span>
+        {
+<span class="nc" id="L963">            return defaultValue;</span>
+        }
+<span class="nc" id="L965">        int max = 0;</span>
+<span class="nc" id="L966">        boolean isMaxSet = false;</span>
+
+<span class="nc bnc" id="L968" title="All 2 branches missed.">        for (int i = 0; i &lt; this.keys.length; i++)</span>
+        {
+<span class="nc bnc" id="L970" title="All 6 branches missed.">            if (isNonSentinel(this.keys[i]) &amp;&amp; (!isMaxSet || max &lt; this.values[i]))</span>
+            {
+<span class="nc" id="L972">                max = this.values[i];</span>
+<span class="nc" id="L973">                isMaxSet = true;</span>
+            }
+        }
+<span class="nc" id="L976">        return max;</span>
+    }
+
+    @Override
+    public int minIfEmpty(int defaultValue)
+    {
+<span class="nc bnc" id="L982" title="All 2 branches missed.">        if (this.isEmpty())</span>
+        {
+<span class="nc" id="L984">            return defaultValue;</span>
+        }
+<span class="nc" id="L986">        int min = 0;</span>
+<span class="nc" id="L987">        boolean isMinSet = false;</span>
+
+<span class="nc bnc" id="L989" title="All 2 branches missed.">        for (int i = 0; i &lt; this.keys.length; i++)</span>
+        {
+<span class="nc bnc" id="L991" title="All 6 branches missed.">            if (isNonSentinel(this.keys[i]) &amp;&amp; (!isMinSet || this.values[i] &lt; min))</span>
+            {
+<span class="nc" id="L993">                min = this.values[i];</span>
+<span class="nc" id="L994">                isMinSet = true;</span>
+            }
+        }
+<span class="nc" id="L997">        return min;</span>
+    }
+
+    @Override
+    public double average()
+    {
+<span class="nc bnc" id="L1003" title="All 2 branches missed.">        if (this.isEmpty())</span>
+        {
+<span class="nc" id="L1005">            throw new ArithmeticException();</span>
+        }
+<span class="nc" id="L1007">        return (double) this.sum() / (double) this.size();</span>
+    }
+
+    @Override
+    public double median()
+    {
+<span class="nc bnc" id="L1013" title="All 2 branches missed.">        if (this.isEmpty())</span>
+        {
+<span class="nc" id="L1015">            throw new ArithmeticException();</span>
+        }
+<span class="nc" id="L1017">        int[] sortedArray = this.toSortedArray();</span>
+<span class="nc" id="L1018">        int middleIndex = sortedArray.length &gt;&gt; 1;</span>
+<span class="nc bnc" id="L1019" title="All 4 branches missed.">        if (sortedArray.length &gt; 1 &amp;&amp; (sortedArray.length &amp; 1) == 0)</span>
+        {
+<span class="nc" id="L1021">            int first = sortedArray[middleIndex];</span>
+<span class="nc" id="L1022">            int second = sortedArray[middleIndex - 1];</span>
+<span class="nc" id="L1023">            return ((double) first + (double) second) / 2.0;</span>
+        }
+<span class="nc" id="L1025">        return (double) sortedArray[middleIndex];</span>
+    }
+
+    @Override
+    public MutableIntList toList()
+    {
+<span class="nc" id="L1031">        MutableIntList result = new IntArrayList(this.size());</span>
+
+<span class="nc bnc" id="L1033" title="All 2 branches missed.">        for (int i = 0; i &lt; this.keys.length; i++)</span>
+        {
+<span class="nc bnc" id="L1035" title="All 2 branches missed.">            if (isNonSentinel(this.keys[i]))</span>
+            {
+<span class="nc" id="L1037">                result.add(this.values[i]);</span>
+            }
+        }
+<span class="nc" id="L1040">        return result;</span>
+    }
+
+    @Override
+    public MutableIntSet toSet()
+    {
+<span class="nc" id="L1046">        MutableIntSet result = new IntHashSet(this.size());</span>
+
+<span class="nc bnc" id="L1048" title="All 2 branches missed.">        for (int i = 0; i &lt; this.keys.length; i++)</span>
+        {
+<span class="nc bnc" id="L1050" title="All 2 branches missed.">            if (isNonSentinel(this.keys[i]))</span>
+            {
+<span class="nc" id="L1052">                result.add(this.values[i]);</span>
+            }
+        }
+<span class="nc" id="L1055">        return result;</span>
+    }
+
+    @Override
+    public MutableIntBag toBag()
+    {
+<span class="nc" id="L1061">        MutableIntBag result = new IntHashBag(this.size());</span>
+
+<span class="nc bnc" id="L1063" title="All 2 branches missed.">        for (int i = 0; i &lt; this.keys.length; i++)</span>
+        {
+<span class="nc bnc" id="L1065" title="All 2 branches missed.">            if (isNonSentinel(this.keys[i]))</span>
+            {
+<span class="nc" id="L1067">                result.add(this.values[i]);</span>
+            }
+        }
+<span class="nc" id="L1070">        return result;</span>
+    }
+
+    @Override
+    public LazyIntIterable asLazy()
+    {
+<span class="nc" id="L1076">        return new LazyIntIterableAdapter(this);</span>
+    }
+
+    @Override
+    public int[] toSortedArray()
+    {
+<span class="nc" id="L1082">        int[] array = this.toArray();</span>
+<span class="nc" id="L1083">        Arrays.sort(array);</span>
+<span class="nc" id="L1084">        return array;</span>
+    }
+
+    @Override
+    public MutableIntList toSortedList()
+    {
+<span class="nc" id="L1090">        return this.toList().sortThis();</span>
+    }
+
+    @Override
+    public void writeExternal(ObjectOutput out) throws IOException
+    {
+<span class="nc" id="L1096">        out.writeInt(this.size());</span>
+<span class="nc bnc" id="L1097" title="All 2 branches missed.">        for (int i = 0; i &lt; this.keys.length; i++)</span>
+        {
+<span class="nc bnc" id="L1099" title="All 2 branches missed.">            if (isNonSentinel(this.keys[i]))</span>
+            {
+<span class="nc" id="L1101">                out.writeObject(this.toNonSentinel(this.keys[i]));</span>
+<span class="nc" id="L1102">                out.writeInt(this.values[i]);</span>
+            }
+        }
+<span class="nc" id="L1105">    }</span>
+
+    @Override
+    public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException
+    {
+<span class="nc" id="L1110">        int size = in.readInt();</span>
+<span class="nc" id="L1111">        int capacity = this.smallestPowerOfTwoGreaterThan(this.fastCeil(size * OCCUPIED_DATA_RATIO));</span>
+<span class="nc" id="L1112">        this.allocateTable(capacity);</span>
+
+<span class="nc bnc" id="L1114" title="All 2 branches missed.">        for (int i = 0; i &lt; size; i++)</span>
+        {
+<span class="nc" id="L1116">            this.put((K) in.readObject(), in.readInt());</span>
+        }
+<span class="nc" id="L1118">    }</span>
+
+    @Override
+    public LazyIterable&lt;K&gt; keysView()
+    {
+<span class="nc" id="L1123">        return new KeysView();</span>
+    }
+
+    @Override
+    public RichIterable&lt;ObjectIntPair&lt;K&gt;&gt; keyValuesView()
+    {
+<span class="nc" id="L1129">        return new KeyValuesView();</span>
+    }
+
+    @Override
+    public MutableIntObjectMap&lt;K&gt; flipUniqueValues()
+    {
+<span class="nc" id="L1135">        MutableIntObjectMap&lt;K&gt; result = IntObjectMaps.mutable.empty();</span>
+<span class="nc" id="L1136">        this.forEachKeyValue((key, value) -&gt;</span>
+        {
+<span class="nc" id="L1138">            K oldKey = result.put(value, key);</span>
+<span class="nc bnc" id="L1139" title="All 2 branches missed.">            if (oldKey != null)</span>
+            {
+<span class="nc" id="L1141">                throw new IllegalStateException(&quot;Duplicate value: &quot; + value + &quot; found at key: &quot; + oldKey + &quot; and key: &quot; + key);</span>
+            }
+<span class="nc" id="L1143">        });</span>
+<span class="nc" id="L1144">        return result;</span>
+    }
+
+    /**
+     * Rehashes every element in the set into a new backing table of the smallest possible size and eliminating removed sentinels.
+     */
+    public void compact()
+    {
+<span class="nc" id="L1152">        this.rehash(this.smallestPowerOfTwoGreaterThan(this.size()));</span>
+<span class="nc" id="L1153">    }</span>
+
+    private void rehashAndGrow()
+    {
+<span class="nc" id="L1157">        this.rehash(this.keys.length &lt;&lt; 1);</span>
+<span class="nc" id="L1158">    }</span>
+
+    private void rehash(int newCapacity)
+    {
+<span class="nc" id="L1162">        int oldLength = this.keys.length;</span>
+<span class="nc" id="L1163">        Object[] old = this.keys;</span>
+<span class="nc" id="L1164">        int[] oldValues = this.values;</span>
+<span class="nc" id="L1165">        this.allocateTable(newCapacity);</span>
+<span class="nc" id="L1166">        this.occupiedWithData = 0;</span>
+<span class="nc" id="L1167">        this.occupiedWithSentinels = 0;</span>
+
+<span class="nc bnc" id="L1169" title="All 2 branches missed.">        for (int i = 0; i &lt; oldLength; i++)</span>
+        {
+<span class="nc bnc" id="L1171" title="All 2 branches missed.">            if (isNonSentinel(old[i]))</span>
+            {
+<span class="nc" id="L1173">                this.put(this.toNonSentinel(old[i]), oldValues[i]);</span>
+            }
+        }
+<span class="nc" id="L1176">    }</span>
+
+    // exposed for testing
+    int probe(Object element)
+    {
+<span class="nc" id="L1181">        int index = this.spread(element);</span>
+
+<span class="nc" id="L1183">        int removedIndex = -1;</span>
+<span class="nc bnc" id="L1184" title="All 2 branches missed.">        if (isRemovedKey(this.keys[index]))</span>
+        {
+<span class="nc" id="L1186">            removedIndex = index;</span>
+        }
+
+<span class="nc bnc" id="L1189" title="All 4 branches missed.">        else if (this.keys[index] == null || nullSafeEquals(this.toNonSentinel(this.keys[index]), element))</span>
+        {
+<span class="nc" id="L1191">            return index;</span>
+        }
+
+<span class="nc" id="L1194">        int nextIndex = index;</span>
+<span class="nc" id="L1195">        int probe = 17;</span>
+
+        // loop until an empty slot is reached
+        while (true)
+        {
+            // Probe algorithm: 17*n*(n+1)/2 where n = no. of collisions
+<span class="nc" id="L1201">            nextIndex += probe;</span>
+<span class="nc" id="L1202">            probe += 17;</span>
+<span class="nc" id="L1203">            nextIndex &amp;= this.keys.length - 1;</span>
+
+<span class="nc bnc" id="L1205" title="All 2 branches missed.">            if (isRemovedKey(this.keys[nextIndex]))</span>
+            {
+<span class="nc bnc" id="L1207" title="All 2 branches missed.">                if (removedIndex == -1)</span>
+                {
+<span class="nc" id="L1209">                    removedIndex = nextIndex;</span>
+                }
+            }
+<span class="nc bnc" id="L1212" title="All 2 branches missed.">            else if (nullSafeEquals(this.toNonSentinel(this.keys[nextIndex]), element))</span>
+            {
+<span class="nc" id="L1214">                return nextIndex;</span>
+            }
+<span class="nc bnc" id="L1216" title="All 2 branches missed.">            else if (this.keys[nextIndex] == null)</span>
+            {
+<span class="nc bnc" id="L1218" title="All 2 branches missed.">                return removedIndex == -1 ? nextIndex : removedIndex;</span>
+            }
+        }
+    }
+
+    // exposed for testing
+    int spread(Object element)
+    {
+        // This function ensures that hashCodes that differ only by
+        // constant multiples at each bit position have a bounded
+        // number of collisions (approximately 8 at default load factor).
+<span class="nc bnc" id="L1229" title="All 2 branches missed.">        int h = element == null ? 0 : element.hashCode();</span>
+<span class="nc" id="L1230">        h ^= h &gt;&gt;&gt; 20 ^ h &gt;&gt;&gt; 12;</span>
+<span class="nc" id="L1231">        h ^= h &gt;&gt;&gt; 7 ^ h &gt;&gt;&gt; 4;</span>
+<span class="nc" id="L1232">        return h &amp; (this.keys.length - 1);</span>
+    }
+
+    private static boolean nullSafeEquals(Object value, Object other)
+    {
+<span class="nc bnc" id="L1237" title="All 2 branches missed.">        if (value == null)</span>
+        {
+<span class="nc bnc" id="L1239" title="All 2 branches missed.">            if (other == null)</span>
+            {
+<span class="nc" id="L1241">                return true;</span>
+            }
+        }
+<span class="nc bnc" id="L1244" title="All 4 branches missed.">        else if (other == value || value.equals(other))</span>
+        {
+<span class="nc" id="L1246">            return true;</span>
+        }
+<span class="nc" id="L1248">        return false;</span>
+    }
+
+    private void allocateTable(int sizeToAllocate)
+    {
+<span class="nc" id="L1253">        this.keys = new Object[sizeToAllocate];</span>
+<span class="nc" id="L1254">        this.values = new int[sizeToAllocate];</span>
+<span class="nc" id="L1255">    }</span>
+
+    private static boolean isRemovedKey(Object key)
+    {
+<span class="nc bnc" id="L1259" title="All 2 branches missed.">        return key == REMOVED_KEY;</span>
+    }
+
+    private static &lt;K&gt; boolean isNonSentinel(K key)
+    {
+<span class="nc bnc" id="L1264" title="All 4 branches missed.">        return key != null &amp;&amp; !isRemovedKey(key);</span>
+    }
+
+    private K toNonSentinel(Object key)
+    {
+<span class="nc bnc" id="L1269" title="All 2 branches missed.">        return key == NULL_KEY ? null : (K) key;</span>
+    }
+
+    private static Object toSentinelIfNull(Object key)
+    {
+<span class="nc bnc" id="L1274" title="All 2 branches missed.">        return key == null ? NULL_KEY : key;</span>
+    }
+
+    private int maxOccupiedWithData()
+    {
+<span class="nc" id="L1279">        int capacity = this.keys.length;</span>
+        // need at least one free slot for open addressing
+<span class="nc" id="L1281">        return Math.min(capacity - 1, capacity / OCCUPIED_DATA_RATIO);</span>
+    }
+
+    private int maxOccupiedWithSentinels()
+    {
+<span class="nc" id="L1286">        return this.keys.length / OCCUPIED_SENTINEL_RATIO;</span>
+    }
+
+<span class="nc" id="L1289">    private class InternalIntIterator implements MutableIntIterator</span>
+    {
+        private int count;
+        private int position;
+
+        @Override
+        public boolean hasNext()
+        {
+<span class="nc bnc" id="L1297" title="All 2 branches missed.">            return this.count != ObjectIntHashMap.this.size();</span>
+        }
+
+        @Override
+        public int next()
+        {
+<span class="nc bnc" id="L1303" title="All 2 branches missed.">            if (!this.hasNext())</span>
+            {
+<span class="nc" id="L1305">                throw new NoSuchElementException();</span>
+            }
+
+<span class="nc" id="L1308">            Object[] keys = ObjectIntHashMap.this.keys;</span>
+<span class="nc bnc" id="L1309" title="All 2 branches missed.">            while (!isNonSentinel(keys[this.position]))</span>
+            {
+<span class="nc" id="L1311">                this.position++;</span>
+            }
+<span class="nc" id="L1313">            int result = ObjectIntHashMap.this.values[this.position];</span>
+<span class="nc" id="L1314">            this.count++;</span>
+<span class="nc" id="L1315">            this.position++;</span>
+<span class="nc" id="L1316">            return result;</span>
+        }
+
+        @Override
+        public void remove()
+        {
+<span class="nc bnc" id="L1322" title="All 4 branches missed.">            if (this.position == 0 || !isNonSentinel(ObjectIntHashMap.this.keys[this.position - 1]))</span>
+            {
+<span class="nc" id="L1324">                throw new IllegalStateException();</span>
+            }
+<span class="nc" id="L1326">            ObjectIntHashMap.this.remove(ObjectIntHashMap.this.keys[this.position - 1]);</span>
+<span class="nc" id="L1327">            this.count--;</span>
+<span class="nc" id="L1328">        }</span>
+    }
+
+    @Override
+    public Set&lt;K&gt; keySet()
+    {
+<span class="nc" id="L1334">        return new KeySet();</span>
+    }
+
+    @Override
+    public MutableIntCollection values()
+    {
+<span class="nc" id="L1340">        return new ValuesCollection();</span>
+    }
+
+<span class="nc" id="L1343">    private class KeySet implements Set&lt;K&gt;</span>
+    {
+        @Override
+        public boolean equals(Object obj)
+        {
+<span class="nc bnc" id="L1348" title="All 2 branches missed.">            if (obj instanceof Set)</span>
+            {
+<span class="nc" id="L1350">                Set&lt;?&gt; other = (Set&lt;?&gt;) obj;</span>
+<span class="nc bnc" id="L1351" title="All 2 branches missed.">                if (other.size() == this.size())</span>
+                {
+<span class="nc" id="L1353">                    return this.containsAll(other);</span>
+                }
+            }
+<span class="nc" id="L1356">            return false;</span>
+        }
+
+        @Override
+        public int hashCode()
+        {
+<span class="nc" id="L1362">            int hashCode = 0;</span>
+<span class="nc" id="L1363">            Object[] table = ObjectIntHashMap.this.keys;</span>
+<span class="nc bnc" id="L1364" title="All 2 branches missed.">            for (int i = 0; i &lt; table.length; i++)</span>
+            {
+<span class="nc" id="L1366">                Object key = table[i];</span>
+<span class="nc bnc" id="L1367" title="All 2 branches missed.">                if (ObjectIntHashMap.isNonSentinel(key))</span>
+                {
+<span class="nc" id="L1369">                    K nonSentinelKey = ObjectIntHashMap.this.toNonSentinel(key);</span>
+<span class="nc bnc" id="L1370" title="All 2 branches missed.">                    hashCode += nonSentinelKey == null ? 0 : nonSentinelKey.hashCode();</span>
+                }
+            }
+<span class="nc" id="L1373">            return hashCode;</span>
+        }
+
+        @Override
+        public int size()
+        {
+<span class="nc" id="L1379">            return ObjectIntHashMap.this.size();</span>
+        }
+
+        @Override
+        public boolean isEmpty()
+        {
+<span class="nc" id="L1385">            return ObjectIntHashMap.this.isEmpty();</span>
+        }
+
+        @Override
+        public boolean contains(Object o)
+        {
+<span class="nc" id="L1391">            return ObjectIntHashMap.this.containsKey(o);</span>
+        }
+
+        @Override
+        public Object[] toArray()
+        {
+<span class="nc" id="L1397">            int size = ObjectIntHashMap.this.size();</span>
+<span class="nc" id="L1398">            Object[] result = new Object[size];</span>
+<span class="nc" id="L1399">            this.copyKeys(result);</span>
+<span class="nc" id="L1400">            return result;</span>
+        }
+
+        @Override
+        public &lt;T&gt; T[] toArray(T[] result)
+        {
+<span class="nc" id="L1406">            int size = ObjectIntHashMap.this.size();</span>
+<span class="nc bnc" id="L1407" title="All 2 branches missed.">            if (result.length &lt; size)</span>
+            {
+<span class="nc" id="L1409">                result = (T[]) Array.newInstance(result.getClass().getComponentType(), size);</span>
+            }
+<span class="nc" id="L1411">            this.copyKeys(result);</span>
+<span class="nc bnc" id="L1412" title="All 2 branches missed.">            if (size &lt; result.length)</span>
+            {
+<span class="nc" id="L1414">                result[size] = null;</span>
+            }
+<span class="nc" id="L1416">            return result;</span>
+        }
+
+        @Override
+        public boolean add(K key)
+        {
+<span class="nc" id="L1422">            throw new UnsupportedOperationException(&quot;Cannot call add() on &quot; + this.getClass().getSimpleName());</span>
+        }
+
+        @Override
+        public boolean remove(Object key)
+        {
+<span class="nc" id="L1428">            int oldSize = ObjectIntHashMap.this.size();</span>
+<span class="nc" id="L1429">            ObjectIntHashMap.this.removeKey((K) key);</span>
+<span class="nc bnc" id="L1430" title="All 2 branches missed.">            return oldSize != ObjectIntHashMap.this.size();</span>
+        }
+
+        @Override
+        public boolean containsAll(Collection&lt;?&gt; collection)
+        {
+<span class="nc bnc" id="L1436" title="All 2 branches missed.">            for (Object aCollection : collection)</span>
+            {
+<span class="nc bnc" id="L1438" title="All 2 branches missed.">                if (!ObjectIntHashMap.this.containsKey(aCollection))</span>
+                {
+<span class="nc" id="L1440">                    return false;</span>
+                }
+<span class="nc" id="L1442">            }</span>
+<span class="nc" id="L1443">            return true;</span>
+        }
+
+        @Override
+        public boolean addAll(Collection&lt;? extends K&gt; collection)
+        {
+<span class="nc" id="L1449">            throw new UnsupportedOperationException(&quot;Cannot call addAll() on &quot; + this.getClass().getSimpleName());</span>
+        }
+
+        @Override
+        public boolean retainAll(Collection&lt;?&gt; collection)
+        {
+<span class="nc" id="L1455">            int oldSize = ObjectIntHashMap.this.size();</span>
+<span class="nc" id="L1456">            Iterator&lt;K&gt; iterator = this.iterator();</span>
+<span class="nc bnc" id="L1457" title="All 2 branches missed.">            while (iterator.hasNext())</span>
+            {
+<span class="nc" id="L1459">                K next = iterator.next();</span>
+<span class="nc bnc" id="L1460" title="All 2 branches missed.">                if (!collection.contains(next))</span>
+                {
+<span class="nc" id="L1462">                    iterator.remove();</span>
+                }
+<span class="nc" id="L1464">            }</span>
+<span class="nc bnc" id="L1465" title="All 2 branches missed.">            return oldSize != ObjectIntHashMap.this.size();</span>
+        }
+
+        @Override
+        public boolean removeAll(Collection&lt;?&gt; collection)
+        {
+<span class="nc" id="L1471">            int oldSize = ObjectIntHashMap.this.size();</span>
+<span class="nc bnc" id="L1472" title="All 2 branches missed.">            for (Object object : collection)</span>
+            {
+<span class="nc" id="L1474">                ObjectIntHashMap.this.removeKey((K) object);</span>
+<span class="nc" id="L1475">            }</span>
+<span class="nc bnc" id="L1476" title="All 2 branches missed.">            return oldSize != ObjectIntHashMap.this.size();</span>
+        }
+
+        @Override
+        public void clear()
+        {
+<span class="nc" id="L1482">            ObjectIntHashMap.this.clear();</span>
+<span class="nc" id="L1483">        }</span>
+
+        @Override
+        public Iterator&lt;K&gt; iterator()
+        {
+<span class="nc" id="L1488">            return new KeySetIterator();</span>
+        }
+
+        private void copyKeys(Object[] result)
+        {
+<span class="nc" id="L1493">            int count = 0;</span>
+<span class="nc bnc" id="L1494" title="All 2 branches missed.">            for (int i = 0; i &lt; ObjectIntHashMap.this.keys.length; i++)</span>
+            {
+<span class="nc" id="L1496">                Object key = ObjectIntHashMap.this.keys[i];</span>
+<span class="nc bnc" id="L1497" title="All 2 branches missed.">                if (ObjectIntHashMap.isNonSentinel(key))</span>
+                {
+<span class="nc" id="L1499">                    result[count++] = ObjectIntHashMap.this.keys[i];</span>
+                }
+            }
+<span class="nc" id="L1502">        }</span>
+    }
+
+<span class="nc" id="L1505">    private class KeySetIterator implements Iterator&lt;K&gt;</span>
+    {
+        private int count;
+        private int position;
+        private K currentKey;
+        private boolean isCurrentKeySet;
+
+        @Override
+        public boolean hasNext()
+        {
+<span class="nc bnc" id="L1515" title="All 2 branches missed.">            return this.count &lt; ObjectIntHashMap.this.size();</span>
+        }
+
+        @Override
+        public K next()
+        {
+<span class="nc bnc" id="L1521" title="All 2 branches missed.">            if (!this.hasNext())</span>
+            {
+<span class="nc" id="L1523">                throw new NoSuchElementException();</span>
+            }
+<span class="nc" id="L1525">            this.count++;</span>
+<span class="nc" id="L1526">            Object[] keys = ObjectIntHashMap.this.keys;</span>
+<span class="nc bnc" id="L1527" title="All 2 branches missed.">            while (!isNonSentinel(keys[this.position]))</span>
+            {
+<span class="nc" id="L1529">                this.position++;</span>
+            }
+<span class="nc" id="L1531">            this.currentKey = (K) ObjectIntHashMap.this.keys[this.position];</span>
+<span class="nc" id="L1532">            this.isCurrentKeySet = true;</span>
+<span class="nc" id="L1533">            this.position++;</span>
+<span class="nc" id="L1534">            return ObjectIntHashMap.this.toNonSentinel(this.currentKey);</span>
+        }
+
+        @Override
+        public void remove()
+        {
+<span class="nc bnc" id="L1540" title="All 2 branches missed.">            if (!this.isCurrentKeySet)</span>
+            {
+<span class="nc" id="L1542">                throw new IllegalStateException();</span>
+            }
+
+<span class="nc" id="L1545">            this.isCurrentKeySet = false;</span>
+<span class="nc" id="L1546">            this.count--;</span>
+
+<span class="nc bnc" id="L1548" title="All 2 branches missed.">            if (isNonSentinel(this.currentKey))</span>
+            {
+<span class="nc" id="L1550">                int index = this.position - 1;</span>
+<span class="nc" id="L1551">                ObjectIntHashMap.this.removeKeyAtIndex(ObjectIntHashMap.this.toNonSentinel(this.currentKey), index);</span>
+<span class="nc" id="L1552">            }</span>
+            else
+            {
+<span class="nc" id="L1555">                ObjectIntHashMap.this.removeKey(this.currentKey);</span>
+            }
+<span class="nc" id="L1557">        }</span>
+    }
+
+<span class="nc" id="L1560">    private class ValuesCollection implements MutableIntCollection</span>
+    {
+        @Override
+        public int size()
+        {
+<span class="nc" id="L1565">            return ObjectIntHashMap.this.size();</span>
+        }
+
+        @Override
+        public boolean isEmpty()
+        {
+<span class="nc" id="L1571">            return ObjectIntHashMap.this.isEmpty();</span>
+        }
+
+        @Override
+        public boolean notEmpty()
+        {
+<span class="nc" id="L1577">            return ObjectIntHashMap.this.notEmpty();</span>
+        }
+
+        @Override
+        public String makeString()
+        {
+<span class="nc" id="L1583">            return this.makeString(&quot;, &quot;);</span>
+        }
+
+        @Override
+        public String makeString(String separator)
+        {
+<span class="nc" id="L1589">            return this.makeString(&quot;&quot;, separator, &quot;&quot;);</span>
+        }
+
+        @Override
+        public String makeString(String start, String separator, String end)
+        {
+<span class="nc" id="L1595">            Appendable stringBuilder = new StringBuilder();</span>
+<span class="nc" id="L1596">            this.appendString(stringBuilder, start, separator, end);</span>
+<span class="nc" id="L1597">            return stringBuilder.toString();</span>
+        }
+
+        @Override
+        public void appendString(Appendable appendable)
+        {
+<span class="nc" id="L1603">            this.appendString(appendable, &quot;, &quot;);</span>
+<span class="nc" id="L1604">        }</span>
+
+        @Override
+        public void appendString(Appendable appendable, String separator)
+        {
+<span class="nc" id="L1609">            this.appendString(appendable, &quot;&quot;, separator, &quot;&quot;);</span>
+<span class="nc" id="L1610">        }</span>
+
+        @Override
+        public void appendString(Appendable appendable, String start, String separator, String end)
+        {
+            try
+            {
+<span class="nc" id="L1617">                appendable.append(start);</span>
+
+<span class="nc" id="L1619">                boolean first = true;</span>
+
+<span class="nc bnc" id="L1621" title="All 2 branches missed.">                for (int i = 0; i &lt; ObjectIntHashMap.this.keys.length; i++)</span>
+                {
+<span class="nc" id="L1623">                    Object key = ObjectIntHashMap.this.keys[i];</span>
+<span class="nc bnc" id="L1624" title="All 2 branches missed.">                    if (isNonSentinel(key))</span>
+                    {
+<span class="nc bnc" id="L1626" title="All 2 branches missed.">                        if (!first)</span>
+                        {
+<span class="nc" id="L1628">                            appendable.append(separator);</span>
+                        }
+<span class="nc" id="L1630">                        appendable.append(String.valueOf(ObjectIntHashMap.this.values[i]));</span>
+<span class="nc" id="L1631">                        first = false;</span>
+                    }
+                }
+<span class="nc" id="L1634">                appendable.append(end);</span>
+            }
+<span class="nc" id="L1636">            catch (IOException e)</span>
+            {
+<span class="nc" id="L1638">                throw new RuntimeException(e);</span>
+<span class="nc" id="L1639">            }</span>
+<span class="nc" id="L1640">        }</span>
+
+        @Override
+        public boolean add(int element)
+        {
+<span class="nc" id="L1645">            throw new UnsupportedOperationException(&quot;Cannot call add() on &quot; + this.getClass().getSimpleName());</span>
+        }
+
+        @Override
+        public boolean addAll(int... source)
+        {
+<span class="nc" id="L1651">            throw new UnsupportedOperationException(&quot;Cannot call addAll() on &quot; + this.getClass().getSimpleName());</span>
+        }
+
+        @Override
+        public boolean addAll(IntIterable source)
+        {
+<span class="nc" id="L1657">            throw new UnsupportedOperationException(&quot;Cannot call addAll() on &quot; + this.getClass().getSimpleName());</span>
+        }
+
+        @Override
+        public boolean remove(int item)
+        {
+<span class="nc" id="L1663">            int oldSize = ObjectIntHashMap.this.size();</span>
+
+<span class="nc bnc" id="L1665" title="All 2 branches missed.">            for (int i = 0; i &lt; ObjectIntHashMap.this.keys.length; i++)</span>
+            {
+<span class="nc bnc" id="L1667" title="All 4 branches missed.">                if (isNonSentinel(ObjectIntHashMap.this.keys[i]) &amp;&amp; item == ObjectIntHashMap.this.values[i])</span>
+                {
+<span class="nc" id="L1669">                    ObjectIntHashMap.this.removeKey((K) ObjectIntHashMap.this.keys[i]);</span>
+                }
+            }
+<span class="nc bnc" id="L1672" title="All 2 branches missed.">            return oldSize != ObjectIntHashMap.this.size();</span>
+        }
+
+        @Override
+        public boolean removeAll(IntIterable source)
+        {
+<span class="nc" id="L1678">            int oldSize = ObjectIntHashMap.this.size();</span>
+
+<span class="nc" id="L1680">            IntIterator iterator = source.intIterator();</span>
+<span class="nc bnc" id="L1681" title="All 2 branches missed.">            while (iterator.hasNext())</span>
+            {
+<span class="nc" id="L1683">                this.remove(iterator.next());</span>
+            }
+<span class="nc bnc" id="L1685" title="All 2 branches missed.">            return oldSize != ObjectIntHashMap.this.size();</span>
+        }
+
+        @Override
+        public boolean removeAll(int... source)
+        {
+<span class="nc" id="L1691">            int oldSize = ObjectIntHashMap.this.size();</span>
+
+<span class="nc bnc" id="L1693" title="All 2 branches missed.">            for (int item : source)</span>
+            {
+<span class="nc" id="L1695">                this.remove(item);</span>
+            }
+<span class="nc bnc" id="L1697" title="All 2 branches missed.">            return oldSize != ObjectIntHashMap.this.size();</span>
+        }
+
+        @Override
+        public boolean retainAll(IntIterable source)
+        {
+<span class="nc" id="L1703">            int oldSize = ObjectIntHashMap.this.size();</span>
+<span class="nc bnc" id="L1704" title="All 2 branches missed.">            final IntSet sourceSet = source instanceof IntSet ? (IntSet) source : source.toSet();</span>
+<span class="nc" id="L1705">            ObjectIntHashMap&lt;K&gt; retained = ObjectIntHashMap.this.select((K object, int value) -&gt; sourceSet.contains(value));</span>
+<span class="nc bnc" id="L1706" title="All 2 branches missed.">            if (retained.size() != oldSize)</span>
+            {
+<span class="nc" id="L1708">                ObjectIntHashMap.this.keys = retained.keys;</span>
+<span class="nc" id="L1709">                ObjectIntHashMap.this.values = retained.values;</span>
+<span class="nc" id="L1710">                ObjectIntHashMap.this.occupiedWithData = retained.occupiedWithData;</span>
+<span class="nc" id="L1711">                ObjectIntHashMap.this.occupiedWithSentinels = retained.occupiedWithSentinels;</span>
+<span class="nc" id="L1712">                return true;</span>
+            }
+<span class="nc" id="L1714">            return false;</span>
+        }
+
+        @Override
+        public boolean retainAll(int... source)
+        {
+<span class="nc" id="L1720">            return this.retainAll(IntHashSet.newSetWith(source));</span>
+        }
+
+        @Override
+        public void clear()
+        {
+<span class="nc" id="L1726">            ObjectIntHashMap.this.clear();</span>
+<span class="nc" id="L1727">        }</span>
+
+        @Override
+        public MutableIntCollection with(int element)
+        {
+<span class="nc" id="L1732">            throw new UnsupportedOperationException(&quot;Cannot call with() on &quot; + this.getClass().getSimpleName());</span>
+        }
+
+        @Override
+        public MutableIntCollection without(int element)
+        {
+<span class="nc" id="L1738">            throw new UnsupportedOperationException(&quot;Cannot call without() on &quot; + this.getClass().getSimpleName());</span>
+        }
+
+        @Override
+        public MutableIntCollection withAll(IntIterable elements)
+        {
+<span class="nc" id="L1744">            throw new UnsupportedOperationException(&quot;Cannot call withAll() on &quot; + this.getClass().getSimpleName());</span>
+        }
+
+        @Override
+        public MutableIntCollection withoutAll(IntIterable elements)
+        {
+<span class="nc" id="L1750">            throw new UnsupportedOperationException(&quot;Cannot call withoutAll() on &quot; + this.getClass().getSimpleName());</span>
+        }
+
+        @Override
+        public MutableIntCollection asUnmodifiable()
+        {
+<span class="nc" id="L1756">            return UnmodifiableIntCollection.of(this);</span>
+        }
+
+        @Override
+        public MutableIntCollection asSynchronized()
+        {
+<span class="nc" id="L1762">            return SynchronizedIntCollection.of(this);</span>
+        }
+
+        @Override
+        public ImmutableIntCollection toImmutable()
+        {
+<span class="nc" id="L1768">            return IntLists.immutable.withAll(this);</span>
+        }
+
+        @Override
+        public MutableIntIterator intIterator()
+        {
+<span class="nc" id="L1774">            return ObjectIntHashMap.this.intIterator();</span>
+        }
+
+        @Override
+        public int[] toArray()
+        {
+<span class="nc" id="L1780">            return ObjectIntHashMap.this.toArray();</span>
+        }
+
+        @Override
+        public boolean contains(int value)
+        {
+<span class="nc" id="L1786">            return ObjectIntHashMap.this.containsValue(value);</span>
+        }
+
+        @Override
+        public boolean containsAll(int... source)
+        {
+<span class="nc" id="L1792">            return ObjectIntHashMap.this.containsAll(source);</span>
+        }
+
+        @Override
+        public boolean containsAll(IntIterable source)
+        {
+<span class="nc" id="L1798">            return ObjectIntHashMap.this.containsAll(source);</span>
+        }
+
+        @Override
+        public void forEach(IntProcedure procedure)
+        {
+<span class="nc" id="L1804">            this.each(procedure);</span>
+<span class="nc" id="L1805">        }</span>
+
+        @Override
+        public void each(IntProcedure procedure)
+        {
+<span class="nc" id="L1810">            ObjectIntHashMap.this.forEach(procedure);</span>
+<span class="nc" id="L1811">        }</span>
+
+        @Override
+        public MutableIntCollection select(IntPredicate predicate)
+        {
+<span class="nc" id="L1816">            return ObjectIntHashMap.this.select(predicate);</span>
+        }
+
+        @Override
+        public MutableIntCollection reject(IntPredicate predicate)
+        {
+<span class="nc" id="L1822">            return ObjectIntHashMap.this.reject(predicate);</span>
+        }
+
+        @Override
+        public &lt;V&gt; MutableCollection&lt;V&gt; collect(IntToObjectFunction&lt;? extends V&gt; function)
+        {
+<span class="nc" id="L1828">            return ObjectIntHashMap.this.collect(function);</span>
+        }
+
+        @Override
+        public &lt;T&gt; T injectInto(T injectedValue, ObjectIntToObjectFunction&lt;? super T, ? extends T&gt; function)
+        {
+<span class="nc" id="L1834">            return ObjectIntHashMap.this.injectInto(injectedValue, function);</span>
+        }
+
+        @Override
+        public RichIterable&lt;IntIterable&gt; chunk(int size)
+        {
+<span class="nc" id="L1840">            return ObjectIntHashMap.this.chunk(size);</span>
+        }
+
+        @Override
+        public int detectIfNone(IntPredicate predicate, int ifNone)
+        {
+<span class="nc" id="L1846">            return ObjectIntHashMap.this.detectIfNone(predicate, ifNone);</span>
+        }
+
+        @Override
+        public int count(IntPredicate predicate)
+        {
+<span class="nc" id="L1852">            return ObjectIntHashMap.this.count(predicate);</span>
+        }
+
+        @Override
+        public boolean anySatisfy(IntPredicate predicate)
+        {
+<span class="nc" id="L1858">            return ObjectIntHashMap.this.anySatisfy(predicate);</span>
+        }
+
+        @Override
+        public boolean allSatisfy(IntPredicate predicate)
+        {
+<span class="nc" id="L1864">            return ObjectIntHashMap.this.allSatisfy(predicate);</span>
+        }
+
+        @Override
+        public boolean noneSatisfy(IntPredicate predicate)
+        {
+<span class="nc" id="L1870">            return ObjectIntHashMap.this.noneSatisfy(predicate);</span>
+        }
+
+        @Override
+        public MutableIntList toList()
+        {
+<span class="nc" id="L1876">            return ObjectIntHashMap.this.toList();</span>
+        }
+
+        @Override
+        public MutableIntSet toSet()
+        {
+<span class="nc" id="L1882">            return ObjectIntHashMap.this.toSet();</span>
+        }
+
+        @Override
+        public MutableIntBag toBag()
+        {
+<span class="nc" id="L1888">            return ObjectIntHashMap.this.toBag();</span>
+        }
+
+        @Override
+        public LazyIntIterable asLazy()
+        {
+<span class="nc" id="L1894">            return new LazyIntIterableAdapter(this);</span>
+        }
+
+        @Override
+        public int[] toSortedArray()
+        {
+<span class="nc" id="L1900">            return ObjectIntHashMap.this.toSortedArray();</span>
+        }
+
+        @Override
+        public MutableIntList toSortedList()
+        {
+<span class="nc" id="L1906">            return ObjectIntHashMap.this.toSortedList();</span>
+        }
+
+        @Override
+        public long sum()
+        {
+<span class="nc" id="L1912">            return ObjectIntHashMap.this.sum();</span>
+        }
+
+        @Override
+        public int max()
+        {
+<span class="nc" id="L1918">            return ObjectIntHashMap.this.max();</span>
+        }
+
+        @Override
+        public int maxIfEmpty(int defaultValue)
+        {
+<span class="nc" id="L1924">            return ObjectIntHashMap.this.maxIfEmpty(defaultValue);</span>
+        }
+
+        @Override
+        public int min()
+        {
+<span class="nc" id="L1930">            return ObjectIntHashMap.this.min();</span>
+        }
+
+        @Override
+        public int minIfEmpty(int defaultValue)
+        {
+<span class="nc" id="L1936">            return ObjectIntHashMap.this.minIfEmpty(defaultValue);</span>
+        }
+
+        @Override
+        public double average()
+        {
+<span class="nc" id="L1942">            return ObjectIntHashMap.this.average();</span>
+        }
+
+        @Override
+        public double median()
+        {
+<span class="nc" id="L1948">            return ObjectIntHashMap.this.median();</span>
+        }
+
+        /**
+         * @since 9.2.
+         */
+        @Override
+        public MutableIntCollection newEmpty()
+        {
+<span class="nc" id="L1957">            return new IntHashBag();</span>
+        }
+    }
+
+<span class="nc" id="L1961">    private class KeysView extends AbstractLazyIterable&lt;K&gt;</span>
+    {
+        @Override
+        public void each(Procedure&lt;? super K&gt; procedure)
+        {
+<span class="nc" id="L1966">            ObjectIntHashMap.this.forEachKey(procedure);</span>
+<span class="nc" id="L1967">        }</span>
+
+        @Override
+        public void forEachWithIndex(ObjectIntProcedure&lt;? super K&gt; objectIntProcedure)
+        {
+<span class="nc" id="L1972">            int index = 0;</span>
+<span class="nc bnc" id="L1973" title="All 2 branches missed.">            for (int i = 0; i &lt; ObjectIntHashMap.this.keys.length; i++)</span>
+            {
+<span class="nc bnc" id="L1975" title="All 2 branches missed.">                if (ObjectIntHashMap.isNonSentinel(ObjectIntHashMap.this.keys[i]))</span>
+                {
+<span class="nc" id="L1977">                    objectIntProcedure.value(ObjectIntHashMap.this.toNonSentinel(ObjectIntHashMap.this.keys[i]), index);</span>
+<span class="nc" id="L1978">                    index++;</span>
+                }
+            }
+<span class="nc" id="L1981">        }</span>
+
+        @Override
+        public &lt;P&gt; void forEachWith(Procedure2&lt;? super K, ? super P&gt; procedure, P parameter)
+        {
+<span class="nc bnc" id="L1986" title="All 2 branches missed.">            for (int i = 0; i &lt; ObjectIntHashMap.this.keys.length; i++)</span>
+            {
+<span class="nc bnc" id="L1988" title="All 2 branches missed.">                if (ObjectIntHashMap.isNonSentinel(ObjectIntHashMap.this.keys[i]))</span>
+                {
+<span class="nc" id="L1990">                    procedure.value(ObjectIntHashMap.this.toNonSentinel(ObjectIntHashMap.this.keys[i]), parameter);</span>
+                }
+            }
+<span class="nc" id="L1993">        }</span>
+
+        @Override
+        public Iterator&lt;K&gt; iterator()
+        {
+<span class="nc" id="L1998">            return new InternalKeysViewIterator();</span>
+        }
+
+<span class="nc" id="L2001">        public class InternalKeysViewIterator implements Iterator&lt;K&gt;</span>
+        {
+            private int count;
+            private int position;
+
+            @Override
+            public K next()
+            {
+<span class="nc bnc" id="L2009" title="All 2 branches missed.">                if (!this.hasNext())</span>
+                {
+<span class="nc" id="L2011">                    throw new NoSuchElementException();</span>
+                }
+
+<span class="nc" id="L2014">                Object[] keys = ObjectIntHashMap.this.keys;</span>
+<span class="nc bnc" id="L2015" title="All 2 branches missed.">                while (!isNonSentinel(keys[this.position]))</span>
+                {
+<span class="nc" id="L2017">                    this.position++;</span>
+                }
+<span class="nc" id="L2019">                K result = ObjectIntHashMap.this.toNonSentinel(ObjectIntHashMap.this.keys[this.position]);</span>
+<span class="nc" id="L2020">                this.count++;</span>
+<span class="nc" id="L2021">                this.position++;</span>
+<span class="nc" id="L2022">                return result;</span>
+            }
+
+            @Override
+            public void remove()
+            {
+<span class="nc" id="L2028">                throw new UnsupportedOperationException(&quot;Cannot call remove() on &quot; + this.getClass().getSimpleName());</span>
+            }
+
+            @Override
+            public boolean hasNext()
+            {
+<span class="nc bnc" id="L2034" title="All 2 branches missed.">                return this.count != ObjectIntHashMap.this.size();</span>
+            }
+        }
+    }
+
+<span class="nc" id="L2039">    private class KeyValuesView extends AbstractLazyIterable&lt;ObjectIntPair&lt;K&gt;&gt;</span>
+    {
+        @Override
+        public void each(Procedure&lt;? super ObjectIntPair&lt;K&gt;&gt; procedure)
+        {
+<span class="nc bnc" id="L2044" title="All 2 branches missed.">            for (int i = 0; i &lt; ObjectIntHashMap.this.keys.length; i++)</span>
+            {
+<span class="nc bnc" id="L2046" title="All 2 branches missed.">                if (ObjectIntHashMap.isNonSentinel(ObjectIntHashMap.this.keys[i]))</span>
+                {
+<span class="nc" id="L2048">                    procedure.value(PrimitiveTuples.pair(ObjectIntHashMap.this.toNonSentinel(ObjectIntHashMap.this.keys[i]), ObjectIntHashMap.this.values[i]));</span>
+                }
+            }
+<span class="nc" id="L2051">        }</span>
+
+        @Override
+        public void forEachWithIndex(ObjectIntProcedure&lt;? super ObjectIntPair&lt;K&gt;&gt; objectIntProcedure)
+        {
+<span class="nc" id="L2056">            int index = 0;</span>
+<span class="nc bnc" id="L2057" title="All 2 branches missed.">            for (int i = 0; i &lt; ObjectIntHashMap.this.keys.length; i++)</span>
+            {
+<span class="nc bnc" id="L2059" title="All 2 branches missed.">                if (ObjectIntHashMap.isNonSentinel(ObjectIntHashMap.this.keys[i]))</span>
+                {
+<span class="nc" id="L2061">                    objectIntProcedure.value(PrimitiveTuples.pair(ObjectIntHashMap.this.toNonSentinel(ObjectIntHashMap.this.keys[i]), ObjectIntHashMap.this.values[i]), index);</span>
+<span class="nc" id="L2062">                    index++;</span>
+                }
+            }
+<span class="nc" id="L2065">        }</span>
+
+        @Override
+        public &lt;P&gt; void forEachWith(Procedure2&lt;? super ObjectIntPair&lt;K&gt;, ? super P&gt; procedure, P parameter)
+        {
+<span class="nc bnc" id="L2070" title="All 2 branches missed.">            for (int i = 0; i &lt; ObjectIntHashMap.this.keys.length; i++)</span>
+            {
+<span class="nc bnc" id="L2072" title="All 2 branches missed.">                if (ObjectIntHashMap.isNonSentinel(ObjectIntHashMap.this.keys[i]))</span>
+                {
+<span class="nc" id="L2074">                    procedure.value(PrimitiveTuples.pair(ObjectIntHashMap.this.toNonSentinel(ObjectIntHashMap.this.keys[i]), ObjectIntHashMap.this.values[i]), parameter);</span>
+                }
+            }
+<span class="nc" id="L2077">        }</span>
+
+        @Override
+        public Iterator&lt;ObjectIntPair&lt;K&gt;&gt; iterator()
+        {
+<span class="nc" id="L2082">            return new InternalKeyValuesIterator();</span>
+        }
+
+<span class="nc" id="L2085">        public class InternalKeyValuesIterator implements Iterator&lt;ObjectIntPair&lt;K&gt;&gt;</span>
+        {
+            private int count;
+            private int position;
+
+            @Override
+            public ObjectIntPair&lt;K&gt; next()
+            {
+<span class="nc bnc" id="L2093" title="All 2 branches missed.">                if (!this.hasNext())</span>
+                {
+<span class="nc" id="L2095">                    throw new NoSuchElementException();</span>
+                }
+
+<span class="nc" id="L2098">                Object[] keys = ObjectIntHashMap.this.keys;</span>
+<span class="nc bnc" id="L2099" title="All 2 branches missed.">                while (!isNonSentinel(keys[this.position]))</span>
+                {
+<span class="nc" id="L2101">                    this.position++;</span>
+                }
+<span class="nc" id="L2103">                ObjectIntPair&lt;K&gt; result = PrimitiveTuples.pair(ObjectIntHashMap.this.toNonSentinel(ObjectIntHashMap.this.keys[this.position]), ObjectIntHashMap.this.values[this.position]);</span>
+<span class="nc" id="L2104">                this.count++;</span>
+<span class="nc" id="L2105">                this.position++;</span>
+<span class="nc" id="L2106">                return result;</span>
+            }
+
+            @Override
+            public void remove()
+            {
+<span class="nc" id="L2112">                throw new UnsupportedOperationException(&quot;Cannot call remove() on &quot; + this.getClass().getSimpleName());</span>
+            }
+
+            @Override
+            public boolean hasNext()
+            {
+<span class="nc bnc" id="L2118" title="All 2 branches missed.">                return this.count != ObjectIntHashMap.this.size();</span>
+            }
+        }
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.0.201801022044</span></div></body></html>

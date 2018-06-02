@@ -1,0 +1,167 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>ParallelDistinctIterable.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Eclipse Collections Test Coverage Aggregation</a> &gt; <a href="../index.html" class="el_bundle">eclipse-collections</a> &gt; <a href="index.source.html" class="el_package">org.eclipse.collections.impl.lazy.parallel</a> &gt; <span class="el_source">ParallelDistinctIterable.java</span></div><h1>ParallelDistinctIterable.java</h1><pre class="source lang-java linenums">/*
+ * Copyright (c) 2016 Goldman Sachs.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * and Eclipse Distribution License v. 1.0 which accompany this distribution.
+ * The Eclipse Public License is available at http://www.eclipse.org/legal/epl-v10.html
+ * and the Eclipse Distribution License is available at
+ * http://www.eclipse.org/org/documents/edl-v10.php.
+ */
+
+package org.eclipse.collections.impl.lazy.parallel;
+
+import java.util.concurrent.ExecutorService;
+
+import org.eclipse.collections.api.LazyIterable;
+import org.eclipse.collections.api.annotation.Beta;
+import org.eclipse.collections.api.block.function.Function;
+import org.eclipse.collections.api.block.predicate.Predicate;
+import org.eclipse.collections.api.block.procedure.Procedure;
+import org.eclipse.collections.api.map.MapIterable;
+import org.eclipse.collections.api.multimap.set.UnsortedSetMultimap;
+import org.eclipse.collections.api.set.ParallelUnsortedSetIterable;
+import org.eclipse.collections.impl.lazy.parallel.list.DistinctBatch;
+import org.eclipse.collections.impl.lazy.parallel.set.AbstractParallelUnsortedSetIterable;
+import org.eclipse.collections.impl.lazy.parallel.set.UnsortedSetBatch;
+import org.eclipse.collections.impl.map.mutable.ConcurrentHashMap;
+import org.eclipse.collections.impl.multimap.set.UnifiedSetMultimap;
+
+@Beta
+public class ParallelDistinctIterable&lt;T&gt; extends AbstractParallelUnsortedSetIterable&lt;T, UnsortedSetBatch&lt;T&gt;&gt;
+{
+    private final AbstractParallelIterable&lt;T, ? extends Batch&lt;T&gt;&gt; delegate;
+
+    public ParallelDistinctIterable(AbstractParallelIterable&lt;T, ? extends Batch&lt;T&gt;&gt; delegate)
+<span class="nc" id="L35">    {</span>
+<span class="nc" id="L36">        this.delegate = delegate;</span>
+<span class="nc" id="L37">    }</span>
+
+    @Override
+    public ExecutorService getExecutorService()
+    {
+<span class="nc" id="L42">        return this.delegate.getExecutorService();</span>
+    }
+
+    @Override
+    public int getBatchSize()
+    {
+<span class="nc" id="L48">        return this.delegate.getBatchSize();</span>
+    }
+
+    @Override
+    public LazyIterable&lt;UnsortedSetBatch&lt;T&gt;&gt; split()
+    {
+        // TODO: Replace the map with a concurrent set once it's implemented
+<span class="nc" id="L55">        ConcurrentHashMap&lt;T, Boolean&gt; distinct = new ConcurrentHashMap&lt;&gt;();</span>
+<span class="nc" id="L56">        return this.delegate.split().collect(batch -&gt; new DistinctBatch&lt;&gt;(batch, distinct));</span>
+    }
+
+    @Override
+    public ParallelUnsortedSetIterable&lt;T&gt; asUnique()
+    {
+<span class="nc" id="L62">        return this;</span>
+    }
+
+    @Override
+    public void forEach(Procedure&lt;? super T&gt; procedure)
+    {
+        // TODO: Replace the map with a concurrent set once it's implemented
+<span class="nc" id="L69">        ConcurrentHashMap&lt;T, Boolean&gt; distinct = new ConcurrentHashMap&lt;&gt;();</span>
+<span class="nc" id="L70">        this.delegate.forEach(each -&gt; {</span>
+<span class="nc bnc" id="L71" title="All 2 branches missed.">            if (distinct.put(each, true) == null)</span>
+            {
+<span class="nc" id="L73">                procedure.value(each);</span>
+            }
+<span class="nc" id="L75">        });</span>
+<span class="nc" id="L76">    }</span>
+
+    @Override
+    public boolean anySatisfy(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L81">        return this.delegate.anySatisfy(new DistinctAndPredicate&lt;&gt;(predicate));</span>
+    }
+
+    @Override
+    public boolean allSatisfy(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L87">        return this.delegate.allSatisfy(new DistinctOrPredicate&lt;&gt;(predicate));</span>
+    }
+
+    @Override
+    public T detect(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L93">        return this.delegate.detect(new DistinctAndPredicate&lt;&gt;(predicate));</span>
+    }
+
+    @Override
+    public Object[] toArray()
+    {
+        // TODO: Implement in parallel
+<span class="nc" id="L100">        return this.delegate.toList().distinct().toArray();</span>
+    }
+
+    @Override
+    public &lt;E&gt; E[] toArray(E[] array)
+    {
+        // TODO: Implement in parallel
+<span class="nc" id="L107">        return this.delegate.toList().distinct().toArray(array);</span>
+    }
+
+    @Override
+    public &lt;V&gt; UnsortedSetMultimap&lt;V, T&gt; groupBy(Function&lt;? super T, ? extends V&gt; function)
+    {
+        // TODO: Implement in parallel
+<span class="nc" id="L114">        return this.delegate.toSet().groupBy(function, new UnifiedSetMultimap&lt;&gt;());</span>
+    }
+
+    @Override
+    public &lt;V&gt; UnsortedSetMultimap&lt;V, T&gt; groupByEach(Function&lt;? super T, ? extends Iterable&lt;V&gt;&gt; function)
+    {
+        // TODO: Implement in parallel
+<span class="nc" id="L121">        return this.delegate.toSet().groupByEach(function, new UnifiedSetMultimap&lt;&gt;());</span>
+    }
+
+    @Override
+    public &lt;V&gt; MapIterable&lt;V, T&gt; groupByUniqueKey(Function&lt;? super T, ? extends V&gt; function)
+    {
+        // TODO: Implement in parallel
+<span class="nc" id="L128">        return this.delegate.toSet().groupByUniqueKey(function);</span>
+    }
+
+    private static final class DistinctAndPredicate&lt;T&gt; implements Predicate&lt;T&gt;
+    {
+        // TODO: Replace the map with a concurrent set once it's implemented
+<span class="nc" id="L134">        private final ConcurrentHashMap&lt;T, Boolean&gt; distinct = new ConcurrentHashMap&lt;&gt;();</span>
+        private final Predicate&lt;? super T&gt; predicate;
+
+        private DistinctAndPredicate(Predicate&lt;? super T&gt; predicate)
+<span class="nc" id="L138">        {</span>
+<span class="nc" id="L139">            this.predicate = predicate;</span>
+<span class="nc" id="L140">        }</span>
+
+        @Override
+        public boolean accept(T each)
+        {
+<span class="nc bnc" id="L145" title="All 4 branches missed.">            return this.distinct.put(each, true) == null &amp;&amp; this.predicate.accept(each);</span>
+        }
+    }
+
+    private static final class DistinctOrPredicate&lt;T&gt; implements Predicate&lt;T&gt;
+    {
+        // TODO: Replace the map with a concurrent set once it's implemented
+<span class="nc" id="L152">        private final ConcurrentHashMap&lt;T, Boolean&gt; distinct = new ConcurrentHashMap&lt;&gt;();</span>
+        private final Predicate&lt;? super T&gt; predicate;
+
+        private DistinctOrPredicate(Predicate&lt;? super T&gt; predicate)
+<span class="nc" id="L156">        {</span>
+<span class="nc" id="L157">            this.predicate = predicate;</span>
+<span class="nc" id="L158">        }</span>
+
+        @Override
+        public boolean accept(T each)
+        {
+<span class="nc bnc" id="L163" title="All 4 branches missed.">            return this.distinct.put(each, true) != null || this.predicate.accept(each);</span>
+        }
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.0.201801022044</span></div></body></html>

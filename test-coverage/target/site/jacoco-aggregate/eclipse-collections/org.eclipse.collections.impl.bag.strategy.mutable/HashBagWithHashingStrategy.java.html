@@ -1,0 +1,152 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>HashBagWithHashingStrategy.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Eclipse Collections Test Coverage Aggregation</a> &gt; <a href="../index.html" class="el_bundle">eclipse-collections</a> &gt; <a href="index.source.html" class="el_package">org.eclipse.collections.impl.bag.strategy.mutable</a> &gt; <span class="el_source">HashBagWithHashingStrategy.java</span></div><h1>HashBagWithHashingStrategy.java</h1><pre class="source lang-java linenums">/*
+ * Copyright (c) 2016 Bhavana Hindupur.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * and Eclipse Distribution License v. 1.0 which accompany this distribution.
+ * The Eclipse Public License is available at http://www.eclipse.org/legal/epl-v10.html
+ * and the Eclipse Distribution License is available at
+ * http://www.eclipse.org/org/documents/edl-v10.php.
+ */
+
+package org.eclipse.collections.impl.bag.strategy.mutable;
+
+import java.io.Serializable;
+
+import org.eclipse.collections.api.bag.Bag;
+import org.eclipse.collections.api.bag.MutableBag;
+import org.eclipse.collections.api.block.HashingStrategy;
+import org.eclipse.collections.api.block.predicate.primitive.IntPredicate;
+import org.eclipse.collections.api.map.primitive.MutableObjectIntMap;
+import org.eclipse.collections.impl.bag.mutable.AbstractHashBag;
+import org.eclipse.collections.impl.map.mutable.primitive.ObjectIntHashMapWithHashingStrategy;
+import org.eclipse.collections.impl.utility.ArrayIterate;
+import org.eclipse.collections.impl.utility.Iterate;
+
+public class HashBagWithHashingStrategy&lt;T&gt;
+        extends AbstractHashBag&lt;T&gt;
+        implements Serializable
+{
+    private static final long serialVersionUID = 1L;
+
+    private final HashingStrategy&lt;? super T&gt; hashingStrategy;
+
+    public HashBagWithHashingStrategy(HashingStrategy&lt;? super T&gt; hashingStrategy)
+<span class="nc" id="L34">    {</span>
+<span class="nc bnc" id="L35" title="All 2 branches missed.">        if (hashingStrategy == null)</span>
+        {
+<span class="nc" id="L37">            throw new IllegalArgumentException(&quot;Cannot Instantiate HashBagWithHashingStrategy with null HashingStrategy&quot;);</span>
+        }
+<span class="nc" id="L39">        this.hashingStrategy = hashingStrategy;</span>
+<span class="nc" id="L40">        this.items = ObjectIntHashMapWithHashingStrategy.newMap(hashingStrategy);</span>
+<span class="nc" id="L41">    }</span>
+
+    public HashBagWithHashingStrategy(HashingStrategy&lt;? super T&gt; hashingStrategy, int size)
+<span class="nc" id="L44">    {</span>
+<span class="nc bnc" id="L45" title="All 2 branches missed.">        if (hashingStrategy == null)</span>
+        {
+<span class="nc" id="L47">            throw new IllegalArgumentException(&quot;Cannot Instantiate HashBagWithHashingStrategy with null HashingStrategy&quot;);</span>
+        }
+<span class="nc" id="L49">        this.hashingStrategy = hashingStrategy;</span>
+<span class="nc" id="L50">        this.items = new ObjectIntHashMapWithHashingStrategy&lt;&gt;(hashingStrategy, size);</span>
+<span class="nc" id="L51">    }</span>
+
+    private HashBagWithHashingStrategy(HashingStrategy&lt;? super T&gt; hashingStrategy, MutableObjectIntMap&lt;T&gt; map)
+<span class="nc" id="L54">    {</span>
+<span class="nc" id="L55">        this.hashingStrategy = hashingStrategy;</span>
+<span class="nc" id="L56">        this.items = map;</span>
+<span class="nc" id="L57">        this.size = (int) map.sum();</span>
+<span class="nc" id="L58">    }</span>
+
+    public static &lt;E&gt; HashBagWithHashingStrategy&lt;E&gt; newBag(HashingStrategy&lt;? super E&gt; hashingStrategy)
+    {
+<span class="nc" id="L62">        return new HashBagWithHashingStrategy&lt;&gt;(hashingStrategy);</span>
+    }
+
+    public static &lt;E&gt; HashBagWithHashingStrategy&lt;E&gt; newBag(HashingStrategy&lt;? super E&gt; hashingStrategy, int size)
+    {
+<span class="nc" id="L67">        return new HashBagWithHashingStrategy&lt;&gt;(hashingStrategy, size);</span>
+    }
+
+    public static &lt;E&gt; HashBagWithHashingStrategy&lt;E&gt; newBag(HashingStrategy&lt;? super E&gt; hashingStrategy, Bag&lt;? extends E&gt; source)
+    {
+<span class="nc" id="L72">        HashBagWithHashingStrategy&lt;E&gt; result = HashBagWithHashingStrategy.newBag(hashingStrategy, source.sizeDistinct());</span>
+<span class="nc" id="L73">        result.addAllBag(source);</span>
+<span class="nc" id="L74">        return result;</span>
+    }
+
+    public static &lt;E&gt; HashBagWithHashingStrategy&lt;E&gt; newBag(HashingStrategy&lt;? super E&gt; hashingStrategy, Iterable&lt;? extends E&gt; source)
+    {
+<span class="nc bnc" id="L79" title="All 2 branches missed.">        if (source instanceof Bag)</span>
+        {
+<span class="nc" id="L81">            return HashBagWithHashingStrategy.newBag(hashingStrategy, (Bag&lt;E&gt;) source);</span>
+        }
+<span class="nc" id="L83">        return HashBagWithHashingStrategy.newBagWith(hashingStrategy, (E[]) Iterate.toArray(source));</span>
+    }
+
+    public static &lt;E&gt; HashBagWithHashingStrategy&lt;E&gt; newBagWith(HashingStrategy&lt;? super E&gt; hashingStrategy, E... elements)
+    {
+<span class="nc" id="L88">        HashBagWithHashingStrategy&lt;E&gt; result = HashBagWithHashingStrategy.newBag(hashingStrategy);</span>
+<span class="nc" id="L89">        ArrayIterate.addAllTo(elements, result);</span>
+<span class="nc" id="L90">        return result;</span>
+    }
+
+    public HashingStrategy&lt;? super T&gt; hashingStrategy()
+    {
+<span class="nc" id="L95">        return this.hashingStrategy;</span>
+    }
+
+    @Override
+    protected int computeHashCode(T item)
+    {
+<span class="nc" id="L101">        return this.hashingStrategy.computeHashCode(item);</span>
+    }
+
+    @Override
+    public MutableBag&lt;T&gt; selectByOccurrences(IntPredicate predicate)
+    {
+<span class="nc" id="L107">        MutableObjectIntMap&lt;T&gt; map = this.items.select((each, occurrences) -&gt; {</span>
+<span class="nc" id="L108">            return predicate.accept(occurrences);</span>
+        });
+<span class="nc" id="L110">        return new HashBagWithHashingStrategy&lt;&gt;(this.hashingStrategy, map);</span>
+    }
+
+    protected Object writeReplace()
+    {
+<span class="nc" id="L115">        return new HashBagWithHashingStrategySerializationProxy&lt;&gt;(this);</span>
+    }
+
+    @Override
+    public MutableBag&lt;T&gt; with(T element)
+    {
+<span class="nc" id="L121">        this.add(element);</span>
+<span class="nc" id="L122">        return this;</span>
+    }
+
+    @Override
+    public MutableBag&lt;T&gt; without(T element)
+    {
+<span class="nc" id="L128">        this.remove(element);</span>
+<span class="nc" id="L129">        return this;</span>
+    }
+
+    @Override
+    public MutableBag&lt;T&gt; withAll(Iterable&lt;? extends T&gt; elements)
+    {
+<span class="nc" id="L135">        this.addAllIterable(elements);</span>
+<span class="nc" id="L136">        return this;</span>
+    }
+
+    @Override
+    public MutableBag&lt;T&gt; withoutAll(Iterable&lt;? extends T&gt; elements)
+    {
+<span class="nc" id="L142">        this.removeAllIterable(elements);</span>
+<span class="nc" id="L143">        return this;</span>
+    }
+
+    @Override
+    public MutableBag&lt;T&gt; newEmpty()
+    {
+<span class="nc" id="L149">        return HashBagWithHashingStrategy.newBag(this.hashingStrategy);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.0.201801022044</span></div></body></html>

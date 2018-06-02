@@ -1,0 +1,235 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>ArrayAdapter.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Eclipse Collections Test Coverage Aggregation</a> &gt; <a href="../index.html" class="el_bundle">eclipse-collections</a> &gt; <a href="index.source.html" class="el_package">org.eclipse.collections.impl.list.fixed</a> &gt; <span class="el_source">ArrayAdapter.java</span></div><h1>ArrayAdapter.java</h1><pre class="source lang-java linenums">/*
+ * Copyright (c) 2016 Goldman Sachs.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * and Eclipse Distribution License v. 1.0 which accompany this distribution.
+ * The Eclipse Public License is available at http://www.eclipse.org/legal/epl-v10.html
+ * and the Eclipse Distribution License is available at
+ * http://www.eclipse.org/org/documents/edl-v10.php.
+ */
+
+package org.eclipse.collections.impl.list.fixed;
+
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.io.Serializable;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Comparator;
+import java.util.Spliterator;
+import java.util.Spliterators;
+
+import org.eclipse.collections.api.block.procedure.Procedure;
+import org.eclipse.collections.api.list.FixedSizeList;
+import org.eclipse.collections.impl.block.factory.Predicates2;
+import org.eclipse.collections.impl.utility.Iterate;
+
+/**
+ * This class provides a MutableList wrapper around an array.  All of the internal iteration methods of the MutableList
+ * interface as well as the JDK Collections List interface are provided.  However, the pre-determined fixed-sized
+ * semantics of an array are maintained and thus mutating List interface methods such as {@link #add(Object)}, {@link
+ * #addAll(Collection)}, {@link #remove(Object)}, {@link #removeAll(Collection)}, etc. are not supported and will throw
+ * an {@link UnsupportedOperationException}.  In addition, the mutating iteration methods {@link
+ * #removeIf(org.eclipse.collections.api.block.predicate.Predicate)} and {@link #removeIfWith(org.eclipse.collections.api.block.predicate.Predicate2, Object)} are not supported and will also
+ * throw an {@link UnsupportedOperationException}.
+ * &lt;p&gt;
+ * The {@link #with(Object)} method is not an exception to the above restrictions, as it will create a new
+ * instance of this class with the existing contents plus the new item.
+ * &lt;p&gt;
+ * To create a wrapper around an existing array, use the {@link #adapt(Object[])} factory method.  To wrap the contents
+ * of an existing Collection instance, use the {@link #newArray(Iterable)} or {@link #newArrayWithItem(Iterable, Object)}
+ * factory methods.  To wrap existing objects in a new array, use one of the {@link #newArrayWith(Object)} factory methods.
+ */
+public final class ArrayAdapter&lt;T&gt;
+        extends AbstractArrayAdapter&lt;T&gt;
+        implements Serializable, FixedSizeList&lt;T&gt;
+{
+    private static final long serialVersionUID = 1L;
+<span class="nc" id="L49">    private static final Object[] EMPTY_ARRAY = {};</span>
+
+    private ArrayAdapter(T[] newElements)
+    {
+<span class="nc" id="L53">        super(newElements);</span>
+<span class="nc" id="L54">    }</span>
+
+    public static &lt;E&gt; ArrayAdapter&lt;E&gt; adapt(E... array)
+    {
+<span class="nc" id="L58">        return new ArrayAdapter&lt;&gt;(array);</span>
+    }
+
+    public static &lt;E&gt; ArrayAdapter&lt;E&gt; newArray()
+    {
+<span class="nc" id="L63">        return ArrayAdapter.newArrayWith((E[]) EMPTY_ARRAY);</span>
+    }
+
+    public static &lt;E&gt; ArrayAdapter&lt;E&gt; newArray(Iterable&lt;? extends E&gt; source)
+    {
+<span class="nc" id="L68">        return new ArrayAdapter&lt;&gt;((E[]) Iterate.toArray(source));</span>
+    }
+
+    /**
+     * @since 8.1
+     */
+    @Override
+    public Spliterator&lt;T&gt; spliterator()
+    {
+<span class="nc" id="L77">        return Spliterators.spliterator(this.items, Spliterator.ORDERED);</span>
+    }
+
+    public static &lt;E&gt; ArrayAdapter&lt;E&gt; newArrayWithItem(Iterable&lt;? extends E&gt; iterable, E itemToAdd)
+    {
+<span class="nc" id="L82">        int oldSize = Iterate.sizeOf(iterable);</span>
+<span class="nc" id="L83">        E[] array = (E[]) new Object[oldSize + 1];</span>
+<span class="nc" id="L84">        Iterate.toArray(iterable, array);</span>
+<span class="nc" id="L85">        array[oldSize] = itemToAdd;</span>
+<span class="nc" id="L86">        return new ArrayAdapter&lt;&gt;(array);</span>
+    }
+
+    public static &lt;E&gt; ArrayAdapter&lt;E&gt; newArrayWith(E one)
+    {
+<span class="nc" id="L91">        return new ArrayAdapter&lt;&gt;((E[]) new Object[]{one});</span>
+    }
+
+    public static &lt;E&gt; ArrayAdapter&lt;E&gt; newArrayWith(E one, E two)
+    {
+<span class="nc" id="L96">        return new ArrayAdapter&lt;&gt;((E[]) new Object[]{one, two});</span>
+    }
+
+    public static &lt;E&gt; ArrayAdapter&lt;E&gt; newArrayWith(E one, E two, E three)
+    {
+<span class="nc" id="L101">        return new ArrayAdapter&lt;&gt;((E[]) new Object[]{one, two, three});</span>
+    }
+
+    public static &lt;E&gt; ArrayAdapter&lt;E&gt; newArrayWith(E one, E two, E three, E four)
+    {
+<span class="nc" id="L106">        return new ArrayAdapter&lt;&gt;((E[]) new Object[]{one, two, three, four});</span>
+    }
+
+    public static &lt;E&gt; ArrayAdapter&lt;E&gt; newArrayWith(E one, E two, E three, E four, E five)
+    {
+<span class="nc" id="L111">        return new ArrayAdapter&lt;&gt;((E[]) new Object[]{one, two, three, four, five});</span>
+    }
+
+    public static &lt;E&gt; ArrayAdapter&lt;E&gt; newArrayWith(E one, E two, E three, E four, E five, E six)
+    {
+<span class="nc" id="L116">        return new ArrayAdapter&lt;&gt;((E[]) new Object[]{one, two, three, four, five, six});</span>
+    }
+
+    public static &lt;E&gt; ArrayAdapter&lt;E&gt; newArrayWith(E one, E two, E three, E four, E five, E six, E seven)
+    {
+<span class="nc" id="L121">        return new ArrayAdapter&lt;&gt;((E[]) new Object[]{one, two, three, four, five, six, seven});</span>
+    }
+
+    public static &lt;E&gt; ArrayAdapter&lt;E&gt; newArrayWith(E... elements)
+    {
+<span class="nc" id="L126">        return new ArrayAdapter&lt;&gt;(elements.clone());</span>
+    }
+
+    @Override
+    public T set(int index, T element)
+    {
+<span class="nc" id="L132">        T oldValue = this.items[index];</span>
+<span class="nc" id="L133">        this.items[index] = element;</span>
+<span class="nc" id="L134">        return oldValue;</span>
+    }
+
+    @Override
+    public ArrayAdapter&lt;T&gt; with(T value)
+    {
+<span class="nc" id="L140">        return ArrayAdapter.newArrayWithItem(this, value);</span>
+    }
+
+    @Override
+    public ArrayAdapter&lt;T&gt; without(T element)
+    {
+<span class="nc bnc" id="L146" title="All 2 branches missed.">        if (this.contains(element))</span>
+        {
+<span class="nc" id="L148">            return ArrayAdapter.newArray(this.toList().without(element));</span>
+        }
+<span class="nc" id="L150">        return this;</span>
+    }
+
+    @Override
+    public ArrayAdapter&lt;T&gt; withAll(Iterable&lt;? extends T&gt; elements)
+    {
+<span class="nc bnc" id="L156" title="All 2 branches missed.">        if (Iterate.isEmpty(elements))</span>
+        {
+<span class="nc" id="L158">            return this;</span>
+        }
+<span class="nc" id="L160">        return ArrayAdapter.newArray(this.toList().withAll(elements));</span>
+    }
+
+    @Override
+    public ArrayAdapter&lt;T&gt; withoutAll(Iterable&lt;? extends T&gt; elements)
+    {
+<span class="nc bnc" id="L166" title="All 2 branches missed.">        if (Iterate.isEmpty(elements))</span>
+        {
+<span class="nc" id="L168">            return this;</span>
+        }
+<span class="nc bnc" id="L170" title="All 2 branches missed.">        if (Iterate.anySatisfyWith(elements, Predicates2.in(), this))</span>
+        {
+<span class="nc" id="L172">            return ArrayAdapter.newArray(this.toList().withoutAll(elements));</span>
+        }
+<span class="nc" id="L174">        return this;</span>
+    }
+
+    @Override
+    public ArrayAdapter&lt;T&gt; clone()
+    {
+<span class="nc" id="L180">        return new ArrayAdapter&lt;&gt;(this.items.clone());</span>
+    }
+
+    @Override
+    public ArrayAdapter&lt;T&gt; sortThis(Comparator&lt;? super T&gt; comparator)
+    {
+<span class="nc bnc" id="L186" title="All 2 branches missed.">        if (this.size() &gt; 1)</span>
+        {
+<span class="nc" id="L188">            Arrays.sort(this.items, 0, this.size(), comparator);</span>
+        }
+<span class="nc" id="L190">        return this;</span>
+    }
+
+    @Override
+    public FixedSizeList&lt;T&gt; tap(Procedure&lt;? super T&gt; procedure)
+    {
+<span class="nc" id="L196">        this.each(procedure);</span>
+<span class="nc" id="L197">        return this;</span>
+    }
+
+    @Override
+    public FixedSizeList&lt;T&gt; toReversed()
+    {
+<span class="nc" id="L203">        ArrayAdapter&lt;T&gt; result = this.clone();</span>
+<span class="nc" id="L204">        result.reverseThis();</span>
+<span class="nc" id="L205">        return result;</span>
+    }
+
+    private void writeObject(ObjectOutputStream objectOutputStream)
+            throws IOException
+    {
+<span class="nc" id="L211">        T[] localItems = this.items;</span>
+<span class="nc" id="L212">        int size = localItems.length;</span>
+<span class="nc" id="L213">        objectOutputStream.writeInt(size);</span>
+<span class="nc bnc" id="L214" title="All 2 branches missed.">        for (int i = 0; i &lt; size; i++)</span>
+        {
+<span class="nc" id="L216">            objectOutputStream.writeObject(localItems[i]);</span>
+        }
+<span class="nc" id="L218">    }</span>
+
+    private void readObject(ObjectInputStream objectInputStream)
+            throws IOException, ClassNotFoundException
+    {
+        // Read in array length and allocate array
+<span class="nc" id="L224">        int arrayLength = objectInputStream.readInt();</span>
+<span class="nc" id="L225">        this.items = (T[]) new Object[arrayLength];</span>
+<span class="nc" id="L226">        Object[] localItems = this.items;</span>
+
+        // Read in all elements in the proper order.
+<span class="nc bnc" id="L229" title="All 2 branches missed.">        for (int i = 0; i &lt; arrayLength; i++)</span>
+        {
+<span class="nc" id="L231">            localItems[i] = objectInputStream.readObject();</span>
+        }
+<span class="nc" id="L233">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.0.201801022044</span></div></body></html>

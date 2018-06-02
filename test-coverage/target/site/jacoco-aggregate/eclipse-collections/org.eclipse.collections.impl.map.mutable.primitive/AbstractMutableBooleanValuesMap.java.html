@@ -1,0 +1,754 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>AbstractMutableBooleanValuesMap.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Eclipse Collections Test Coverage Aggregation</a> &gt; <a href="../index.html" class="el_bundle">eclipse-collections</a> &gt; <a href="index.source.html" class="el_package">org.eclipse.collections.impl.map.mutable.primitive</a> &gt; <span class="el_source">AbstractMutableBooleanValuesMap.java</span></div><h1>AbstractMutableBooleanValuesMap.java</h1><pre class="source lang-java linenums">/*
+ * Copyright (c) 2018 Goldman Sachs.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * and Eclipse Distribution License v. 1.0 which accompany this distribution.
+ * The Eclipse Public License is available at http://www.eclipse.org/legal/epl-v10.html
+ * and the Eclipse Distribution License is available at
+ * http://www.eclipse.org/org/documents/edl-v10.php.
+ */
+
+package org.eclipse.collections.impl.map.mutable.primitive;
+
+import java.io.IOException;
+
+import org.eclipse.collections.api.BooleanIterable;
+import org.eclipse.collections.api.LazyBooleanIterable;
+import org.eclipse.collections.api.RichIterable;
+import org.eclipse.collections.api.bag.MutableBag;
+import org.eclipse.collections.api.bag.primitive.MutableBooleanBag;
+import org.eclipse.collections.api.block.function.primitive.BooleanToObjectFunction;
+import org.eclipse.collections.api.block.function.primitive.ObjectBooleanToObjectFunction;
+import org.eclipse.collections.api.block.predicate.primitive.BooleanPredicate;
+import org.eclipse.collections.api.block.procedure.primitive.BooleanProcedure;
+import org.eclipse.collections.api.collection.MutableCollection;
+import org.eclipse.collections.api.collection.primitive.ImmutableBooleanCollection;
+import org.eclipse.collections.api.collection.primitive.MutableBooleanCollection;
+import org.eclipse.collections.api.iterator.BooleanIterator;
+import org.eclipse.collections.api.list.MutableList;
+import org.eclipse.collections.api.list.primitive.MutableBooleanList;
+import org.eclipse.collections.api.map.primitive.MutableBooleanValuesMap;
+import org.eclipse.collections.api.set.primitive.MutableBooleanSet;
+import org.eclipse.collections.impl.bag.mutable.HashBag;
+import org.eclipse.collections.impl.collection.mutable.primitive.SynchronizedBooleanCollection;
+import org.eclipse.collections.impl.collection.mutable.primitive.UnmodifiableBooleanCollection;
+import org.eclipse.collections.impl.factory.Lists;
+import org.eclipse.collections.impl.factory.primitive.BooleanBags;
+import org.eclipse.collections.impl.factory.primitive.BooleanLists;
+import org.eclipse.collections.impl.lazy.primitive.LazyBooleanIterableAdapter;
+import org.eclipse.collections.impl.primitive.AbstractBooleanIterable;
+import org.eclipse.collections.impl.set.mutable.primitive.BooleanHashSet;
+
+<span class="nc" id="L42">public abstract class AbstractMutableBooleanValuesMap extends AbstractBooleanIterable implements MutableBooleanValuesMap</span>
+{
+    protected abstract int getOccupiedWithData();
+
+    protected abstract SentinelValues getSentinelValues();
+
+    protected abstract void setSentinelValuesNull();
+
+    protected abstract boolean getEmptyValue();
+
+    protected abstract boolean getValueAtIndex(int index);
+
+    protected abstract int getTableSize();
+
+    protected abstract boolean isNonSentinelAtIndex(int index);
+
+    protected void addEmptyKeyValue(boolean value)
+    {
+<span class="nc" id="L60">        this.getSentinelValues().containsZeroKey = true;</span>
+<span class="nc" id="L61">        this.getSentinelValues().zeroValue = value;</span>
+<span class="nc" id="L62">    }</span>
+
+    protected void removeEmptyKey()
+    {
+<span class="nc bnc" id="L66" title="All 2 branches missed.">        if (this.getSentinelValues().containsOneKey)</span>
+        {
+<span class="nc" id="L68">            this.getSentinelValues().containsZeroKey = false;</span>
+<span class="nc" id="L69">            this.getSentinelValues().zeroValue = this.getEmptyValue();</span>
+        }
+        else
+        {
+<span class="nc" id="L73">            this.setSentinelValuesNull();</span>
+        }
+<span class="nc" id="L75">    }</span>
+
+    protected void addRemovedKeyValue(boolean value)
+    {
+<span class="nc" id="L79">        this.getSentinelValues().containsOneKey = true;</span>
+<span class="nc" id="L80">        this.getSentinelValues().oneValue = value;</span>
+<span class="nc" id="L81">    }</span>
+
+    protected void removeRemovedKey()
+    {
+<span class="nc bnc" id="L85" title="All 2 branches missed.">        if (this.getSentinelValues().containsZeroKey)</span>
+        {
+<span class="nc" id="L87">            this.getSentinelValues().containsOneKey = false;</span>
+<span class="nc" id="L88">            this.getSentinelValues().oneValue = this.getEmptyValue();</span>
+        }
+        else
+        {
+<span class="nc" id="L92">            this.setSentinelValuesNull();</span>
+        }
+<span class="nc" id="L94">    }</span>
+
+    @Override
+    public boolean contains(boolean value)
+    {
+<span class="nc" id="L99">        return this.containsValue(value);</span>
+    }
+
+    @Override
+    public boolean containsAll(BooleanIterable source)
+    {
+<span class="nc" id="L105">        return source.allSatisfy(this::contains);</span>
+    }
+
+    @Override
+    public int size()
+    {
+<span class="nc bnc" id="L111" title="All 2 branches missed.">        return this.getOccupiedWithData() + (this.getSentinelValues() == null ? 0 : this.getSentinelValues().size());</span>
+    }
+
+    @Override
+    public boolean isEmpty()
+    {
+<span class="nc bnc" id="L117" title="All 6 branches missed.">        return this.getOccupiedWithData() == 0 &amp;&amp; (this.getSentinelValues() == null || this.getSentinelValues().size() == 0);</span>
+    }
+
+    @Override
+    public boolean notEmpty()
+    {
+<span class="nc bnc" id="L123" title="All 6 branches missed.">        return this.getOccupiedWithData() != 0 || (this.getSentinelValues() != null &amp;&amp; this.getSentinelValues().size() != 0);</span>
+    }
+
+    @Override
+    public void forEach(BooleanProcedure procedure)
+    {
+<span class="nc" id="L129">        this.each(procedure);</span>
+<span class="nc" id="L130">    }</span>
+
+    /**
+     * @since 7.0.
+     */
+    @Override
+    public void each(BooleanProcedure procedure)
+    {
+<span class="nc" id="L138">        this.forEachValue(procedure);</span>
+<span class="nc" id="L139">    }</span>
+
+    @Override
+    public void forEachValue(BooleanProcedure procedure)
+    {
+<span class="nc bnc" id="L144" title="All 2 branches missed.">        if (this.getSentinelValues() != null)</span>
+        {
+<span class="nc bnc" id="L146" title="All 2 branches missed.">            if (this.getSentinelValues().containsZeroKey)</span>
+            {
+<span class="nc" id="L148">                procedure.value(this.getSentinelValues().zeroValue);</span>
+            }
+<span class="nc bnc" id="L150" title="All 2 branches missed.">            if (this.getSentinelValues().containsOneKey)</span>
+            {
+<span class="nc" id="L152">                procedure.value(this.getSentinelValues().oneValue);</span>
+            }
+        }
+<span class="nc bnc" id="L155" title="All 2 branches missed.">        for (int i = 0; i &lt; this.getTableSize(); i++)</span>
+        {
+<span class="nc bnc" id="L157" title="All 2 branches missed.">            if (this.isNonSentinelAtIndex(i))</span>
+            {
+<span class="nc" id="L159">                procedure.value(this.getValueAtIndex(i));</span>
+            }
+        }
+<span class="nc" id="L162">    }</span>
+
+    @Override
+    public &lt;V&gt; V injectInto(V injectedValue, ObjectBooleanToObjectFunction&lt;? super V, ? extends V&gt; function)
+    {
+<span class="nc" id="L167">        V result = injectedValue;</span>
+
+<span class="nc bnc" id="L169" title="All 2 branches missed.">        if (this.getSentinelValues() != null)</span>
+        {
+<span class="nc bnc" id="L171" title="All 2 branches missed.">            if (this.getSentinelValues().containsZeroKey)</span>
+            {
+<span class="nc" id="L173">                result = function.valueOf(result, this.getSentinelValues().zeroValue);</span>
+            }
+<span class="nc bnc" id="L175" title="All 2 branches missed.">            if (this.getSentinelValues().containsOneKey)</span>
+            {
+<span class="nc" id="L177">                result = function.valueOf(result, this.getSentinelValues().oneValue);</span>
+            }
+        }
+
+<span class="nc bnc" id="L181" title="All 2 branches missed.">        for (int i = 0; i &lt; this.getTableSize(); i++)</span>
+        {
+<span class="nc bnc" id="L183" title="All 2 branches missed.">            if (this.isNonSentinelAtIndex(i))</span>
+            {
+<span class="nc" id="L185">                result = function.valueOf(result, this.getValueAtIndex(i));</span>
+            }
+        }
+
+<span class="nc" id="L189">        return result;</span>
+    }
+
+    @Override
+    public RichIterable&lt;BooleanIterable&gt; chunk(int size)
+    {
+<span class="nc bnc" id="L195" title="All 2 branches missed.">        if (size &lt;= 0)</span>
+        {
+<span class="nc" id="L197">            throw new IllegalArgumentException(&quot;Size for groups must be positive but was: &quot; + size);</span>
+        }
+<span class="nc" id="L199">        MutableList&lt;BooleanIterable&gt; result = Lists.mutable.empty();</span>
+<span class="nc bnc" id="L200" title="All 2 branches missed.">        if (this.notEmpty())</span>
+        {
+<span class="nc" id="L202">            BooleanIterator iterator = this.booleanIterator();</span>
+<span class="nc bnc" id="L203" title="All 2 branches missed.">            while (iterator.hasNext())</span>
+            {
+<span class="nc" id="L205">                MutableBooleanBag batch = BooleanBags.mutable.empty();</span>
+<span class="nc bnc" id="L206" title="All 4 branches missed.">                for (int i = 0; i &lt; size &amp;&amp; iterator.hasNext(); i++)</span>
+                {
+<span class="nc" id="L208">                    batch.add(iterator.next());</span>
+                }
+<span class="nc" id="L210">                result.add(batch);</span>
+<span class="nc" id="L211">            }</span>
+        }
+<span class="nc" id="L213">        return result;</span>
+    }
+
+    @Override
+    public void appendString(Appendable appendable, String start, String separator, String end)
+    {
+        try
+        {
+<span class="nc" id="L221">            appendable.append(start);</span>
+
+<span class="nc" id="L223">            boolean first = true;</span>
+
+<span class="nc bnc" id="L225" title="All 2 branches missed.">            if (this.getSentinelValues() != null)</span>
+            {
+<span class="nc bnc" id="L227" title="All 2 branches missed.">                if (this.getSentinelValues().containsZeroKey)</span>
+                {
+<span class="nc" id="L229">                    appendable.append(String.valueOf(this.getSentinelValues().zeroValue));</span>
+<span class="nc" id="L230">                    first = false;</span>
+                }
+<span class="nc bnc" id="L232" title="All 2 branches missed.">                if (this.getSentinelValues().containsOneKey)</span>
+                {
+<span class="nc bnc" id="L234" title="All 2 branches missed.">                    if (!first)</span>
+                    {
+<span class="nc" id="L236">                        appendable.append(separator);</span>
+                    }
+<span class="nc" id="L238">                    appendable.append(String.valueOf(this.getSentinelValues().oneValue));</span>
+<span class="nc" id="L239">                    first = false;</span>
+                }
+            }
+<span class="nc bnc" id="L242" title="All 2 branches missed.">            for (int i = 0; i &lt; this.getTableSize(); i++)</span>
+            {
+<span class="nc bnc" id="L244" title="All 2 branches missed.">                if (this.isNonSentinelAtIndex(i))</span>
+                {
+<span class="nc bnc" id="L246" title="All 2 branches missed.">                    if (!first)</span>
+                    {
+<span class="nc" id="L248">                        appendable.append(separator);</span>
+                    }
+<span class="nc" id="L250">                    appendable.append(String.valueOf(this.getValueAtIndex(i)));</span>
+<span class="nc" id="L251">                    first = false;</span>
+                }
+            }
+<span class="nc" id="L254">            appendable.append(end);</span>
+        }
+<span class="nc" id="L256">        catch (IOException e)</span>
+        {
+<span class="nc" id="L258">            throw new RuntimeException(e);</span>
+<span class="nc" id="L259">        }</span>
+<span class="nc" id="L260">    }</span>
+
+    @Override
+    public MutableBooleanBag select(BooleanPredicate predicate)
+    {
+<span class="nc" id="L265">        MutableBooleanBag result = BooleanBags.mutable.empty();</span>
+
+<span class="nc bnc" id="L267" title="All 2 branches missed.">        if (this.getSentinelValues() != null)</span>
+        {
+<span class="nc bnc" id="L269" title="All 4 branches missed.">            if (this.getSentinelValues().containsZeroKey &amp;&amp; predicate.accept(this.getSentinelValues().zeroValue))</span>
+            {
+<span class="nc" id="L271">                result.add(this.getSentinelValues().zeroValue);</span>
+            }
+<span class="nc bnc" id="L273" title="All 4 branches missed.">            if (this.getSentinelValues().containsOneKey &amp;&amp; predicate.accept(this.getSentinelValues().oneValue))</span>
+            {
+<span class="nc" id="L275">                result.add(this.getSentinelValues().oneValue);</span>
+            }
+        }
+<span class="nc bnc" id="L278" title="All 2 branches missed.">        for (int i = 0; i &lt; this.getTableSize(); i++)</span>
+        {
+<span class="nc bnc" id="L280" title="All 4 branches missed.">            if (this.isNonSentinelAtIndex(i) &amp;&amp; predicate.accept(this.getValueAtIndex(i)))</span>
+            {
+<span class="nc" id="L282">                result.add(this.getValueAtIndex(i));</span>
+            }
+        }
+
+<span class="nc" id="L286">        return result;</span>
+    }
+
+    @Override
+    public MutableBooleanBag reject(BooleanPredicate predicate)
+    {
+<span class="nc" id="L292">        MutableBooleanBag result = BooleanBags.mutable.empty();</span>
+<span class="nc bnc" id="L293" title="All 2 branches missed.">        if (this.getSentinelValues() != null)</span>
+        {
+<span class="nc bnc" id="L295" title="All 4 branches missed.">            if (this.getSentinelValues().containsZeroKey &amp;&amp; !predicate.accept(this.getSentinelValues().zeroValue))</span>
+            {
+<span class="nc" id="L297">                result.add(this.getSentinelValues().zeroValue);</span>
+            }
+<span class="nc bnc" id="L299" title="All 4 branches missed.">            if (this.getSentinelValues().containsOneKey &amp;&amp; !predicate.accept(this.getSentinelValues().oneValue))</span>
+            {
+<span class="nc" id="L301">                result.add(this.getSentinelValues().oneValue);</span>
+            }
+        }
+<span class="nc bnc" id="L304" title="All 2 branches missed.">        for (int i = 0; i &lt; this.getTableSize(); i++)</span>
+        {
+<span class="nc bnc" id="L306" title="All 4 branches missed.">            if (this.isNonSentinelAtIndex(i) &amp;&amp; !predicate.accept(this.getValueAtIndex(i)))</span>
+            {
+<span class="nc" id="L308">                result.add(this.getValueAtIndex(i));</span>
+            }
+        }
+<span class="nc" id="L311">        return result;</span>
+    }
+
+    @Override
+    public &lt;V&gt; MutableBag&lt;V&gt; collect(BooleanToObjectFunction&lt;? extends V&gt; function)
+    {
+<span class="nc" id="L317">        MutableBag&lt;V&gt; target = HashBag.newBag(this.size());</span>
+<span class="nc bnc" id="L318" title="All 2 branches missed.">        if (this.getSentinelValues() != null)</span>
+        {
+<span class="nc bnc" id="L320" title="All 2 branches missed.">            if (this.getSentinelValues().containsZeroKey)</span>
+            {
+<span class="nc" id="L322">                target.add(function.valueOf(this.getSentinelValues().zeroValue));</span>
+            }
+<span class="nc bnc" id="L324" title="All 2 branches missed.">            if (this.getSentinelValues().containsOneKey)</span>
+            {
+<span class="nc" id="L326">                target.add(function.valueOf(this.getSentinelValues().oneValue));</span>
+            }
+        }
+<span class="nc bnc" id="L329" title="All 2 branches missed.">        for (int i = 0; i &lt; this.getTableSize(); i++)</span>
+        {
+<span class="nc bnc" id="L331" title="All 2 branches missed.">            if (this.isNonSentinelAtIndex(i))</span>
+            {
+<span class="nc" id="L333">                target.add(function.valueOf(this.getValueAtIndex(i)));</span>
+            }
+        }
+<span class="nc" id="L336">        return target;</span>
+    }
+
+    @Override
+    public boolean detectIfNone(BooleanPredicate predicate, boolean value)
+    {
+<span class="nc bnc" id="L342" title="All 2 branches missed.">        if (this.getSentinelValues() != null)</span>
+        {
+<span class="nc bnc" id="L344" title="All 4 branches missed.">            if (this.getSentinelValues().containsZeroKey &amp;&amp; predicate.accept(this.getSentinelValues().zeroValue))</span>
+            {
+<span class="nc" id="L346">                return this.getSentinelValues().zeroValue;</span>
+            }
+<span class="nc bnc" id="L348" title="All 4 branches missed.">            if (this.getSentinelValues().containsOneKey &amp;&amp; predicate.accept(this.getSentinelValues().oneValue))</span>
+            {
+<span class="nc" id="L350">                return this.getSentinelValues().oneValue;</span>
+            }
+        }
+<span class="nc bnc" id="L353" title="All 2 branches missed.">        for (int i = 0; i &lt; this.getTableSize(); i++)</span>
+        {
+<span class="nc bnc" id="L355" title="All 4 branches missed.">            if (this.isNonSentinelAtIndex(i) &amp;&amp; predicate.accept(this.getValueAtIndex(i)))</span>
+            {
+<span class="nc" id="L357">                return this.getValueAtIndex(i);</span>
+            }
+        }
+<span class="nc" id="L360">        return value;</span>
+    }
+
+    @Override
+    public int count(BooleanPredicate predicate)
+    {
+<span class="nc" id="L366">        int count = 0;</span>
+<span class="nc bnc" id="L367" title="All 2 branches missed.">        if (this.getSentinelValues() != null)</span>
+        {
+<span class="nc bnc" id="L369" title="All 4 branches missed.">            if (this.getSentinelValues().containsZeroKey &amp;&amp; predicate.accept(this.getSentinelValues().zeroValue))</span>
+            {
+<span class="nc" id="L371">                count++;</span>
+            }
+<span class="nc bnc" id="L373" title="All 4 branches missed.">            if (this.getSentinelValues().containsOneKey &amp;&amp; predicate.accept(this.getSentinelValues().oneValue))</span>
+            {
+<span class="nc" id="L375">                count++;</span>
+            }
+        }
+<span class="nc bnc" id="L378" title="All 2 branches missed.">        for (int i = 0; i &lt; this.getTableSize(); i++)</span>
+        {
+<span class="nc bnc" id="L380" title="All 4 branches missed.">            if (this.isNonSentinelAtIndex(i) &amp;&amp; predicate.accept(this.getValueAtIndex(i)))</span>
+            {
+<span class="nc" id="L382">                count++;</span>
+            }
+        }
+<span class="nc" id="L385">        return count;</span>
+    }
+
+    @Override
+    public boolean anySatisfy(BooleanPredicate predicate)
+    {
+<span class="nc bnc" id="L391" title="All 2 branches missed.">        if (this.getSentinelValues() != null)</span>
+        {
+<span class="nc bnc" id="L393" title="All 4 branches missed.">            if (this.getSentinelValues().containsZeroKey &amp;&amp; predicate.accept(this.getSentinelValues().zeroValue))</span>
+            {
+<span class="nc" id="L395">                return true;</span>
+            }
+<span class="nc bnc" id="L397" title="All 4 branches missed.">            if (this.getSentinelValues().containsOneKey &amp;&amp; predicate.accept(this.getSentinelValues().oneValue))</span>
+            {
+<span class="nc" id="L399">                return true;</span>
+            }
+        }
+<span class="nc bnc" id="L402" title="All 2 branches missed.">        for (int i = 0; i &lt; this.getTableSize(); i++)</span>
+        {
+<span class="nc bnc" id="L404" title="All 4 branches missed.">            if (this.isNonSentinelAtIndex(i) &amp;&amp; predicate.accept(this.getValueAtIndex(i)))</span>
+            {
+<span class="nc" id="L406">                return true;</span>
+            }
+        }
+<span class="nc" id="L409">        return false;</span>
+    }
+
+    @Override
+    public boolean allSatisfy(BooleanPredicate predicate)
+    {
+<span class="nc bnc" id="L415" title="All 2 branches missed.">        if (this.getSentinelValues() != null)</span>
+        {
+<span class="nc bnc" id="L417" title="All 4 branches missed.">            if (this.getSentinelValues().containsZeroKey &amp;&amp; !predicate.accept(this.getSentinelValues().zeroValue))</span>
+            {
+<span class="nc" id="L419">                return false;</span>
+            }
+<span class="nc bnc" id="L421" title="All 4 branches missed.">            if (this.getSentinelValues().containsOneKey &amp;&amp; !predicate.accept(this.getSentinelValues().oneValue))</span>
+            {
+<span class="nc" id="L423">                return false;</span>
+            }
+        }
+<span class="nc bnc" id="L426" title="All 2 branches missed.">        for (int i = 0; i &lt; this.getTableSize(); i++)</span>
+        {
+<span class="nc bnc" id="L428" title="All 4 branches missed.">            if (this.isNonSentinelAtIndex(i) &amp;&amp; !predicate.accept(this.getValueAtIndex(i)))</span>
+            {
+<span class="nc" id="L430">                return false;</span>
+            }
+        }
+<span class="nc" id="L433">        return true;</span>
+    }
+
+    @Override
+    public boolean noneSatisfy(BooleanPredicate predicate)
+    {
+<span class="nc bnc" id="L439" title="All 2 branches missed.">        return !this.anySatisfy(predicate);</span>
+    }
+
+    @Override
+    public boolean[] toArray()
+    {
+<span class="nc" id="L445">        boolean[] array = new boolean[this.size()];</span>
+<span class="nc" id="L446">        int index = 0;</span>
+
+<span class="nc bnc" id="L448" title="All 2 branches missed.">        if (this.getSentinelValues() != null)</span>
+        {
+<span class="nc bnc" id="L450" title="All 2 branches missed.">            if (this.getSentinelValues().containsZeroKey)</span>
+            {
+<span class="nc" id="L452">                array[index] = this.getSentinelValues().zeroValue;</span>
+<span class="nc" id="L453">                index++;</span>
+            }
+<span class="nc bnc" id="L455" title="All 2 branches missed.">            if (this.getSentinelValues().containsOneKey)</span>
+            {
+<span class="nc" id="L457">                array[index] = this.getSentinelValues().oneValue;</span>
+<span class="nc" id="L458">                index++;</span>
+            }
+        }
+<span class="nc bnc" id="L461" title="All 2 branches missed.">        for (int i = 0; i &lt; this.getTableSize(); i++)</span>
+        {
+<span class="nc bnc" id="L463" title="All 2 branches missed.">            if (this.isNonSentinelAtIndex(i))</span>
+            {
+<span class="nc" id="L465">                array[index] = this.getValueAtIndex(i);</span>
+<span class="nc" id="L466">                index++;</span>
+            }
+        }
+
+<span class="nc" id="L470">        return array;</span>
+    }
+
+<span class="nc" id="L473">    protected static class SentinelValues extends AbstractSentinelValues</span>
+    {
+        protected boolean zeroValue;
+        protected boolean oneValue;
+
+        public boolean containsValue(boolean value)
+        {
+<span class="nc bnc" id="L480" title="All 4 branches missed.">            boolean valueEqualsZeroValue = this.containsZeroKey &amp;&amp; this.zeroValue == value;</span>
+<span class="nc bnc" id="L481" title="All 4 branches missed.">            boolean valueEqualsOneValue = this.containsOneKey &amp;&amp; this.oneValue == value;</span>
+<span class="nc bnc" id="L482" title="All 4 branches missed.">            return valueEqualsZeroValue || valueEqualsOneValue;</span>
+        }
+    }
+
+<span class="nc" id="L486">    protected abstract class AbstractBooleanValuesCollection implements MutableBooleanCollection</span>
+    {
+        @Override
+        public void clear()
+        {
+<span class="nc" id="L491">            AbstractMutableBooleanValuesMap.this.clear();</span>
+<span class="nc" id="L492">        }</span>
+
+        @Override
+        public MutableBooleanCollection select(BooleanPredicate predicate)
+        {
+<span class="nc" id="L497">            return AbstractMutableBooleanValuesMap.this.select(predicate);</span>
+        }
+
+        @Override
+        public MutableBooleanCollection reject(BooleanPredicate predicate)
+        {
+<span class="nc" id="L503">            return AbstractMutableBooleanValuesMap.this.reject(predicate);</span>
+        }
+
+        @Override
+        public boolean detectIfNone(BooleanPredicate predicate, boolean ifNone)
+        {
+<span class="nc" id="L509">            return AbstractMutableBooleanValuesMap.this.detectIfNone(predicate, ifNone);</span>
+        }
+
+        @Override
+        public &lt;V&gt; MutableCollection&lt;V&gt; collect(BooleanToObjectFunction&lt;? extends V&gt; function)
+        {
+<span class="nc" id="L515">            return AbstractMutableBooleanValuesMap.this.collect(function);</span>
+        }
+
+        @Override
+        public &lt;T&gt; T injectInto(T injectedValue, ObjectBooleanToObjectFunction&lt;? super T, ? extends T&gt; function)
+        {
+<span class="nc" id="L521">            return AbstractMutableBooleanValuesMap.this.injectInto(injectedValue, function);</span>
+        }
+
+        @Override
+        public RichIterable&lt;BooleanIterable&gt; chunk(int size)
+        {
+<span class="nc" id="L527">            return AbstractMutableBooleanValuesMap.this.chunk(size);</span>
+        }
+
+        @Override
+        public MutableBooleanCollection with(boolean element)
+        {
+<span class="nc" id="L533">            throw new UnsupportedOperationException(&quot;Cannot call with() on &quot; + this.getClass().getSimpleName());</span>
+        }
+
+        @Override
+        public MutableBooleanCollection without(boolean element)
+        {
+<span class="nc" id="L539">            throw new UnsupportedOperationException(&quot;Cannot call without() on &quot; + this.getClass().getSimpleName());</span>
+        }
+
+        @Override
+        public MutableBooleanCollection withAll(BooleanIterable elements)
+        {
+<span class="nc" id="L545">            throw new UnsupportedOperationException(&quot;Cannot call withAll() on &quot; + this.getClass().getSimpleName());</span>
+        }
+
+        @Override
+        public MutableBooleanCollection withoutAll(BooleanIterable elements)
+        {
+<span class="nc" id="L551">            throw new UnsupportedOperationException(&quot;Cannot call withoutAll() on &quot; + this.getClass().getSimpleName());</span>
+        }
+
+        @Override
+        public MutableBooleanCollection asUnmodifiable()
+        {
+<span class="nc" id="L557">            return UnmodifiableBooleanCollection.of(this);</span>
+        }
+
+        @Override
+        public MutableBooleanCollection asSynchronized()
+        {
+<span class="nc" id="L563">            return SynchronizedBooleanCollection.of(this);</span>
+        }
+
+        @Override
+        public ImmutableBooleanCollection toImmutable()
+        {
+<span class="nc" id="L569">            return BooleanLists.immutable.withAll(this);</span>
+        }
+
+        @Override
+        public boolean contains(boolean value)
+        {
+<span class="nc" id="L575">            return AbstractMutableBooleanValuesMap.this.containsValue(value);</span>
+        }
+
+        @Override
+        public boolean containsAll(boolean... source)
+        {
+<span class="nc" id="L581">            return AbstractMutableBooleanValuesMap.this.containsAll(source);</span>
+        }
+
+        @Override
+        public boolean containsAll(BooleanIterable source)
+        {
+<span class="nc" id="L587">            return AbstractMutableBooleanValuesMap.this.containsAll(source);</span>
+        }
+
+        @Override
+        public MutableBooleanList toList()
+        {
+<span class="nc" id="L593">            return AbstractMutableBooleanValuesMap.this.toList();</span>
+        }
+
+        @Override
+        public MutableBooleanSet toSet()
+        {
+<span class="nc" id="L599">            return AbstractMutableBooleanValuesMap.this.toSet();</span>
+        }
+
+        @Override
+        public MutableBooleanBag toBag()
+        {
+<span class="nc" id="L605">            return AbstractMutableBooleanValuesMap.this.toBag();</span>
+        }
+
+        @Override
+        public LazyBooleanIterable asLazy()
+        {
+<span class="nc" id="L611">            return new LazyBooleanIterableAdapter(this);</span>
+        }
+
+        @Override
+        public boolean isEmpty()
+        {
+<span class="nc" id="L617">            return AbstractMutableBooleanValuesMap.this.isEmpty();</span>
+        }
+
+        @Override
+        public boolean notEmpty()
+        {
+<span class="nc" id="L623">            return AbstractMutableBooleanValuesMap.this.notEmpty();</span>
+        }
+
+        @Override
+        public String makeString()
+        {
+<span class="nc" id="L629">            return AbstractMutableBooleanValuesMap.this.makeString();</span>
+        }
+
+        @Override
+        public String makeString(String separator)
+        {
+<span class="nc" id="L635">            return AbstractMutableBooleanValuesMap.this.makeString(separator);</span>
+        }
+
+        @Override
+        public String makeString(String start, String separator, String end)
+        {
+<span class="nc" id="L641">            return AbstractMutableBooleanValuesMap.this.makeString(start, separator, end);</span>
+        }
+
+        @Override
+        public void appendString(Appendable appendable)
+        {
+<span class="nc" id="L647">            AbstractMutableBooleanValuesMap.this.appendString(appendable);</span>
+<span class="nc" id="L648">        }</span>
+
+        @Override
+        public void appendString(Appendable appendable, String separator)
+        {
+<span class="nc" id="L653">            AbstractMutableBooleanValuesMap.this.appendString(appendable, separator);</span>
+<span class="nc" id="L654">        }</span>
+
+        @Override
+        public void forEach(BooleanProcedure procedure)
+        {
+<span class="nc" id="L659">            this.each(procedure);</span>
+<span class="nc" id="L660">        }</span>
+
+        @Override
+        public void each(BooleanProcedure procedure)
+        {
+<span class="nc" id="L665">            AbstractMutableBooleanValuesMap.this.forEach(procedure);</span>
+<span class="nc" id="L666">        }</span>
+
+        @Override
+        public int count(BooleanPredicate predicate)
+        {
+<span class="nc" id="L671">            return AbstractMutableBooleanValuesMap.this.count(predicate);</span>
+        }
+
+        @Override
+        public boolean anySatisfy(BooleanPredicate predicate)
+        {
+<span class="nc" id="L677">            return AbstractMutableBooleanValuesMap.this.anySatisfy(predicate);</span>
+        }
+
+        @Override
+        public boolean allSatisfy(BooleanPredicate predicate)
+        {
+<span class="nc" id="L683">            return AbstractMutableBooleanValuesMap.this.allSatisfy(predicate);</span>
+        }
+
+        @Override
+        public boolean noneSatisfy(BooleanPredicate predicate)
+        {
+<span class="nc" id="L689">            return AbstractMutableBooleanValuesMap.this.noneSatisfy(predicate);</span>
+        }
+
+        @Override
+        public boolean add(boolean element)
+        {
+<span class="nc" id="L695">            throw new UnsupportedOperationException(&quot;Cannot call add() on &quot; + this.getClass().getSimpleName());</span>
+        }
+
+        @Override
+        public boolean addAll(boolean... source)
+        {
+<span class="nc" id="L701">            throw new UnsupportedOperationException(&quot;Cannot call addAll() on &quot; + this.getClass().getSimpleName());</span>
+        }
+
+        @Override
+        public boolean addAll(BooleanIterable source)
+        {
+<span class="nc" id="L707">            throw new UnsupportedOperationException(&quot;Cannot call addAll() on &quot; + this.getClass().getSimpleName());</span>
+        }
+
+        @Override
+        public boolean removeAll(BooleanIterable source)
+        {
+<span class="nc" id="L713">            int oldSize = AbstractMutableBooleanValuesMap.this.size();</span>
+
+<span class="nc" id="L715">            BooleanIterator iterator = source.booleanIterator();</span>
+<span class="nc bnc" id="L716" title="All 2 branches missed.">            while (iterator.hasNext())</span>
+            {
+<span class="nc" id="L718">                this.remove(iterator.next());</span>
+            }
+<span class="nc bnc" id="L720" title="All 2 branches missed.">            return oldSize != AbstractMutableBooleanValuesMap.this.size();</span>
+        }
+
+        @Override
+        public boolean removeAll(boolean... source)
+        {
+<span class="nc" id="L726">            int oldSize = AbstractMutableBooleanValuesMap.this.size();</span>
+
+<span class="nc bnc" id="L728" title="All 2 branches missed.">            for (boolean item : source)</span>
+            {
+<span class="nc" id="L730">                this.remove(item);</span>
+            }
+<span class="nc bnc" id="L732" title="All 2 branches missed.">            return oldSize != AbstractMutableBooleanValuesMap.this.size();</span>
+        }
+
+        @Override
+        public boolean retainAll(boolean... source)
+        {
+<span class="nc" id="L738">            return this.retainAll(BooleanHashSet.newSetWith(source));</span>
+        }
+
+        @Override
+        public int size()
+        {
+<span class="nc" id="L744">            return AbstractMutableBooleanValuesMap.this.size();</span>
+        }
+
+        @Override
+        public boolean[] toArray()
+        {
+<span class="nc" id="L750">            return AbstractMutableBooleanValuesMap.this.toArray();</span>
+        }
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.0.201801022044</span></div></body></html>

@@ -1,0 +1,189 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>Procedures2.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Eclipse Collections Test Coverage Aggregation</a> &gt; <a href="../index.html" class="el_bundle">eclipse-collections</a> &gt; <a href="index.source.html" class="el_package">org.eclipse.collections.impl.block.factory</a> &gt; <span class="el_source">Procedures2.java</span></div><h1>Procedures2.java</h1><pre class="source lang-java linenums">/*
+ * Copyright (c) 2018 Goldman Sachs and others.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * and Eclipse Distribution License v. 1.0 which accompany this distribution.
+ * The Eclipse Public License is available at http://www.eclipse.org/legal/epl-v10.html
+ * and the Eclipse Distribution License is available at
+ * http://www.eclipse.org/org/documents/edl-v10.php.
+ */
+
+package org.eclipse.collections.impl.block.factory;
+
+import java.util.Collection;
+import java.util.DoubleSummaryStatistics;
+import java.util.IntSummaryStatistics;
+import java.util.LongSummaryStatistics;
+
+import org.eclipse.collections.api.block.function.Function;
+import org.eclipse.collections.api.block.function.Function0;
+import org.eclipse.collections.api.block.function.Function3;
+import org.eclipse.collections.api.block.function.primitive.DoubleFunction;
+import org.eclipse.collections.api.block.function.primitive.FloatFunction;
+import org.eclipse.collections.api.block.function.primitive.IntFunction;
+import org.eclipse.collections.api.block.function.primitive.LongFunction;
+import org.eclipse.collections.api.block.procedure.Procedure;
+import org.eclipse.collections.api.block.procedure.Procedure2;
+import org.eclipse.collections.impl.block.procedure.checked.CheckedProcedure2;
+import org.eclipse.collections.impl.block.procedure.checked.ThrowingProcedure2;
+
+/**
+ * Contains factory methods for creating {@link Procedure2} instances.
+ */
+public final class Procedures2
+{
+<span class="nc" id="L35">    public static final Procedure2&lt;?, ?&gt; ADD_TO_COLLECTION = new AddToCollection&lt;&gt;();</span>
+<span class="nc" id="L36">    public static final Procedure2&lt;?, ?&gt; REMOVE_FROM_COLLECTION = new RemoveFromCollection&lt;&gt;();</span>
+
+    private Procedures2()
+<span class="nc" id="L39">    {</span>
+<span class="nc" id="L40">        throw new AssertionError(&quot;Suppress default constructor for noninstantiability&quot;);</span>
+    }
+
+    /**
+     * Allows a lambda or anonymous inner class that needs to throw a checked exception to be safely wrapped as a
+     * Procedure2 that will throw a RuntimeException, wrapping the checked exception that is the cause.
+     */
+    public static &lt;T, P&gt; Procedure2&lt;T, P&gt; throwing(ThrowingProcedure2&lt;T, P&gt; throwingProcedure2)
+    {
+<span class="nc" id="L49">        return new ThrowingProcedure2Adapter&lt;&gt;(throwingProcedure2);</span>
+    }
+
+    /**
+     * Allows a lambda or anonymous inner class that needs to throw a checked exception to be safely wrapped as a
+     * Procedure2 that will throw a user specified RuntimeException based on the provided function. The function
+     * is passed the current element and the checked exception that was thrown as context arguments.
+     */
+    public static &lt;T1, T2&gt; Procedure2&lt;T1, T2&gt; throwing(
+            ThrowingProcedure2&lt;T1, T2&gt; throwingProcedure,
+            Function3&lt;T1, T2, ? super Throwable, ? extends RuntimeException&gt; rethrow)
+    {
+<span class="nc" id="L61">        return (one, two) -&gt;</span>
+        {
+            try
+            {
+<span class="nc" id="L65">                throwingProcedure.safeValue(one, two);</span>
+            }
+<span class="nc" id="L67">            catch (RuntimeException e)</span>
+            {
+<span class="nc" id="L69">                throw e;</span>
+            }
+<span class="nc" id="L71">            catch (Throwable t)</span>
+            {
+<span class="nc" id="L73">                throw rethrow.value(one, two, t);</span>
+<span class="nc" id="L74">            }</span>
+<span class="nc" id="L75">        };</span>
+    }
+
+    public static &lt;T, P&gt; Procedure2&lt;T, P&gt; fromProcedure(Procedure&lt;? super T&gt; procedure)
+    {
+<span class="nc" id="L80">        return new ProcedureAdapter&lt;&gt;(procedure);</span>
+    }
+
+    public static &lt;T&gt; Procedure2&lt;T, Collection&lt;T&gt;&gt; addToCollection()
+    {
+<span class="nc" id="L85">        return (Procedure2&lt;T, Collection&lt;T&gt;&gt;) ADD_TO_COLLECTION;</span>
+    }
+
+    public static &lt;T&gt; Procedure2&lt;T, Collection&lt;T&gt;&gt; removeFromCollection()
+    {
+<span class="nc" id="L90">        return (Procedure2&lt;T, Collection&lt;T&gt;&gt;) REMOVE_FROM_COLLECTION;</span>
+    }
+
+    /**
+     * Use with {@link org.eclipse.collections.api.RichIterable#aggregateInPlaceBy(Function, Function0, Procedure2)}
+     *
+     * @since 9.2.
+     */
+    public static &lt;T&gt; Procedure2&lt;DoubleSummaryStatistics, T&gt; summarizeDouble(DoubleFunction&lt;T&gt; function)
+    {
+<span class="nc" id="L100">        return (DoubleSummaryStatistics dss, T value) -&gt; dss.accept(function.doubleValueOf(value));</span>
+    }
+
+    /**
+     * Use with {@link org.eclipse.collections.api.RichIterable#aggregateInPlaceBy(Function, Function0, Procedure2)}
+     *
+     * @since 9.2.
+     */
+    public static &lt;T&gt; Procedure2&lt;DoubleSummaryStatistics, T&gt; summarizeFloat(FloatFunction&lt;T&gt; function)
+    {
+<span class="nc" id="L110">        return (DoubleSummaryStatistics dss, T value) -&gt; dss.accept((double) function.floatValueOf(value));</span>
+    }
+
+    /**
+     * Use with {@link org.eclipse.collections.api.RichIterable#aggregateInPlaceBy(Function, Function0, Procedure2)}
+     *
+     * @since 9.2.
+     */
+    public static &lt;T&gt; Procedure2&lt;IntSummaryStatistics, T&gt; summarizeInt(IntFunction&lt;T&gt; function)
+    {
+<span class="nc" id="L120">        return (IntSummaryStatistics iss, T value) -&gt; iss.accept(function.intValueOf(value));</span>
+    }
+
+    /**
+     * Use with {@link org.eclipse.collections.api.RichIterable#aggregateInPlaceBy(Function, Function0, Procedure2)}
+     *
+     * @since 9.2.
+     */
+    public static &lt;T&gt; Procedure2&lt;LongSummaryStatistics, T&gt; summarizeLong(LongFunction&lt;T&gt; function)
+    {
+<span class="nc" id="L130">        return (LongSummaryStatistics lss, T value) -&gt; lss.accept(function.longValueOf(value));</span>
+    }
+
+    private static final class ProcedureAdapter&lt;T, P&gt; implements Procedure2&lt;T, P&gt;
+    {
+        private static final long serialVersionUID = 1L;
+        private final Procedure&lt;? super T&gt; procedure;
+
+        private ProcedureAdapter(Procedure&lt;? super T&gt; procedure)
+<span class="nc" id="L139">        {</span>
+<span class="nc" id="L140">            this.procedure = procedure;</span>
+<span class="nc" id="L141">        }</span>
+
+        @Override
+        public void value(T each, P parameter)
+        {
+<span class="nc" id="L146">            this.procedure.value(each);</span>
+<span class="nc" id="L147">        }</span>
+    }
+
+    private static class AddToCollection&lt;T&gt; implements Procedure2&lt;T, Collection&lt;T&gt;&gt;
+    {
+        private static final long serialVersionUID = 1L;
+
+        @Override
+        public void value(T each, Collection&lt;T&gt; target)
+        {
+<span class="nc" id="L157">            target.add(each);</span>
+<span class="nc" id="L158">        }</span>
+    }
+
+    private static class RemoveFromCollection&lt;T&gt; implements Procedure2&lt;T, Collection&lt;T&gt;&gt;
+    {
+        private static final long serialVersionUID = 1L;
+
+        @Override
+        public void value(T each, Collection&lt;T&gt; target)
+        {
+<span class="nc" id="L168">            target.remove(each);</span>
+<span class="nc" id="L169">        }</span>
+    }
+
+    private static final class ThrowingProcedure2Adapter&lt;T, P&gt; extends CheckedProcedure2&lt;T, P&gt;
+    {
+        private static final long serialVersionUID = 1L;
+        private final ThrowingProcedure2&lt;T, P&gt; throwingProcedure2;
+
+        private ThrowingProcedure2Adapter(ThrowingProcedure2&lt;T, P&gt; throwingProcedure2)
+<span class="nc" id="L178">        {</span>
+<span class="nc" id="L179">            this.throwingProcedure2 = throwingProcedure2;</span>
+<span class="nc" id="L180">        }</span>
+
+        @Override
+        public void safeValue(T object, P parameter) throws Exception
+        {
+<span class="nc" id="L185">            this.throwingProcedure2.safeValue(object, parameter);</span>
+<span class="nc" id="L186">        }</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.0.201801022044</span></div></body></html>

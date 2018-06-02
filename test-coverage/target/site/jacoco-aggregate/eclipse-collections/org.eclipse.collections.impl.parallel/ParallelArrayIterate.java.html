@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>ParallelArrayIterate.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Eclipse Collections Test Coverage Aggregation</a> &gt; <a href="../index.html" class="el_bundle">eclipse-collections</a> &gt; <a href="index.source.html" class="el_package">org.eclipse.collections.impl.parallel</a> &gt; <span class="el_source">ParallelArrayIterate.java</span></div><h1>ParallelArrayIterate.java</h1><pre class="source lang-java linenums">/*
+ * Copyright (c) 2016 Goldman Sachs.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * and Eclipse Distribution License v. 1.0 which accompany this distribution.
+ * The Eclipse Public License is available at http://www.eclipse.org/legal/epl-v10.html
+ * and the Eclipse Distribution License is available at
+ * http://www.eclipse.org/org/documents/edl-v10.php.
+ */
+
+package org.eclipse.collections.impl.parallel;
+
+import java.util.concurrent.Executor;
+
+import org.eclipse.collections.api.block.procedure.Procedure;
+import org.eclipse.collections.impl.utility.ArrayIterate;
+
+import static org.eclipse.collections.impl.factory.Iterables.iList;
+
+/**
+ * The ParallelArrayIterate class contains a parallel forEach algorithm that work with Java arrays.  The forEach
+ * algorithm employs a batching fork and join approach approach.  All Collections that are not array based use
+ * ParallelArrayIterate to parallelize, by converting themselves to an array using toArray().
+ */
+public final class ParallelArrayIterate
+{
+    private ParallelArrayIterate()
+<span class="nc" id="L28">    {</span>
+<span class="nc" id="L29">        throw new AssertionError(&quot;Suppress default constructor for noninstantiability&quot;);</span>
+    }
+
+    public static &lt;T, BT extends Procedure&lt;? super T&gt;&gt; void forEach(
+            T[] array,
+            ProcedureFactory&lt;BT&gt; procedureFactory,
+            Combiner&lt;BT&gt; combiner)
+    {
+<span class="nc" id="L37">        int taskCount = Math.max(ParallelIterate.DEFAULT_PARALLEL_TASK_COUNT, array.length / ParallelIterate.DEFAULT_MIN_FORK_SIZE);</span>
+<span class="nc" id="L38">        ParallelArrayIterate.forEach(array, procedureFactory, combiner, ParallelIterate.DEFAULT_MIN_FORK_SIZE, taskCount);</span>
+<span class="nc" id="L39">    }</span>
+
+    public static &lt;T, BT extends Procedure&lt;? super T&gt;&gt; void forEach(
+            T[] array,
+            ProcedureFactory&lt;BT&gt; procedureFactory,
+            Combiner&lt;BT&gt; combiner,
+            int minForkSize,
+            int taskCount)
+    {
+<span class="nc" id="L48">        ParallelArrayIterate.forEachOn(array, procedureFactory, combiner, minForkSize, taskCount, ParallelIterate.EXECUTOR_SERVICE);</span>
+<span class="nc" id="L49">    }</span>
+
+    public static &lt;T, BT extends Procedure&lt;? super T&gt;&gt; void forEachOn(
+            T[] array,
+            ProcedureFactory&lt;BT&gt; procedureFactory,
+            Combiner&lt;BT&gt; combiner,
+            int minForkSize,
+            int taskCount,
+            Executor executor)
+    {
+<span class="nc bnc" id="L59" title="All 2 branches missed.">        if (ArrayIterate.notEmpty(array))</span>
+        {
+<span class="nc" id="L61">            int size = array.length;</span>
+<span class="nc bnc" id="L62" title="All 2 branches missed.">            if (size &lt; minForkSize)</span>
+            {
+<span class="nc" id="L64">                BT procedure = procedureFactory.create();</span>
+<span class="nc" id="L65">                ArrayIterate.forEach(array, procedure);</span>
+<span class="nc" id="L66">                ParallelArrayIterate.combineSingleProcedure(combiner, procedure);</span>
+<span class="nc" id="L67">            }</span>
+            else
+            {
+<span class="nc" id="L70">                int threadCount = Math.min(size, taskCount);</span>
+<span class="nc" id="L71">                new ArrayProcedureFJTaskRunner&lt;&gt;(combiner, threadCount).executeAndCombine(executor, procedureFactory, array);</span>
+            }
+        }
+<span class="nc" id="L74">    }</span>
+
+    private static &lt;T, BT extends Procedure&lt;? super T&gt;&gt; void combineSingleProcedure(Combiner&lt;BT&gt; combiner, BT procedure)
+    {
+<span class="nc bnc" id="L78" title="All 2 branches missed.">        if (combiner.useCombineOne())</span>
+        {
+<span class="nc" id="L80">            combiner.combineOne(procedure);</span>
+        }
+        else
+        {
+<span class="nc" id="L84">            combiner.combineAll(iList(procedure));</span>
+        }
+<span class="nc" id="L86">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.0.201801022044</span></div></body></html>

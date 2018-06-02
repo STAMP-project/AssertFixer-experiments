@@ -1,0 +1,433 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>ImmutableTreeMap.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Eclipse Collections Test Coverage Aggregation</a> &gt; <a href="../index.html" class="el_bundle">eclipse-collections</a> &gt; <a href="index.source.html" class="el_package">org.eclipse.collections.impl.map.sorted.immutable</a> &gt; <span class="el_source">ImmutableTreeMap.java</span></div><h1>ImmutableTreeMap.java</h1><pre class="source lang-java linenums">/*
+ * Copyright (c) 2016 Goldman Sachs.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * and Eclipse Distribution License v. 1.0 which accompany this distribution.
+ * The Eclipse Public License is available at http://www.eclipse.org/legal/epl-v10.html
+ * and the Eclipse Distribution License is available at
+ * http://www.eclipse.org/org/documents/edl-v10.php.
+ */
+
+package org.eclipse.collections.impl.map.sorted.immutable;
+
+import java.io.Serializable;
+import java.lang.reflect.Array;
+import java.util.AbstractSet;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Comparator;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.NoSuchElementException;
+import java.util.Set;
+import java.util.SortedMap;
+
+import org.eclipse.collections.api.RichIterable;
+import org.eclipse.collections.api.block.procedure.Procedure2;
+import org.eclipse.collections.api.map.ImmutableMap;
+import org.eclipse.collections.api.map.sorted.ImmutableSortedMap;
+import org.eclipse.collections.api.map.sorted.MutableSortedMap;
+import org.eclipse.collections.api.set.sorted.MutableSortedSet;
+import org.eclipse.collections.api.tuple.Pair;
+import org.eclipse.collections.impl.block.factory.Comparators;
+import org.eclipse.collections.impl.block.factory.Predicates2;
+import org.eclipse.collections.impl.factory.SortedMaps;
+import org.eclipse.collections.impl.factory.SortedSets;
+import org.eclipse.collections.impl.list.mutable.FastList;
+import org.eclipse.collections.impl.set.sorted.mutable.TreeSortedSet;
+import org.eclipse.collections.impl.tuple.ImmutableEntry;
+import org.eclipse.collections.impl.utility.ArrayIterate;
+import org.eclipse.collections.impl.utility.Iterate;
+import org.eclipse.collections.impl.utility.MapIterate;
+
+/**
+ * @see ImmutableSortedMap
+ */
+public class ImmutableTreeMap&lt;K, V&gt;
+        extends AbstractImmutableSortedMap&lt;K, V&gt;
+        implements Serializable
+{
+    private final K[] keys;
+    private final V[] values;
+    private final Comparator&lt;? super K&gt; comparator;
+
+    public ImmutableTreeMap(SortedMap&lt;K, V&gt; sortedMap)
+<span class="nc" id="L55">    {</span>
+<span class="nc bnc" id="L56" title="All 2 branches missed.">        if (sortedMap == null)</span>
+        {
+<span class="nc" id="L58">            throw new NullPointerException(&quot;Cannot convert null to ImmutableSortedMap&quot;);</span>
+        }
+<span class="nc" id="L60">        this.comparator = sortedMap.comparator();</span>
+<span class="nc" id="L61">        K[] keysCopy = (K[]) new Object[sortedMap.size()];</span>
+<span class="nc" id="L62">        V[] valuesCopy = (V[]) new Object[sortedMap.size()];</span>
+<span class="nc" id="L63">        int index = 0;</span>
+<span class="nc bnc" id="L64" title="All 2 branches missed.">        for (Entry&lt;K, V&gt; entry : sortedMap.entrySet())</span>
+        {
+<span class="nc" id="L66">            keysCopy[index] = entry.getKey();</span>
+<span class="nc" id="L67">            valuesCopy[index] = entry.getValue();</span>
+<span class="nc" id="L68">            index++;</span>
+<span class="nc" id="L69">        }</span>
+<span class="nc" id="L70">        this.keys = keysCopy;</span>
+<span class="nc" id="L71">        this.values = valuesCopy;</span>
+<span class="nc" id="L72">    }</span>
+
+    public static &lt;K, V&gt; ImmutableSortedMap&lt;K, V&gt; newMap(SortedMap&lt;K, V&gt; sortedMap)
+    {
+<span class="nc" id="L76">        return new ImmutableTreeMap&lt;&gt;(sortedMap);</span>
+    }
+
+    @Override
+    public boolean equals(Object object)
+    {
+<span class="nc bnc" id="L82" title="All 2 branches missed.">        if (this == object)</span>
+        {
+<span class="nc" id="L84">            return true;</span>
+        }
+<span class="nc bnc" id="L86" title="All 2 branches missed.">        if (!(object instanceof Map))</span>
+        {
+<span class="nc" id="L88">            return false;</span>
+        }
+<span class="nc" id="L90">        Map&lt;?, ?&gt; other = (Map&lt;?, ?&gt;) object;</span>
+<span class="nc bnc" id="L91" title="All 2 branches missed.">        if (this.size() != other.size())</span>
+        {
+<span class="nc" id="L93">            return false;</span>
+        }
+<span class="nc bnc" id="L95" title="All 2 branches missed.">        for (int index = 0; index &lt; this.size(); index++)</span>
+        {
+<span class="nc bnc" id="L97" title="All 2 branches missed.">            if (!Comparators.nullSafeEquals(this.values[index], other.get(this.keys[index])))</span>
+            {
+<span class="nc" id="L99">                return false;</span>
+            }
+        }
+<span class="nc" id="L102">        return true;</span>
+    }
+
+    @Override
+    public int hashCode()
+    {
+<span class="nc" id="L108">        int length = this.keys.length;</span>
+<span class="nc" id="L109">        int hashCode = 0;</span>
+<span class="nc bnc" id="L110" title="All 2 branches missed.">        for (int index = 0; index &lt; length; index++)</span>
+        {
+<span class="nc" id="L112">            K key = this.keys[index];</span>
+<span class="nc" id="L113">            V value = this.values[index];</span>
+<span class="nc bnc" id="L114" title="All 4 branches missed.">            hashCode += (key == null ? 0 : key.hashCode())</span>
+<span class="nc" id="L115">                    ^ (value == null ? 0 : value.hashCode());</span>
+        }
+<span class="nc" id="L117">        return hashCode;</span>
+    }
+
+    @Override
+    public String toString()
+    {
+<span class="nc" id="L123">        int length = this.keys.length;</span>
+<span class="nc bnc" id="L124" title="All 2 branches missed.">        if (length == 0)</span>
+        {
+<span class="nc" id="L126">            return &quot;{}&quot;;</span>
+        }
+
+<span class="nc" id="L129">        StringBuilder sb = new StringBuilder();</span>
+<span class="nc" id="L130">        sb.append('{');</span>
+<span class="nc bnc" id="L131" title="All 2 branches missed.">        for (int index = 0; index &lt; length; index++)</span>
+        {
+<span class="nc" id="L133">            sb.append(this.keys[index]);</span>
+<span class="nc" id="L134">            sb.append('=');</span>
+<span class="nc" id="L135">            sb.append(this.values[index]);</span>
+<span class="nc bnc" id="L136" title="All 2 branches missed.">            if (index &lt; length - 1)</span>
+            {
+<span class="nc" id="L138">                sb.append(',').append(' ');</span>
+            }
+        }
+<span class="nc" id="L141">        return sb.append('}').toString();</span>
+    }
+
+    @Override
+    public int size()
+    {
+<span class="nc" id="L147">        return this.keys.length;</span>
+    }
+
+    @Override
+    public boolean containsKey(Object key)
+    {
+<span class="nc bnc" id="L153" title="All 2 branches missed.">        return Arrays.binarySearch(this.keys, (K) key, this.comparator) &gt;= 0;</span>
+    }
+
+    @Override
+    public boolean containsValue(Object value)
+    {
+<span class="nc" id="L159">        return ArrayIterate.contains(this.values, value);</span>
+    }
+
+    @Override
+    public V get(Object key)
+    {
+<span class="nc" id="L165">        int index = Arrays.binarySearch(this.keys, (K) key, this.comparator);</span>
+<span class="nc bnc" id="L166" title="All 2 branches missed.">        if (index &gt;= 0)</span>
+        {
+<span class="nc" id="L168">            return this.values[index];</span>
+        }
+<span class="nc" id="L170">        return null;</span>
+    }
+
+    @Override
+    public void forEachKeyValue(Procedure2&lt;? super K, ? super V&gt; procedure)
+    {
+<span class="nc bnc" id="L176" title="All 2 branches missed.">        for (int index = 0; index &lt; this.keys.length; index++)</span>
+        {
+<span class="nc" id="L178">            procedure.value(this.keys[index], this.values[index]);</span>
+        }
+<span class="nc" id="L180">    }</span>
+
+    @Override
+    public ImmutableMap&lt;V, K&gt; flipUniqueValues()
+    {
+<span class="nc" id="L185">        return MapIterate.flipUniqueValues(this).toImmutable();</span>
+    }
+
+    @Override
+    public RichIterable&lt;K&gt; keysView()
+    {
+<span class="nc" id="L191">        return FastList.newListWith(this.keys).asLazy();</span>
+    }
+
+    @Override
+    public RichIterable&lt;V&gt; valuesView()
+    {
+<span class="nc" id="L197">        return FastList.newListWith(this.values).asLazy();</span>
+    }
+
+    @Override
+    public RichIterable&lt;Pair&lt;K, V&gt;&gt; keyValuesView()
+    {
+<span class="nc" id="L203">        return FastList.newListWith(this.keys).asLazy().zip(FastList.newListWith(this.values));</span>
+    }
+
+    @Override
+    public Comparator&lt;? super K&gt; comparator()
+    {
+<span class="nc" id="L209">        return this.comparator;</span>
+    }
+
+    @Override
+    public K firstKey()
+    {
+<span class="nc bnc" id="L215" title="All 2 branches missed.">        if (this.keys.length == 0)</span>
+        {
+<span class="nc" id="L217">            throw new NoSuchElementException();</span>
+        }
+<span class="nc" id="L219">        return this.keys[0];</span>
+    }
+
+    @Override
+    public K lastKey()
+    {
+<span class="nc bnc" id="L225" title="All 2 branches missed.">        if (this.keys.length == 0)</span>
+        {
+<span class="nc" id="L227">            throw new NoSuchElementException();</span>
+        }
+<span class="nc" id="L229">        return this.keys[this.keys.length - 1];</span>
+    }
+
+    @Override
+    public Set&lt;K&gt; keySet()
+    {
+<span class="nc" id="L235">        return new ImmutableSortedMapKeySet();</span>
+    }
+
+    @Override
+    public Collection&lt;V&gt; values()
+    {
+<span class="nc" id="L241">        return FastList.newListWith(this.values).asUnmodifiable();</span>
+    }
+
+    @Override
+    public Set&lt;Entry&lt;K, V&gt;&gt; entrySet()
+    {
+<span class="nc" id="L247">        int length = this.keys.length;</span>
+<span class="nc" id="L248">        MutableSortedSet&lt;Entry&lt;K, V&gt;&gt; entrySet = SortedSets.mutable.with(new EntryComparator&lt;&gt;(this.comparator));</span>
+<span class="nc bnc" id="L249" title="All 2 branches missed.">        for (int index = 0; index &lt; length; index++)</span>
+        {
+<span class="nc" id="L251">            entrySet.add(ImmutableEntry.of(this.keys[index], this.values[index]));</span>
+        }
+<span class="nc" id="L253">        return entrySet.toImmutable().castToSortedSet();</span>
+    }
+
+    protected Object writeReplace()
+    {
+<span class="nc" id="L258">        return new ImmutableSortedMapSerializationProxy&lt;&gt;(this);</span>
+    }
+
+    @Override
+    public ImmutableSortedMap&lt;K, V&gt; take(int count)
+    {
+<span class="nc bnc" id="L264" title="All 2 branches missed.">        if (count &lt; 0)</span>
+        {
+<span class="nc" id="L266">            throw new IllegalArgumentException(&quot;Count must be greater than zero, but was: &quot; + count);</span>
+        }
+<span class="nc bnc" id="L268" title="All 2 branches missed.">        if (count == 0)</span>
+        {
+<span class="nc" id="L270">            return SortedMaps.immutable.of(this.comparator());</span>
+        }
+<span class="nc bnc" id="L272" title="All 2 branches missed.">        if (count &gt;= this.size())</span>
+        {
+<span class="nc" id="L274">            return this;</span>
+        }
+
+<span class="nc" id="L277">        MutableSortedMap&lt;K, V&gt; output = SortedMaps.mutable.of(this.comparator());</span>
+<span class="nc bnc" id="L278" title="All 2 branches missed.">        for (int i = 0; i &lt; count; i++)</span>
+        {
+<span class="nc" id="L280">            output.put(this.keys[i], this.values[i]);</span>
+        }
+
+<span class="nc" id="L283">        return output.toImmutable();</span>
+    }
+
+    @Override
+    public ImmutableSortedMap&lt;K, V&gt; drop(int count)
+    {
+<span class="nc bnc" id="L289" title="All 2 branches missed.">        if (count &lt; 0)</span>
+        {
+<span class="nc" id="L291">            throw new IllegalArgumentException(&quot;Count must be greater than zero, but was: &quot; + count);</span>
+        }
+<span class="nc bnc" id="L293" title="All 2 branches missed.">        if (count == 0)</span>
+        {
+<span class="nc" id="L295">            return this;</span>
+        }
+<span class="nc bnc" id="L297" title="All 2 branches missed.">        if (count &gt;= this.size())</span>
+        {
+<span class="nc" id="L299">            return SortedMaps.immutable.of(this.comparator());</span>
+        }
+
+<span class="nc" id="L302">        MutableSortedMap&lt;K, V&gt; output = SortedMaps.mutable.of(this.comparator());</span>
+<span class="nc bnc" id="L303" title="All 2 branches missed.">        for (int i = 0; i &lt; this.size(); i++)</span>
+        {
+<span class="nc bnc" id="L305" title="All 2 branches missed.">            if (i &gt;= count)</span>
+            {
+<span class="nc" id="L307">                output.put(this.keys[i], this.values[i]);</span>
+            }
+        }
+
+<span class="nc" id="L311">        return output.toImmutable();</span>
+    }
+
+    private static final class EntryComparator&lt;K, V&gt; implements Comparator&lt;Entry&lt;K, V&gt;&gt;
+    {
+        private final Comparator&lt;? super K&gt; comparator;
+
+        private EntryComparator(Comparator&lt;? super K&gt; comparator)
+<span class="nc" id="L319">        {</span>
+<span class="nc bnc" id="L320" title="All 2 branches missed.">            if (comparator == null)</span>
+            {
+<span class="nc" id="L322">                this.comparator = Comparators.naturalOrder();</span>
+            }
+            else
+            {
+<span class="nc" id="L326">                this.comparator = comparator;</span>
+            }
+<span class="nc" id="L328">        }</span>
+
+        @Override
+        public int compare(Entry&lt;K, V&gt; o1, Entry&lt;K, V&gt; o2)
+        {
+<span class="nc" id="L333">            return this.comparator.compare(o1.getKey(), o2.getKey());</span>
+        }
+    }
+
+<span class="nc" id="L337">    protected class ImmutableSortedMapKeySet extends AbstractSet&lt;K&gt; implements Serializable</span>
+    {
+        private static final long serialVersionUID = 1L;
+
+        @Override
+        public boolean contains(Object o)
+        {
+<span class="nc" id="L344">            return ImmutableTreeMap.this.containsKey(o);</span>
+        }
+
+        @Override
+        public boolean containsAll(Collection&lt;?&gt; collection)
+        {
+<span class="nc" id="L350">            return Iterate.allSatisfyWith(collection, Predicates2.in(), this);</span>
+        }
+
+        @Override
+        public int size()
+        {
+<span class="nc" id="L356">            return ImmutableTreeMap.this.keys.length;</span>
+        }
+
+        @Override
+        public Iterator&lt;K&gt; iterator()
+        {
+<span class="nc" id="L362">            return FastList.newListWith(ImmutableTreeMap.this.keys).asUnmodifiable().iterator();</span>
+        }
+
+        @Override
+        public Object[] toArray()
+        {
+<span class="nc" id="L368">            int size = ImmutableTreeMap.this.keys.length;</span>
+<span class="nc" id="L369">            Object[] result = new Object[size];</span>
+<span class="nc" id="L370">            System.arraycopy(ImmutableTreeMap.this.keys, 0, result, 0, size);</span>
+<span class="nc" id="L371">            return result;</span>
+        }
+
+        @Override
+        public &lt;T&gt; T[] toArray(T[] a)
+        {
+<span class="nc bnc" id="L377" title="All 2 branches missed.">            T[] result = a.length &lt; this.size()</span>
+<span class="nc" id="L378">                    ? (T[]) Array.newInstance(a.getClass().getComponentType(), this.size())</span>
+                    : a;
+
+<span class="nc" id="L381">            System.arraycopy(ImmutableTreeMap.this.keys, 0, result, 0, ImmutableTreeMap.this.keys.length);</span>
+
+<span class="nc bnc" id="L383" title="All 2 branches missed.">            if (result.length &gt; this.size())</span>
+            {
+<span class="nc" id="L385">                result[this.size()] = null;</span>
+            }
+<span class="nc" id="L387">            return result;</span>
+        }
+
+        @Override
+        public boolean add(K key)
+        {
+<span class="nc" id="L393">            throw new UnsupportedOperationException(&quot;Cannot call add() on &quot; + this.getClass().getSimpleName());</span>
+        }
+
+        @Override
+        public boolean addAll(Collection&lt;? extends K&gt; collection)
+        {
+<span class="nc" id="L399">            throw new UnsupportedOperationException(&quot;Cannot call addAll() on &quot; + this.getClass().getSimpleName());</span>
+        }
+
+        @Override
+        public boolean remove(Object key)
+        {
+<span class="nc" id="L405">            throw new UnsupportedOperationException(&quot;Cannot call remove() on &quot; + this.getClass().getSimpleName());</span>
+        }
+
+        @Override
+        public boolean removeAll(Collection&lt;?&gt; collection)
+        {
+<span class="nc" id="L411">            throw new UnsupportedOperationException(&quot;Cannot call removeAll() on &quot; + this.getClass().getSimpleName());</span>
+        }
+
+        @Override
+        public void clear()
+        {
+<span class="nc" id="L417">            throw new UnsupportedOperationException(&quot;Cannot call clear() on &quot; + this.getClass().getSimpleName());</span>
+        }
+
+        @Override
+        public boolean retainAll(Collection&lt;?&gt; collection)
+        {
+<span class="nc" id="L423">            throw new UnsupportedOperationException(&quot;Cannot call retainAll() on &quot; + this.getClass().getSimpleName());</span>
+        }
+
+        protected Object writeReplace()
+        {
+<span class="nc" id="L428">            return TreeSortedSet.newSetWith(ImmutableTreeMap.this.comparator, ImmutableTreeMap.this.keys).toImmutable();</span>
+        }
+    }
+}
+
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.0.201801022044</span></div></body></html>

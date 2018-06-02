@@ -1,0 +1,49 @@
+/*
+ * Copyright (c) 2018 Goldman Sachs and others.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * and Eclipse Distribution License v. 1.0 which accompany this distribution.
+ * The Eclipse Public License is available at http://www.eclipse.org/legal/epl-v10.html
+ * and the Eclipse Distribution License is available at
+ * http://www.eclipse.org/org/documents/edl-v10.php.
+ */
+
+package org.eclipse.collections.api.factory.list.primitive;
+
+import org.eclipse.collections.api.ByteIterable;
+import org.eclipse.collections.api.list.primitive.MutableByteList;
+
+/**
+ * A factory which creates instances of type {@link MutableByteList}.
+ * This file was automatically generated from template file mutablePrimitiveListFactory.stg.
+ *
+ * @since 6.0.
+ */
+public interface MutableByteListFactory
+{
+    MutableByteList empty();
+
+    /**
+     * Same as {@link #empty()}.
+     */
+    MutableByteList of();
+
+    /**
+     * Same as {@link #empty()}.
+     */
+    MutableByteList with();
+
+    /**
+     * Same as {@link #with(byte[])}.
+     */
+    MutableByteList of(byte... items);
+
+    MutableByteList with(byte... items);
+
+    /**
+     * Same as {@link #withAll(ByteIterable)}.
+     */
+    MutableByteList ofAll(ByteIterable items);
+
+    MutableByteList withAll(ByteIterable items);
+}

@@ -1,0 +1,144 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>MultiReaderFastListMultimap.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Eclipse Collections Test Coverage Aggregation</a> &gt; <a href="../index.html" class="el_bundle">eclipse-collections</a> &gt; <a href="index.source.html" class="el_package">org.eclipse.collections.impl.multimap.list</a> &gt; <span class="el_source">MultiReaderFastListMultimap.java</span></div><h1>MultiReaderFastListMultimap.java</h1><pre class="source lang-java linenums">/*
+ * Copyright (c) 2016 Goldman Sachs.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * and Eclipse Distribution License v. 1.0 which accompany this distribution.
+ * The Eclipse Public License is available at http://www.eclipse.org/legal/epl-v10.html
+ * and the Eclipse Distribution License is available at
+ * http://www.eclipse.org/org/documents/edl-v10.php.
+ */
+
+package org.eclipse.collections.impl.multimap.list;
+
+import java.io.Externalizable;
+
+import org.eclipse.collections.api.block.predicate.Predicate2;
+import org.eclipse.collections.api.list.MutableList;
+import org.eclipse.collections.api.map.MutableMap;
+import org.eclipse.collections.api.multimap.Multimap;
+import org.eclipse.collections.api.multimap.bag.MutableBagMultimap;
+import org.eclipse.collections.api.tuple.Pair;
+import org.eclipse.collections.impl.list.mutable.MultiReaderFastList;
+import org.eclipse.collections.impl.map.mutable.ConcurrentHashMap;
+import org.eclipse.collections.impl.utility.Iterate;
+
+public final class MultiReaderFastListMultimap&lt;K, V&gt;
+        extends AbstractMutableListMultimap&lt;K, V&gt; implements Externalizable
+{
+    private static final long serialVersionUID = 1L;
+
+    // Default from FastList
+    private static final int DEFAULT_CAPACITY = 1;
+
+    private int initialListCapacity;
+
+    public MultiReaderFastListMultimap()
+<span class="nc" id="L36">    {</span>
+<span class="nc" id="L37">        this.initialListCapacity = DEFAULT_CAPACITY;</span>
+<span class="nc" id="L38">    }</span>
+
+    public MultiReaderFastListMultimap(int distinctKeys, int valuesPerKey)
+    {
+<span class="nc" id="L42">        super(Math.max(distinctKeys * 2, 16));</span>
+<span class="nc bnc" id="L43" title="All 4 branches missed.">        if (distinctKeys &lt; 0 || valuesPerKey &lt; 0)</span>
+        {
+<span class="nc" id="L45">            throw new IllegalArgumentException(&quot;Both arguments must be positive.&quot;);</span>
+        }
+<span class="nc" id="L47">        this.initialListCapacity = valuesPerKey;</span>
+<span class="nc" id="L48">    }</span>
+
+    public MultiReaderFastListMultimap(Multimap&lt;? extends K, ? extends V&gt; multimap)
+    {
+<span class="nc" id="L52">        this(</span>
+<span class="nc bnc" id="L53" title="All 2 branches missed.">                multimap.keysView().size(),</span>
+                multimap instanceof MultiReaderFastListMultimap
+                        ? ((MultiReaderFastListMultimap&lt;?, ?&gt;) multimap).initialListCapacity
+                        : DEFAULT_CAPACITY);
+<span class="nc" id="L57">        this.putAll(multimap);</span>
+<span class="nc" id="L58">    }</span>
+
+    public MultiReaderFastListMultimap(Pair&lt;K, V&gt;... pairs)
+    {
+<span class="nc" id="L62">        super(pairs);</span>
+<span class="nc" id="L63">    }</span>
+
+    public MultiReaderFastListMultimap(Iterable&lt;Pair&lt;K, V&gt;&gt; inputIterable)
+    {
+<span class="nc" id="L67">        super(inputIterable);</span>
+<span class="nc" id="L68">    }</span>
+
+    public static &lt;K, V&gt; MultiReaderFastListMultimap&lt;K, V&gt; newMultimap()
+    {
+<span class="nc" id="L72">        return new MultiReaderFastListMultimap&lt;&gt;();</span>
+    }
+
+    public static &lt;K, V&gt; MultiReaderFastListMultimap&lt;K, V&gt; newMultimap(Multimap&lt;? extends K, ? extends V&gt; multimap)
+    {
+<span class="nc" id="L77">        return new MultiReaderFastListMultimap&lt;&gt;(multimap);</span>
+    }
+
+    public static &lt;K, V&gt; MultiReaderFastListMultimap&lt;K, V&gt; newMultimap(Pair&lt;K, V&gt;... pairs)
+    {
+<span class="nc" id="L82">        return new MultiReaderFastListMultimap&lt;&gt;(pairs);</span>
+    }
+
+    public static &lt;K, V&gt; MultiReaderFastListMultimap&lt;K, V&gt; newMultimap(Iterable&lt;Pair&lt;K, V&gt;&gt; inputIterable)
+    {
+<span class="nc" id="L87">        return new MultiReaderFastListMultimap&lt;&gt;(inputIterable);</span>
+    }
+
+    @Override
+    protected MutableMap&lt;K, MutableList&lt;V&gt;&gt; createMap()
+    {
+<span class="nc" id="L93">        return ConcurrentHashMap.newMap();</span>
+    }
+
+    @Override
+    protected MutableMap&lt;K, MutableList&lt;V&gt;&gt; createMapWithKeyCount(int keyCount)
+    {
+<span class="nc" id="L99">        return ConcurrentHashMap.newMap(keyCount);</span>
+    }
+
+    @Override
+    protected MutableList&lt;V&gt; createCollection()
+    {
+<span class="nc" id="L105">        return MultiReaderFastList.newList(this.initialListCapacity);</span>
+    }
+
+    @Override
+    public MultiReaderFastListMultimap&lt;K, V&gt; newEmpty()
+    {
+<span class="nc" id="L111">        return new MultiReaderFastListMultimap&lt;&gt;();</span>
+    }
+
+    @Override
+    public MutableBagMultimap&lt;V, K&gt; flip()
+    {
+<span class="nc" id="L117">        return Iterate.flip(this);</span>
+    }
+
+    @Override
+    public FastListMultimap&lt;K, V&gt; selectKeysValues(Predicate2&lt;? super K, ? super V&gt; predicate)
+    {
+<span class="nc" id="L123">        return this.selectKeysValues(predicate, FastListMultimap.newMultimap());</span>
+    }
+
+    @Override
+    public FastListMultimap&lt;K, V&gt; rejectKeysValues(Predicate2&lt;? super K, ? super V&gt; predicate)
+    {
+<span class="nc" id="L129">        return this.rejectKeysValues(predicate, FastListMultimap.newMultimap());</span>
+    }
+
+    @Override
+    public FastListMultimap&lt;K, V&gt; selectKeysMultiValues(Predicate2&lt;? super K, ? super Iterable&lt;V&gt;&gt; predicate)
+    {
+<span class="nc" id="L135">        return this.selectKeysMultiValues(predicate, FastListMultimap.newMultimap());</span>
+    }
+
+    @Override
+    public FastListMultimap&lt;K, V&gt; rejectKeysMultiValues(Predicate2&lt;? super K, ? super Iterable&lt;V&gt;&gt; predicate)
+    {
+<span class="nc" id="L141">        return this.rejectKeysMultiValues(predicate, FastListMultimap.newMultimap());</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.0.201801022044</span></div></body></html>

@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>ReflectionHelper.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Eclipse Collections Test Coverage Aggregation</a> &gt; <a href="../index.html" class="el_bundle">eclipse-collections</a> &gt; <a href="index.source.html" class="el_package">org.eclipse.collections.impl.utility.internal</a> &gt; <span class="el_source">ReflectionHelper.java</span></div><h1>ReflectionHelper.java</h1><pre class="source lang-java linenums">/*
+ * Copyright (c) 2015 Goldman Sachs.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * and Eclipse Distribution License v. 1.0 which accompany this distribution.
+ * The Eclipse Public License is available at http://www.eclipse.org/legal/epl-v10.html
+ * and the Eclipse Distribution License is available at
+ * http://www.eclipse.org/org/documents/edl-v10.php.
+ */
+
+package org.eclipse.collections.impl.utility.internal;
+
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Modifier;
+
+import org.eclipse.collections.api.map.ImmutableMap;
+import org.eclipse.collections.impl.map.mutable.UnifiedMap;
+import org.eclipse.collections.impl.tuple.Tuples;
+import org.eclipse.collections.impl.utility.MapIterate;
+
+/**
+ * A utility/helper class for working with Classes and Reflection.
+ */
+public final class ReflectionHelper
+{
+    /**
+     * @deprecated in 2.0. Will become private in a future version.
+     */
+    @SuppressWarnings(&quot;rawtypes&quot;)
+    @Deprecated
+<span class="nc" id="L32">    public static final Class[] EMPTY_CLASS_ARRAY = {};</span>
+
+    /**
+     * Mapping of iterator wrapper classes to iterator types
+     */
+<span class="nc" id="L37">    private static final ImmutableMap&lt;Class&lt;?&gt;, Class&lt;?&gt;&gt; WRAPPER_TO_PRIMATIVES = UnifiedMap.&lt;Class&lt;?&gt;, Class&lt;?&gt;&gt;newMapWith(</span>
+<span class="nc" id="L38">            Tuples.twin(Short.class, short.class),</span>
+<span class="nc" id="L39">            Tuples.twin(Boolean.class, boolean.class),</span>
+<span class="nc" id="L40">            Tuples.twin(Byte.class, byte.class),</span>
+<span class="nc" id="L41">            Tuples.twin(Character.class, char.class),</span>
+<span class="nc" id="L42">            Tuples.twin(Integer.class, int.class),</span>
+<span class="nc" id="L43">            Tuples.twin(Float.class, float.class),</span>
+<span class="nc" id="L44">            Tuples.twin(Long.class, long.class),</span>
+<span class="nc" id="L45">            Tuples.twin(Double.class, double.class)).toImmutable();</span>
+
+<span class="nc" id="L47">    private static final ImmutableMap&lt;Class&lt;?&gt;, Class&lt;?&gt;&gt; PRIMATIVES_TO_WRAPPERS = MapIterate.reverseMapping(WRAPPER_TO_PRIMATIVES.castToMap()).toImmutable();</span>
+
+    private ReflectionHelper()
+<span class="nc" id="L50">    {</span>
+<span class="nc" id="L51">        throw new AssertionError(&quot;Suppress default constructor for noninstantiability&quot;);</span>
+    }
+
+    // These are special methods that will not produce error messages if the getter method is not found
+
+    public static &lt;T&gt; Constructor&lt;T&gt; getConstructor(Class&lt;T&gt; instantiable, Class&lt;?&gt;... constructorParameterTypes)
+    {
+        try
+        {
+<span class="nc" id="L60">            return instantiable.getConstructor(constructorParameterTypes);</span>
+        }
+<span class="nc" id="L62">        catch (NoSuchMethodException ignored)</span>
+        {
+<span class="nc" id="L64">            return ReflectionHelper.searchForConstructor(instantiable, constructorParameterTypes);</span>
+        }
+    }
+
+    private static &lt;T&gt; Constructor&lt;T&gt; searchForConstructor(Class&lt;T&gt; instantiable, Class&lt;?&gt;... constructorParameterTypes)
+    {
+<span class="nc" id="L70">        Constructor&lt;?&gt;[] candidates = instantiable.getConstructors();</span>
+<span class="nc bnc" id="L71" title="All 2 branches missed.">        for (Constructor&lt;?&gt; candidate : candidates)</span>
+        {
+<span class="nc bnc" id="L73" title="All 2 branches missed.">            if (ReflectionHelper.parameterTypesMatch(candidate.getParameterTypes(), constructorParameterTypes))</span>
+            {
+<span class="nc" id="L75">                return (Constructor&lt;T&gt;) candidate;</span>
+            }
+        }
+<span class="nc" id="L78">        return null;</span>
+    }
+
+    public static boolean parameterTypesMatch(Class&lt;?&gt;[] candidateParamTypes, Class&lt;?&gt;... desiredParameterTypes)
+    {
+<span class="nc bnc" id="L83" title="All 2 branches missed.">        boolean match = candidateParamTypes.length == desiredParameterTypes.length;</span>
+<span class="nc bnc" id="L84" title="All 4 branches missed.">        for (int i = 0; i &lt; candidateParamTypes.length &amp;&amp; match; i++)</span>
+        {
+<span class="nc bnc" id="L86" title="All 4 branches missed.">            Class&lt;?&gt; candidateType = candidateParamTypes[i].isPrimitive() &amp;&amp; !desiredParameterTypes[i].isPrimitive()</span>
+<span class="nc" id="L87">                    ? PRIMATIVES_TO_WRAPPERS.get(candidateParamTypes[i])</span>
+                    : candidateParamTypes[i];
+<span class="nc" id="L89">            match = candidateType.isAssignableFrom(desiredParameterTypes[i]);</span>
+        }
+<span class="nc" id="L91">        return match;</span>
+    }
+
+    public static &lt;T&gt; T newInstance(Constructor&lt;T&gt; constructor, Object... constructorArguments)
+    {
+        try
+        {
+<span class="nc" id="L98">            return constructor.newInstance(constructorArguments);</span>
+        }
+<span class="nc" id="L100">        catch (InstantiationException | InvocationTargetException | IllegalAccessException e)</span>
+        {
+<span class="nc" id="L102">            throw new RuntimeException(e);</span>
+        }
+    }
+
+    /**
+     * This method may return null if the call to create a newInstance() fails.
+     */
+    public static &lt;T&gt; T newInstance(Class&lt;T&gt; aClass)
+    {
+        try
+        {
+<span class="nc" id="L113">            return aClass.getConstructor().newInstance();</span>
+        }
+<span class="nc" id="L115">        catch (InstantiationException | InvocationTargetException | NoSuchMethodException | IllegalAccessException e)</span>
+        {
+<span class="nc" id="L117">            throw new RuntimeException(e);</span>
+        }
+    }
+
+    public static boolean hasDefaultConstructor(Class&lt;?&gt; aClass)
+    {
+        try
+        {
+<span class="nc" id="L125">            Constructor&lt;?&gt; constructor = aClass.getDeclaredConstructor(EMPTY_CLASS_ARRAY);</span>
+<span class="nc" id="L126">            return Modifier.isPublic(constructor.getModifiers());</span>
+        }
+<span class="nc" id="L128">        catch (NoSuchMethodException ignored)</span>
+        {
+<span class="nc" id="L130">            return false;</span>
+        }
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.0.201801022044</span></div></body></html>

@@ -1,0 +1,200 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>LazyIterate.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Eclipse Collections Test Coverage Aggregation</a> &gt; <a href="../index.html" class="el_bundle">eclipse-collections</a> &gt; <a href="index.source.html" class="el_package">org.eclipse.collections.impl.utility</a> &gt; <span class="el_source">LazyIterate.java</span></div><h1>LazyIterate.java</h1><pre class="source lang-java linenums">/*
+ * Copyright (c) 2016 Goldman Sachs.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * and Eclipse Distribution License v. 1.0 which accompany this distribution.
+ * The Eclipse Public License is available at http://www.eclipse.org/legal/epl-v10.html
+ * and the Eclipse Distribution License is available at
+ * http://www.eclipse.org/org/documents/edl-v10.php.
+ */
+
+package org.eclipse.collections.impl.utility;
+
+import org.eclipse.collections.api.LazyIterable;
+import org.eclipse.collections.api.RichIterable;
+import org.eclipse.collections.api.block.function.Function;
+import org.eclipse.collections.api.block.predicate.Predicate;
+import org.eclipse.collections.api.block.procedure.Procedure;
+import org.eclipse.collections.api.tuple.Pair;
+import org.eclipse.collections.impl.factory.Lists;
+import org.eclipse.collections.impl.lazy.ChunkIterable;
+import org.eclipse.collections.impl.lazy.CollectIterable;
+import org.eclipse.collections.impl.lazy.CompositeIterable;
+import org.eclipse.collections.impl.lazy.DistinctIterable;
+import org.eclipse.collections.impl.lazy.DropIterable;
+import org.eclipse.collections.impl.lazy.DropWhileIterable;
+import org.eclipse.collections.impl.lazy.FlatCollectIterable;
+import org.eclipse.collections.impl.lazy.LazyIterableAdapter;
+import org.eclipse.collections.impl.lazy.RejectIterable;
+import org.eclipse.collections.impl.lazy.SelectInstancesOfIterable;
+import org.eclipse.collections.impl.lazy.SelectIterable;
+import org.eclipse.collections.impl.lazy.TakeIterable;
+import org.eclipse.collections.impl.lazy.TakeWhileIterable;
+import org.eclipse.collections.impl.lazy.TapIterable;
+import org.eclipse.collections.impl.lazy.ZipIterable;
+import org.eclipse.collections.impl.lazy.ZipWithIndexIterable;
+
+/**
+ * LazyIterate is a factory class which creates &quot;deferred&quot; iterables around the specified iterables. A &quot;deferred&quot;
+ * iterable performs some operation, such as filtering or transforming, when the result iterable is iterated over.  This
+ * makes the operation very memory efficient, because you don't have to create intermediate collections during the
+ * operation.
+ *
+ * @since 1.0
+ */
+public final class LazyIterate
+{
+<span class="nc" id="L47">    private static final LazyIterable&lt;?&gt; EMPTY_ITERABLE = Lists.immutable.empty().asLazy();</span>
+
+    private LazyIterate()
+<span class="nc" id="L50">    {</span>
+<span class="nc" id="L51">        throw new AssertionError(&quot;Suppress default constructor for noninstantiability&quot;);</span>
+    }
+
+    /**
+     * Creates a deferred rich iterable for the specified iterable.
+     */
+    public static &lt;T&gt; LazyIterable&lt;T&gt; adapt(Iterable&lt;T&gt; iterable)
+    {
+<span class="nc" id="L59">        return new LazyIterableAdapter&lt;&gt;(iterable);</span>
+    }
+
+    /**
+     * Creates a deferred filtering iterable for the specified iterable.
+     */
+    public static &lt;T&gt; LazyIterable&lt;T&gt; select(Iterable&lt;T&gt; iterable, Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L67">        return new SelectIterable&lt;&gt;(iterable, predicate);</span>
+    }
+
+    /**
+     * Creates a deferred negative filtering iterable for the specified iterable.
+     */
+    public static &lt;T&gt; LazyIterable&lt;T&gt; reject(Iterable&lt;T&gt; iterable, Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L75">        return new RejectIterable&lt;&gt;(iterable, predicate);</span>
+    }
+
+    public static &lt;T&gt; LazyIterable&lt;T&gt; selectInstancesOf(Iterable&lt;?&gt; iterable, Class&lt;T&gt; clazz)
+    {
+<span class="nc" id="L80">        return new SelectInstancesOfIterable&lt;&gt;(iterable, clazz);</span>
+    }
+
+    /**
+     * Creates a deferred transforming iterable for the specified iterable.
+     */
+    public static &lt;T, V&gt; LazyIterable&lt;V&gt; collect(
+            Iterable&lt;T&gt; iterable,
+            Function&lt;? super T, ? extends V&gt; function)
+    {
+<span class="nc" id="L90">        return new CollectIterable&lt;&gt;(iterable, function);</span>
+    }
+
+    /**
+     * Creates a deferred flattening iterable for the specified iterable.
+     */
+    public static &lt;T, V&gt; LazyIterable&lt;V&gt; flatCollect(
+            Iterable&lt;T&gt; iterable,
+            Function&lt;? super T, ? extends Iterable&lt;V&gt;&gt; function)
+    {
+<span class="nc" id="L100">        return new FlatCollectIterable&lt;&gt;(iterable, function);</span>
+    }
+
+    /**
+     * Creates a deferred filtering and transforming iterable for the specified iterable.
+     */
+    public static &lt;T, V&gt; LazyIterable&lt;V&gt; collectIf(
+            Iterable&lt;T&gt; iterable,
+            Predicate&lt;? super T&gt; predicate,
+            Function&lt;? super T, ? extends V&gt; function)
+    {
+<span class="nc" id="L111">        return LazyIterate.select(iterable, predicate).collect(function);</span>
+    }
+
+    /**
+     * Creates a deferred take iterable for the specified iterable using the specified count as the limit.
+     */
+    public static &lt;T&gt; LazyIterable&lt;T&gt; take(Iterable&lt;T&gt; iterable, int count)
+    {
+<span class="nc" id="L119">        return new TakeIterable&lt;&gt;(iterable, count);</span>
+    }
+
+    /**
+     * Creates a deferred drop iterable for the specified iterable using the specified count as the size to drop.
+     */
+    public static &lt;T&gt; LazyIterable&lt;T&gt; drop(Iterable&lt;T&gt; iterable, int count)
+    {
+<span class="nc" id="L127">        return new DropIterable&lt;&gt;(iterable, count);</span>
+    }
+
+    /**
+     * Creates a deferred takeWhile iterable for the specified iterable using the specified predicate.
+     * Short circuits at the first element which does not satisfy the Predicate.
+     *
+     * @since 8.0
+     */
+    public static &lt;T&gt; LazyIterable&lt;T&gt; takeWhile(Iterable&lt;T&gt; iterable, Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L138">        return new TakeWhileIterable&lt;&gt;(iterable, predicate);</span>
+    }
+
+    /**
+     * Creates a deferred dropWhile iterable for the specified iterable using the specified count as the size to drop.
+     * Short circuits at the first element which satisfies the Predicate.
+     *
+     * @since 8.0
+     */
+    public static &lt;T&gt; LazyIterable&lt;T&gt; dropWhile(Iterable&lt;T&gt; iterable, Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L149">        return new DropWhileIterable&lt;&gt;(iterable, predicate);</span>
+    }
+
+    /**
+     * Creates a deferred distinct iterable for the specified iterable.
+     *
+     * @since 5.0
+     */
+    public static &lt;T&gt; LazyIterable&lt;T&gt; distinct(Iterable&lt;T&gt; iterable)
+    {
+<span class="nc" id="L159">        return new DistinctIterable&lt;&gt;(iterable);</span>
+    }
+
+    /**
+     * Combines iterables into a deferred composite iterable.
+     */
+    public static &lt;T&gt; LazyIterable&lt;T&gt; concatenate(Iterable&lt;T&gt;... iterables)
+    {
+<span class="nc" id="L167">        return CompositeIterable.with(iterables);</span>
+    }
+
+    public static &lt;T&gt; LazyIterable&lt;T&gt; empty()
+    {
+<span class="nc" id="L172">        return (LazyIterable&lt;T&gt;) EMPTY_ITERABLE;</span>
+    }
+
+    public static &lt;A, B&gt; LazyIterable&lt;Pair&lt;A, B&gt;&gt; zip(Iterable&lt;A&gt; as, Iterable&lt;B&gt; bs)
+    {
+<span class="nc" id="L177">        return new ZipIterable&lt;&gt;(as, bs);</span>
+    }
+
+    public static &lt;T&gt; LazyIterable&lt;Pair&lt;T, Integer&gt;&gt; zipWithIndex(Iterable&lt;T&gt; iterable)
+    {
+<span class="nc" id="L182">        return new ZipWithIndexIterable&lt;&gt;(iterable);</span>
+    }
+
+    public static &lt;T&gt; LazyIterable&lt;RichIterable&lt;T&gt;&gt; chunk(Iterable&lt;T&gt; iterable, int size)
+    {
+<span class="nc" id="L187">        return new ChunkIterable&lt;&gt;(iterable, size);</span>
+    }
+
+    /**
+     * Creates a deferred tap iterable for the specified iterable.
+     *
+     * @since 6.0
+     */
+    public static &lt;T&gt; LazyIterable&lt;T&gt; tap(Iterable&lt;T&gt; iterable, Procedure&lt;? super T&gt; procedure)
+    {
+<span class="nc" id="L197">        return new TapIterable&lt;&gt;(iterable, procedure);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.0.201801022044</span></div></body></html>

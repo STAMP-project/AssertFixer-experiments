@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>ParallelCollectListIterable.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Eclipse Collections Test Coverage Aggregation</a> &gt; <a href="../index.html" class="el_bundle">eclipse-collections</a> &gt; <a href="index.source.html" class="el_package">org.eclipse.collections.impl.lazy.parallel.list</a> &gt; <span class="el_source">ParallelCollectListIterable.java</span></div><h1>ParallelCollectListIterable.java</h1><pre class="source lang-java linenums">/*
+ * Copyright (c) 2016 Goldman Sachs.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * and Eclipse Distribution License v. 1.0 which accompany this distribution.
+ * The Eclipse Public License is available at http://www.eclipse.org/legal/epl-v10.html
+ * and the Eclipse Distribution License is available at
+ * http://www.eclipse.org/org/documents/edl-v10.php.
+ */
+
+package org.eclipse.collections.impl.lazy.parallel.list;
+
+import java.util.concurrent.ExecutorService;
+
+import org.eclipse.collections.api.LazyIterable;
+import org.eclipse.collections.api.annotation.Beta;
+import org.eclipse.collections.api.block.function.Function;
+import org.eclipse.collections.api.block.predicate.Predicate;
+import org.eclipse.collections.api.block.procedure.Procedure;
+import org.eclipse.collections.impl.block.factory.Functions;
+import org.eclipse.collections.impl.block.factory.Predicates;
+import org.eclipse.collections.impl.lazy.parallel.AbstractParallelIterable;
+import org.eclipse.collections.impl.lazy.parallel.OrderedBatch;
+
+@Beta
+public class ParallelCollectListIterable&lt;T, V&gt; extends AbstractParallelListIterable&lt;V, ListBatch&lt;V&gt;&gt;
+{
+    private final AbstractParallelIterable&lt;T, ? extends OrderedBatch&lt;T&gt;&gt; parallelIterable;
+    private final Function&lt;? super T, ? extends V&gt; function;
+
+    public ParallelCollectListIterable(AbstractParallelIterable&lt;T, ? extends OrderedBatch&lt;T&gt;&gt; parallelIterable, Function&lt;? super T, ? extends V&gt; function)
+<span class="nc" id="L32">    {</span>
+<span class="nc" id="L33">        this.parallelIterable = parallelIterable;</span>
+<span class="nc" id="L34">        this.function = function;</span>
+<span class="nc" id="L35">    }</span>
+
+    @Override
+    public ExecutorService getExecutorService()
+    {
+<span class="nc" id="L40">        return this.parallelIterable.getExecutorService();</span>
+    }
+
+    @Override
+    public int getBatchSize()
+    {
+<span class="nc" id="L46">        return this.parallelIterable.getBatchSize();</span>
+    }
+
+    @Override
+    public LazyIterable&lt;ListBatch&lt;V&gt;&gt; split()
+    {
+<span class="nc" id="L52">        return this.parallelIterable.split().collect(eachBatch -&gt; eachBatch.collect(this.function));</span>
+    }
+
+    @Override
+    public void forEach(Procedure&lt;? super V&gt; procedure)
+    {
+<span class="nc" id="L58">        this.parallelIterable.forEach(Functions.bind(procedure, this.function));</span>
+<span class="nc" id="L59">    }</span>
+
+    @Override
+    public boolean anySatisfy(Predicate&lt;? super V&gt; predicate)
+    {
+<span class="nc" id="L64">        return this.parallelIterable.anySatisfy(Predicates.attributePredicate(this.function, predicate));</span>
+    }
+
+    @Override
+    public boolean allSatisfy(Predicate&lt;? super V&gt; predicate)
+    {
+<span class="nc" id="L70">        return this.parallelIterable.allSatisfy(Predicates.attributePredicate(this.function, predicate));</span>
+    }
+
+    @Override
+    public V detect(Predicate&lt;? super V&gt; predicate)
+    {
+<span class="nc" id="L76">        T resultItem = this.parallelIterable.detect(Predicates.attributePredicate(this.function, predicate));</span>
+<span class="nc bnc" id="L77" title="All 2 branches missed.">        return resultItem == null ? null : this.function.valueOf(resultItem);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.0.201801022044</span></div></body></html>

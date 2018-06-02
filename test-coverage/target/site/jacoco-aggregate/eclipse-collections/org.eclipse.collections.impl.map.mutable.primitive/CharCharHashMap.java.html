@@ -1,0 +1,1727 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>CharCharHashMap.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Eclipse Collections Test Coverage Aggregation</a> &gt; <a href="../index.html" class="el_bundle">eclipse-collections</a> &gt; <a href="index.source.html" class="el_package">org.eclipse.collections.impl.map.mutable.primitive</a> &gt; <span class="el_source">CharCharHashMap.java</span></div><h1>CharCharHashMap.java</h1><pre class="source lang-java linenums">/*
+ * Copyright (c) 2018 Goldman Sachs and others.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * and Eclipse Distribution License v. 1.0 which accompany this distribution.
+ * The Eclipse Public License is available at http://www.eclipse.org/legal/epl-v10.html
+ * and the Eclipse Distribution License is available at
+ * http://www.eclipse.org/org/documents/edl-v10.php.
+ */
+
+package org.eclipse.collections.impl.map.mutable.primitive;
+
+import java.io.Externalizable;
+import java.io.IOException;
+import java.io.ObjectInput;
+import java.io.ObjectOutput;
+import java.util.Arrays;
+import java.util.Iterator;
+import java.util.NoSuchElementException;
+
+import org.eclipse.collections.api.CharIterable;
+import org.eclipse.collections.api.LazyCharIterable;
+import org.eclipse.collections.api.RichIterable;
+import org.eclipse.collections.api.block.function.primitive.CharFunction;
+import org.eclipse.collections.api.block.function.primitive.CharFunction0;
+import org.eclipse.collections.api.block.function.primitive.CharToCharFunction;
+import org.eclipse.collections.api.block.function.primitive.ObjectCharToObjectFunction;
+import org.eclipse.collections.api.block.predicate.primitive.CharCharPredicate;
+import org.eclipse.collections.api.block.procedure.Procedure;
+import org.eclipse.collections.api.block.procedure.Procedure2;
+import org.eclipse.collections.api.block.procedure.primitive.CharProcedure;
+import org.eclipse.collections.api.block.procedure.primitive.CharCharProcedure;
+import org.eclipse.collections.api.block.procedure.primitive.ObjectIntProcedure;
+import org.eclipse.collections.impl.SpreadFunctions;
+import org.eclipse.collections.api.collection.primitive.MutableCharCollection;
+import org.eclipse.collections.api.iterator.CharIterator;
+import org.eclipse.collections.api.iterator.MutableCharIterator;
+import org.eclipse.collections.api.map.primitive.CharCharMap;
+import org.eclipse.collections.api.map.primitive.ImmutableCharCharMap;
+import org.eclipse.collections.api.map.primitive.MutableCharCharMap;
+import org.eclipse.collections.api.set.primitive.CharSet;
+import org.eclipse.collections.api.set.primitive.MutableCharSet;
+import org.eclipse.collections.api.tuple.primitive.CharCharPair;
+import org.eclipse.collections.impl.bag.mutable.primitive.CharHashBag;
+import org.eclipse.collections.impl.factory.primitive.CharCharMaps;
+import org.eclipse.collections.impl.iterator.UnmodifiableCharIterator;
+import org.eclipse.collections.impl.lazy.AbstractLazyIterable;
+import org.eclipse.collections.impl.lazy.primitive.AbstractLazyCharIterable;
+import org.eclipse.collections.impl.set.mutable.primitive.CharHashSet;
+import org.eclipse.collections.impl.tuple.primitive.PrimitiveTuples;
+
+/**
+ * This file was automatically generated from template file primitivePrimitiveHashMap.stg.
+ *
+ * @since 3.0.
+ */
+public class CharCharHashMap extends AbstractMutableCharValuesMap implements MutableCharCharMap, Externalizable, MutableCharKeysMap
+{
+    private static final char EMPTY_VALUE = (char) 0;
+    private static final long serialVersionUID = 1L;
+    private static final char EMPTY_KEY = (char) 0;
+    private static final char REMOVED_KEY = (char) 1;
+    private static final int CACHE_LINE_SIZE = 64;
+    private static final int KEY_SIZE = 2;
+    private static final int INITIAL_LINEAR_PROBE = CACHE_LINE_SIZE / KEY_SIZE / 2; /* half a cache line */
+
+    private static final int DEFAULT_INITIAL_CAPACITY = 8;
+
+    private char[] keysValues;
+
+    private int occupiedWithData;
+    private int occupiedWithSentinels;
+
+    private SentinelValues sentinelValues;
+
+    private boolean copyKeysOnWrite;
+
+    public CharCharHashMap()
+<span class="nc" id="L79">    {</span>
+<span class="nc" id="L80">        this.allocateTable(DEFAULT_INITIAL_CAPACITY &lt;&lt; 1);</span>
+<span class="nc" id="L81">    }</span>
+
+    public CharCharHashMap(int initialCapacity)
+<span class="nc" id="L84">    {</span>
+<span class="nc bnc" id="L85" title="All 2 branches missed.">        if (initialCapacity &lt; 0)</span>
+        {
+<span class="nc" id="L87">            throw new IllegalArgumentException(&quot;initial capacity cannot be less than 0&quot;);</span>
+        }
+<span class="nc" id="L89">        int capacity = this.smallestPowerOfTwoGreaterThan(initialCapacity &lt;&lt; 1);</span>
+<span class="nc" id="L90">        this.allocateTable(capacity);</span>
+<span class="nc" id="L91">    }</span>
+
+    public CharCharHashMap(CharCharMap map)
+<span class="nc" id="L94">    {</span>
+<span class="nc bnc" id="L95" title="All 4 branches missed.">        if (map instanceof CharCharHashMap &amp;&amp; ((CharCharHashMap) map).occupiedWithSentinels == 0)</span>
+        {
+<span class="nc" id="L97">            CharCharHashMap hashMap = (CharCharHashMap) map;</span>
+<span class="nc" id="L98">            this.occupiedWithData = hashMap.occupiedWithData;</span>
+<span class="nc bnc" id="L99" title="All 2 branches missed.">            if (hashMap.sentinelValues != null)</span>
+            {
+<span class="nc" id="L101">                this.sentinelValues = hashMap.sentinelValues.copy();</span>
+            }
+<span class="nc" id="L103">            this.keysValues = Arrays.copyOf(hashMap.keysValues, hashMap.keysValues.length);</span>
+<span class="nc" id="L104">        }</span>
+        else
+        {
+<span class="nc" id="L107">            int capacity = this.smallestPowerOfTwoGreaterThan(Math.max(map.size(), DEFAULT_INITIAL_CAPACITY) &lt;&lt; 1);</span>
+<span class="nc" id="L108">            this.allocateTable(capacity);</span>
+<span class="nc" id="L109">            this.putAll(map);</span>
+        }
+<span class="nc" id="L111">    }</span>
+
+    public static CharCharHashMap newWithKeysValues(char key1, char value1)
+    {
+<span class="nc" id="L115">        return new CharCharHashMap(1).withKeyValue(key1, value1);</span>
+    }
+
+    public static CharCharHashMap newWithKeysValues(char key1, char value1, char key2, char value2)
+    {
+<span class="nc" id="L120">        return new CharCharHashMap(2).withKeysValues(key1, value1, key2, value2);</span>
+    }
+
+    public static CharCharHashMap newWithKeysValues(char key1, char value1, char key2, char value2, char key3, char value3)
+    {
+<span class="nc" id="L125">        return new CharCharHashMap(3).withKeysValues(key1, value1, key2, value2, key3, value3);</span>
+    }
+
+    public static CharCharHashMap newWithKeysValues(char key1, char value1, char key2, char value2, char key3, char value3, char key4, char value4)
+    {
+<span class="nc" id="L130">        return new CharCharHashMap(4).withKeysValues(key1, value1, key2, value2, key3, value3, key4, value4);</span>
+    }
+
+    private int smallestPowerOfTwoGreaterThan(int n)
+    {
+<span class="nc bnc" id="L135" title="All 2 branches missed.">        return n &gt; 1 ? Integer.highestOneBit(n - 1) &lt;&lt; 1 : 1;</span>
+    }
+
+    @Override
+    protected int getOccupiedWithData()
+    {
+<span class="nc" id="L141">        return this.occupiedWithData;</span>
+    }
+
+    @Override
+    protected SentinelValues getSentinelValues()
+    {
+<span class="nc" id="L147">        return this.sentinelValues;</span>
+    }
+
+    @Override
+    protected void setSentinelValuesNull()
+    {
+<span class="nc" id="L153">        this.sentinelValues = null;</span>
+<span class="nc" id="L154">    }</span>
+
+    @Override
+    protected char getEmptyValue()
+    {
+<span class="nc" id="L159">        return EMPTY_VALUE;</span>
+    }
+
+    @Override
+    protected int getTableSize()
+    {
+<span class="nc" id="L165">        return this.keysValues.length / 2;</span>
+    }
+
+    @Override
+    protected char getValueAtIndex(int index)
+    {
+<span class="nc" id="L171">        return this.keysValues[index * 2 + 1];</span>
+    }
+
+    @Override
+    public boolean equals(Object obj)
+    {
+<span class="nc bnc" id="L177" title="All 2 branches missed.">        if (this == obj)</span>
+        {
+<span class="nc" id="L179">            return true;</span>
+        }
+
+<span class="nc bnc" id="L182" title="All 2 branches missed.">        if (!(obj instanceof CharCharMap))</span>
+        {
+<span class="nc" id="L184">            return false;</span>
+        }
+
+<span class="nc" id="L187">        CharCharMap other = (CharCharMap) obj;</span>
+
+<span class="nc bnc" id="L189" title="All 2 branches missed.">        if (this.size() != other.size())</span>
+        {
+<span class="nc" id="L191">            return false;</span>
+        }
+
+<span class="nc bnc" id="L194" title="All 2 branches missed.">        if (this.sentinelValues == null)</span>
+        {
+<span class="nc bnc" id="L196" title="All 4 branches missed.">            if (other.containsKey(EMPTY_KEY) || other.containsKey(REMOVED_KEY))</span>
+            {
+<span class="nc" id="L198">                return false;</span>
+            }
+        }
+        else
+        {
+<span class="nc bnc" id="L203" title="All 6 branches missed.">            if (this.sentinelValues.containsZeroKey &amp;&amp; (!other.containsKey(EMPTY_KEY) || this.sentinelValues.zeroValue != other.getOrThrow(EMPTY_KEY)))</span>
+            {
+<span class="nc" id="L205">                return false;</span>
+            }
+
+<span class="nc bnc" id="L208" title="All 6 branches missed.">            if (this.sentinelValues.containsOneKey &amp;&amp; (!other.containsKey(REMOVED_KEY) || this.sentinelValues.oneValue != other.getOrThrow(REMOVED_KEY)))</span>
+            {
+<span class="nc" id="L210">                return false;</span>
+            }
+        }
+<span class="nc bnc" id="L213" title="All 2 branches missed.">        for (int i = 0; i &lt; this.keysValues.length; i += 2)</span>
+        {
+<span class="nc" id="L215">            char key = this.keysValues[i];</span>
+<span class="nc bnc" id="L216" title="All 6 branches missed.">            if (isNonSentinel(key) &amp;&amp; (!other.containsKey(key) || this.keysValues[i + 1] != other.getOrThrow(key)))</span>
+            {
+<span class="nc" id="L218">                return false;</span>
+            }
+        }
+<span class="nc" id="L221">        return true;</span>
+    }
+
+    @Override
+    public int hashCode()
+    {
+<span class="nc" id="L227">        int result = 0;</span>
+
+<span class="nc bnc" id="L229" title="All 2 branches missed.">        if (this.sentinelValues != null)</span>
+        {
+<span class="nc bnc" id="L231" title="All 2 branches missed.">            if (this.sentinelValues.containsZeroKey)</span>
+            {
+<span class="nc" id="L233">                result += (int) EMPTY_KEY ^ (int) this.sentinelValues.zeroValue;</span>
+            }
+<span class="nc bnc" id="L235" title="All 2 branches missed.">            if (this.sentinelValues.containsOneKey)</span>
+            {
+<span class="nc" id="L237">                result += (int) REMOVED_KEY ^ (int) this.sentinelValues.oneValue;</span>
+            }
+        }
+<span class="nc bnc" id="L240" title="All 2 branches missed.">        for (int i = 0; i &lt; this.keysValues.length; i += 2)</span>
+        {
+<span class="nc bnc" id="L242" title="All 2 branches missed.">            if (isNonSentinel(this.keysValues[i]))</span>
+            {
+<span class="nc" id="L244">                result += (int) this.keysValues[i] ^ (int) this.keysValues[i + 1];</span>
+            }
+        }
+
+<span class="nc" id="L248">        return result;</span>
+    }
+
+    @Override
+    public String toString()
+    {
+<span class="nc" id="L254">        StringBuilder appendable = new StringBuilder();</span>
+
+<span class="nc" id="L256">        appendable.append(&quot;{&quot;);</span>
+
+<span class="nc" id="L258">        boolean first = true;</span>
+
+<span class="nc bnc" id="L260" title="All 2 branches missed.">        if (this.sentinelValues != null)</span>
+        {
+<span class="nc bnc" id="L262" title="All 2 branches missed.">            if (this.sentinelValues.containsZeroKey)</span>
+            {
+<span class="nc" id="L264">                appendable.append(EMPTY_KEY).append(&quot;=&quot;).append(this.sentinelValues.zeroValue);</span>
+<span class="nc" id="L265">                first = false;</span>
+            }
+<span class="nc bnc" id="L267" title="All 2 branches missed.">            if (this.sentinelValues.containsOneKey)</span>
+            {
+<span class="nc bnc" id="L269" title="All 2 branches missed.">                if (!first)</span>
+                {
+<span class="nc" id="L271">                    appendable.append(&quot;, &quot;);</span>
+                }
+<span class="nc" id="L273">                appendable.append(REMOVED_KEY).append(&quot;=&quot;).append(this.sentinelValues.oneValue);</span>
+<span class="nc" id="L274">                first = false;</span>
+            }
+        }
+<span class="nc bnc" id="L277" title="All 2 branches missed.">        for (int i = 0; i &lt; this.keysValues.length; i += 2)</span>
+        {
+<span class="nc" id="L279">            char key = this.keysValues[i];</span>
+<span class="nc bnc" id="L280" title="All 2 branches missed.">            if (isNonSentinel(key))</span>
+            {
+<span class="nc bnc" id="L282" title="All 2 branches missed.">                if (!first)</span>
+                {
+<span class="nc" id="L284">                    appendable.append(&quot;, &quot;);</span>
+                }
+<span class="nc" id="L286">                appendable.append(key).append(&quot;=&quot;).append(this.keysValues[i + 1]);</span>
+<span class="nc" id="L287">                first = false;</span>
+            }
+        }
+<span class="nc" id="L290">        appendable.append(&quot;}&quot;);</span>
+
+<span class="nc" id="L292">        return appendable.toString();</span>
+    }
+
+    @Override
+    public MutableCharIterator charIterator()
+    {
+<span class="nc" id="L298">        return new InternalCharIterator();</span>
+    }
+
+    @Override
+    public &lt;V&gt; V injectInto(V injectedValue, ObjectCharToObjectFunction&lt;? super V, ? extends V&gt; function)
+    {
+<span class="nc" id="L304">        V result = injectedValue;</span>
+
+<span class="nc bnc" id="L306" title="All 2 branches missed.">        if (this.sentinelValues != null)</span>
+        {
+<span class="nc bnc" id="L308" title="All 2 branches missed.">            if (this.sentinelValues.containsZeroKey)</span>
+            {
+<span class="nc" id="L310">                result = function.valueOf(result, this.sentinelValues.zeroValue);</span>
+            }
+<span class="nc bnc" id="L312" title="All 2 branches missed.">            if (this.sentinelValues.containsOneKey)</span>
+            {
+<span class="nc" id="L314">                result = function.valueOf(result, this.sentinelValues.oneValue);</span>
+            }
+        }
+<span class="nc bnc" id="L317" title="All 2 branches missed.">        for (int i = 0; i &lt; this.keysValues.length; i += 2)</span>
+        {
+<span class="nc bnc" id="L319" title="All 2 branches missed.">            if (isNonSentinel(this.keysValues[i]))</span>
+            {
+<span class="nc" id="L321">                result = function.valueOf(result, this.keysValues[i + 1]);</span>
+            }
+        }
+
+<span class="nc" id="L325">        return result;</span>
+    }
+
+    @Override
+    public void clear()
+    {
+<span class="nc" id="L331">        this.sentinelValues = null;</span>
+<span class="nc" id="L332">        this.occupiedWithData = 0;</span>
+<span class="nc" id="L333">        this.occupiedWithSentinels = 0;</span>
+<span class="nc bnc" id="L334" title="All 2 branches missed.">        if (this.copyKeysOnWrite)</span>
+        {
+<span class="nc" id="L336">            this.copyKeys();</span>
+        }
+<span class="nc" id="L338">        Arrays.fill(this.keysValues, (char) 0);</span>
+<span class="nc" id="L339">    }</span>
+
+    @Override
+    public void put(char key, char value)
+    {
+<span class="nc bnc" id="L344" title="All 2 branches missed.">        if (isEmptyKey(key))</span>
+        {
+<span class="nc" id="L346">            this.putForEmptySentinel(value);</span>
+<span class="nc" id="L347">            return;</span>
+        }
+
+<span class="nc bnc" id="L350" title="All 2 branches missed.">        if (isRemovedKey(key))</span>
+        {
+<span class="nc" id="L352">            this.putForRemovedSentinel(value);</span>
+<span class="nc" id="L353">            return;</span>
+        }
+
+<span class="nc" id="L356">        int index = this.probe(key);</span>
+<span class="nc" id="L357">        char keyAtIndex = this.keysValues[index];</span>
+<span class="nc bnc" id="L358" title="All 2 branches missed.">        if (keyAtIndex == key)</span>
+        {
+<span class="nc" id="L360">            this.keysValues[index + 1] = value;</span>
+        }
+        else
+        {
+<span class="nc" id="L364">            this.addKeyValueAtIndex(key, value, index);</span>
+        }
+<span class="nc" id="L366">    }</span>
+
+    private void putForRemovedSentinel(char value)
+    {
+<span class="nc bnc" id="L370" title="All 2 branches missed.">        if (this.sentinelValues == null)</span>
+        {
+<span class="nc" id="L372">            this.sentinelValues = new SentinelValues();</span>
+        }
+<span class="nc" id="L374">        this.addRemovedKeyValue(value);</span>
+<span class="nc" id="L375">    }</span>
+
+    private void putForEmptySentinel(char value)
+    {
+<span class="nc bnc" id="L379" title="All 2 branches missed.">        if (this.sentinelValues == null)</span>
+        {
+<span class="nc" id="L381">            this.sentinelValues = new SentinelValues();</span>
+        }
+<span class="nc" id="L383">        this.addEmptyKeyValue(value);</span>
+<span class="nc" id="L384">    }</span>
+
+    @Override
+    public void putAll(CharCharMap map)
+    {
+<span class="nc" id="L389">        map.forEachKeyValue(this::put);</span>
+<span class="nc" id="L390">    }</span>
+
+    @Override
+    public void removeKey(char key)
+    {
+<span class="nc bnc" id="L395" title="All 2 branches missed.">        if (isEmptyKey(key))</span>
+        {
+<span class="nc bnc" id="L397" title="All 4 branches missed.">            if (this.sentinelValues == null || !this.sentinelValues.containsZeroKey)</span>
+            {
+<span class="nc" id="L399">                return;</span>
+            }
+<span class="nc" id="L401">            this.removeEmptyKey();</span>
+<span class="nc" id="L402">            return;</span>
+        }
+<span class="nc bnc" id="L404" title="All 2 branches missed.">        if (isRemovedKey(key))</span>
+        {
+<span class="nc bnc" id="L406" title="All 4 branches missed.">            if (this.sentinelValues == null || !this.sentinelValues.containsOneKey)</span>
+            {
+<span class="nc" id="L408">                return;</span>
+            }
+<span class="nc" id="L410">            this.removeRemovedKey();</span>
+<span class="nc" id="L411">            return;</span>
+        }
+<span class="nc" id="L413">        int index = this.probe(key);</span>
+<span class="nc bnc" id="L414" title="All 2 branches missed.">        if (this.keysValues[index] == key)</span>
+        {
+<span class="nc" id="L416">            this.removeKeyAtIndex(index);</span>
+        }
+<span class="nc" id="L418">    }</span>
+
+    @Override
+    public void remove(char key)
+    {
+<span class="nc" id="L423">        this.removeKey(key);</span>
+<span class="nc" id="L424">    }</span>
+
+    @Override
+    public char removeKeyIfAbsent(char key, char value)
+    {
+<span class="nc bnc" id="L429" title="All 2 branches missed.">        if (isEmptyKey(key))</span>
+        {
+<span class="nc bnc" id="L431" title="All 4 branches missed.">            if (this.sentinelValues == null || !this.sentinelValues.containsZeroKey)</span>
+            {
+<span class="nc" id="L433">                return value;</span>
+            }
+<span class="nc" id="L435">            char oldValue = this.sentinelValues.zeroValue;</span>
+<span class="nc" id="L436">            this.removeEmptyKey();</span>
+<span class="nc" id="L437">            return oldValue;</span>
+        }
+<span class="nc bnc" id="L439" title="All 2 branches missed.">        if (isRemovedKey(key))</span>
+        {
+<span class="nc bnc" id="L441" title="All 4 branches missed.">            if (this.sentinelValues == null || !this.sentinelValues.containsOneKey)</span>
+            {
+<span class="nc" id="L443">                return value;</span>
+            }
+<span class="nc" id="L445">            char oldValue = this.sentinelValues.oneValue;</span>
+<span class="nc" id="L446">            this.removeRemovedKey();</span>
+<span class="nc" id="L447">            return oldValue;</span>
+        }
+<span class="nc" id="L449">        int index = this.probe(key);</span>
+<span class="nc bnc" id="L450" title="All 2 branches missed.">        if (this.keysValues[index] == key)</span>
+        {
+<span class="nc" id="L452">            char oldValue = this.keysValues[index + 1];</span>
+<span class="nc" id="L453">            this.removeKeyAtIndex(index);</span>
+<span class="nc" id="L454">            return oldValue;</span>
+        }
+<span class="nc" id="L456">        return value;</span>
+    }
+
+    @Override
+    public char getIfAbsentPut(char key, char value)
+    {
+<span class="nc bnc" id="L462" title="All 2 branches missed.">        if (isEmptyKey(key))</span>
+        {
+<span class="nc bnc" id="L464" title="All 2 branches missed.">            if (this.sentinelValues == null)</span>
+            {
+<span class="nc" id="L466">                this.sentinelValues = new SentinelValues();</span>
+<span class="nc" id="L467">                this.addEmptyKeyValue(value);</span>
+<span class="nc" id="L468">                return value;</span>
+            }
+<span class="nc bnc" id="L470" title="All 2 branches missed.">            if (this.sentinelValues.containsZeroKey)</span>
+            {
+<span class="nc" id="L472">                return this.sentinelValues.zeroValue;</span>
+            }
+<span class="nc" id="L474">            this.addEmptyKeyValue(value);</span>
+<span class="nc" id="L475">            return value;</span>
+        }
+<span class="nc bnc" id="L477" title="All 2 branches missed.">        if (isRemovedKey(key))</span>
+        {
+<span class="nc bnc" id="L479" title="All 2 branches missed.">            if (this.sentinelValues == null)</span>
+            {
+<span class="nc" id="L481">                this.sentinelValues = new SentinelValues();</span>
+<span class="nc" id="L482">                this.addRemovedKeyValue(value);</span>
+<span class="nc" id="L483">                return value;</span>
+            }
+<span class="nc bnc" id="L485" title="All 2 branches missed.">            if (this.sentinelValues.containsOneKey)</span>
+            {
+<span class="nc" id="L487">                return this.sentinelValues.oneValue;</span>
+            }
+<span class="nc" id="L489">            this.addRemovedKeyValue(value);</span>
+<span class="nc" id="L490">            return value;</span>
+        }
+<span class="nc" id="L492">        int index = this.probe(key);</span>
+<span class="nc bnc" id="L493" title="All 2 branches missed.">        if (this.keysValues[index] == key)</span>
+        {
+<span class="nc" id="L495">            return this.keysValues[index + 1];</span>
+        }
+<span class="nc" id="L497">        this.addKeyValueAtIndex(key, value, index);</span>
+<span class="nc" id="L498">        return value;</span>
+    }
+
+    @Override
+    public char getIfAbsentPut(char key, CharFunction0 function)
+    {
+<span class="nc bnc" id="L504" title="All 2 branches missed.">        if (isEmptyKey(key))</span>
+        {
+<span class="nc bnc" id="L506" title="All 2 branches missed.">            if (this.sentinelValues == null)</span>
+            {
+<span class="nc" id="L508">                char value = function.value();</span>
+<span class="nc" id="L509">                this.sentinelValues = new SentinelValues();</span>
+<span class="nc" id="L510">                this.addEmptyKeyValue(value);</span>
+<span class="nc" id="L511">                return value;</span>
+            }
+<span class="nc bnc" id="L513" title="All 2 branches missed.">            if (this.sentinelValues.containsZeroKey)</span>
+            {
+<span class="nc" id="L515">                return this.sentinelValues.zeroValue;</span>
+            }
+<span class="nc" id="L517">            char value = function.value();</span>
+<span class="nc" id="L518">            this.addEmptyKeyValue(value);</span>
+<span class="nc" id="L519">            return value;</span>
+        }
+<span class="nc bnc" id="L521" title="All 2 branches missed.">        if (isRemovedKey(key))</span>
+        {
+<span class="nc bnc" id="L523" title="All 2 branches missed.">            if (this.sentinelValues == null)</span>
+            {
+<span class="nc" id="L525">                char value = function.value();</span>
+<span class="nc" id="L526">                this.sentinelValues = new SentinelValues();</span>
+<span class="nc" id="L527">                this.addRemovedKeyValue(value);</span>
+<span class="nc" id="L528">                return value;</span>
+            }
+<span class="nc bnc" id="L530" title="All 2 branches missed.">            if (this.sentinelValues.containsOneKey)</span>
+            {
+<span class="nc" id="L532">                return this.sentinelValues.oneValue;</span>
+            }
+<span class="nc" id="L534">            char value = function.value();</span>
+<span class="nc" id="L535">            this.addRemovedKeyValue(value);</span>
+<span class="nc" id="L536">            return value;</span>
+        }
+<span class="nc" id="L538">        int index = this.probe(key);</span>
+<span class="nc bnc" id="L539" title="All 2 branches missed.">        if (this.keysValues[index] == key)</span>
+        {
+<span class="nc" id="L541">            return this.keysValues[index + 1];</span>
+        }
+<span class="nc" id="L543">        char value = function.value();</span>
+<span class="nc" id="L544">        this.addKeyValueAtIndex(key, value, index);</span>
+<span class="nc" id="L545">        return value;</span>
+    }
+
+    @Override
+    public &lt;P&gt; char getIfAbsentPutWith(char key, CharFunction&lt;? super P&gt; function, P parameter)
+    {
+<span class="nc bnc" id="L551" title="All 2 branches missed.">        if (isEmptyKey(key))</span>
+        {
+<span class="nc bnc" id="L553" title="All 2 branches missed.">            if (this.sentinelValues == null)</span>
+            {
+<span class="nc" id="L555">                char value = function.charValueOf(parameter);</span>
+<span class="nc" id="L556">                this.sentinelValues = new SentinelValues();</span>
+<span class="nc" id="L557">                this.addEmptyKeyValue(value);</span>
+<span class="nc" id="L558">                return value;</span>
+            }
+<span class="nc bnc" id="L560" title="All 2 branches missed.">            if (this.sentinelValues.containsZeroKey)</span>
+            {
+<span class="nc" id="L562">                return this.sentinelValues.zeroValue;</span>
+            }
+<span class="nc" id="L564">            char value = function.charValueOf(parameter);</span>
+<span class="nc" id="L565">            this.addEmptyKeyValue(value);</span>
+<span class="nc" id="L566">            return value;</span>
+        }
+<span class="nc bnc" id="L568" title="All 2 branches missed.">        if (isRemovedKey(key))</span>
+        {
+<span class="nc bnc" id="L570" title="All 2 branches missed.">            if (this.sentinelValues == null)</span>
+            {
+<span class="nc" id="L572">                char value = function.charValueOf(parameter);</span>
+<span class="nc" id="L573">                this.sentinelValues = new SentinelValues();</span>
+<span class="nc" id="L574">                this.addRemovedKeyValue(value);</span>
+<span class="nc" id="L575">                return value;</span>
+            }
+<span class="nc bnc" id="L577" title="All 2 branches missed.">            if (this.sentinelValues.containsOneKey)</span>
+            {
+<span class="nc" id="L579">                return this.sentinelValues.oneValue;</span>
+            }
+<span class="nc" id="L581">            char value = function.charValueOf(parameter);</span>
+<span class="nc" id="L582">            this.addRemovedKeyValue(value);</span>
+<span class="nc" id="L583">            return value;</span>
+        }
+<span class="nc" id="L585">        int index = this.probe(key);</span>
+<span class="nc bnc" id="L586" title="All 2 branches missed.">        if (this.keysValues[index] == key)</span>
+        {
+<span class="nc" id="L588">            return this.keysValues[index + 1];</span>
+        }
+<span class="nc" id="L590">        char value = function.charValueOf(parameter);</span>
+<span class="nc" id="L591">        this.addKeyValueAtIndex(key, value, index);</span>
+<span class="nc" id="L592">        return value;</span>
+    }
+
+    @Override
+    public char getIfAbsentPutWithKey(char key, CharToCharFunction function)
+    {
+<span class="nc bnc" id="L598" title="All 2 branches missed.">        if (isEmptyKey(key))</span>
+        {
+<span class="nc bnc" id="L600" title="All 2 branches missed.">            if (this.sentinelValues == null)</span>
+            {
+<span class="nc" id="L602">                char value = function.valueOf(key);</span>
+<span class="nc" id="L603">                this.sentinelValues = new SentinelValues();</span>
+<span class="nc" id="L604">                this.addEmptyKeyValue(value);</span>
+<span class="nc" id="L605">                return value;</span>
+            }
+<span class="nc bnc" id="L607" title="All 2 branches missed.">            if (this.sentinelValues.containsZeroKey)</span>
+            {
+<span class="nc" id="L609">                return this.sentinelValues.zeroValue;</span>
+            }
+<span class="nc" id="L611">            char value = function.valueOf(key);</span>
+<span class="nc" id="L612">            this.addEmptyKeyValue(value);</span>
+<span class="nc" id="L613">            return value;</span>
+        }
+<span class="nc bnc" id="L615" title="All 2 branches missed.">        if (isRemovedKey(key))</span>
+        {
+<span class="nc bnc" id="L617" title="All 2 branches missed.">            if (this.sentinelValues == null)</span>
+            {
+<span class="nc" id="L619">                char value = function.valueOf(key);</span>
+<span class="nc" id="L620">                this.sentinelValues = new SentinelValues();</span>
+<span class="nc" id="L621">                this.addRemovedKeyValue(value);</span>
+<span class="nc" id="L622">                return value;</span>
+            }
+<span class="nc bnc" id="L624" title="All 2 branches missed.">            if (this.sentinelValues.containsOneKey)</span>
+            {
+<span class="nc" id="L626">                return this.sentinelValues.oneValue;</span>
+            }
+<span class="nc" id="L628">            char value = function.valueOf(key);</span>
+<span class="nc" id="L629">            this.addRemovedKeyValue(value);</span>
+<span class="nc" id="L630">            return value;</span>
+        }
+<span class="nc" id="L632">        int index = this.probe(key);</span>
+<span class="nc bnc" id="L633" title="All 2 branches missed.">        if (this.keysValues[index] == key)</span>
+        {
+<span class="nc" id="L635">            return this.keysValues[index + 1];</span>
+        }
+<span class="nc" id="L637">        char value = function.valueOf(key);</span>
+<span class="nc" id="L638">        this.addKeyValueAtIndex(key, value, index);</span>
+<span class="nc" id="L639">        return value;</span>
+    }
+
+    @Override
+    public char addToValue(char key, char toBeAdded)
+    {
+<span class="nc bnc" id="L645" title="All 2 branches missed.">        if (isEmptyKey(key))</span>
+        {
+<span class="nc bnc" id="L647" title="All 2 branches missed.">            if (this.sentinelValues == null)</span>
+            {
+<span class="nc" id="L649">                this.sentinelValues = new SentinelValues();</span>
+<span class="nc" id="L650">                this.addEmptyKeyValue(toBeAdded);</span>
+            }
+<span class="nc bnc" id="L652" title="All 2 branches missed.">            else if (this.sentinelValues.containsZeroKey)</span>
+            {
+<span class="nc" id="L654">                this.sentinelValues.zeroValue += toBeAdded;</span>
+            }
+            else
+            {
+<span class="nc" id="L658">                this.addEmptyKeyValue(toBeAdded);</span>
+            }
+<span class="nc" id="L660">            return this.sentinelValues.zeroValue;</span>
+        }
+<span class="nc bnc" id="L662" title="All 2 branches missed.">        if (isRemovedKey(key))</span>
+        {
+<span class="nc bnc" id="L664" title="All 2 branches missed.">            if (this.sentinelValues == null)</span>
+            {
+<span class="nc" id="L666">                this.sentinelValues = new SentinelValues();</span>
+<span class="nc" id="L667">                this.addRemovedKeyValue(toBeAdded);</span>
+            }
+<span class="nc bnc" id="L669" title="All 2 branches missed.">            else if (this.sentinelValues.containsOneKey)</span>
+            {
+<span class="nc" id="L671">                this.sentinelValues.oneValue += toBeAdded;</span>
+            }
+            else
+            {
+<span class="nc" id="L675">                this.addRemovedKeyValue(toBeAdded);</span>
+            }
+<span class="nc" id="L677">            return this.sentinelValues.oneValue;</span>
+        }
+<span class="nc" id="L679">        int index = this.probe(key);</span>
+<span class="nc bnc" id="L680" title="All 2 branches missed.">        if (this.keysValues[index] == key)</span>
+        {
+<span class="nc" id="L682">            this.keysValues[index + 1] += toBeAdded;</span>
+<span class="nc" id="L683">            return this.keysValues[index + 1];</span>
+        }
+<span class="nc" id="L685">        this.addKeyValueAtIndex(key, toBeAdded, index);</span>
+<span class="nc" id="L686">        return toBeAdded;</span>
+    }
+
+    private void addKeyValueAtIndex(char key, char value, int index)
+    {
+<span class="nc bnc" id="L691" title="All 2 branches missed.">        if (this.keysValues[index] == REMOVED_KEY)</span>
+        {
+<span class="nc" id="L693">            this.occupiedWithSentinels--;</span>
+        }
+<span class="nc bnc" id="L695" title="All 2 branches missed.">        if (this.copyKeysOnWrite)</span>
+        {
+<span class="nc" id="L697">            this.copyKeys();</span>
+        }
+<span class="nc" id="L699">        this.keysValues[index] = key;</span>
+<span class="nc" id="L700">        this.keysValues[index + 1] = value;</span>
+<span class="nc" id="L701">        this.occupiedWithData++;</span>
+<span class="nc bnc" id="L702" title="All 2 branches missed.">        if (this.occupiedWithData + this.occupiedWithSentinels &gt; this.maxOccupiedWithData())</span>
+        {
+<span class="nc" id="L704">            this.rehashAndGrow();</span>
+        }
+<span class="nc" id="L706">    }</span>
+
+    private void removeKeyAtIndex(int index)
+    {
+<span class="nc bnc" id="L710" title="All 2 branches missed.">        if (this.copyKeysOnWrite)</span>
+        {
+<span class="nc" id="L712">            this.copyKeys();</span>
+        }
+<span class="nc" id="L714">        this.keysValues[index] = REMOVED_KEY;</span>
+<span class="nc" id="L715">        this.keysValues[index + 1] = EMPTY_VALUE;</span>
+<span class="nc" id="L716">        this.occupiedWithData--;</span>
+<span class="nc" id="L717">        this.occupiedWithSentinels++;</span>
+<span class="nc" id="L718">    }</span>
+
+    private void copyKeys()
+    {
+<span class="nc" id="L722">        char[] copy = new char[this.keysValues.length];</span>
+<span class="nc" id="L723">        System.arraycopy(this.keysValues, 0, copy, 0, this.keysValues.length);</span>
+<span class="nc" id="L724">        this.keysValues = copy;</span>
+<span class="nc" id="L725">        this.copyKeysOnWrite = false;</span>
+<span class="nc" id="L726">    }</span>
+
+    @Override
+    public char updateValue(char key, char initialValueIfAbsent, CharToCharFunction function)
+    {
+<span class="nc bnc" id="L731" title="All 2 branches missed.">        if (isEmptyKey(key))</span>
+        {
+<span class="nc bnc" id="L733" title="All 2 branches missed.">            if (this.sentinelValues == null)</span>
+            {
+<span class="nc" id="L735">                this.sentinelValues = new SentinelValues();</span>
+<span class="nc" id="L736">                this.addEmptyKeyValue(function.valueOf(initialValueIfAbsent));</span>
+            }
+<span class="nc bnc" id="L738" title="All 2 branches missed.">            else if (this.sentinelValues.containsZeroKey)</span>
+            {
+<span class="nc" id="L740">                this.sentinelValues.zeroValue = function.valueOf(this.sentinelValues.zeroValue);</span>
+            }
+            else
+            {
+<span class="nc" id="L744">                this.addEmptyKeyValue(function.valueOf(initialValueIfAbsent));</span>
+            }
+<span class="nc" id="L746">            return this.sentinelValues.zeroValue;</span>
+        }
+<span class="nc bnc" id="L748" title="All 2 branches missed.">        if (isRemovedKey(key))</span>
+        {
+<span class="nc bnc" id="L750" title="All 2 branches missed.">            if (this.sentinelValues == null)</span>
+            {
+<span class="nc" id="L752">                this.sentinelValues = new SentinelValues();</span>
+<span class="nc" id="L753">                this.addRemovedKeyValue(function.valueOf(initialValueIfAbsent));</span>
+            }
+<span class="nc bnc" id="L755" title="All 2 branches missed.">            else if (this.sentinelValues.containsOneKey)</span>
+            {
+<span class="nc" id="L757">                this.sentinelValues.oneValue = function.valueOf(this.sentinelValues.oneValue);</span>
+            }
+            else
+            {
+<span class="nc" id="L761">                this.addRemovedKeyValue(function.valueOf(initialValueIfAbsent));</span>
+            }
+<span class="nc" id="L763">            return this.sentinelValues.oneValue;</span>
+        }
+<span class="nc" id="L765">        int index = this.probe(key);</span>
+<span class="nc bnc" id="L766" title="All 2 branches missed.">        if (this.keysValues[index] == key)</span>
+        {
+<span class="nc" id="L768">            this.keysValues[index + 1] = function.valueOf(this.keysValues[index + 1]);</span>
+<span class="nc" id="L769">            return this.keysValues[index + 1];</span>
+        }
+<span class="nc" id="L771">        char value = function.valueOf(initialValueIfAbsent);</span>
+<span class="nc" id="L772">        this.addKeyValueAtIndex(key, value, index);</span>
+<span class="nc" id="L773">        return value;</span>
+    }
+
+    @Override
+    public CharCharHashMap withKeyValue(char key1, char value1)
+    {
+<span class="nc" id="L779">        this.put(key1, value1);</span>
+<span class="nc" id="L780">        return this;</span>
+    }
+
+    public CharCharHashMap withKeysValues(char key1, char value1, char key2, char value2)
+    {
+<span class="nc" id="L785">        this.put(key1, value1);</span>
+<span class="nc" id="L786">        this.put(key2, value2);</span>
+<span class="nc" id="L787">        return this;</span>
+    }
+
+    public CharCharHashMap withKeysValues(char key1, char value1, char key2, char value2, char key3, char value3)
+    {
+<span class="nc" id="L792">        this.put(key1, value1);</span>
+<span class="nc" id="L793">        this.put(key2, value2);</span>
+<span class="nc" id="L794">        this.put(key3, value3);</span>
+<span class="nc" id="L795">        return this;</span>
+    }
+
+    public CharCharHashMap withKeysValues(char key1, char value1, char key2, char value2, char key3, char value3, char key4, char value4)
+    {
+<span class="nc" id="L800">        this.put(key1, value1);</span>
+<span class="nc" id="L801">        this.put(key2, value2);</span>
+<span class="nc" id="L802">        this.put(key3, value3);</span>
+<span class="nc" id="L803">        this.put(key4, value4);</span>
+<span class="nc" id="L804">        return this;</span>
+    }
+
+    @Override
+    public CharCharHashMap withoutKey(char key)
+    {
+<span class="nc" id="L810">        this.removeKey(key);</span>
+<span class="nc" id="L811">        return this;</span>
+    }
+
+    @Override
+    public CharCharHashMap withoutAllKeys(CharIterable keys)
+    {
+<span class="nc" id="L817">        keys.forEach(this::removeKey);</span>
+<span class="nc" id="L818">        return this;</span>
+    }
+
+    @Override
+    public MutableCharCharMap asUnmodifiable()
+    {
+<span class="nc" id="L824">        return new UnmodifiableCharCharMap(this);</span>
+    }
+
+    @Override
+    public MutableCharCharMap asSynchronized()
+    {
+<span class="nc" id="L830">        return new SynchronizedCharCharMap(this);</span>
+    }
+
+    @Override
+    public ImmutableCharCharMap toImmutable()
+    {
+<span class="nc" id="L836">        return CharCharMaps.immutable.ofAll(this);</span>
+    }
+
+    @Override
+    public char get(char key)
+    {
+<span class="nc" id="L842">        return this.getIfAbsent(key, EMPTY_VALUE);</span>
+    }
+
+    @Override
+    public char getIfAbsent(char key, char ifAbsent)
+    {
+<span class="nc bnc" id="L848" title="All 4 branches missed.">        if (isEmptyKey(key) || isRemovedKey(key))</span>
+        {
+<span class="nc" id="L850">            return this.getForSentinel(key, ifAbsent);</span>
+        }
+<span class="nc bnc" id="L852" title="All 2 branches missed.">        if (this.occupiedWithSentinels == 0)</span>
+        {
+<span class="nc" id="L854">            return this.fastGetIfAbsent(key, ifAbsent);</span>
+        }
+<span class="nc" id="L856">        return this.slowGetIfAbsent(key, ifAbsent);</span>
+    }
+
+    private char getForSentinel(char key, char ifAbsent)
+    {
+<span class="nc bnc" id="L861" title="All 2 branches missed.">        if (isEmptyKey(key))</span>
+        {
+<span class="nc bnc" id="L863" title="All 4 branches missed.">            if (this.sentinelValues == null || !this.sentinelValues.containsZeroKey)</span>
+            {
+<span class="nc" id="L865">                return ifAbsent;</span>
+            }
+<span class="nc" id="L867">            return this.sentinelValues.zeroValue;</span>
+        }
+<span class="nc bnc" id="L869" title="All 4 branches missed.">        if (this.sentinelValues == null || !this.sentinelValues.containsOneKey)</span>
+        {
+<span class="nc" id="L871">            return ifAbsent;</span>
+        }
+<span class="nc" id="L873">        return this.sentinelValues.oneValue;</span>
+    }
+
+    private char slowGetIfAbsent(char key, char ifAbsent)
+    {
+<span class="nc" id="L878">        int index = this.probe(key);</span>
+<span class="nc bnc" id="L879" title="All 2 branches missed.">        if (this.keysValues[index] == key)</span>
+        {
+<span class="nc" id="L881">            return this.keysValues[index + 1];</span>
+        }
+<span class="nc" id="L883">        return ifAbsent;</span>
+    }
+
+    private char fastGetIfAbsent(char key, char ifAbsent)
+    {
+<span class="nc" id="L888">        int index = this.mask((int) key) &lt;&lt; 1;</span>
+
+<span class="nc bnc" id="L890" title="All 2 branches missed.">        for (int i = 0; i &lt; INITIAL_LINEAR_PROBE; i += 2)</span>
+        {
+<span class="nc" id="L892">            char keyAtIndex = this.keysValues[index];</span>
+<span class="nc bnc" id="L893" title="All 2 branches missed.">            if (keyAtIndex == key)</span>
+            {
+<span class="nc" id="L895">                return this.keysValues[index + 1];</span>
+            }
+<span class="nc bnc" id="L897" title="All 2 branches missed.">            if (keyAtIndex == EMPTY_KEY)</span>
+            {
+<span class="nc" id="L899">                return ifAbsent;</span>
+            }
+<span class="nc" id="L901">            index = (index + 2) &amp; (this.keysValues.length - 1);</span>
+        }
+<span class="nc" id="L903">        return this.slowGetIfAbsentTwo(key, ifAbsent);</span>
+    }
+
+    private char slowGetIfAbsentTwo(char key, char ifAbsent)
+    {
+<span class="nc" id="L908">        int index = this.probeTwo(key, -1);</span>
+<span class="nc bnc" id="L909" title="All 2 branches missed.">        if (this.keysValues[index] == key)</span>
+        {
+<span class="nc" id="L911">            return this.keysValues[index + 1];</span>
+        }
+<span class="nc" id="L913">        return ifAbsent;</span>
+    }
+
+    @Override
+    public char getOrThrow(char key)
+    {
+<span class="nc bnc" id="L919" title="All 2 branches missed.">        if (isEmptyKey(key))</span>
+        {
+<span class="nc bnc" id="L921" title="All 4 branches missed.">            if (this.sentinelValues == null || !this.sentinelValues.containsZeroKey)</span>
+            {
+<span class="nc" id="L923">                throw new IllegalStateException(&quot;Key &quot; + key + &quot; not present.&quot;);</span>
+            }
+<span class="nc" id="L925">            return this.sentinelValues.zeroValue;</span>
+        }
+<span class="nc bnc" id="L927" title="All 2 branches missed.">        if (isRemovedKey(key))</span>
+        {
+<span class="nc bnc" id="L929" title="All 4 branches missed.">            if (this.sentinelValues == null || !this.sentinelValues.containsOneKey)</span>
+            {
+<span class="nc" id="L931">                throw new IllegalStateException(&quot;Key &quot; + key + &quot; not present.&quot;);</span>
+            }
+<span class="nc" id="L933">            return this.sentinelValues.oneValue;</span>
+        }
+<span class="nc" id="L935">        int index = this.probe(key);</span>
+<span class="nc bnc" id="L936" title="All 2 branches missed.">        if (isNonSentinel(this.keysValues[index]))</span>
+        {
+<span class="nc" id="L938">            return this.keysValues[index + 1];</span>
+        }
+<span class="nc" id="L940">        throw new IllegalStateException(&quot;Key &quot; + key + &quot; not present.&quot;);</span>
+    }
+
+    @Override
+    public boolean containsKey(char key)
+    {
+<span class="nc bnc" id="L946" title="All 2 branches missed.">        if (isEmptyKey(key))</span>
+        {
+<span class="nc bnc" id="L948" title="All 4 branches missed.">            return this.sentinelValues != null &amp;&amp; this.sentinelValues.containsZeroKey;</span>
+        }
+<span class="nc bnc" id="L950" title="All 2 branches missed.">        if (isRemovedKey(key))</span>
+        {
+<span class="nc bnc" id="L952" title="All 4 branches missed.">            return this.sentinelValues != null &amp;&amp; this.sentinelValues.containsOneKey;</span>
+        }
+<span class="nc bnc" id="L954" title="All 2 branches missed.">        return this.keysValues[this.probe(key)] == key;</span>
+    }
+
+    @Override
+    public void forEachKey(CharProcedure procedure)
+    {
+<span class="nc bnc" id="L960" title="All 2 branches missed.">        if (this.sentinelValues != null)</span>
+        {
+<span class="nc bnc" id="L962" title="All 2 branches missed.">            if (this.sentinelValues.containsZeroKey)</span>
+            {
+<span class="nc" id="L964">                procedure.value(EMPTY_KEY);</span>
+            }
+<span class="nc bnc" id="L966" title="All 2 branches missed.">            if (this.sentinelValues.containsOneKey)</span>
+            {
+<span class="nc" id="L968">                procedure.value(REMOVED_KEY);</span>
+            }
+        }
+<span class="nc bnc" id="L971" title="All 2 branches missed.">        for (int i = 0; i &lt; this.keysValues.length; i += 2)</span>
+        {
+<span class="nc bnc" id="L973" title="All 2 branches missed.">            if (isNonSentinel(this.keysValues[i]))</span>
+            {
+<span class="nc" id="L975">                procedure.value(this.keysValues[i]);</span>
+            }
+        }
+<span class="nc" id="L978">    }</span>
+
+    @Override
+    public void forEachKeyValue(CharCharProcedure procedure)
+    {
+<span class="nc bnc" id="L983" title="All 2 branches missed.">        if (this.sentinelValues != null)</span>
+        {
+<span class="nc bnc" id="L985" title="All 2 branches missed.">            if (this.sentinelValues.containsZeroKey)</span>
+            {
+<span class="nc" id="L987">                procedure.value(EMPTY_KEY, this.sentinelValues.zeroValue);</span>
+            }
+<span class="nc bnc" id="L989" title="All 2 branches missed.">            if (this.sentinelValues.containsOneKey)</span>
+            {
+<span class="nc" id="L991">                procedure.value(REMOVED_KEY, this.sentinelValues.oneValue);</span>
+            }
+        }
+<span class="nc bnc" id="L994" title="All 2 branches missed.">        for (int i = 0; i &lt; this.keysValues.length; i += 2)</span>
+        {
+<span class="nc bnc" id="L996" title="All 2 branches missed.">            if (isNonSentinel(this.keysValues[i]))</span>
+            {
+<span class="nc" id="L998">                procedure.value(this.keysValues[i], this.keysValues[i + 1]);</span>
+            }
+        }
+<span class="nc" id="L1001">    }</span>
+
+    @Override
+    public LazyCharIterable keysView()
+    {
+<span class="nc" id="L1006">        return new KeysView();</span>
+    }
+
+    @Override
+    public RichIterable&lt;CharCharPair&gt; keyValuesView()
+    {
+<span class="nc" id="L1012">        return new KeyValuesView();</span>
+    }
+
+    @Override
+    public MutableCharCharMap flipUniqueValues()
+    {
+<span class="nc" id="L1018">        MutableCharCharMap result = CharCharMaps.mutable.empty();</span>
+<span class="nc" id="L1019">         this.forEachKeyValue((key, value) -&gt; {</span>
+<span class="nc bnc" id="L1020" title="All 2 branches missed.">            if (result.containsKey(value))</span>
+            {
+<span class="nc" id="L1022">                throw new IllegalStateException(&quot;Duplicate value: &quot; + value + &quot; found at key: &quot; + result.get(value) + &quot; and key: &quot; + key);</span>
+            }
+<span class="nc" id="L1024">            result.put(value, key);</span>
+<span class="nc" id="L1025">        });</span>
+<span class="nc" id="L1026">        return result;</span>
+    }
+
+    @Override
+    public CharCharHashMap select(CharCharPredicate predicate)
+    {
+<span class="nc" id="L1032">        CharCharHashMap result = new CharCharHashMap();</span>
+
+<span class="nc bnc" id="L1034" title="All 2 branches missed.">        if (this.sentinelValues != null)</span>
+        {
+<span class="nc bnc" id="L1036" title="All 4 branches missed.">            if (this.sentinelValues.containsZeroKey &amp;&amp; predicate.accept(EMPTY_KEY, this.sentinelValues.zeroValue))</span>
+            {
+<span class="nc" id="L1038">                result.put(EMPTY_KEY, this.sentinelValues.zeroValue);</span>
+            }
+<span class="nc bnc" id="L1040" title="All 4 branches missed.">            if (this.sentinelValues.containsOneKey &amp;&amp; predicate.accept(REMOVED_KEY, this.sentinelValues.oneValue))</span>
+            {
+<span class="nc" id="L1042">                result.put(REMOVED_KEY, this.sentinelValues.oneValue);</span>
+            }
+        }
+<span class="nc bnc" id="L1045" title="All 2 branches missed.">        for (int i = 0; i &lt; this.keysValues.length; i += 2)</span>
+        {
+<span class="nc bnc" id="L1047" title="All 4 branches missed.">            if (isNonSentinel(this.keysValues[i]) &amp;&amp; predicate.accept(this.keysValues[i], this.keysValues[i + 1]))</span>
+            {
+<span class="nc" id="L1049">                result.put(this.keysValues[i], this.keysValues[i + 1]);</span>
+            }
+        }
+
+<span class="nc" id="L1053">        return result;</span>
+    }
+
+    @Override
+    public CharCharHashMap reject(CharCharPredicate predicate)
+    {
+<span class="nc" id="L1059">        CharCharHashMap result = new CharCharHashMap();</span>
+
+<span class="nc bnc" id="L1061" title="All 2 branches missed.">        if (this.sentinelValues != null)</span>
+        {
+<span class="nc bnc" id="L1063" title="All 4 branches missed.">            if (this.sentinelValues.containsZeroKey &amp;&amp; !predicate.accept(EMPTY_KEY, this.sentinelValues.zeroValue))</span>
+            {
+<span class="nc" id="L1065">                result.put(EMPTY_KEY, this.sentinelValues.zeroValue);</span>
+            }
+<span class="nc bnc" id="L1067" title="All 4 branches missed.">            if (this.sentinelValues.containsOneKey &amp;&amp; !predicate.accept(REMOVED_KEY, this.sentinelValues.oneValue))</span>
+            {
+<span class="nc" id="L1069">                result.put(REMOVED_KEY, this.sentinelValues.oneValue);</span>
+            }
+        }
+<span class="nc bnc" id="L1072" title="All 2 branches missed.">        for (int i = 0; i &lt; this.keysValues.length; i += 2)</span>
+        {
+<span class="nc bnc" id="L1074" title="All 4 branches missed.">            if (isNonSentinel(this.keysValues[i]) &amp;&amp; !predicate.accept(this.keysValues[i], this.keysValues[i + 1]))</span>
+            {
+<span class="nc" id="L1076">                result.put(this.keysValues[i], this.keysValues[i + 1]);</span>
+            }
+        }
+<span class="nc" id="L1079">        return result;</span>
+    }
+
+    @Override
+    public void writeExternal(ObjectOutput out) throws IOException
+    {
+<span class="nc" id="L1085">        out.writeInt(this.size());</span>
+<span class="nc bnc" id="L1086" title="All 2 branches missed.">        if (this.sentinelValues != null)</span>
+        {
+<span class="nc bnc" id="L1088" title="All 2 branches missed.">            if (this.sentinelValues.containsZeroKey)</span>
+            {
+<span class="nc" id="L1090">                out.writeChar(EMPTY_KEY);</span>
+<span class="nc" id="L1091">                out.writeChar(this.sentinelValues.zeroValue);</span>
+            }
+<span class="nc bnc" id="L1093" title="All 2 branches missed.">            if (this.sentinelValues.containsOneKey)</span>
+            {
+<span class="nc" id="L1095">                out.writeChar(REMOVED_KEY);</span>
+<span class="nc" id="L1096">                out.writeChar(this.sentinelValues.oneValue);</span>
+            }
+        }
+<span class="nc bnc" id="L1099" title="All 2 branches missed.">        for (int i = 0; i &lt; this.keysValues.length; i += 2)</span>
+        {
+<span class="nc bnc" id="L1101" title="All 2 branches missed.">            if (isNonSentinel(this.keysValues[i]))</span>
+            {
+<span class="nc" id="L1103">                out.writeChar(this.keysValues[i]);</span>
+<span class="nc" id="L1104">                out.writeChar(this.keysValues[i + 1]);</span>
+            }
+        }
+<span class="nc" id="L1107">    }</span>
+
+    @Override
+    public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException
+    {
+<span class="nc" id="L1112">        int size = in.readInt();</span>
+<span class="nc bnc" id="L1113" title="All 2 branches missed.">        for (int i = 0; i &lt; size; i++)</span>
+        {
+<span class="nc" id="L1115">            this.put(in.readChar(), in.readChar());</span>
+        }
+<span class="nc" id="L1117">    }</span>
+
+    /**
+     * Rehashes every element in the set into a new backing table of the smallest possible size and eliminating removed sentinels.
+     */
+    public void compact()
+    {
+<span class="nc" id="L1124">        this.rehash(this.smallestPowerOfTwoGreaterThan(this.size()));</span>
+<span class="nc" id="L1125">    }</span>
+
+    private void rehashAndGrow()
+    {
+<span class="nc" id="L1129">        this.rehash(this.keysValues.length);</span>
+<span class="nc" id="L1130">    }</span>
+
+    private void rehash(int newCapacity)
+    {
+<span class="nc" id="L1134">        int oldLength = this.keysValues.length;</span>
+<span class="nc" id="L1135">        char[] old = this.keysValues;</span>
+<span class="nc" id="L1136">        this.allocateTable(newCapacity);</span>
+<span class="nc" id="L1137">        this.occupiedWithData = 0;</span>
+<span class="nc" id="L1138">        this.occupiedWithSentinels = 0;</span>
+
+<span class="nc bnc" id="L1140" title="All 2 branches missed.">        for (int i = 0; i &lt; oldLength; i += 2)</span>
+        {
+<span class="nc bnc" id="L1142" title="All 2 branches missed.">            if (isNonSentinel(old[i]))</span>
+            {
+<span class="nc" id="L1144">                this.put(old[i], old[i + 1]);</span>
+            }
+        }
+<span class="nc" id="L1147">    }</span>
+
+    // exposed for testing
+    int probe(char element)
+    {
+<span class="nc" id="L1152">        int index = this.mask((int) element) &lt;&lt; 1;</span>
+<span class="nc" id="L1153">        char keyAtIndex = this.keysValues[index];</span>
+
+<span class="nc bnc" id="L1155" title="All 4 branches missed.">        if (keyAtIndex == element || keyAtIndex == EMPTY_KEY)</span>
+        {
+<span class="nc" id="L1157">            return index;</span>
+        }
+
+<span class="nc bnc" id="L1160" title="All 2 branches missed.">        int removedIndex = keyAtIndex == REMOVED_KEY ? index : -1;</span>
+<span class="nc bnc" id="L1161" title="All 2 branches missed.">        for (int i = 2; i &lt; INITIAL_LINEAR_PROBE; i += 2)</span>
+        {
+<span class="nc" id="L1163">            int nextIndex = (index + i) &amp; (this.keysValues.length - 1);</span>
+<span class="nc" id="L1164">            keyAtIndex = this.keysValues[nextIndex];</span>
+<span class="nc bnc" id="L1165" title="All 2 branches missed.">            if (keyAtIndex == element)</span>
+            {
+<span class="nc" id="L1167">                return nextIndex;</span>
+            }
+<span class="nc bnc" id="L1169" title="All 2 branches missed.">            if (keyAtIndex == EMPTY_KEY)</span>
+            {
+<span class="nc bnc" id="L1171" title="All 2 branches missed.">                return removedIndex == -1 ? nextIndex : removedIndex;</span>
+            }
+<span class="nc bnc" id="L1173" title="All 4 branches missed.">            if (keyAtIndex == REMOVED_KEY &amp;&amp; removedIndex == -1)</span>
+            {
+<span class="nc" id="L1175">                removedIndex = nextIndex;</span>
+            }
+        }
+<span class="nc" id="L1178">        return this.probeTwo(element, removedIndex);</span>
+    }
+
+    int probeTwo(char element, int removedIndex)
+    {
+<span class="nc" id="L1183">        int index = this.spreadTwoAndMask(element) &lt;&lt; 1;</span>
+<span class="nc bnc" id="L1184" title="All 2 branches missed.">        for (int i = 0; i &lt; INITIAL_LINEAR_PROBE; i += 2)</span>
+        {
+<span class="nc" id="L1186">            int nextIndex = (index + i) &amp; (this.keysValues.length - 1);</span>
+<span class="nc" id="L1187">            char keyAtIndex = this.keysValues[nextIndex];</span>
+<span class="nc bnc" id="L1188" title="All 2 branches missed.">            if (keyAtIndex == element)</span>
+            {
+<span class="nc" id="L1190">                return nextIndex;</span>
+            }
+<span class="nc bnc" id="L1192" title="All 2 branches missed.">            if (keyAtIndex == EMPTY_KEY)</span>
+            {
+<span class="nc bnc" id="L1194" title="All 2 branches missed.">                return removedIndex == -1 ? nextIndex : removedIndex;</span>
+            }
+<span class="nc bnc" id="L1196" title="All 4 branches missed.">            if (keyAtIndex == REMOVED_KEY &amp;&amp; removedIndex == -1)</span>
+            {
+<span class="nc" id="L1198">                removedIndex = nextIndex;</span>
+            }
+        }
+<span class="nc" id="L1201">        return this.probeThree(element, removedIndex);</span>
+    }
+
+    int probeThree(char element, int removedIndex)
+    {
+<span class="nc" id="L1206">        int nextIndex = (int) SpreadFunctions.charSpreadOne(element) &lt;&lt; 1;</span>
+<span class="nc" id="L1207">        int spreadTwo = Integer.reverse(SpreadFunctions.charSpreadTwo(element)) | 1;</span>
+
+        while (true)
+        {
+<span class="nc" id="L1211">            nextIndex = this.mask((nextIndex &gt;&gt; 1) + spreadTwo) &lt;&lt; 1;</span>
+<span class="nc" id="L1212">            char keyAtIndex = this.keysValues[nextIndex];</span>
+<span class="nc bnc" id="L1213" title="All 2 branches missed.">            if (keyAtIndex == element)</span>
+            {
+<span class="nc" id="L1215">                return nextIndex;</span>
+            }
+<span class="nc bnc" id="L1217" title="All 2 branches missed.">            if (keyAtIndex == EMPTY_KEY)</span>
+            {
+<span class="nc bnc" id="L1219" title="All 2 branches missed.">                return removedIndex == -1 ? nextIndex : removedIndex;</span>
+            }
+<span class="nc bnc" id="L1221" title="All 4 branches missed.">            if (keyAtIndex == REMOVED_KEY &amp;&amp; removedIndex == -1)</span>
+            {
+<span class="nc" id="L1223">                removedIndex = nextIndex;</span>
+            }
+<span class="nc" id="L1225">        }</span>
+    }
+
+    // exposed for testing
+    int spreadAndMask(char element)
+    {
+<span class="nc" id="L1231">        int code = SpreadFunctions.charSpreadOne(element);</span>
+<span class="nc" id="L1232">        return this.mask(code);</span>
+    }
+
+    int spreadTwoAndMask(char element)
+    {
+<span class="nc" id="L1237">        int code = SpreadFunctions.charSpreadTwo(element);</span>
+<span class="nc" id="L1238">        return this.mask(code);</span>
+    }
+
+    private int mask(int spread)
+    {
+<span class="nc" id="L1243">        return spread &amp; ((this.keysValues.length &gt;&gt; 1) - 1);</span>
+    }
+
+    private void allocateTable(int sizeToAllocate)
+    {
+<span class="nc" id="L1248">        this.keysValues = new char[sizeToAllocate &lt;&lt; 1];</span>
+<span class="nc" id="L1249">    }</span>
+
+    private static boolean isEmptyKey(char key)
+    {
+<span class="nc bnc" id="L1253" title="All 2 branches missed.">        return key == EMPTY_KEY;</span>
+    }
+
+    private static boolean isRemovedKey(char key)
+    {
+<span class="nc bnc" id="L1258" title="All 2 branches missed.">        return key == REMOVED_KEY;</span>
+    }
+
+    private static boolean isNonSentinel(char key)
+    {
+<span class="nc bnc" id="L1263" title="All 4 branches missed.">        return !isEmptyKey(key) &amp;&amp; !isRemovedKey(key);</span>
+    }
+
+    @Override
+    protected boolean isNonSentinelAtIndex(int index)
+    {
+<span class="nc bnc" id="L1269" title="All 4 branches missed.">        return !isEmptyKey(this.keysValues[index * 2]) &amp;&amp; !isRemovedKey(this.keysValues[index * 2]);</span>
+    }
+
+    private int maxOccupiedWithData()
+    {
+<span class="nc" id="L1274">        return this.keysValues.length &gt;&gt; 2;</span>
+    }
+
+    private int maxOccupiedWithSentinels()
+    {
+<span class="nc" id="L1279">        return this.keysValues.length &gt;&gt; 3;</span>
+    }
+
+<span class="nc" id="L1282">    private class InternalCharIterator implements MutableCharIterator</span>
+    {
+        private int count;
+        private int position;
+        private char lastKey;
+        private boolean handledZero;
+        private boolean handledOne;
+        private boolean canRemove;
+
+        @Override
+        public boolean hasNext()
+        {
+<span class="nc bnc" id="L1294" title="All 2 branches missed.">            return this.count &lt; CharCharHashMap.this.size();</span>
+        }
+
+        @Override
+        public char next()
+        {
+<span class="nc bnc" id="L1300" title="All 2 branches missed.">            if (!this.hasNext())</span>
+            {
+<span class="nc" id="L1302">                throw new NoSuchElementException(&quot;next() called, but the iterator is exhausted&quot;);</span>
+            }
+<span class="nc" id="L1304">            this.count++;</span>
+<span class="nc" id="L1305">            this.canRemove = true;</span>
+
+<span class="nc bnc" id="L1307" title="All 2 branches missed.">            if (!this.handledZero)</span>
+            {
+<span class="nc" id="L1309">                this.handledZero = true;</span>
+<span class="nc bnc" id="L1310" title="All 2 branches missed.">                if (CharCharHashMap.this.containsKey(EMPTY_KEY))</span>
+                {
+<span class="nc" id="L1312">                    this.lastKey = EMPTY_KEY;</span>
+<span class="nc" id="L1313">                    return CharCharHashMap.this.get(EMPTY_KEY);</span>
+                }
+            }
+<span class="nc bnc" id="L1316" title="All 2 branches missed.">            if (!this.handledOne)</span>
+            {
+<span class="nc" id="L1318">                this.handledOne = true;</span>
+<span class="nc bnc" id="L1319" title="All 2 branches missed.">                if (CharCharHashMap.this.containsKey(REMOVED_KEY))</span>
+                {
+<span class="nc" id="L1321">                    this.lastKey = REMOVED_KEY;</span>
+<span class="nc" id="L1322">                    return CharCharHashMap.this.get(REMOVED_KEY);</span>
+                }
+            }
+<span class="nc" id="L1325">            char[] keys = CharCharHashMap.this.keysValues;</span>
+<span class="nc bnc" id="L1326" title="All 2 branches missed.">            while (!isNonSentinel(keys[this.position]))</span>
+            {
+<span class="nc" id="L1328">                this.position += 2;</span>
+            }
+<span class="nc" id="L1330">            this.lastKey = keys[this.position];</span>
+<span class="nc" id="L1331">            char result = CharCharHashMap.this.keysValues[this.position + 1];</span>
+<span class="nc" id="L1332">            this.position += 2;</span>
+
+<span class="nc" id="L1334">            return result;</span>
+        }
+
+        @Override
+        public void remove()
+        {
+<span class="nc bnc" id="L1340" title="All 2 branches missed.">            if (!this.canRemove)</span>
+            {
+<span class="nc" id="L1342">                throw new IllegalStateException();</span>
+            }
+<span class="nc" id="L1344">            CharCharHashMap.this.removeKey(this.lastKey);</span>
+<span class="nc" id="L1345">            this.count--;</span>
+<span class="nc" id="L1346">            this.canRemove = false;</span>
+<span class="nc" id="L1347">        }</span>
+    }
+
+<span class="nc" id="L1350">    private class KeysView extends AbstractLazyCharIterable</span>
+    {
+        @Override
+        public CharIterator charIterator()
+        {
+<span class="nc" id="L1355">            return new UnmodifiableCharIterator(new KeySetIterator());</span>
+        }
+
+        /**
+         * @since 7.0.
+         */
+        @Override
+        public void each(CharProcedure procedure)
+        {
+<span class="nc" id="L1364">            CharCharHashMap.this.forEachKey(procedure);</span>
+<span class="nc" id="L1365">        }</span>
+    }
+
+<span class="nc" id="L1368">    private class KeySetIterator implements MutableCharIterator</span>
+    {
+        private int count;
+        private int position;
+        private char lastKey;
+        private boolean handledZero;
+        private boolean handledOne;
+        private boolean canRemove;
+
+        @Override
+        public boolean hasNext()
+        {
+<span class="nc bnc" id="L1380" title="All 2 branches missed.">            return this.count &lt; CharCharHashMap.this.size();</span>
+        }
+
+        @Override
+        public char next()
+        {
+<span class="nc bnc" id="L1386" title="All 2 branches missed.">            if (!this.hasNext())</span>
+            {
+<span class="nc" id="L1388">                throw new NoSuchElementException(&quot;next() called, but the iterator is exhausted&quot;);</span>
+            }
+<span class="nc" id="L1390">            this.count++;</span>
+<span class="nc" id="L1391">            this.canRemove = true;</span>
+
+<span class="nc bnc" id="L1393" title="All 2 branches missed.">            if (!this.handledZero)</span>
+            {
+<span class="nc" id="L1395">                this.handledZero = true;</span>
+<span class="nc bnc" id="L1396" title="All 2 branches missed.">                if (CharCharHashMap.this.containsKey(EMPTY_KEY))</span>
+                {
+<span class="nc" id="L1398">                    this.lastKey = EMPTY_KEY;</span>
+<span class="nc" id="L1399">                    return this.lastKey;</span>
+                }
+            }
+<span class="nc bnc" id="L1402" title="All 2 branches missed.">            if (!this.handledOne)</span>
+            {
+<span class="nc" id="L1404">                this.handledOne = true;</span>
+<span class="nc bnc" id="L1405" title="All 2 branches missed.">                if (CharCharHashMap.this.containsKey(REMOVED_KEY))</span>
+                {
+<span class="nc" id="L1407">                    this.lastKey = REMOVED_KEY;</span>
+<span class="nc" id="L1408">                    return this.lastKey;</span>
+                }
+            }
+
+<span class="nc" id="L1412">            char[] keys = CharCharHashMap.this.keysValues;</span>
+<span class="nc bnc" id="L1413" title="All 2 branches missed.">            while (!isNonSentinel(keys[this.position]))</span>
+            {
+<span class="nc" id="L1415">                this.position += 2;</span>
+            }
+<span class="nc" id="L1417">            this.lastKey = keys[this.position];</span>
+<span class="nc" id="L1418">            this.position += 2;</span>
+
+<span class="nc" id="L1420">            return this.lastKey;</span>
+        }
+
+        @Override
+        public void remove()
+        {
+<span class="nc bnc" id="L1426" title="All 2 branches missed.">            if (!this.canRemove)</span>
+            {
+<span class="nc" id="L1428">                throw new IllegalStateException();</span>
+            }
+<span class="nc" id="L1430">            CharCharHashMap.this.removeKey(this.lastKey);</span>
+<span class="nc" id="L1431">            this.count--;</span>
+<span class="nc" id="L1432">            this.canRemove = false;</span>
+<span class="nc" id="L1433">        }</span>
+    }
+
+    @Override
+    public MutableCharSet keySet()
+    {
+<span class="nc" id="L1439">        return new KeySet();</span>
+    }
+
+<span class="nc" id="L1442">    private class KeySet extends AbstractMutableCharKeySet</span>
+    {
+        @Override
+        protected MutableCharKeysMap getOuter()
+        {
+<span class="nc" id="L1447">            return CharCharHashMap.this;</span>
+        }
+
+        @Override
+        protected SentinelValues getSentinelValues()
+        {
+<span class="nc" id="L1453">            return CharCharHashMap.this.sentinelValues;</span>
+        }
+
+        @Override
+        protected char getKeyAtIndex(int index)
+        {
+<span class="nc" id="L1459">            return CharCharHashMap.this.keysValues[index * 2];</span>
+        }
+
+        @Override
+        protected int getTableSize()
+        {
+<span class="nc" id="L1465">            return CharCharHashMap.this.keysValues.length / 2;</span>
+        }
+
+        @Override
+        public MutableCharIterator charIterator()
+        {
+<span class="nc" id="L1471">            return new KeySetIterator();</span>
+        }
+
+        @Override
+        public boolean retainAll(CharIterable source)
+        {
+<span class="nc" id="L1477">            int oldSize = CharCharHashMap.this.size();</span>
+<span class="nc bnc" id="L1478" title="All 2 branches missed.">            final CharSet sourceSet = source instanceof CharSet ? (CharSet) source : source.toSet();</span>
+<span class="nc" id="L1479">            CharCharHashMap retained = CharCharHashMap.this.select((char key, char value) -&gt; sourceSet.contains(key));</span>
+<span class="nc bnc" id="L1480" title="All 2 branches missed.">            if (retained.size() != oldSize)</span>
+            {
+<span class="nc" id="L1482">                CharCharHashMap.this.keysValues = retained.keysValues;</span>
+<span class="nc" id="L1483">                CharCharHashMap.this.sentinelValues = retained.sentinelValues;</span>
+<span class="nc" id="L1484">                CharCharHashMap.this.occupiedWithData = retained.occupiedWithData;</span>
+<span class="nc" id="L1485">                CharCharHashMap.this.occupiedWithSentinels = retained.occupiedWithSentinels;</span>
+<span class="nc" id="L1486">                return true;</span>
+            }
+<span class="nc" id="L1488">            return false;</span>
+        }
+
+        @Override
+        public boolean retainAll(char... source)
+        {
+<span class="nc" id="L1494">            return this.retainAll(CharHashSet.newSetWith(source));</span>
+        }
+
+        @Override
+        public CharSet freeze()
+        {
+<span class="nc" id="L1500">            CharCharHashMap.this.copyKeysOnWrite = true;</span>
+<span class="nc" id="L1501">            boolean containsZeroKey = false;</span>
+<span class="nc" id="L1502">            boolean containsOneKey = false;</span>
+<span class="nc bnc" id="L1503" title="All 2 branches missed.">            if (CharCharHashMap.this.sentinelValues != null)</span>
+            {
+<span class="nc" id="L1505">                containsZeroKey = CharCharHashMap.this.sentinelValues.containsZeroKey;</span>
+<span class="nc" id="L1506">                containsOneKey = CharCharHashMap.this.sentinelValues.containsOneKey;</span>
+            }
+<span class="nc" id="L1508">            return new ImmutableCharCharMapKeySet(CharCharHashMap.this.keysValues, CharCharHashMap.this.occupiedWithData, containsZeroKey, containsOneKey);</span>
+        }
+
+        /**
+         * @since 9.2.
+         */
+        @Override
+        public MutableCharSet newEmpty()
+        {
+<span class="nc" id="L1517">            return new CharHashSet();</span>
+        }
+    }
+
+    @Override
+    public MutableCharCollection values()
+    {
+<span class="nc" id="L1524">        return new ValuesCollection();</span>
+    }
+
+<span class="nc" id="L1527">    private class ValuesCollection extends AbstractCharValuesCollection</span>
+    {
+        @Override
+        public MutableCharIterator charIterator()
+        {
+<span class="nc" id="L1532">            return CharCharHashMap.this.charIterator();</span>
+        }
+
+        @Override
+        public boolean remove(char item)
+        {
+<span class="nc" id="L1538">            int oldSize = CharCharHashMap.this.size();</span>
+
+<span class="nc bnc" id="L1540" title="All 2 branches missed.">            if (CharCharHashMap.this.sentinelValues != null)</span>
+            {
+<span class="nc bnc" id="L1542" title="All 4 branches missed.">                if (CharCharHashMap.this.sentinelValues.containsZeroKey &amp;&amp; item == CharCharHashMap.this.sentinelValues.zeroValue)</span>
+                {
+<span class="nc" id="L1544">                    CharCharHashMap.this.removeKey(EMPTY_KEY);</span>
+                }
+<span class="nc bnc" id="L1546" title="All 4 branches missed.">                if (CharCharHashMap.this.sentinelValues.containsOneKey &amp;&amp; item == CharCharHashMap.this.sentinelValues.oneValue)</span>
+                {
+<span class="nc" id="L1548">                    CharCharHashMap.this.removeKey(REMOVED_KEY);</span>
+                }
+            }
+<span class="nc bnc" id="L1551" title="All 2 branches missed.">            for (int i = 0; i &lt; CharCharHashMap.this.keysValues.length; i += 2)</span>
+            {
+<span class="nc bnc" id="L1553" title="All 4 branches missed.">                if (isNonSentinel(CharCharHashMap.this.keysValues[i]) &amp;&amp; item == CharCharHashMap.this.keysValues[i + 1])</span>
+                {
+<span class="nc" id="L1555">                    CharCharHashMap.this.removeKey(CharCharHashMap.this.keysValues[i]);</span>
+                }
+            }
+<span class="nc bnc" id="L1558" title="All 2 branches missed.">            return oldSize != CharCharHashMap.this.size();</span>
+        }
+
+        @Override
+        public boolean retainAll(CharIterable source)
+        {
+<span class="nc" id="L1564">            int oldSize = CharCharHashMap.this.size();</span>
+<span class="nc bnc" id="L1565" title="All 2 branches missed.">            final CharSet sourceSet = source instanceof CharSet ? (CharSet) source : source.toSet();</span>
+<span class="nc" id="L1566">            CharCharHashMap retained = CharCharHashMap.this.select((char key, char value) -&gt; sourceSet.contains(value));</span>
+<span class="nc bnc" id="L1567" title="All 2 branches missed.">            if (retained.size() != oldSize)</span>
+            {
+<span class="nc" id="L1569">                CharCharHashMap.this.keysValues = retained.keysValues;</span>
+<span class="nc" id="L1570">                CharCharHashMap.this.sentinelValues = retained.sentinelValues;</span>
+<span class="nc" id="L1571">                CharCharHashMap.this.occupiedWithData = retained.occupiedWithData;</span>
+<span class="nc" id="L1572">                CharCharHashMap.this.occupiedWithSentinels = retained.occupiedWithSentinels;</span>
+<span class="nc" id="L1573">                return true;</span>
+            }
+<span class="nc" id="L1575">            return false;</span>
+        }
+
+        /**
+         * @since 9.2.
+         */
+        @Override
+        public MutableCharCollection newEmpty()
+        {
+<span class="nc" id="L1584">            return new CharHashBag();</span>
+        }
+    }
+
+<span class="nc" id="L1588">    private class KeyValuesView extends AbstractLazyIterable&lt;CharCharPair&gt;</span>
+    {
+        @Override
+        public void each(Procedure&lt;? super CharCharPair&gt; procedure)
+        {
+<span class="nc bnc" id="L1593" title="All 2 branches missed.">            if (CharCharHashMap.this.sentinelValues != null)</span>
+            {
+<span class="nc bnc" id="L1595" title="All 2 branches missed.">                if (CharCharHashMap.this.sentinelValues.containsZeroKey)</span>
+                {
+<span class="nc" id="L1597">                    procedure.value(PrimitiveTuples.pair(EMPTY_KEY, CharCharHashMap.this.sentinelValues.zeroValue));</span>
+                }
+<span class="nc bnc" id="L1599" title="All 2 branches missed.">                if (CharCharHashMap.this.sentinelValues.containsOneKey)</span>
+                {
+<span class="nc" id="L1601">                    procedure.value(PrimitiveTuples.pair(REMOVED_KEY, CharCharHashMap.this.sentinelValues.oneValue));</span>
+                }
+            }
+<span class="nc bnc" id="L1604" title="All 2 branches missed.">            for (int i = 0; i &lt; CharCharHashMap.this.keysValues.length; i += 2)</span>
+            {
+<span class="nc bnc" id="L1606" title="All 2 branches missed.">                if (isNonSentinel(CharCharHashMap.this.keysValues[i]))</span>
+                {
+<span class="nc" id="L1608">                    procedure.value(PrimitiveTuples.pair(CharCharHashMap.this.keysValues[i], CharCharHashMap.this.keysValues[i + 1]));</span>
+                }
+            }
+<span class="nc" id="L1611">        }</span>
+
+        @Override
+        public void forEachWithIndex(ObjectIntProcedure&lt;? super CharCharPair&gt; objectIntProcedure)
+        {
+<span class="nc" id="L1616">            int index = 0;</span>
+<span class="nc bnc" id="L1617" title="All 2 branches missed.">            if (CharCharHashMap.this.sentinelValues != null)</span>
+            {
+<span class="nc bnc" id="L1619" title="All 2 branches missed.">                if (CharCharHashMap.this.sentinelValues.containsZeroKey)</span>
+                {
+<span class="nc" id="L1621">                    objectIntProcedure.value(PrimitiveTuples.pair(EMPTY_KEY, CharCharHashMap.this.sentinelValues.zeroValue), index);</span>
+<span class="nc" id="L1622">                    index++;</span>
+                }
+<span class="nc bnc" id="L1624" title="All 2 branches missed.">                if (CharCharHashMap.this.sentinelValues.containsOneKey)</span>
+                {
+<span class="nc" id="L1626">                    objectIntProcedure.value(PrimitiveTuples.pair(REMOVED_KEY, CharCharHashMap.this.sentinelValues.oneValue), index);</span>
+<span class="nc" id="L1627">                    index++;</span>
+                }
+            }
+<span class="nc bnc" id="L1630" title="All 2 branches missed.">            for (int i = 0; i &lt; CharCharHashMap.this.keysValues.length; i += 2)</span>
+            {
+<span class="nc bnc" id="L1632" title="All 2 branches missed.">                if (isNonSentinel(CharCharHashMap.this.keysValues[i]))</span>
+                {
+<span class="nc" id="L1634">                    objectIntProcedure.value(PrimitiveTuples.pair(CharCharHashMap.this.keysValues[i], CharCharHashMap.this.keysValues[i + 1]), index);</span>
+<span class="nc" id="L1635">                    index++;</span>
+                }
+            }
+<span class="nc" id="L1638">        }</span>
+
+        @Override
+        public &lt;P&gt; void forEachWith(Procedure2&lt;? super CharCharPair, ? super P&gt; procedure, P parameter)
+        {
+<span class="nc bnc" id="L1643" title="All 2 branches missed.">            if (CharCharHashMap.this.sentinelValues != null)</span>
+            {
+<span class="nc bnc" id="L1645" title="All 2 branches missed.">                if (CharCharHashMap.this.sentinelValues.containsZeroKey)</span>
+                {
+<span class="nc" id="L1647">                    procedure.value(PrimitiveTuples.pair(EMPTY_KEY, CharCharHashMap.this.sentinelValues.zeroValue), parameter);</span>
+                }
+<span class="nc bnc" id="L1649" title="All 2 branches missed.">                if (CharCharHashMap.this.sentinelValues.containsOneKey)</span>
+                {
+<span class="nc" id="L1651">                    procedure.value(PrimitiveTuples.pair(REMOVED_KEY, CharCharHashMap.this.sentinelValues.oneValue), parameter);</span>
+                }
+            }
+<span class="nc bnc" id="L1654" title="All 2 branches missed.">            for (int i = 0; i &lt; CharCharHashMap.this.keysValues.length; i += 2)</span>
+            {
+<span class="nc bnc" id="L1656" title="All 2 branches missed.">                if (isNonSentinel(CharCharHashMap.this.keysValues[i]))</span>
+                {
+<span class="nc" id="L1658">                    procedure.value(PrimitiveTuples.pair(CharCharHashMap.this.keysValues[i], CharCharHashMap.this.keysValues[i + 1]), parameter);</span>
+                }
+            }
+<span class="nc" id="L1661">        }</span>
+
+        @Override
+        public Iterator&lt;CharCharPair&gt; iterator()
+        {
+<span class="nc" id="L1666">            return new InternalKeyValuesIterator();</span>
+        }
+
+<span class="nc" id="L1669">        public class InternalKeyValuesIterator implements Iterator&lt;CharCharPair&gt;</span>
+        {
+            private int count;
+            private int position;
+            private boolean handledZero;
+            private boolean handledOne;
+
+            @Override
+            public CharCharPair next()
+            {
+<span class="nc bnc" id="L1679" title="All 2 branches missed.">                if (!this.hasNext())</span>
+                {
+<span class="nc" id="L1681">                    throw new NoSuchElementException(&quot;next() called, but the iterator is exhausted&quot;);</span>
+                }
+<span class="nc" id="L1683">                this.count++;</span>
+
+<span class="nc bnc" id="L1685" title="All 2 branches missed.">                if (!this.handledZero)</span>
+                {
+<span class="nc" id="L1687">                    this.handledZero = true;</span>
+<span class="nc bnc" id="L1688" title="All 2 branches missed.">                    if (CharCharHashMap.this.containsKey(EMPTY_KEY))</span>
+                    {
+<span class="nc" id="L1690">                        return PrimitiveTuples.pair(EMPTY_KEY, CharCharHashMap.this.sentinelValues.zeroValue);</span>
+                    }
+                }
+<span class="nc bnc" id="L1693" title="All 2 branches missed.">                if (!this.handledOne)</span>
+                {
+<span class="nc" id="L1695">                    this.handledOne = true;</span>
+<span class="nc bnc" id="L1696" title="All 2 branches missed.">                    if (CharCharHashMap.this.containsKey(REMOVED_KEY))</span>
+                    {
+<span class="nc" id="L1698">                        return PrimitiveTuples.pair(REMOVED_KEY, CharCharHashMap.this.sentinelValues.oneValue);</span>
+                    }
+                }
+
+<span class="nc" id="L1702">                char[] keys = CharCharHashMap.this.keysValues;</span>
+<span class="nc bnc" id="L1703" title="All 2 branches missed.">                while (!isNonSentinel(keys[this.position]))</span>
+                {
+<span class="nc" id="L1705">                    this.position += 2;</span>
+                }
+<span class="nc" id="L1707">                CharCharPair result = PrimitiveTuples.pair(keys[this.position], CharCharHashMap.this.keysValues[this.position + 1]);</span>
+<span class="nc" id="L1708">                this.position += 2;</span>
+<span class="nc" id="L1709">                return result;</span>
+            }
+
+            @Override
+            public void remove()
+            {
+<span class="nc" id="L1715">                throw new UnsupportedOperationException(&quot;Cannot call remove() on &quot; + this.getClass().getSimpleName());</span>
+            }
+
+            @Override
+            public boolean hasNext()
+            {
+<span class="nc bnc" id="L1721" title="All 2 branches missed.">                return this.count != CharCharHashMap.this.size();</span>
+            }
+        }
+    }
+}
+
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.0.201801022044</span></div></body></html>

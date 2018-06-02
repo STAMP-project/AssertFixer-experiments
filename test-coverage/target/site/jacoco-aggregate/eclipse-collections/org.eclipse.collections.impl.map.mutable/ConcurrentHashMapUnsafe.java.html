@@ -1,0 +1,2451 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>ConcurrentHashMapUnsafe.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Eclipse Collections Test Coverage Aggregation</a> &gt; <a href="../index.html" class="el_bundle">eclipse-collections</a> &gt; <a href="index.source.html" class="el_package">org.eclipse.collections.impl.map.mutable</a> &gt; <span class="el_source">ConcurrentHashMapUnsafe.java</span></div><h1>ConcurrentHashMapUnsafe.java</h1><pre class="source lang-java linenums">/*
+ * Copyright (c) 2016 Goldman Sachs.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * and Eclipse Distribution License v. 1.0 which accompany this distribution.
+ * The Eclipse Public License is available at http://www.eclipse.org/legal/epl-v10.html
+ * and the Eclipse Distribution License is available at
+ * http://www.eclipse.org/org/documents/edl-v10.php.
+ */
+
+package org.eclipse.collections.impl.map.mutable;
+
+import java.io.Externalizable;
+import java.io.IOException;
+import java.io.ObjectInput;
+import java.io.ObjectOutput;
+import java.lang.reflect.Field;
+import java.security.AccessController;
+import java.security.PrivilegedActionException;
+import java.security.PrivilegedExceptionAction;
+import java.util.AbstractCollection;
+import java.util.AbstractSet;
+import java.util.Collection;
+import java.util.ConcurrentModificationException;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.NoSuchElementException;
+import java.util.Objects;
+import java.util.Set;
+import java.util.concurrent.Executor;
+import java.util.concurrent.FutureTask;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
+import java.util.function.Predicate;
+
+import org.eclipse.collections.api.block.function.Function;
+import org.eclipse.collections.api.block.function.Function0;
+import org.eclipse.collections.api.block.function.Function2;
+import org.eclipse.collections.api.block.function.Function3;
+import org.eclipse.collections.api.block.procedure.Procedure;
+import org.eclipse.collections.api.block.procedure.Procedure2;
+import org.eclipse.collections.api.block.procedure.primitive.ObjectIntProcedure;
+import org.eclipse.collections.api.map.ConcurrentMutableMap;
+import org.eclipse.collections.api.map.ImmutableMap;
+import org.eclipse.collections.api.map.MutableMap;
+import org.eclipse.collections.api.tuple.Pair;
+import org.eclipse.collections.impl.block.procedure.MapEntryToProcedure2;
+import org.eclipse.collections.impl.factory.Maps;
+import org.eclipse.collections.impl.list.mutable.FastList;
+import org.eclipse.collections.impl.utility.Iterate;
+import org.eclipse.collections.impl.utility.MapIterate;
+import org.eclipse.collections.impl.utility.internal.IterableIterate;
+import sun.misc.Unsafe;
+
+@SuppressWarnings(&quot;UseOfSunClasses&quot;)
+public class ConcurrentHashMapUnsafe&lt;K, V&gt;
+        extends AbstractMutableMap&lt;K, V&gt;
+        implements ConcurrentMutableMap&lt;K, V&gt;, Externalizable
+{
+    private static final long serialVersionUID = 1L;
+
+<span class="nc" id="L63">    private static final Object RESIZE_SENTINEL = new Object();</span>
+    private static final int DEFAULT_INITIAL_CAPACITY = 16;
+
+    /**
+     * The maximum capacity, used if a higher value is implicitly specified
+     * by either of the constructors with arguments.
+     * MUST be a power of two &lt;= 1&lt;&lt;30.
+     */
+    private static final int MAXIMUM_CAPACITY = 1 &lt;&lt; 30;
+
+    @SuppressWarnings(&quot;rawtypes&quot;)
+<span class="nc" id="L74">    private static final AtomicReferenceFieldUpdater&lt;ConcurrentHashMapUnsafe, Object[]&gt; TABLE_UPDATER = AtomicReferenceFieldUpdater.newUpdater(ConcurrentHashMapUnsafe.class, Object[].class, &quot;table&quot;);</span>
+<span class="nc" id="L75">    private static final Object RESIZED = new Object();</span>
+<span class="nc" id="L76">    private static final Object RESIZING = new Object();</span>
+    private static final int PARTITIONED_SIZE_THRESHOLD = 4096; // chosen to keep size below 1% of the total size of the map
+
+    private static final Unsafe UNSAFE;
+    private static final long OBJECT_ARRAY_BASE;
+    private static final int OBJECT_ARRAY_SHIFT;
+    private static final long INT_ARRAY_BASE;
+    private static final int INT_ARRAY_SHIFT;
+    private static final long SIZE_OFFSET;
+    private static final int SIZE_BUCKETS = 7;
+
+    static
+    {
+        try
+        {
+<span class="nc" id="L91">            UNSAFE = ConcurrentHashMapUnsafe.getUnsafe();</span>
+<span class="nc" id="L92">            Class&lt;?&gt; objectArrayClass = Object[].class;</span>
+<span class="nc" id="L93">            OBJECT_ARRAY_BASE = UNSAFE.arrayBaseOffset(objectArrayClass);</span>
+<span class="nc" id="L94">            int objectArrayScale = UNSAFE.arrayIndexScale(objectArrayClass);</span>
+<span class="nc bnc" id="L95" title="All 2 branches missed.">            if ((objectArrayScale &amp; (objectArrayScale - 1)) != 0)</span>
+            {
+<span class="nc" id="L97">                throw new AssertionError(&quot;data type scale not a power of two&quot;);</span>
+            }
+<span class="nc" id="L99">            OBJECT_ARRAY_SHIFT = 31 - Integer.numberOfLeadingZeros(objectArrayScale);</span>
+
+<span class="nc" id="L101">            Class&lt;?&gt; intArrayClass = int[].class;</span>
+<span class="nc" id="L102">            INT_ARRAY_BASE = UNSAFE.arrayBaseOffset(intArrayClass);</span>
+<span class="nc" id="L103">            int intArrayScale = UNSAFE.arrayIndexScale(intArrayClass);</span>
+<span class="nc bnc" id="L104" title="All 2 branches missed.">            if ((intArrayScale &amp; (intArrayScale - 1)) != 0)</span>
+            {
+<span class="nc" id="L106">                throw new AssertionError(&quot;data type scale not a power of two&quot;);</span>
+            }
+<span class="nc" id="L108">            INT_ARRAY_SHIFT = 31 - Integer.numberOfLeadingZeros(intArrayScale);</span>
+
+<span class="nc" id="L110">            Class&lt;?&gt; mapClass = ConcurrentHashMapUnsafe.class;</span>
+<span class="nc" id="L111">            SIZE_OFFSET = UNSAFE.objectFieldOffset(mapClass.getDeclaredField(&quot;size&quot;));</span>
+        }
+<span class="nc" id="L113">        catch (NoSuchFieldException | SecurityException e)</span>
+        {
+<span class="nc" id="L115">            throw new AssertionError(e);</span>
+<span class="nc" id="L116">        }</span>
+<span class="nc" id="L117">    }</span>
+
+    /**
+     * The table, resized as necessary. Length MUST Always be a power of two + 1.
+     */
+    private volatile Object[] table;
+
+    private int[] partitionedSize;
+
+    @SuppressWarnings(&quot;UnusedDeclaration&quot;)
+    private volatile int size; // updated via atomic field updater
+
+    public ConcurrentHashMapUnsafe()
+    {
+<span class="nc" id="L131">        this(DEFAULT_INITIAL_CAPACITY);</span>
+<span class="nc" id="L132">    }</span>
+
+    public ConcurrentHashMapUnsafe(int initialCapacity)
+<span class="nc" id="L135">    {</span>
+<span class="nc bnc" id="L136" title="All 2 branches missed.">        if (initialCapacity &lt; 0)</span>
+        {
+<span class="nc" id="L138">            throw new IllegalArgumentException(&quot;Illegal Initial Capacity: &quot; + initialCapacity);</span>
+        }
+<span class="nc bnc" id="L140" title="All 2 branches missed.">        if (initialCapacity &gt; MAXIMUM_CAPACITY)</span>
+        {
+<span class="nc" id="L142">            initialCapacity = MAXIMUM_CAPACITY;</span>
+        }
+
+<span class="nc" id="L145">        int threshold = initialCapacity;</span>
+<span class="nc" id="L146">        threshold += threshold &gt;&gt; 1; // threshold = length * 0.75</span>
+
+<span class="nc" id="L148">        int capacity = 1;</span>
+<span class="nc bnc" id="L149" title="All 2 branches missed.">        while (capacity &lt; threshold)</span>
+        {
+<span class="nc" id="L151">            capacity &lt;&lt;= 1;</span>
+        }
+<span class="nc bnc" id="L153" title="All 2 branches missed.">        if (capacity &gt;= PARTITIONED_SIZE_THRESHOLD)</span>
+        {
+<span class="nc" id="L155">            this.partitionedSize = new int[SIZE_BUCKETS * 16]; // we want 7 extra slots and 64 bytes for each slot. int is 4 bytes, so 64 bytes is 16 ints.</span>
+        }
+<span class="nc" id="L157">        this.table = new Object[capacity + 1];</span>
+<span class="nc" id="L158">    }</span>
+
+    public static &lt;K, V&gt; ConcurrentHashMapUnsafe&lt;K, V&gt; newMap()
+    {
+<span class="nc" id="L162">        return new ConcurrentHashMapUnsafe&lt;&gt;();</span>
+    }
+
+    public static &lt;K, V&gt; ConcurrentHashMapUnsafe&lt;K, V&gt; newMap(int newSize)
+    {
+<span class="nc" id="L167">        return new ConcurrentHashMapUnsafe&lt;&gt;(newSize);</span>
+    }
+
+    private static Object arrayAt(Object[] array, int index)
+    {
+<span class="nc" id="L172">        return UNSAFE.getObjectVolatile(array, ((long) index &lt;&lt; OBJECT_ARRAY_SHIFT) + OBJECT_ARRAY_BASE);</span>
+    }
+
+    private static boolean casArrayAt(Object[] array, int index, Object expected, Object newValue)
+    {
+<span class="nc" id="L177">        return UNSAFE.compareAndSwapObject(array, ((long) index &lt;&lt; OBJECT_ARRAY_SHIFT) + OBJECT_ARRAY_BASE, expected, newValue);</span>
+    }
+
+    private static void setArrayAt(Object[] array, int index, Object newValue)
+    {
+<span class="nc" id="L182">        UNSAFE.putObjectVolatile(array, ((long) index &lt;&lt; OBJECT_ARRAY_SHIFT) + OBJECT_ARRAY_BASE, newValue);</span>
+<span class="nc" id="L183">    }</span>
+
+    private static int indexFor(int h, int length)
+    {
+<span class="nc" id="L187">        return h &amp; (length - 2);</span>
+    }
+
+    @Override
+    public V putIfAbsent(K key, V value)
+    {
+<span class="nc" id="L193">        int hash = this.hash(key);</span>
+<span class="nc" id="L194">        Object[] currentArray = this.table;</span>
+        while (true)
+        {
+<span class="nc" id="L197">            int length = currentArray.length;</span>
+<span class="nc" id="L198">            int index = ConcurrentHashMapUnsafe.indexFor(hash, length);</span>
+<span class="nc" id="L199">            Object o = ConcurrentHashMapUnsafe.arrayAt(currentArray, index);</span>
+<span class="nc bnc" id="L200" title="All 4 branches missed.">            if (o == RESIZED || o == RESIZING)</span>
+            {
+<span class="nc" id="L202">                currentArray = this.helpWithResizeWhileCurrentIndex(currentArray, index);</span>
+            }
+            else
+            {
+<span class="nc" id="L206">                Entry&lt;K, V&gt; e = (Entry&lt;K, V&gt;) o;</span>
+<span class="nc bnc" id="L207" title="All 2 branches missed.">                while (e != null)</span>
+                {
+<span class="nc" id="L209">                    K candidate = e.getKey();</span>
+<span class="nc bnc" id="L210" title="All 2 branches missed.">                    if (candidate.equals(key))</span>
+                    {
+<span class="nc" id="L212">                        return e.getValue();</span>
+                    }
+<span class="nc" id="L214">                    e = e.getNext();</span>
+<span class="nc" id="L215">                }</span>
+<span class="nc" id="L216">                Entry&lt;K, V&gt; newEntry = new Entry&lt;&gt;(key, value, (Entry&lt;K, V&gt;) o);</span>
+<span class="nc bnc" id="L217" title="All 2 branches missed.">                if (ConcurrentHashMapUnsafe.casArrayAt(currentArray, index, o, newEntry))</span>
+                {
+<span class="nc" id="L219">                    this.incrementSizeAndPossiblyResize(currentArray, length, o);</span>
+<span class="nc" id="L220">                    return null; // per the contract of putIfAbsent, we return null when the map didn't have this key before</span>
+                }
+            }
+<span class="nc" id="L223">        }</span>
+    }
+
+    private void incrementSizeAndPossiblyResize(Object[] currentArray, int length, Object prev)
+    {
+<span class="nc" id="L228">        this.addToSize(1);</span>
+<span class="nc bnc" id="L229" title="All 2 branches missed.">        if (prev != null)</span>
+        {
+<span class="nc" id="L231">            int localSize = this.size();</span>
+<span class="nc" id="L232">            int threshold = (length &gt;&gt; 1) + (length &gt;&gt; 2); // threshold = length * 0.75</span>
+<span class="nc bnc" id="L233" title="All 2 branches missed.">            if (localSize + 1 &gt; threshold)</span>
+            {
+<span class="nc" id="L235">                this.resize(currentArray);</span>
+            }
+        }
+<span class="nc" id="L238">    }</span>
+
+    private int hash(Object key)
+    {
+<span class="nc" id="L242">        int h = key.hashCode();</span>
+<span class="nc" id="L243">        h ^= (h &gt;&gt;&gt; 18) ^ (h &gt;&gt;&gt; 12);</span>
+<span class="nc" id="L244">        return h ^ (h &gt;&gt;&gt; 10);</span>
+//        h ^= h &gt;&gt;&gt; 20 ^ h &gt;&gt;&gt; 12;
+//        h ^= h &gt;&gt;&gt; 7 ^ h &gt;&gt;&gt; 4;
+//        return h;
+    }
+
+    private Object[] helpWithResizeWhileCurrentIndex(Object[] currentArray, int index)
+    {
+<span class="nc" id="L252">        Object[] newArray = this.helpWithResize(currentArray);</span>
+<span class="nc" id="L253">        int helpCount = 0;</span>
+<span class="nc bnc" id="L254" title="All 2 branches missed.">        while (ConcurrentHashMapUnsafe.arrayAt(currentArray, index) != RESIZED)</span>
+        {
+<span class="nc" id="L256">            helpCount++;</span>
+<span class="nc" id="L257">            newArray = this.helpWithResize(currentArray);</span>
+<span class="nc bnc" id="L258" title="All 2 branches missed.">            if ((helpCount &amp; 7) == 0)</span>
+            {
+<span class="nc" id="L260">                Thread.yield();</span>
+            }
+        }
+<span class="nc" id="L263">        return newArray;</span>
+    }
+
+    private Object[] helpWithResize(Object[] currentArray)
+    {
+<span class="nc" id="L268">        ResizeContainer resizeContainer = (ResizeContainer) ConcurrentHashMapUnsafe.arrayAt(currentArray, currentArray.length - 1);</span>
+<span class="nc" id="L269">        Object[] newTable = resizeContainer.nextArray;</span>
+<span class="nc bnc" id="L270" title="All 2 branches missed.">        if (resizeContainer.getQueuePosition() &gt; ResizeContainer.QUEUE_INCREMENT)</span>
+        {
+<span class="nc" id="L272">            resizeContainer.incrementResizer();</span>
+<span class="nc" id="L273">            this.reverseTransfer(currentArray, resizeContainer);</span>
+<span class="nc" id="L274">            resizeContainer.decrementResizerAndNotify();</span>
+        }
+<span class="nc" id="L276">        return newTable;</span>
+    }
+
+    private void resize(Object[] oldTable)
+    {
+<span class="nc" id="L281">        this.resize(oldTable, (oldTable.length - 1 &lt;&lt; 1) + 1);</span>
+<span class="nc" id="L282">    }</span>
+
+    // newSize must be a power of 2 + 1
+    @SuppressWarnings(&quot;JLM_JSR166_UTILCONCURRENT_MONITORENTER&quot;)
+    private void resize(Object[] oldTable, int newSize)
+    {
+<span class="nc" id="L288">        int oldCapacity = oldTable.length;</span>
+<span class="nc" id="L289">        int end = oldCapacity - 1;</span>
+<span class="nc" id="L290">        Object last = ConcurrentHashMapUnsafe.arrayAt(oldTable, end);</span>
+<span class="nc bnc" id="L291" title="All 4 branches missed.">        if (this.size() &lt; end &amp;&amp; last == RESIZE_SENTINEL)</span>
+        {
+<span class="nc" id="L293">            return;</span>
+        }
+<span class="nc bnc" id="L295" title="All 2 branches missed.">        if (oldCapacity &gt;= MAXIMUM_CAPACITY)</span>
+        {
+<span class="nc" id="L297">            throw new RuntimeException(&quot;max capacity of map exceeded&quot;);</span>
+        }
+<span class="nc" id="L299">        ResizeContainer resizeContainer = null;</span>
+<span class="nc" id="L300">        boolean ownResize = false;</span>
+<span class="nc bnc" id="L301" title="All 4 branches missed.">        if (last == null || last == RESIZE_SENTINEL)</span>
+        {
+<span class="nc" id="L303">            synchronized (oldTable) // allocating a new array is too expensive to make this an atomic operation</span>
+            {
+<span class="nc bnc" id="L305" title="All 2 branches missed.">                if (ConcurrentHashMapUnsafe.arrayAt(oldTable, end) == null)</span>
+                {
+<span class="nc" id="L307">                    ConcurrentHashMapUnsafe.setArrayAt(oldTable, end, RESIZE_SENTINEL);</span>
+<span class="nc bnc" id="L308" title="All 4 branches missed.">                    if (this.partitionedSize == null &amp;&amp; newSize &gt;= PARTITIONED_SIZE_THRESHOLD)</span>
+                    {
+<span class="nc" id="L310">                        this.partitionedSize = new int[SIZE_BUCKETS * 16];</span>
+                    }
+<span class="nc" id="L312">                    resizeContainer = new ResizeContainer(new Object[newSize], oldTable.length - 1);</span>
+<span class="nc" id="L313">                    ConcurrentHashMapUnsafe.setArrayAt(oldTable, end, resizeContainer);</span>
+<span class="nc" id="L314">                    ownResize = true;</span>
+                }
+<span class="nc" id="L316">            }</span>
+        }
+<span class="nc bnc" id="L318" title="All 2 branches missed.">        if (ownResize)</span>
+        {
+<span class="nc" id="L320">            this.transfer(oldTable, resizeContainer);</span>
+
+<span class="nc" id="L322">            Object[] src = this.table;</span>
+<span class="nc bnc" id="L323" title="All 2 branches missed.">            while (!TABLE_UPDATER.compareAndSet(this, oldTable, resizeContainer.nextArray))</span>
+            {
+                // we're in a double resize situation; we'll have to go help until it's our turn to set the table
+<span class="nc bnc" id="L326" title="All 2 branches missed.">                if (src != oldTable)</span>
+                {
+<span class="nc" id="L328">                    this.helpWithResize(src);</span>
+                }
+            }
+<span class="nc" id="L331">        }</span>
+        else
+        {
+<span class="nc" id="L334">            this.helpWithResize(oldTable);</span>
+        }
+<span class="nc" id="L336">    }</span>
+
+    /*
+     * Transfer all entries from src to dest tables
+     */
+    private void transfer(Object[] src, ResizeContainer resizeContainer)
+    {
+<span class="nc" id="L343">        Object[] dest = resizeContainer.nextArray;</span>
+
+<span class="nc bnc" id="L345" title="All 2 branches missed.">        for (int j = 0; j &lt; src.length - 1; )</span>
+        {
+<span class="nc" id="L347">            Object o = ConcurrentHashMapUnsafe.arrayAt(src, j);</span>
+<span class="nc bnc" id="L348" title="All 2 branches missed.">            if (o == null)</span>
+            {
+<span class="nc bnc" id="L350" title="All 2 branches missed.">                if (ConcurrentHashMapUnsafe.casArrayAt(src, j, null, RESIZED))</span>
+                {
+<span class="nc" id="L352">                    j++;</span>
+                }
+            }
+<span class="nc bnc" id="L355" title="All 4 branches missed.">            else if (o == RESIZED || o == RESIZING)</span>
+            {
+<span class="nc" id="L357">                j = (j &amp; ~(ResizeContainer.QUEUE_INCREMENT - 1)) + ResizeContainer.QUEUE_INCREMENT;</span>
+<span class="nc bnc" id="L358" title="All 2 branches missed.">                if (resizeContainer.resizers.get() == 1)</span>
+                {
+<span class="nc" id="L360">                    break;</span>
+                }
+            }
+            else
+            {
+<span class="nc" id="L365">                Entry&lt;K, V&gt; e = (Entry&lt;K, V&gt;) o;</span>
+<span class="nc bnc" id="L366" title="All 2 branches missed.">                if (ConcurrentHashMapUnsafe.casArrayAt(src, j, o, RESIZING))</span>
+                {
+<span class="nc bnc" id="L368" title="All 2 branches missed.">                    while (e != null)</span>
+                    {
+<span class="nc" id="L370">                        this.unconditionalCopy(dest, e);</span>
+<span class="nc" id="L371">                        e = e.getNext();</span>
+                    }
+<span class="nc" id="L373">                    ConcurrentHashMapUnsafe.setArrayAt(src, j, RESIZED);</span>
+<span class="nc" id="L374">                    j++;</span>
+                }
+            }
+<span class="nc" id="L377">        }</span>
+<span class="nc" id="L378">        resizeContainer.decrementResizerAndNotify();</span>
+<span class="nc" id="L379">        resizeContainer.waitForAllResizers();</span>
+<span class="nc" id="L380">    }</span>
+
+    private void reverseTransfer(Object[] src, ResizeContainer resizeContainer)
+    {
+<span class="nc" id="L384">        Object[] dest = resizeContainer.nextArray;</span>
+<span class="nc bnc" id="L385" title="All 2 branches missed.">        while (resizeContainer.getQueuePosition() &gt; 0)</span>
+        {
+<span class="nc" id="L387">            int start = resizeContainer.subtractAndGetQueuePosition();</span>
+<span class="nc" id="L388">            int end = start + ResizeContainer.QUEUE_INCREMENT;</span>
+<span class="nc bnc" id="L389" title="All 2 branches missed.">            if (end &gt; 0)</span>
+            {
+<span class="nc bnc" id="L391" title="All 2 branches missed.">                if (start &lt; 0)</span>
+                {
+<span class="nc" id="L393">                    start = 0;</span>
+                }
+<span class="nc bnc" id="L395" title="All 2 branches missed.">                for (int j = end - 1; j &gt;= start; )</span>
+                {
+<span class="nc" id="L397">                    Object o = ConcurrentHashMapUnsafe.arrayAt(src, j);</span>
+<span class="nc bnc" id="L398" title="All 2 branches missed.">                    if (o == null)</span>
+                    {
+<span class="nc bnc" id="L400" title="All 2 branches missed.">                        if (ConcurrentHashMapUnsafe.casArrayAt(src, j, null, RESIZED))</span>
+                        {
+<span class="nc" id="L402">                            j--;</span>
+                        }
+                    }
+<span class="nc bnc" id="L405" title="All 4 branches missed.">                    else if (o == RESIZED || o == RESIZING)</span>
+                    {
+<span class="nc" id="L407">                        resizeContainer.zeroOutQueuePosition();</span>
+<span class="nc" id="L408">                        return;</span>
+                    }
+                    else
+                    {
+<span class="nc" id="L412">                        Entry&lt;K, V&gt; e = (Entry&lt;K, V&gt;) o;</span>
+<span class="nc bnc" id="L413" title="All 2 branches missed.">                        if (ConcurrentHashMapUnsafe.casArrayAt(src, j, o, RESIZING))</span>
+                        {
+<span class="nc bnc" id="L415" title="All 2 branches missed.">                            while (e != null)</span>
+                            {
+<span class="nc" id="L417">                                this.unconditionalCopy(dest, e);</span>
+<span class="nc" id="L418">                                e = e.getNext();</span>
+                            }
+<span class="nc" id="L420">                            ConcurrentHashMapUnsafe.setArrayAt(src, j, RESIZED);</span>
+<span class="nc" id="L421">                            j--;</span>
+                        }
+                    }
+<span class="nc" id="L424">                }</span>
+            }
+<span class="nc" id="L426">        }</span>
+<span class="nc" id="L427">    }</span>
+
+    private void unconditionalCopy(Object[] dest, Entry&lt;K, V&gt; toCopyEntry)
+    {
+<span class="nc" id="L431">        int hash = this.hash(toCopyEntry.getKey());</span>
+<span class="nc" id="L432">        Object[] currentArray = dest;</span>
+        while (true)
+        {
+<span class="nc" id="L435">            int length = currentArray.length;</span>
+<span class="nc" id="L436">            int index = ConcurrentHashMapUnsafe.indexFor(hash, length);</span>
+<span class="nc" id="L437">            Object o = ConcurrentHashMapUnsafe.arrayAt(currentArray, index);</span>
+<span class="nc bnc" id="L438" title="All 4 branches missed.">            if (o == RESIZED || o == RESIZING)</span>
+            {
+<span class="nc" id="L440">                currentArray = ((ResizeContainer) ConcurrentHashMapUnsafe.arrayAt(currentArray, length - 1)).nextArray;</span>
+            }
+            else
+            {
+                Entry&lt;K, V&gt; newEntry;
+<span class="nc bnc" id="L445" title="All 2 branches missed.">                if (o == null)</span>
+                {
+<span class="nc bnc" id="L447" title="All 2 branches missed.">                    if (toCopyEntry.getNext() == null)</span>
+                    {
+<span class="nc" id="L449">                        newEntry = toCopyEntry; // no need to duplicate</span>
+                    }
+                    else
+                    {
+<span class="nc" id="L453">                        newEntry = new Entry&lt;&gt;(toCopyEntry.getKey(), toCopyEntry.getValue());</span>
+                    }
+                }
+                else
+                {
+<span class="nc" id="L458">                    newEntry = new Entry&lt;&gt;(toCopyEntry.getKey(), toCopyEntry.getValue(), (Entry&lt;K, V&gt;) o);</span>
+                }
+<span class="nc bnc" id="L460" title="All 2 branches missed.">                if (ConcurrentHashMapUnsafe.casArrayAt(currentArray, index, o, newEntry))</span>
+                {
+<span class="nc" id="L462">                    return;</span>
+                }
+            }
+<span class="nc" id="L465">        }</span>
+    }
+
+    public int countEntries()
+    {
+<span class="nc" id="L470">        int count = 0;</span>
+<span class="nc" id="L471">        Object[] currentArray = this.table;</span>
+<span class="nc bnc" id="L472" title="All 2 branches missed.">        for (int i = 0; i &lt; currentArray.length - 1; i++)</span>
+        {
+<span class="nc" id="L474">            Object o = currentArray[i];</span>
+<span class="nc bnc" id="L475" title="All 2 branches missed.">            if (o instanceof Entry)</span>
+            {
+<span class="nc" id="L477">                Entry&lt;K, V&gt; e = (Entry&lt;K, V&gt;) o;</span>
+<span class="nc bnc" id="L478" title="All 2 branches missed.">                while (e != null)</span>
+                {
+<span class="nc" id="L480">                    count++;</span>
+<span class="nc" id="L481">                    e = e.getNext();</span>
+                }
+            }
+        }
+<span class="nc" id="L485">        return count;</span>
+    }
+
+    public V getIfAbsentPut(K key, Function&lt;? super K, ? extends V&gt; factory)
+    {
+<span class="nc" id="L490">        int hash = this.hash(key);</span>
+<span class="nc" id="L491">        Object[] currentArray = this.table;</span>
+<span class="nc" id="L492">        V newValue = null;</span>
+<span class="nc" id="L493">        boolean createdValue = false;</span>
+        while (true)
+        {
+<span class="nc" id="L496">            int length = currentArray.length;</span>
+<span class="nc" id="L497">            int index = ConcurrentHashMapUnsafe.indexFor(hash, length);</span>
+<span class="nc" id="L498">            Object o = ConcurrentHashMapUnsafe.arrayAt(currentArray, index);</span>
+<span class="nc bnc" id="L499" title="All 4 branches missed.">            if (o == RESIZED || o == RESIZING)</span>
+            {
+<span class="nc" id="L501">                currentArray = this.helpWithResizeWhileCurrentIndex(currentArray, index);</span>
+            }
+            else
+            {
+<span class="nc" id="L505">                Entry&lt;K, V&gt; e = (Entry&lt;K, V&gt;) o;</span>
+<span class="nc bnc" id="L506" title="All 2 branches missed.">                while (e != null)</span>
+                {
+<span class="nc" id="L508">                    Object candidate = e.getKey();</span>
+<span class="nc bnc" id="L509" title="All 4 branches missed.">                    if (candidate == key || candidate.equals(key))</span>
+                    {
+<span class="nc" id="L511">                        return e.getValue();</span>
+                    }
+<span class="nc" id="L513">                    e = e.getNext();</span>
+<span class="nc" id="L514">                }</span>
+<span class="nc bnc" id="L515" title="All 2 branches missed.">                if (!createdValue)</span>
+                {
+<span class="nc" id="L517">                    createdValue = true;</span>
+<span class="nc" id="L518">                    newValue = factory.valueOf(key);</span>
+                }
+<span class="nc" id="L520">                Entry&lt;K, V&gt; newEntry = new Entry&lt;&gt;(key, newValue, (Entry&lt;K, V&gt;) o);</span>
+<span class="nc bnc" id="L521" title="All 2 branches missed.">                if (ConcurrentHashMapUnsafe.casArrayAt(currentArray, index, o, newEntry))</span>
+                {
+<span class="nc" id="L523">                    this.incrementSizeAndPossiblyResize(currentArray, length, o);</span>
+<span class="nc" id="L524">                    return newValue;</span>
+                }
+            }
+<span class="nc" id="L527">        }</span>
+    }
+
+    @Override
+    public V getIfAbsentPut(K key, Function0&lt;? extends V&gt; factory)
+    {
+<span class="nc" id="L533">        int hash = this.hash(key);</span>
+<span class="nc" id="L534">        Object[] currentArray = this.table;</span>
+<span class="nc" id="L535">        V newValue = null;</span>
+<span class="nc" id="L536">        boolean createdValue = false;</span>
+        while (true)
+        {
+<span class="nc" id="L539">            int length = currentArray.length;</span>
+<span class="nc" id="L540">            int index = ConcurrentHashMapUnsafe.indexFor(hash, length);</span>
+<span class="nc" id="L541">            Object o = ConcurrentHashMapUnsafe.arrayAt(currentArray, index);</span>
+<span class="nc bnc" id="L542" title="All 4 branches missed.">            if (o == RESIZED || o == RESIZING)</span>
+            {
+<span class="nc" id="L544">                currentArray = this.helpWithResizeWhileCurrentIndex(currentArray, index);</span>
+            }
+            else
+            {
+<span class="nc" id="L548">                Entry&lt;K, V&gt; e = (Entry&lt;K, V&gt;) o;</span>
+<span class="nc bnc" id="L549" title="All 2 branches missed.">                while (e != null)</span>
+                {
+<span class="nc" id="L551">                    Object candidate = e.getKey();</span>
+<span class="nc bnc" id="L552" title="All 2 branches missed.">                    if (candidate.equals(key))</span>
+                    {
+<span class="nc" id="L554">                        return e.getValue();</span>
+                    }
+<span class="nc" id="L556">                    e = e.getNext();</span>
+<span class="nc" id="L557">                }</span>
+<span class="nc bnc" id="L558" title="All 2 branches missed.">                if (!createdValue)</span>
+                {
+<span class="nc" id="L560">                    createdValue = true;</span>
+<span class="nc" id="L561">                    newValue = factory.value();</span>
+                }
+<span class="nc" id="L563">                Entry&lt;K, V&gt; newEntry = new Entry&lt;&gt;(key, newValue, (Entry&lt;K, V&gt;) o);</span>
+<span class="nc bnc" id="L564" title="All 2 branches missed.">                if (ConcurrentHashMapUnsafe.casArrayAt(currentArray, index, o, newEntry))</span>
+                {
+<span class="nc" id="L566">                    this.incrementSizeAndPossiblyResize(currentArray, length, o);</span>
+<span class="nc" id="L567">                    return newValue;</span>
+                }
+            }
+<span class="nc" id="L570">        }</span>
+    }
+
+    @Override
+    public V getIfAbsentPut(K key, V value)
+    {
+<span class="nc" id="L576">        int hash = this.hash(key);</span>
+<span class="nc" id="L577">        Object[] currentArray = this.table;</span>
+        while (true)
+        {
+<span class="nc" id="L580">            int length = currentArray.length;</span>
+<span class="nc" id="L581">            int index = ConcurrentHashMapUnsafe.indexFor(hash, length);</span>
+<span class="nc" id="L582">            Object o = ConcurrentHashMapUnsafe.arrayAt(currentArray, index);</span>
+<span class="nc bnc" id="L583" title="All 4 branches missed.">            if (o == RESIZED || o == RESIZING)</span>
+            {
+<span class="nc" id="L585">                currentArray = this.helpWithResizeWhileCurrentIndex(currentArray, index);</span>
+            }
+            else
+            {
+<span class="nc" id="L589">                Entry&lt;K, V&gt; e = (Entry&lt;K, V&gt;) o;</span>
+<span class="nc bnc" id="L590" title="All 2 branches missed.">                while (e != null)</span>
+                {
+<span class="nc" id="L592">                    Object candidate = e.getKey();</span>
+<span class="nc bnc" id="L593" title="All 2 branches missed.">                    if (candidate.equals(key))</span>
+                    {
+<span class="nc" id="L595">                        return e.getValue();</span>
+                    }
+<span class="nc" id="L597">                    e = e.getNext();</span>
+<span class="nc" id="L598">                }</span>
+<span class="nc" id="L599">                Entry&lt;K, V&gt; newEntry = new Entry&lt;&gt;(key, value, (Entry&lt;K, V&gt;) o);</span>
+<span class="nc bnc" id="L600" title="All 2 branches missed.">                if (ConcurrentHashMapUnsafe.casArrayAt(currentArray, index, o, newEntry))</span>
+                {
+<span class="nc" id="L602">                    this.incrementSizeAndPossiblyResize(currentArray, length, o);</span>
+<span class="nc" id="L603">                    return value;</span>
+                }
+            }
+<span class="nc" id="L606">        }</span>
+    }
+
+    /**
+     * It puts an object into the map based on the key. It uses a copy of the key converted by transformer.
+     *
+     * @param key            The &quot;mutable&quot; key, which has the same identity/hashcode as the inserted key, only during this call
+     * @param keyTransformer If the record is absent, the transformer will transform the &quot;mutable&quot; key into an immutable copy of the key.
+     *                       Note that the transformed key must have the same identity/hashcode as the original &quot;mutable&quot; key.
+     * @param factory        It creates an object, if it is not present in the map already.
+     */
+    public &lt;P1, P2&gt; V putIfAbsentGetIfPresent(K key, Function2&lt;K, V, K&gt; keyTransformer, Function3&lt;P1, P2, K, V&gt; factory, P1 param1, P2 param2)
+    {
+<span class="nc" id="L619">        int hash = this.hash(key);</span>
+<span class="nc" id="L620">        Object[] currentArray = this.table;</span>
+<span class="nc" id="L621">        V newValue = null;</span>
+<span class="nc" id="L622">        boolean createdValue = false;</span>
+        while (true)
+        {
+<span class="nc" id="L625">            int length = currentArray.length;</span>
+<span class="nc" id="L626">            int index = ConcurrentHashMapUnsafe.indexFor(hash, length);</span>
+<span class="nc" id="L627">            Object o = ConcurrentHashMapUnsafe.arrayAt(currentArray, index);</span>
+<span class="nc bnc" id="L628" title="All 4 branches missed.">            if (o == RESIZED || o == RESIZING)</span>
+            {
+<span class="nc" id="L630">                currentArray = this.helpWithResizeWhileCurrentIndex(currentArray, index);</span>
+            }
+            else
+            {
+<span class="nc" id="L634">                Entry&lt;K, V&gt; e = (Entry&lt;K, V&gt;) o;</span>
+<span class="nc bnc" id="L635" title="All 2 branches missed.">                while (e != null)</span>
+                {
+<span class="nc" id="L637">                    Object candidate = e.getKey();</span>
+<span class="nc bnc" id="L638" title="All 2 branches missed.">                    if (candidate.equals(key))</span>
+                    {
+<span class="nc" id="L640">                        return e.getValue();</span>
+                    }
+<span class="nc" id="L642">                    e = e.getNext();</span>
+<span class="nc" id="L643">                }</span>
+<span class="nc bnc" id="L644" title="All 2 branches missed.">                if (!createdValue)</span>
+                {
+<span class="nc" id="L646">                    createdValue = true;</span>
+<span class="nc" id="L647">                    newValue = factory.value(param1, param2, key);</span>
+<span class="nc bnc" id="L648" title="All 2 branches missed.">                    if (newValue == null)</span>
+                    {
+<span class="nc" id="L650">                        return null; // null value means no mapping is required</span>
+                    }
+<span class="nc" id="L652">                    key = keyTransformer.value(key, newValue);</span>
+                }
+<span class="nc" id="L654">                Entry&lt;K, V&gt; newEntry = new Entry&lt;&gt;(key, newValue, (Entry&lt;K, V&gt;) o);</span>
+<span class="nc bnc" id="L655" title="All 2 branches missed.">                if (ConcurrentHashMapUnsafe.casArrayAt(currentArray, index, o, newEntry))</span>
+                {
+<span class="nc" id="L657">                    this.incrementSizeAndPossiblyResize(currentArray, length, o);</span>
+<span class="nc" id="L658">                    return null;</span>
+                }
+            }
+<span class="nc" id="L661">        }</span>
+    }
+
+    @Override
+    public boolean remove(Object key, Object value)
+    {
+<span class="nc" id="L667">        int hash = this.hash(key);</span>
+<span class="nc" id="L668">        Object[] currentArray = this.table;</span>
+        //noinspection LabeledStatement
+        outer:
+        while (true)
+        {
+<span class="nc" id="L673">            int length = currentArray.length;</span>
+<span class="nc" id="L674">            int index = ConcurrentHashMapUnsafe.indexFor(hash, length);</span>
+<span class="nc" id="L675">            Object o = ConcurrentHashMapUnsafe.arrayAt(currentArray, index);</span>
+<span class="nc bnc" id="L676" title="All 4 branches missed.">            if (o == RESIZED || o == RESIZING)</span>
+            {
+<span class="nc" id="L678">                currentArray = this.helpWithResizeWhileCurrentIndex(currentArray, index);</span>
+            }
+            else
+            {
+<span class="nc" id="L682">                Entry&lt;K, V&gt; e = (Entry&lt;K, V&gt;) o;</span>
+<span class="nc bnc" id="L683" title="All 2 branches missed.">                while (e != null)</span>
+                {
+<span class="nc" id="L685">                    Object candidate = e.getKey();</span>
+<span class="nc bnc" id="L686" title="All 4 branches missed.">                    if (candidate.equals(key) &amp;&amp; this.nullSafeEquals(e.getValue(), value))</span>
+                    {
+<span class="nc" id="L688">                        Entry&lt;K, V&gt; replacement = this.createReplacementChainForRemoval((Entry&lt;K, V&gt;) o, e);</span>
+<span class="nc bnc" id="L689" title="All 2 branches missed.">                        if (ConcurrentHashMapUnsafe.casArrayAt(currentArray, index, o, replacement))</span>
+                        {
+<span class="nc" id="L691">                            this.addToSize(-1);</span>
+<span class="nc" id="L692">                            return true;</span>
+                        }
+                        //noinspection ContinueStatementWithLabel
+                        continue outer;
+                    }
+<span class="nc" id="L697">                    e = e.getNext();</span>
+<span class="nc" id="L698">                }</span>
+<span class="nc" id="L699">                return false;</span>
+            }
+<span class="nc" id="L701">        }</span>
+    }
+
+    private void addToSize(int value)
+    {
+<span class="nc bnc" id="L706" title="All 2 branches missed.">        if (this.partitionedSize != null)</span>
+        {
+<span class="nc bnc" id="L708" title="All 2 branches missed.">            if (this.incrementPartitionedSize(value))</span>
+            {
+<span class="nc" id="L710">                return;</span>
+            }
+        }
+<span class="nc" id="L713">        this.incrementLocalSize(value);</span>
+<span class="nc" id="L714">    }</span>
+
+    private boolean incrementPartitionedSize(int value)
+    {
+<span class="nc" id="L718">        int h = (int) Thread.currentThread().getId();</span>
+<span class="nc" id="L719">        h ^= (h &gt;&gt;&gt; 18) ^ (h &gt;&gt;&gt; 12);</span>
+<span class="nc" id="L720">        h = (h ^ (h &gt;&gt;&gt; 10)) &amp; SIZE_BUCKETS;</span>
+<span class="nc bnc" id="L721" title="All 2 branches missed.">        if (h != 0)</span>
+        {
+<span class="nc" id="L723">            h = (h - 1) &lt;&lt; 4;</span>
+<span class="nc" id="L724">            long address = ((long) h &lt;&lt; INT_ARRAY_SHIFT) + INT_ARRAY_BASE;</span>
+            while (true)
+            {
+<span class="nc" id="L727">                int localSize = UNSAFE.getIntVolatile(this.partitionedSize, address);</span>
+<span class="nc bnc" id="L728" title="All 2 branches missed.">                if (UNSAFE.compareAndSwapInt(this.partitionedSize, address, localSize, localSize + value))</span>
+                {
+<span class="nc" id="L730">                    return true;</span>
+                }
+<span class="nc" id="L732">            }</span>
+        }
+<span class="nc" id="L734">        return false;</span>
+    }
+
+    private void incrementLocalSize(int value)
+    {
+        while (true)
+        {
+<span class="nc" id="L741">            int localSize = this.size;</span>
+<span class="nc bnc" id="L742" title="All 2 branches missed.">            if (UNSAFE.compareAndSwapInt(this, SIZE_OFFSET, localSize, localSize + value))</span>
+            {
+<span class="nc" id="L744">                break;</span>
+            }
+<span class="nc" id="L746">        }</span>
+<span class="nc" id="L747">    }</span>
+
+    @Override
+    public int size()
+    {
+<span class="nc" id="L752">        int localSize = this.size;</span>
+<span class="nc bnc" id="L753" title="All 2 branches missed.">        if (this.partitionedSize != null)</span>
+        {
+<span class="nc bnc" id="L755" title="All 2 branches missed.">            for (int i = 0; i &lt; SIZE_BUCKETS; i++)</span>
+            {
+<span class="nc" id="L757">                localSize += this.partitionedSize[i &lt;&lt; 4];</span>
+            }
+        }
+<span class="nc" id="L760">        return localSize;</span>
+    }
+
+    @Override
+    public boolean isEmpty()
+    {
+<span class="nc bnc" id="L766" title="All 2 branches missed.">        return this.size() == 0;</span>
+    }
+
+    @Override
+    public boolean containsKey(Object key)
+    {
+<span class="nc bnc" id="L772" title="All 2 branches missed.">        return this.getEntry(key) != null;</span>
+    }
+
+    @Override
+    public boolean containsValue(Object value)
+    {
+<span class="nc" id="L778">        Object[] currentArray = this.table;</span>
+        ResizeContainer resizeContainer;
+        do
+        {
+<span class="nc" id="L782">            resizeContainer = null;</span>
+<span class="nc bnc" id="L783" title="All 2 branches missed.">            for (int i = 0; i &lt; currentArray.length - 1; i++)</span>
+            {
+<span class="nc" id="L785">                Object o = ConcurrentHashMapUnsafe.arrayAt(currentArray, i);</span>
+<span class="nc bnc" id="L786" title="All 4 branches missed.">                if (o == RESIZED || o == RESIZING)</span>
+                {
+<span class="nc" id="L788">                    resizeContainer = (ResizeContainer) ConcurrentHashMapUnsafe.arrayAt(currentArray, currentArray.length - 1);</span>
+                }
+<span class="nc bnc" id="L790" title="All 2 branches missed.">                else if (o != null)</span>
+                {
+<span class="nc" id="L792">                    Entry&lt;K, V&gt; e = (Entry&lt;K, V&gt;) o;</span>
+<span class="nc bnc" id="L793" title="All 2 branches missed.">                    while (e != null)</span>
+                    {
+<span class="nc" id="L795">                        Object v = e.getValue();</span>
+<span class="nc bnc" id="L796" title="All 2 branches missed.">                        if (this.nullSafeEquals(v, value))</span>
+                        {
+<span class="nc" id="L798">                            return true;</span>
+                        }
+<span class="nc" id="L800">                        e = e.getNext();</span>
+<span class="nc" id="L801">                    }</span>
+                }
+            }
+<span class="nc bnc" id="L804" title="All 2 branches missed.">            if (resizeContainer != null)</span>
+            {
+<span class="nc bnc" id="L806" title="All 2 branches missed.">                if (resizeContainer.isNotDone())</span>
+                {
+<span class="nc" id="L808">                    this.helpWithResize(currentArray);</span>
+<span class="nc" id="L809">                    resizeContainer.waitForAllResizers();</span>
+                }
+<span class="nc" id="L811">                currentArray = resizeContainer.nextArray;</span>
+            }
+        }
+<span class="nc bnc" id="L814" title="All 2 branches missed.">        while (resizeContainer != null);</span>
+<span class="nc" id="L815">        return false;</span>
+    }
+
+    private boolean nullSafeEquals(Object v, Object value)
+    {
+<span class="nc bnc" id="L820" title="All 6 branches missed.">        return v == value || v != null &amp;&amp; v.equals(value);</span>
+    }
+
+    @Override
+    public V get(Object key)
+    {
+<span class="nc" id="L826">        int hash = this.hash(key);</span>
+<span class="nc" id="L827">        Object[] currentArray = this.table;</span>
+<span class="nc" id="L828">        int index = ConcurrentHashMapUnsafe.indexFor(hash, currentArray.length);</span>
+<span class="nc" id="L829">        Object o = ConcurrentHashMapUnsafe.arrayAt(currentArray, index);</span>
+<span class="nc bnc" id="L830" title="All 4 branches missed.">        if (o == RESIZED || o == RESIZING)</span>
+        {
+<span class="nc" id="L832">            return this.slowGet(key, hash, index, currentArray);</span>
+        }
+<span class="nc bnc" id="L834" title="All 2 branches missed.">        for (Entry&lt;K, V&gt; e = (Entry&lt;K, V&gt;) o; e != null; e = e.getNext())</span>
+        {
+            Object k;
+<span class="nc bnc" id="L837" title="All 4 branches missed.">            if ((k = e.key) == key || key.equals(k))</span>
+            {
+<span class="nc" id="L839">                return e.value;</span>
+            }
+        }
+<span class="nc" id="L842">        return null;</span>
+    }
+
+    private V slowGet(Object key, int hash, int index, Object[] currentArray)
+    {
+        while (true)
+        {
+<span class="nc" id="L849">            int length = currentArray.length;</span>
+<span class="nc" id="L850">            index = ConcurrentHashMapUnsafe.indexFor(hash, length);</span>
+<span class="nc" id="L851">            Object o = ConcurrentHashMapUnsafe.arrayAt(currentArray, index);</span>
+<span class="nc bnc" id="L852" title="All 4 branches missed.">            if (o == RESIZED || o == RESIZING)</span>
+            {
+<span class="nc" id="L854">                currentArray = this.helpWithResizeWhileCurrentIndex(currentArray, index);</span>
+            }
+            else
+            {
+<span class="nc" id="L858">                Entry&lt;K, V&gt; e = (Entry&lt;K, V&gt;) o;</span>
+<span class="nc bnc" id="L859" title="All 2 branches missed.">                while (e != null)</span>
+                {
+<span class="nc" id="L861">                    Object candidate = e.getKey();</span>
+<span class="nc bnc" id="L862" title="All 2 branches missed.">                    if (candidate.equals(key))</span>
+                    {
+<span class="nc" id="L864">                        return e.getValue();</span>
+                    }
+<span class="nc" id="L866">                    e = e.getNext();</span>
+<span class="nc" id="L867">                }</span>
+<span class="nc" id="L868">                return null;</span>
+            }
+<span class="nc" id="L870">        }</span>
+    }
+
+    private Entry&lt;K, V&gt; getEntry(Object key)
+    {
+<span class="nc" id="L875">        int hash = this.hash(key);</span>
+<span class="nc" id="L876">        Object[] currentArray = this.table;</span>
+        while (true)
+        {
+<span class="nc" id="L879">            int length = currentArray.length;</span>
+<span class="nc" id="L880">            int index = ConcurrentHashMapUnsafe.indexFor(hash, length);</span>
+<span class="nc" id="L881">            Object o = ConcurrentHashMapUnsafe.arrayAt(currentArray, index);</span>
+<span class="nc bnc" id="L882" title="All 4 branches missed.">            if (o == RESIZED || o == RESIZING)</span>
+            {
+<span class="nc" id="L884">                currentArray = this.helpWithResizeWhileCurrentIndex(currentArray, index);</span>
+            }
+            else
+            {
+<span class="nc" id="L888">                Entry&lt;K, V&gt; e = (Entry&lt;K, V&gt;) o;</span>
+<span class="nc bnc" id="L889" title="All 2 branches missed.">                while (e != null)</span>
+                {
+<span class="nc" id="L891">                    Object candidate = e.getKey();</span>
+<span class="nc bnc" id="L892" title="All 2 branches missed.">                    if (candidate.equals(key))</span>
+                    {
+<span class="nc" id="L894">                        return e;</span>
+                    }
+<span class="nc" id="L896">                    e = e.getNext();</span>
+<span class="nc" id="L897">                }</span>
+<span class="nc" id="L898">                return null;</span>
+            }
+<span class="nc" id="L900">        }</span>
+    }
+
+    @Override
+    public V put(K key, V value)
+    {
+<span class="nc" id="L906">        int hash = this.hash(key);</span>
+<span class="nc" id="L907">        Object[] currentArray = this.table;</span>
+<span class="nc" id="L908">        int length = currentArray.length;</span>
+<span class="nc" id="L909">        int index = ConcurrentHashMapUnsafe.indexFor(hash, length);</span>
+<span class="nc" id="L910">        Object o = ConcurrentHashMapUnsafe.arrayAt(currentArray, index);</span>
+<span class="nc bnc" id="L911" title="All 2 branches missed.">        if (o == null)</span>
+        {
+<span class="nc" id="L913">            Entry&lt;K, V&gt; newEntry = new Entry&lt;&gt;(key, value, null);</span>
+<span class="nc" id="L914">            this.addToSize(1);</span>
+<span class="nc bnc" id="L915" title="All 2 branches missed.">            if (ConcurrentHashMapUnsafe.casArrayAt(currentArray, index, null, newEntry))</span>
+            {
+<span class="nc" id="L917">                return null;</span>
+            }
+<span class="nc" id="L919">            this.addToSize(-1);</span>
+        }
+<span class="nc" id="L921">        return this.slowPut(key, value, hash, currentArray);</span>
+    }
+
+    private V slowPut(K key, V value, int hash, Object[] currentArray)
+    {
+        //noinspection LabeledStatement
+        outer:
+        while (true)
+        {
+<span class="nc" id="L930">            int length = currentArray.length;</span>
+<span class="nc" id="L931">            int index = ConcurrentHashMapUnsafe.indexFor(hash, length);</span>
+<span class="nc" id="L932">            Object o = ConcurrentHashMapUnsafe.arrayAt(currentArray, index);</span>
+<span class="nc bnc" id="L933" title="All 4 branches missed.">            if (o == RESIZED || o == RESIZING)</span>
+            {
+<span class="nc" id="L935">                currentArray = this.helpWithResizeWhileCurrentIndex(currentArray, index);</span>
+            }
+            else
+            {
+<span class="nc" id="L939">                Entry&lt;K, V&gt; e = (Entry&lt;K, V&gt;) o;</span>
+<span class="nc bnc" id="L940" title="All 2 branches missed.">                while (e != null)</span>
+                {
+<span class="nc" id="L942">                    Object candidate = e.getKey();</span>
+<span class="nc bnc" id="L943" title="All 2 branches missed.">                    if (candidate.equals(key))</span>
+                    {
+<span class="nc" id="L945">                        V oldValue = e.getValue();</span>
+<span class="nc" id="L946">                        Entry&lt;K, V&gt; newEntry = new Entry&lt;&gt;(e.getKey(), value, this.createReplacementChainForRemoval((Entry&lt;K, V&gt;) o, e));</span>
+<span class="nc bnc" id="L947" title="All 2 branches missed.">                        if (!ConcurrentHashMapUnsafe.casArrayAt(currentArray, index, o, newEntry))</span>
+                        {
+                            //noinspection ContinueStatementWithLabel
+<span class="nc" id="L950">                            continue outer;</span>
+                        }
+<span class="nc" id="L952">                        return oldValue;</span>
+                    }
+<span class="nc" id="L954">                    e = e.getNext();</span>
+<span class="nc" id="L955">                }</span>
+<span class="nc" id="L956">                Entry&lt;K, V&gt; newEntry = new Entry&lt;&gt;(key, value, (Entry&lt;K, V&gt;) o);</span>
+<span class="nc bnc" id="L957" title="All 2 branches missed.">                if (ConcurrentHashMapUnsafe.casArrayAt(currentArray, index, o, newEntry))</span>
+                {
+<span class="nc" id="L959">                    this.incrementSizeAndPossiblyResize(currentArray, length, o);</span>
+<span class="nc" id="L960">                    return null;</span>
+                }
+            }
+<span class="nc" id="L963">        }</span>
+    }
+
+    public void putAllInParallel(Map&lt;K, V&gt; map, int chunks, Executor executor)
+    {
+<span class="nc bnc" id="L968" title="All 2 branches missed.">        if (this.size() == 0)</span>
+        {
+<span class="nc" id="L970">            int threshold = map.size();</span>
+<span class="nc" id="L971">            threshold += threshold &gt;&gt; 1; // threshold = length * 0.75</span>
+
+<span class="nc" id="L973">            int capacity = 1;</span>
+<span class="nc bnc" id="L974" title="All 2 branches missed.">            while (capacity &lt; threshold)</span>
+            {
+<span class="nc" id="L976">                capacity &lt;&lt;= 1;</span>
+            }
+<span class="nc" id="L978">            this.resize(this.table, capacity + 1);</span>
+        }
+<span class="nc bnc" id="L980" title="All 6 branches missed.">        if (map instanceof ConcurrentHashMapUnsafe&lt;?, ?&gt; &amp;&amp; chunks &gt; 1 &amp;&amp; map.size() &gt; 50000)</span>
+        {
+<span class="nc" id="L982">            ConcurrentHashMapUnsafe&lt;K, V&gt; incoming = (ConcurrentHashMapUnsafe&lt;K, V&gt;) map;</span>
+<span class="nc" id="L983">            Object[] currentArray = incoming.table;</span>
+<span class="nc" id="L984">            FutureTask&lt;?&gt;[] futures = new FutureTask&lt;?&gt;[chunks];</span>
+<span class="nc" id="L985">            int chunkSize = currentArray.length / chunks;</span>
+<span class="nc bnc" id="L986" title="All 2 branches missed.">            if (currentArray.length % chunks != 0)</span>
+            {
+<span class="nc" id="L988">                chunkSize++;</span>
+            }
+<span class="nc bnc" id="L990" title="All 2 branches missed.">            for (int i = 0; i &lt; chunks; i++)</span>
+            {
+<span class="nc" id="L992">                int start = i * chunkSize;</span>
+<span class="nc" id="L993">                int end = Math.min((i + 1) * chunkSize, currentArray.length);</span>
+<span class="nc" id="L994">                futures[i] = new FutureTask&lt;&gt;(() -&gt; this.sequentialPutAll(currentArray, start, end), null);</span>
+<span class="nc" id="L995">                executor.execute(futures[i]);</span>
+            }
+<span class="nc bnc" id="L997" title="All 2 branches missed.">            for (int i = 0; i &lt; chunks; i++)</span>
+            {
+                try
+                {
+<span class="nc" id="L1001">                    futures[i].get();</span>
+                }
+<span class="nc" id="L1003">                catch (Exception e)</span>
+                {
+<span class="nc" id="L1005">                    throw new RuntimeException(&quot;parallelForEachKeyValue failed&quot;, e);</span>
+<span class="nc" id="L1006">                }</span>
+            }
+<span class="nc" id="L1008">        }</span>
+        else
+        {
+<span class="nc" id="L1011">            this.putAll(map);</span>
+        }
+<span class="nc" id="L1013">    }</span>
+
+    private void sequentialPutAll(Object[] currentArray, int start, int end)
+    {
+<span class="nc bnc" id="L1017" title="All 2 branches missed.">        for (int i = start; i &lt; end; i++)</span>
+        {
+<span class="nc" id="L1019">            Object o = ConcurrentHashMapUnsafe.arrayAt(currentArray, i);</span>
+<span class="nc bnc" id="L1020" title="All 4 branches missed.">            if (o == RESIZED || o == RESIZING)</span>
+            {
+<span class="nc" id="L1022">                throw new ConcurrentModificationException(&quot;can't iterate while resizing!&quot;);</span>
+            }
+<span class="nc" id="L1024">            Entry&lt;K, V&gt; e = (Entry&lt;K, V&gt;) o;</span>
+<span class="nc bnc" id="L1025" title="All 2 branches missed.">            while (e != null)</span>
+            {
+<span class="nc" id="L1027">                Object key = e.getKey();</span>
+<span class="nc" id="L1028">                Object value = e.getValue();</span>
+<span class="nc" id="L1029">                this.put((K) key, (V) value);</span>
+<span class="nc" id="L1030">                e = e.getNext();</span>
+<span class="nc" id="L1031">            }</span>
+        }
+<span class="nc" id="L1033">    }</span>
+
+    @Override
+    public void putAll(Map&lt;? extends K, ? extends V&gt; map)
+    {
+<span class="nc" id="L1038">        MapIterate.forEachKeyValue(map, this::put);</span>
+<span class="nc" id="L1039">    }</span>
+
+    @Override
+    public void clear()
+    {
+<span class="nc" id="L1044">        Object[] currentArray = this.table;</span>
+        ResizeContainer resizeContainer;
+        do
+        {
+<span class="nc" id="L1048">            resizeContainer = null;</span>
+<span class="nc bnc" id="L1049" title="All 2 branches missed.">            for (int i = 0; i &lt; currentArray.length - 1; i++)</span>
+            {
+<span class="nc" id="L1051">                Object o = ConcurrentHashMapUnsafe.arrayAt(currentArray, i);</span>
+<span class="nc bnc" id="L1052" title="All 4 branches missed.">                if (o == RESIZED || o == RESIZING)</span>
+                {
+<span class="nc" id="L1054">                    resizeContainer = (ResizeContainer) ConcurrentHashMapUnsafe.arrayAt(currentArray, currentArray.length - 1);</span>
+                }
+<span class="nc bnc" id="L1056" title="All 2 branches missed.">                else if (o != null)</span>
+                {
+<span class="nc" id="L1058">                    Entry&lt;K, V&gt; e = (Entry&lt;K, V&gt;) o;</span>
+<span class="nc bnc" id="L1059" title="All 2 branches missed.">                    if (ConcurrentHashMapUnsafe.casArrayAt(currentArray, i, o, null))</span>
+                    {
+<span class="nc" id="L1061">                        int removedEntries = 0;</span>
+<span class="nc bnc" id="L1062" title="All 2 branches missed.">                        while (e != null)</span>
+                        {
+<span class="nc" id="L1064">                            removedEntries++;</span>
+<span class="nc" id="L1065">                            e = e.getNext();</span>
+                        }
+<span class="nc" id="L1067">                        this.addToSize(-removedEntries);</span>
+                    }
+                }
+            }
+<span class="nc bnc" id="L1071" title="All 2 branches missed.">            if (resizeContainer != null)</span>
+            {
+<span class="nc bnc" id="L1073" title="All 2 branches missed.">                if (resizeContainer.isNotDone())</span>
+                {
+<span class="nc" id="L1075">                    this.helpWithResize(currentArray);</span>
+<span class="nc" id="L1076">                    resizeContainer.waitForAllResizers();</span>
+                }
+<span class="nc" id="L1078">                currentArray = resizeContainer.nextArray;</span>
+            }
+        }
+<span class="nc bnc" id="L1081" title="All 2 branches missed.">        while (resizeContainer != null);</span>
+<span class="nc" id="L1082">    }</span>
+
+    @Override
+    public Set&lt;K&gt; keySet()
+    {
+<span class="nc" id="L1087">        return new KeySet();</span>
+    }
+
+    @Override
+    public Collection&lt;V&gt; values()
+    {
+<span class="nc" id="L1093">        return new Values();</span>
+    }
+
+    @Override
+    public Set&lt;Map.Entry&lt;K, V&gt;&gt; entrySet()
+    {
+<span class="nc" id="L1099">        return new EntrySet();</span>
+    }
+
+    @Override
+    public boolean replace(K key, V oldValue, V newValue)
+    {
+<span class="nc" id="L1105">        int hash = this.hash(key);</span>
+<span class="nc" id="L1106">        Object[] currentArray = this.table;</span>
+<span class="nc" id="L1107">        int length = currentArray.length;</span>
+<span class="nc" id="L1108">        int index = ConcurrentHashMapUnsafe.indexFor(hash, length);</span>
+<span class="nc" id="L1109">        Object o = ConcurrentHashMapUnsafe.arrayAt(currentArray, index);</span>
+<span class="nc bnc" id="L1110" title="All 4 branches missed.">        if (o == RESIZED || o == RESIZING)</span>
+        {
+<span class="nc" id="L1112">            return this.slowReplace(key, oldValue, newValue, hash, currentArray);</span>
+        }
+<span class="nc" id="L1114">        Entry&lt;K, V&gt; e = (Entry&lt;K, V&gt;) o;</span>
+<span class="nc bnc" id="L1115" title="All 2 branches missed.">        while (e != null)</span>
+        {
+<span class="nc" id="L1117">            Object candidate = e.getKey();</span>
+<span class="nc bnc" id="L1118" title="All 4 branches missed.">            if (candidate == key || candidate.equals(key))</span>
+            {
+<span class="nc bnc" id="L1120" title="All 6 branches missed.">                if (oldValue == e.getValue() || (oldValue != null &amp;&amp; oldValue.equals(e.getValue())))</span>
+                {
+<span class="nc" id="L1122">                    Entry&lt;K, V&gt; replacement = this.createReplacementChainForRemoval((Entry&lt;K, V&gt;) o, e);</span>
+<span class="nc" id="L1123">                    Entry&lt;K, V&gt; newEntry = new Entry&lt;&gt;(key, newValue, replacement);</span>
+<span class="nc bnc" id="L1124" title="All 4 branches missed.">                    return ConcurrentHashMapUnsafe.casArrayAt(currentArray, index, o, newEntry) || this.slowReplace(key, oldValue, newValue, hash, currentArray);</span>
+                }
+<span class="nc" id="L1126">                return false;</span>
+            }
+<span class="nc" id="L1128">            e = e.getNext();</span>
+<span class="nc" id="L1129">        }</span>
+<span class="nc" id="L1130">        return false;</span>
+    }
+
+    private boolean slowReplace(K key, V oldValue, V newValue, int hash, Object[] currentArray)
+    {
+        //noinspection LabeledStatement
+        outer:
+        while (true)
+        {
+<span class="nc" id="L1139">            int length = currentArray.length;</span>
+<span class="nc" id="L1140">            int index = ConcurrentHashMapUnsafe.indexFor(hash, length);</span>
+<span class="nc" id="L1141">            Object o = ConcurrentHashMapUnsafe.arrayAt(currentArray, index);</span>
+<span class="nc bnc" id="L1142" title="All 4 branches missed.">            if (o == RESIZED || o == RESIZING)</span>
+            {
+<span class="nc" id="L1144">                currentArray = this.helpWithResizeWhileCurrentIndex(currentArray, index);</span>
+            }
+            else
+            {
+<span class="nc" id="L1148">                Entry&lt;K, V&gt; e = (Entry&lt;K, V&gt;) o;</span>
+<span class="nc bnc" id="L1149" title="All 2 branches missed.">                while (e != null)</span>
+                {
+<span class="nc" id="L1151">                    Object candidate = e.getKey();</span>
+<span class="nc bnc" id="L1152" title="All 4 branches missed.">                    if (candidate == key || candidate.equals(key))</span>
+                    {
+<span class="nc bnc" id="L1154" title="All 6 branches missed.">                        if (oldValue == e.getValue() || (oldValue != null &amp;&amp; oldValue.equals(e.getValue())))</span>
+                        {
+<span class="nc" id="L1156">                            Entry&lt;K, V&gt; replacement = this.createReplacementChainForRemoval((Entry&lt;K, V&gt;) o, e);</span>
+<span class="nc" id="L1157">                            Entry&lt;K, V&gt; newEntry = new Entry&lt;&gt;(key, newValue, replacement);</span>
+<span class="nc bnc" id="L1158" title="All 2 branches missed.">                            if (ConcurrentHashMapUnsafe.casArrayAt(currentArray, index, o, newEntry))</span>
+                            {
+<span class="nc" id="L1160">                                return true;</span>
+                            }
+                            //noinspection ContinueStatementWithLabel
+                            continue outer;
+                        }
+<span class="nc" id="L1165">                        return false;</span>
+                    }
+<span class="nc" id="L1167">                    e = e.getNext();</span>
+<span class="nc" id="L1168">                }</span>
+<span class="nc" id="L1169">                return false;</span>
+            }
+<span class="nc" id="L1171">        }</span>
+    }
+
+    @Override
+    public V replace(K key, V value)
+    {
+<span class="nc" id="L1177">        int hash = this.hash(key);</span>
+<span class="nc" id="L1178">        Object[] currentArray = this.table;</span>
+<span class="nc" id="L1179">        int length = currentArray.length;</span>
+<span class="nc" id="L1180">        int index = ConcurrentHashMapUnsafe.indexFor(hash, length);</span>
+<span class="nc" id="L1181">        Object o = ConcurrentHashMapUnsafe.arrayAt(currentArray, index);</span>
+<span class="nc bnc" id="L1182" title="All 2 branches missed.">        if (o == null)</span>
+        {
+<span class="nc" id="L1184">            return null;</span>
+        }
+<span class="nc" id="L1186">        return this.slowReplace(key, value, hash, currentArray);</span>
+    }
+
+    private V slowReplace(K key, V value, int hash, Object[] currentArray)
+    {
+        //noinspection LabeledStatement
+        outer:
+        while (true)
+        {
+<span class="nc" id="L1195">            int length = currentArray.length;</span>
+<span class="nc" id="L1196">            int index = ConcurrentHashMapUnsafe.indexFor(hash, length);</span>
+<span class="nc" id="L1197">            Object o = ConcurrentHashMapUnsafe.arrayAt(currentArray, index);</span>
+<span class="nc bnc" id="L1198" title="All 4 branches missed.">            if (o == RESIZED || o == RESIZING)</span>
+            {
+<span class="nc" id="L1200">                currentArray = this.helpWithResizeWhileCurrentIndex(currentArray, index);</span>
+            }
+            else
+            {
+<span class="nc" id="L1204">                Entry&lt;K, V&gt; e = (Entry&lt;K, V&gt;) o;</span>
+<span class="nc bnc" id="L1205" title="All 2 branches missed.">                while (e != null)</span>
+                {
+<span class="nc" id="L1207">                    Object candidate = e.getKey();</span>
+<span class="nc bnc" id="L1208" title="All 2 branches missed.">                    if (candidate.equals(key))</span>
+                    {
+<span class="nc" id="L1210">                        V oldValue = e.getValue();</span>
+<span class="nc" id="L1211">                        Entry&lt;K, V&gt; newEntry = new Entry&lt;&gt;(e.getKey(), value, this.createReplacementChainForRemoval((Entry&lt;K, V&gt;) o, e));</span>
+<span class="nc bnc" id="L1212" title="All 2 branches missed.">                        if (!ConcurrentHashMapUnsafe.casArrayAt(currentArray, index, o, newEntry))</span>
+                        {
+                            //noinspection ContinueStatementWithLabel
+<span class="nc" id="L1215">                            continue outer;</span>
+                        }
+<span class="nc" id="L1217">                        return oldValue;</span>
+                    }
+<span class="nc" id="L1219">                    e = e.getNext();</span>
+<span class="nc" id="L1220">                }</span>
+<span class="nc" id="L1221">                return null;</span>
+            }
+<span class="nc" id="L1223">        }</span>
+    }
+
+    @Override
+    public V remove(Object key)
+    {
+<span class="nc" id="L1229">        int hash = this.hash(key);</span>
+<span class="nc" id="L1230">        Object[] currentArray = this.table;</span>
+<span class="nc" id="L1231">        int length = currentArray.length;</span>
+<span class="nc" id="L1232">        int index = ConcurrentHashMapUnsafe.indexFor(hash, length);</span>
+<span class="nc" id="L1233">        Object o = ConcurrentHashMapUnsafe.arrayAt(currentArray, index);</span>
+<span class="nc bnc" id="L1234" title="All 4 branches missed.">        if (o == RESIZED || o == RESIZING)</span>
+        {
+<span class="nc" id="L1236">            return this.slowRemove(key, hash, currentArray);</span>
+        }
+<span class="nc" id="L1238">        Entry&lt;K, V&gt; e = (Entry&lt;K, V&gt;) o;</span>
+<span class="nc bnc" id="L1239" title="All 2 branches missed.">        while (e != null)</span>
+        {
+<span class="nc" id="L1241">            Object candidate = e.getKey();</span>
+<span class="nc bnc" id="L1242" title="All 4 branches missed.">            if (candidate == key || candidate.equals(key))</span>
+            {
+<span class="nc" id="L1244">                Entry&lt;K, V&gt; replacement = this.createReplacementChainForRemoval((Entry&lt;K, V&gt;) o, e);</span>
+<span class="nc bnc" id="L1245" title="All 2 branches missed.">                if (ConcurrentHashMapUnsafe.casArrayAt(currentArray, index, o, replacement))</span>
+                {
+<span class="nc" id="L1247">                    this.addToSize(-1);</span>
+<span class="nc" id="L1248">                    return e.getValue();</span>
+                }
+<span class="nc" id="L1250">                return this.slowRemove(key, hash, currentArray);</span>
+            }
+<span class="nc" id="L1252">            e = e.getNext();</span>
+<span class="nc" id="L1253">        }</span>
+<span class="nc" id="L1254">        return null;</span>
+    }
+
+    private V slowRemove(Object key, int hash, Object[] currentArray)
+    {
+        //noinspection LabeledStatement
+        outer:
+        while (true)
+        {
+<span class="nc" id="L1263">            int length = currentArray.length;</span>
+<span class="nc" id="L1264">            int index = ConcurrentHashMapUnsafe.indexFor(hash, length);</span>
+<span class="nc" id="L1265">            Object o = ConcurrentHashMapUnsafe.arrayAt(currentArray, index);</span>
+<span class="nc bnc" id="L1266" title="All 4 branches missed.">            if (o == RESIZED || o == RESIZING)</span>
+            {
+<span class="nc" id="L1268">                currentArray = this.helpWithResizeWhileCurrentIndex(currentArray, index);</span>
+            }
+            else
+            {
+<span class="nc" id="L1272">                Entry&lt;K, V&gt; e = (Entry&lt;K, V&gt;) o;</span>
+<span class="nc bnc" id="L1273" title="All 2 branches missed.">                while (e != null)</span>
+                {
+<span class="nc" id="L1275">                    Object candidate = e.getKey();</span>
+<span class="nc bnc" id="L1276" title="All 2 branches missed.">                    if (candidate.equals(key))</span>
+                    {
+<span class="nc" id="L1278">                        Entry&lt;K, V&gt; replacement = this.createReplacementChainForRemoval((Entry&lt;K, V&gt;) o, e);</span>
+<span class="nc bnc" id="L1279" title="All 2 branches missed.">                        if (ConcurrentHashMapUnsafe.casArrayAt(currentArray, index, o, replacement))</span>
+                        {
+<span class="nc" id="L1281">                            this.addToSize(-1);</span>
+<span class="nc" id="L1282">                            return e.getValue();</span>
+                        }
+                        //noinspection ContinueStatementWithLabel
+                        continue outer;
+                    }
+<span class="nc" id="L1287">                    e = e.getNext();</span>
+<span class="nc" id="L1288">                }</span>
+<span class="nc" id="L1289">                return null;</span>
+            }
+<span class="nc" id="L1291">        }</span>
+    }
+
+    private Entry&lt;K, V&gt; createReplacementChainForRemoval(Entry&lt;K, V&gt; original, Entry&lt;K, V&gt; toRemove)
+    {
+<span class="nc bnc" id="L1296" title="All 2 branches missed.">        if (original == toRemove)</span>
+        {
+<span class="nc" id="L1298">            return original.getNext();</span>
+        }
+<span class="nc" id="L1300">        Entry&lt;K, V&gt; replacement = null;</span>
+<span class="nc" id="L1301">        Entry&lt;K, V&gt; e = original;</span>
+<span class="nc bnc" id="L1302" title="All 2 branches missed.">        while (e != null)</span>
+        {
+<span class="nc bnc" id="L1304" title="All 2 branches missed.">            if (e != toRemove)</span>
+            {
+<span class="nc" id="L1306">                replacement = new Entry&lt;&gt;(e.getKey(), e.getValue(), replacement);</span>
+            }
+<span class="nc" id="L1308">            e = e.getNext();</span>
+        }
+<span class="nc" id="L1310">        return replacement;</span>
+    }
+
+    public void parallelForEachKeyValue(List&lt;Procedure2&lt;K, V&gt;&gt; blocks, Executor executor)
+    {
+<span class="nc" id="L1315">        Object[] currentArray = this.table;</span>
+<span class="nc" id="L1316">        int chunks = blocks.size();</span>
+<span class="nc bnc" id="L1317" title="All 2 branches missed.">        if (chunks &gt; 1)</span>
+        {
+<span class="nc" id="L1319">            FutureTask&lt;?&gt;[] futures = new FutureTask&lt;?&gt;[chunks];</span>
+<span class="nc" id="L1320">            int chunkSize = currentArray.length / chunks;</span>
+<span class="nc bnc" id="L1321" title="All 2 branches missed.">            if (currentArray.length % chunks != 0)</span>
+            {
+<span class="nc" id="L1323">                chunkSize++;</span>
+            }
+<span class="nc bnc" id="L1325" title="All 2 branches missed.">            for (int i = 0; i &lt; chunks; i++)</span>
+            {
+<span class="nc" id="L1327">                int start = i * chunkSize;</span>
+<span class="nc" id="L1328">                int end = Math.min((i + 1) * chunkSize, currentArray.length);</span>
+<span class="nc" id="L1329">                Procedure2&lt;K, V&gt; block = blocks.get(i);</span>
+<span class="nc" id="L1330">                futures[i] = new FutureTask&lt;&gt;(() -&gt; this.sequentialForEachKeyValue(block, currentArray, start, end), null);</span>
+<span class="nc" id="L1331">                executor.execute(futures[i]);</span>
+            }
+<span class="nc bnc" id="L1333" title="All 2 branches missed.">            for (int i = 0; i &lt; chunks; i++)</span>
+            {
+                try
+                {
+<span class="nc" id="L1337">                    futures[i].get();</span>
+                }
+<span class="nc" id="L1339">                catch (Exception e)</span>
+                {
+<span class="nc" id="L1341">                    throw new RuntimeException(&quot;parallelForEachKeyValue failed&quot;, e);</span>
+<span class="nc" id="L1342">                }</span>
+            }
+<span class="nc" id="L1344">        }</span>
+        else
+        {
+<span class="nc" id="L1347">            this.sequentialForEachKeyValue(blocks.get(0), currentArray, 0, currentArray.length);</span>
+        }
+<span class="nc" id="L1349">    }</span>
+
+    private void sequentialForEachKeyValue(Procedure2&lt;K, V&gt; block, Object[] currentArray, int start, int end)
+    {
+<span class="nc bnc" id="L1353" title="All 2 branches missed.">        for (int i = start; i &lt; end; i++)</span>
+        {
+<span class="nc" id="L1355">            Object o = ConcurrentHashMapUnsafe.arrayAt(currentArray, i);</span>
+<span class="nc bnc" id="L1356" title="All 4 branches missed.">            if (o == RESIZED || o == RESIZING)</span>
+            {
+<span class="nc" id="L1358">                throw new ConcurrentModificationException(&quot;can't iterate while resizing!&quot;);</span>
+            }
+<span class="nc" id="L1360">            Entry&lt;K, V&gt; e = (Entry&lt;K, V&gt;) o;</span>
+<span class="nc bnc" id="L1361" title="All 2 branches missed.">            while (e != null)</span>
+            {
+<span class="nc" id="L1363">                Object key = e.getKey();</span>
+<span class="nc" id="L1364">                Object value = e.getValue();</span>
+<span class="nc" id="L1365">                block.value((K) key, (V) value);</span>
+<span class="nc" id="L1366">                e = e.getNext();</span>
+<span class="nc" id="L1367">            }</span>
+        }
+<span class="nc" id="L1369">    }</span>
+
+    public void parallelForEachValue(List&lt;Procedure&lt;V&gt;&gt; blocks, Executor executor)
+    {
+<span class="nc" id="L1373">        Object[] currentArray = this.table;</span>
+<span class="nc" id="L1374">        int chunks = blocks.size();</span>
+<span class="nc bnc" id="L1375" title="All 2 branches missed.">        if (chunks &gt; 1)</span>
+        {
+<span class="nc" id="L1377">            FutureTask&lt;?&gt;[] futures = new FutureTask&lt;?&gt;[chunks];</span>
+<span class="nc" id="L1378">            int chunkSize = currentArray.length / chunks;</span>
+<span class="nc bnc" id="L1379" title="All 2 branches missed.">            if (currentArray.length % chunks != 0)</span>
+            {
+<span class="nc" id="L1381">                chunkSize++;</span>
+            }
+<span class="nc bnc" id="L1383" title="All 2 branches missed.">            for (int i = 0; i &lt; chunks; i++)</span>
+            {
+<span class="nc" id="L1385">                int start = i * chunkSize;</span>
+<span class="nc" id="L1386">                int end = Math.min((i + 1) * chunkSize, currentArray.length - 1);</span>
+<span class="nc" id="L1387">                Procedure&lt;V&gt; block = blocks.get(i);</span>
+<span class="nc" id="L1388">                futures[i] = new FutureTask&lt;&gt;(() -&gt; this.sequentialForEachValue(block, currentArray, start, end), null);</span>
+<span class="nc" id="L1389">                executor.execute(futures[i]);</span>
+            }
+<span class="nc bnc" id="L1391" title="All 2 branches missed.">            for (int i = 0; i &lt; chunks; i++)</span>
+            {
+                try
+                {
+<span class="nc" id="L1395">                    futures[i].get();</span>
+                }
+<span class="nc" id="L1397">                catch (Exception e)</span>
+                {
+<span class="nc" id="L1399">                    throw new RuntimeException(&quot;parallelForEachKeyValue failed&quot;, e);</span>
+<span class="nc" id="L1400">                }</span>
+            }
+<span class="nc" id="L1402">        }</span>
+        else
+        {
+<span class="nc" id="L1405">            this.sequentialForEachValue(blocks.get(0), currentArray, 0, currentArray.length);</span>
+        }
+<span class="nc" id="L1407">    }</span>
+
+    private void sequentialForEachValue(Procedure&lt;V&gt; block, Object[] currentArray, int start, int end)
+    {
+<span class="nc bnc" id="L1411" title="All 2 branches missed.">        for (int i = start; i &lt; end; i++)</span>
+        {
+<span class="nc" id="L1413">            Object o = ConcurrentHashMapUnsafe.arrayAt(currentArray, i);</span>
+<span class="nc bnc" id="L1414" title="All 4 branches missed.">            if (o == RESIZED || o == RESIZING)</span>
+            {
+<span class="nc" id="L1416">                throw new ConcurrentModificationException(&quot;can't iterate while resizing!&quot;);</span>
+            }
+<span class="nc" id="L1418">            Entry&lt;K, V&gt; e = (Entry&lt;K, V&gt;) o;</span>
+<span class="nc bnc" id="L1419" title="All 2 branches missed.">            while (e != null)</span>
+            {
+<span class="nc" id="L1421">                Object value = e.getValue();</span>
+<span class="nc" id="L1422">                block.value((V) value);</span>
+<span class="nc" id="L1423">                e = e.getNext();</span>
+<span class="nc" id="L1424">            }</span>
+        }
+<span class="nc" id="L1426">    }</span>
+
+    @Override
+    public int hashCode()
+    {
+<span class="nc" id="L1431">        int h = 0;</span>
+<span class="nc" id="L1432">        Object[] currentArray = this.table;</span>
+<span class="nc bnc" id="L1433" title="All 2 branches missed.">        for (int i = 0; i &lt; currentArray.length - 1; i++)</span>
+        {
+<span class="nc" id="L1435">            Object o = ConcurrentHashMapUnsafe.arrayAt(currentArray, i);</span>
+<span class="nc bnc" id="L1436" title="All 4 branches missed.">            if (o == RESIZED || o == RESIZING)</span>
+            {
+<span class="nc" id="L1438">                throw new ConcurrentModificationException(&quot;can't compute hashcode while resizing!&quot;);</span>
+            }
+<span class="nc" id="L1440">            Entry&lt;K, V&gt; e = (Entry&lt;K, V&gt;) o;</span>
+<span class="nc bnc" id="L1441" title="All 2 branches missed.">            while (e != null)</span>
+            {
+<span class="nc" id="L1443">                Object key = e.getKey();</span>
+<span class="nc" id="L1444">                Object value = e.getValue();</span>
+<span class="nc bnc" id="L1445" title="All 4 branches missed.">                h += (key == null ? 0 : key.hashCode()) ^ (value == null ? 0 : value.hashCode());</span>
+<span class="nc" id="L1446">                e = e.getNext();</span>
+<span class="nc" id="L1447">            }</span>
+        }
+<span class="nc" id="L1449">        return h;</span>
+    }
+
+    @Override
+    public boolean equals(Object o)
+    {
+<span class="nc bnc" id="L1455" title="All 2 branches missed.">        if (o == this)</span>
+        {
+<span class="nc" id="L1457">            return true;</span>
+        }
+
+<span class="nc bnc" id="L1460" title="All 2 branches missed.">        if (!(o instanceof Map))</span>
+        {
+<span class="nc" id="L1462">            return false;</span>
+        }
+<span class="nc" id="L1464">        Map&lt;K, V&gt; m = (Map&lt;K, V&gt;) o;</span>
+<span class="nc bnc" id="L1465" title="All 2 branches missed.">        if (m.size() != this.size())</span>
+        {
+<span class="nc" id="L1467">            return false;</span>
+        }
+
+<span class="nc" id="L1470">        Iterator&lt;Map.Entry&lt;K, V&gt;&gt; i = this.entrySet().iterator();</span>
+<span class="nc bnc" id="L1471" title="All 2 branches missed.">        while (i.hasNext())</span>
+        {
+<span class="nc" id="L1473">            Map.Entry&lt;K, V&gt; e = i.next();</span>
+<span class="nc" id="L1474">            K key = e.getKey();</span>
+<span class="nc" id="L1475">            V value = e.getValue();</span>
+<span class="nc bnc" id="L1476" title="All 2 branches missed.">            if (value == null)</span>
+            {
+<span class="nc bnc" id="L1478" title="All 4 branches missed.">                if (!(m.get(key) == null &amp;&amp; m.containsKey(key)))</span>
+                {
+<span class="nc" id="L1480">                    return false;</span>
+                }
+            }
+            else
+            {
+<span class="nc bnc" id="L1485" title="All 2 branches missed.">                if (!value.equals(m.get(key)))</span>
+                {
+<span class="nc" id="L1487">                    return false;</span>
+                }
+            }
+<span class="nc" id="L1490">        }</span>
+<span class="nc" id="L1491">        return true;</span>
+    }
+
+    @Override
+    public String toString()
+    {
+<span class="nc bnc" id="L1497" title="All 2 branches missed.">        if (this.isEmpty())</span>
+        {
+<span class="nc" id="L1499">            return &quot;{}&quot;;</span>
+        }
+<span class="nc" id="L1501">        Iterator&lt;Map.Entry&lt;K, V&gt;&gt; iterator = this.entrySet().iterator();</span>
+
+<span class="nc" id="L1503">        StringBuilder sb = new StringBuilder();</span>
+<span class="nc" id="L1504">        sb.append('{');</span>
+        while (true)
+        {
+<span class="nc" id="L1507">            Map.Entry&lt;K, V&gt; e = iterator.next();</span>
+<span class="nc" id="L1508">            K key = e.getKey();</span>
+<span class="nc" id="L1509">            V value = e.getValue();</span>
+<span class="nc bnc" id="L1510" title="All 2 branches missed.">            sb.append(key == this ? &quot;(this Map)&quot; : key);</span>
+<span class="nc" id="L1511">            sb.append('=');</span>
+<span class="nc bnc" id="L1512" title="All 2 branches missed.">            sb.append(value == this ? &quot;(this Map)&quot; : value);</span>
+<span class="nc bnc" id="L1513" title="All 2 branches missed.">            if (!iterator.hasNext())</span>
+            {
+<span class="nc" id="L1515">                return sb.append('}').toString();</span>
+            }
+<span class="nc" id="L1517">            sb.append(&quot;, &quot;);</span>
+<span class="nc" id="L1518">        }</span>
+    }
+
+    @Override
+    public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException
+    {
+<span class="nc" id="L1524">        int size = in.readInt();</span>
+<span class="nc" id="L1525">        int capacity = 1;</span>
+<span class="nc bnc" id="L1526" title="All 2 branches missed.">        while (capacity &lt; size)</span>
+        {
+<span class="nc" id="L1528">            capacity &lt;&lt;= 1;</span>
+        }
+<span class="nc" id="L1530">        this.table = new Object[capacity + 1];</span>
+<span class="nc bnc" id="L1531" title="All 2 branches missed.">        for (int i = 0; i &lt; size; i++)</span>
+        {
+<span class="nc" id="L1533">            this.put((K) in.readObject(), (V) in.readObject());</span>
+        }
+<span class="nc" id="L1535">    }</span>
+
+    @Override
+    public void writeExternal(ObjectOutput out) throws IOException
+    {
+<span class="nc" id="L1540">        int size = this.size();</span>
+<span class="nc" id="L1541">        out.writeInt(size);</span>
+<span class="nc" id="L1542">        int count = 0;</span>
+<span class="nc bnc" id="L1543" title="All 2 branches missed.">        for (int i = 0; i &lt; this.table.length - 1; i++)</span>
+        {
+<span class="nc" id="L1545">            Object o = ConcurrentHashMapUnsafe.arrayAt(this.table, i);</span>
+<span class="nc bnc" id="L1546" title="All 4 branches missed.">            if (o == RESIZED || o == RESIZING)</span>
+            {
+<span class="nc" id="L1548">                throw new ConcurrentModificationException(&quot;Can't serialize while resizing!&quot;);</span>
+            }
+<span class="nc" id="L1550">            Entry&lt;K, V&gt; e = (Entry&lt;K, V&gt;) o;</span>
+<span class="nc bnc" id="L1551" title="All 2 branches missed.">            while (e != null)</span>
+            {
+<span class="nc" id="L1553">                count++;</span>
+<span class="nc" id="L1554">                out.writeObject(e.getKey());</span>
+<span class="nc" id="L1555">                out.writeObject(e.getValue());</span>
+<span class="nc" id="L1556">                e = e.getNext();</span>
+            }
+        }
+<span class="nc bnc" id="L1559" title="All 2 branches missed.">        if (count != size)</span>
+        {
+<span class="nc" id="L1561">            throw new ConcurrentModificationException(&quot;Map changed while serializing&quot;);</span>
+        }
+<span class="nc" id="L1563">    }</span>
+
+    private static final class IteratorState
+    {
+        private Object[] currentTable;
+        private int start;
+        private int end;
+
+        private IteratorState(Object[] currentTable)
+<span class="nc" id="L1572">        {</span>
+<span class="nc" id="L1573">            this.currentTable = currentTable;</span>
+<span class="nc" id="L1574">            this.end = this.currentTable.length - 1;</span>
+<span class="nc" id="L1575">        }</span>
+
+        private IteratorState(Object[] currentTable, int start, int end)
+<span class="nc" id="L1578">        {</span>
+<span class="nc" id="L1579">            this.currentTable = currentTable;</span>
+<span class="nc" id="L1580">            this.start = start;</span>
+<span class="nc" id="L1581">            this.end = end;</span>
+<span class="nc" id="L1582">        }</span>
+    }
+
+    private abstract class HashIterator&lt;E&gt; implements Iterator&lt;E&gt;
+    {
+        private List&lt;IteratorState&gt; todo;
+        private IteratorState currentState;
+        private Entry&lt;K, V&gt; next;
+        private int index;
+        private Entry&lt;K, V&gt; current;
+
+        protected HashIterator()
+<span class="nc" id="L1594">        {</span>
+<span class="nc" id="L1595">            this.currentState = new IteratorState(ConcurrentHashMapUnsafe.this.table);</span>
+<span class="nc" id="L1596">            this.findNext();</span>
+<span class="nc" id="L1597">        }</span>
+
+        private void findNext()
+        {
+<span class="nc bnc" id="L1601" title="All 2 branches missed.">            while (this.index &lt; this.currentState.end)</span>
+            {
+<span class="nc" id="L1603">                Object o = ConcurrentHashMapUnsafe.arrayAt(this.currentState.currentTable, this.index);</span>
+<span class="nc bnc" id="L1604" title="All 4 branches missed.">                if (o == RESIZED || o == RESIZING)</span>
+                {
+<span class="nc" id="L1606">                    Object[] nextArray = ConcurrentHashMapUnsafe.this.helpWithResizeWhileCurrentIndex(this.currentState.currentTable, this.index);</span>
+<span class="nc" id="L1607">                    int endResized = this.index + 1;</span>
+<span class="nc bnc" id="L1608" title="All 2 branches missed.">                    while (endResized &lt; this.currentState.end)</span>
+                    {
+<span class="nc bnc" id="L1610" title="All 2 branches missed.">                        if (ConcurrentHashMapUnsafe.arrayAt(this.currentState.currentTable, endResized) != RESIZED)</span>
+                        {
+<span class="nc" id="L1612">                            break;</span>
+                        }
+<span class="nc" id="L1614">                        endResized++;</span>
+                    }
+<span class="nc bnc" id="L1616" title="All 2 branches missed.">                    if (this.todo == null)</span>
+                    {
+<span class="nc" id="L1618">                        this.todo = new FastList&lt;&gt;(4);</span>
+                    }
+<span class="nc bnc" id="L1620" title="All 2 branches missed.">                    if (endResized &lt; this.currentState.end)</span>
+                    {
+<span class="nc" id="L1622">                        this.todo.add(new IteratorState(this.currentState.currentTable, endResized, this.currentState.end));</span>
+                    }
+<span class="nc" id="L1624">                    int powerTwoLength = this.currentState.currentTable.length - 1;</span>
+<span class="nc" id="L1625">                    this.todo.add(new IteratorState(nextArray, this.index + powerTwoLength, endResized + powerTwoLength));</span>
+<span class="nc" id="L1626">                    this.currentState.currentTable = nextArray;</span>
+<span class="nc" id="L1627">                    this.currentState.end = endResized;</span>
+<span class="nc" id="L1628">                    this.currentState.start = this.index;</span>
+<span class="nc" id="L1629">                }</span>
+<span class="nc bnc" id="L1630" title="All 2 branches missed.">                else if (o != null)</span>
+                {
+<span class="nc" id="L1632">                    this.next = (Entry&lt;K, V&gt;) o;</span>
+<span class="nc" id="L1633">                    this.index++;</span>
+<span class="nc" id="L1634">                    break;</span>
+                }
+                else
+                {
+<span class="nc" id="L1638">                    this.index++;</span>
+                }
+<span class="nc" id="L1640">            }</span>
+<span class="nc bnc" id="L1641" title="All 8 branches missed.">            if (this.next == null &amp;&amp; this.index == this.currentState.end &amp;&amp; this.todo != null &amp;&amp; !this.todo.isEmpty())</span>
+            {
+<span class="nc" id="L1643">                this.currentState = this.todo.remove(this.todo.size() - 1);</span>
+<span class="nc" id="L1644">                this.index = this.currentState.start;</span>
+<span class="nc" id="L1645">                this.findNext();</span>
+            }
+<span class="nc" id="L1647">        }</span>
+
+        @Override
+        public final boolean hasNext()
+        {
+<span class="nc bnc" id="L1652" title="All 2 branches missed.">            return this.next != null;</span>
+        }
+
+        final Entry&lt;K, V&gt; nextEntry()
+        {
+<span class="nc" id="L1657">            Entry&lt;K, V&gt; e = this.next;</span>
+<span class="nc bnc" id="L1658" title="All 2 branches missed.">            if (e == null)</span>
+            {
+<span class="nc" id="L1660">                throw new NoSuchElementException();</span>
+            }
+
+<span class="nc bnc" id="L1663" title="All 2 branches missed.">            if ((this.next = e.getNext()) == null)</span>
+            {
+<span class="nc" id="L1665">                this.findNext();</span>
+            }
+<span class="nc" id="L1667">            this.current = e;</span>
+<span class="nc" id="L1668">            return e;</span>
+        }
+
+        protected void removeByKey()
+        {
+<span class="nc bnc" id="L1673" title="All 2 branches missed.">            if (this.current == null)</span>
+            {
+<span class="nc" id="L1675">                throw new IllegalStateException();</span>
+            }
+<span class="nc" id="L1677">            K key = this.current.key;</span>
+<span class="nc" id="L1678">            this.current = null;</span>
+<span class="nc" id="L1679">            ConcurrentHashMapUnsafe.this.remove(key);</span>
+<span class="nc" id="L1680">        }</span>
+
+        protected boolean removeByKeyValue()
+        {
+<span class="nc bnc" id="L1684" title="All 2 branches missed.">            if (this.current == null)</span>
+            {
+<span class="nc" id="L1686">                throw new IllegalStateException();</span>
+            }
+<span class="nc" id="L1688">            K key = this.current.key;</span>
+<span class="nc" id="L1689">            V val = this.current.value;</span>
+<span class="nc" id="L1690">            this.current = null;</span>
+<span class="nc" id="L1691">            return ConcurrentHashMapUnsafe.this.remove(key, val);</span>
+        }
+    }
+
+<span class="nc" id="L1695">    private final class ValueIterator extends HashIterator&lt;V&gt;</span>
+    {
+        @Override
+        public V next()
+        {
+<span class="nc" id="L1700">            return this.nextEntry().value;</span>
+        }
+
+        @Override
+        public void remove()
+        {
+<span class="nc" id="L1706">            this.removeByKeyValue();</span>
+<span class="nc" id="L1707">        }</span>
+    }
+
+<span class="nc" id="L1710">    private final class KeyIterator extends HashIterator&lt;K&gt;</span>
+    {
+        @Override
+        public K next()
+        {
+<span class="nc" id="L1715">            return this.nextEntry().getKey();</span>
+        }
+
+        @Override
+        public void remove()
+        {
+<span class="nc" id="L1721">            this.removeByKeyValue();</span>
+<span class="nc" id="L1722">        }</span>
+    }
+
+<span class="nc" id="L1725">    private final class EntryIterator extends HashIterator&lt;Map.Entry&lt;K, V&gt;&gt;</span>
+    {
+        @Override
+        public Map.Entry&lt;K, V&gt; next()
+        {
+<span class="nc" id="L1730">            return this.nextEntry();</span>
+        }
+
+        @Override
+        public void remove()
+        {
+<span class="nc" id="L1736">            this.removeByKeyValue();</span>
+<span class="nc" id="L1737">        }</span>
+    }
+
+<span class="nc" id="L1740">    private final class KeySet extends AbstractSet&lt;K&gt;</span>
+    {
+        @Override
+        public Iterator&lt;K&gt; iterator()
+        {
+<span class="nc" id="L1745">            return new KeyIterator();</span>
+        }
+
+        @Override
+        public int size()
+        {
+<span class="nc" id="L1751">            return ConcurrentHashMapUnsafe.this.size();</span>
+        }
+
+        @Override
+        public boolean contains(Object o)
+        {
+<span class="nc" id="L1757">            return ConcurrentHashMapUnsafe.this.containsKey(o);</span>
+        }
+
+        @Override
+        public boolean remove(Object o)
+        {
+<span class="nc bnc" id="L1763" title="All 2 branches missed.">            return ConcurrentHashMapUnsafe.this.remove(o) != null;</span>
+        }
+
+        @Override
+        public void clear()
+        {
+<span class="nc" id="L1769">            ConcurrentHashMapUnsafe.this.clear();</span>
+<span class="nc" id="L1770">        }</span>
+    }
+
+<span class="nc" id="L1773">    private final class Values extends AbstractCollection&lt;V&gt;</span>
+    {
+        @Override
+        public Iterator&lt;V&gt; iterator()
+        {
+<span class="nc" id="L1778">            return new ValueIterator();</span>
+        }
+
+        @Override
+        public boolean removeAll(Collection&lt;?&gt; col)
+        {
+<span class="nc" id="L1784">            Objects.requireNonNull(col);</span>
+<span class="nc" id="L1785">            boolean removed = false;</span>
+<span class="nc" id="L1786">            final ValueIterator itr = new ValueIterator();</span>
+<span class="nc bnc" id="L1787" title="All 2 branches missed.">            while (itr.hasNext())</span>
+            {
+<span class="nc bnc" id="L1789" title="All 2 branches missed.">                if (col.contains(itr.next()))</span>
+                {
+<span class="nc" id="L1791">                    removed |= itr.removeByKeyValue();</span>
+                }
+            }
+<span class="nc" id="L1794">            return removed;</span>
+        }
+
+        @Override
+        public boolean removeIf(Predicate&lt;? super V&gt; filter)
+        {
+<span class="nc" id="L1800">            Objects.requireNonNull(filter);</span>
+<span class="nc" id="L1801">            boolean removed = false;</span>
+<span class="nc" id="L1802">            final ValueIterator itr = new ValueIterator();</span>
+<span class="nc bnc" id="L1803" title="All 2 branches missed.">            while (itr.hasNext())</span>
+            {
+<span class="nc bnc" id="L1805" title="All 2 branches missed.">                if (filter.test(itr.next()))</span>
+                {
+<span class="nc" id="L1807">                    removed |= itr.removeByKeyValue();</span>
+                }
+            }
+<span class="nc" id="L1810">            return removed;</span>
+        }
+
+        @Override
+        public int size()
+        {
+<span class="nc" id="L1816">            return ConcurrentHashMapUnsafe.this.size();</span>
+        }
+
+        @Override
+        public boolean contains(Object o)
+        {
+<span class="nc" id="L1822">            return ConcurrentHashMapUnsafe.this.containsValue(o);</span>
+        }
+
+        @Override
+        public void clear()
+        {
+<span class="nc" id="L1828">            ConcurrentHashMapUnsafe.this.clear();</span>
+<span class="nc" id="L1829">        }</span>
+    }
+
+<span class="nc" id="L1832">    private final class EntrySet extends AbstractSet&lt;Map.Entry&lt;K, V&gt;&gt;</span>
+    {
+        @Override
+        public Iterator&lt;Map.Entry&lt;K, V&gt;&gt; iterator()
+        {
+<span class="nc" id="L1837">            return new EntryIterator();</span>
+        }
+
+        @Override
+        public boolean removeAll(Collection&lt;?&gt; col)
+        {
+<span class="nc" id="L1843">            Objects.requireNonNull(col);</span>
+<span class="nc" id="L1844">            boolean removed = false;</span>
+
+<span class="nc bnc" id="L1846" title="All 2 branches missed.">            if (this.size() &gt; col.size())</span>
+            {
+<span class="nc bnc" id="L1848" title="All 2 branches missed.">                for (Iterator&lt;?&gt; itr = col.iterator(); itr.hasNext(); )</span>
+                {
+<span class="nc" id="L1850">                    removed |= this.remove(itr.next());</span>
+                }
+            }
+            else
+            {
+<span class="nc bnc" id="L1855" title="All 2 branches missed.">                for (EntryIterator itr = new EntryIterator(); itr.hasNext(); )</span>
+                {
+<span class="nc bnc" id="L1857" title="All 2 branches missed.">                    if (col.contains(itr.next()))</span>
+                    {
+<span class="nc" id="L1859">                        removed |= itr.removeByKeyValue();</span>
+                    }
+                }
+            }
+<span class="nc" id="L1863">            return removed;</span>
+        }
+
+        @Override
+        public boolean removeIf(Predicate&lt;? super Map.Entry&lt;K, V&gt;&gt; filter)
+        {
+<span class="nc" id="L1869">            Objects.requireNonNull(filter);</span>
+<span class="nc" id="L1870">            boolean removed = false;</span>
+<span class="nc" id="L1871">            final EntryIterator itr = new EntryIterator();</span>
+<span class="nc bnc" id="L1872" title="All 2 branches missed.">            while (itr.hasNext())</span>
+            {
+<span class="nc bnc" id="L1874" title="All 2 branches missed.">                if (filter.test(itr.next()))</span>
+                {
+<span class="nc" id="L1876">                    removed |= itr.removeByKeyValue();</span>
+                }
+            }
+<span class="nc" id="L1879">            return removed;</span>
+        }
+
+        @Override
+        public boolean contains(Object o)
+        {
+<span class="nc bnc" id="L1885" title="All 2 branches missed.">            if (!(o instanceof Map.Entry&lt;?, ?&gt;))</span>
+            {
+<span class="nc" id="L1887">                return false;</span>
+            }
+<span class="nc" id="L1889">            Map.Entry&lt;K, V&gt; e = (Map.Entry&lt;K, V&gt;) o;</span>
+<span class="nc" id="L1890">            Entry&lt;K, V&gt; candidate = ConcurrentHashMapUnsafe.this.getEntry(e.getKey());</span>
+<span class="nc bnc" id="L1891" title="All 4 branches missed.">            return candidate != null &amp;&amp; candidate.equals(e);</span>
+        }
+
+        @Override
+        public boolean remove(Object o)
+        {
+<span class="nc bnc" id="L1897" title="All 2 branches missed.">            if (!(o instanceof Map.Entry&lt;?, ?&gt;))</span>
+            {
+<span class="nc" id="L1899">                return false;</span>
+            }
+<span class="nc" id="L1901">            Map.Entry&lt;K, V&gt; e = (Map.Entry&lt;K, V&gt;) o;</span>
+<span class="nc" id="L1902">            return ConcurrentHashMapUnsafe.this.remove(e.getKey(), e.getValue());</span>
+        }
+
+        @Override
+        public int size()
+        {
+<span class="nc" id="L1908">            return ConcurrentHashMapUnsafe.this.size();</span>
+        }
+
+        @Override
+        public void clear()
+        {
+<span class="nc" id="L1914">            ConcurrentHashMapUnsafe.this.clear();</span>
+<span class="nc" id="L1915">        }</span>
+    }
+
+    private static final class Entry&lt;K, V&gt; implements Map.Entry&lt;K, V&gt;
+    {
+        private final K key;
+        private final V value;
+        private final Entry&lt;K, V&gt; next;
+
+        private Entry(K key, V value)
+<span class="nc" id="L1925">        {</span>
+<span class="nc" id="L1926">            this.key = key;</span>
+<span class="nc" id="L1927">            this.value = value;</span>
+<span class="nc" id="L1928">            this.next = null;</span>
+<span class="nc" id="L1929">        }</span>
+
+        private Entry(K key, V value, Entry&lt;K, V&gt; next)
+<span class="nc" id="L1932">        {</span>
+<span class="nc" id="L1933">            this.key = key;</span>
+<span class="nc" id="L1934">            this.value = value;</span>
+<span class="nc" id="L1935">            this.next = next;</span>
+<span class="nc" id="L1936">        }</span>
+
+        @Override
+        public K getKey()
+        {
+<span class="nc" id="L1941">            return this.key;</span>
+        }
+
+        @Override
+        public V getValue()
+        {
+<span class="nc" id="L1947">            return this.value;</span>
+        }
+
+        @Override
+        public V setValue(V value)
+        {
+<span class="nc" id="L1953">            throw new RuntimeException(&quot;not implemented&quot;);</span>
+        }
+
+        public Entry&lt;K, V&gt; getNext()
+        {
+<span class="nc" id="L1958">            return this.next;</span>
+        }
+
+        @Override
+        public boolean equals(Object o)
+        {
+<span class="nc bnc" id="L1964" title="All 2 branches missed.">            if (!(o instanceof Map.Entry&lt;?, ?&gt;))</span>
+            {
+<span class="nc" id="L1966">                return false;</span>
+            }
+<span class="nc" id="L1968">            Map.Entry&lt;K, V&gt; e = (Map.Entry&lt;K, V&gt;) o;</span>
+<span class="nc" id="L1969">            K k1 = this.key;</span>
+<span class="nc" id="L1970">            Object k2 = e.getKey();</span>
+<span class="nc bnc" id="L1971" title="All 6 branches missed.">            if (k1 == k2 || k1 != null &amp;&amp; k1.equals(k2))</span>
+            {
+<span class="nc" id="L1973">                V v1 = this.value;</span>
+<span class="nc" id="L1974">                Object v2 = e.getValue();</span>
+<span class="nc bnc" id="L1975" title="All 6 branches missed.">                if (v1 == v2 || v1 != null &amp;&amp; v1.equals(v2))</span>
+                {
+<span class="nc" id="L1977">                    return true;</span>
+                }
+            }
+<span class="nc" id="L1980">            return false;</span>
+        }
+
+        @Override
+        public int hashCode()
+        {
+<span class="nc bnc" id="L1986" title="All 4 branches missed.">            return (this.key == null ? 0 : this.key.hashCode()) ^ (this.value == null ? 0 : this.value.hashCode());</span>
+        }
+
+        @Override
+        public String toString()
+        {
+<span class="nc" id="L1992">            return this.key + &quot;=&quot; + this.value;</span>
+        }
+    }
+
+    private static final class ResizeContainer
+    {
+<span class="nc" id="L1998">        private static final int QUEUE_INCREMENT = Math.min(1 &lt;&lt; 10, Integer.highestOneBit(Runtime.getRuntime().availableProcessors()) &lt;&lt; 4);</span>
+<span class="nc" id="L1999">        private final AtomicInteger resizers = new AtomicInteger(1);</span>
+        private final Object[] nextArray;
+        private final AtomicInteger queuePosition;
+
+        private ResizeContainer(Object[] nextArray, int oldSize)
+<span class="nc" id="L2004">        {</span>
+<span class="nc" id="L2005">            this.nextArray = nextArray;</span>
+<span class="nc" id="L2006">            this.queuePosition = new AtomicInteger(oldSize);</span>
+<span class="nc" id="L2007">        }</span>
+
+        public void incrementResizer()
+        {
+<span class="nc" id="L2011">            this.resizers.incrementAndGet();</span>
+<span class="nc" id="L2012">        }</span>
+
+        public void decrementResizerAndNotify()
+        {
+<span class="nc" id="L2016">            int remaining = this.resizers.decrementAndGet();</span>
+<span class="nc bnc" id="L2017" title="All 2 branches missed.">            if (remaining == 0)</span>
+            {
+<span class="nc" id="L2019">                synchronized (this)</span>
+                {
+<span class="nc" id="L2021">                    this.notifyAll();</span>
+<span class="nc" id="L2022">                }</span>
+            }
+<span class="nc" id="L2024">        }</span>
+
+        public int getQueuePosition()
+        {
+<span class="nc" id="L2028">            return this.queuePosition.get();</span>
+        }
+
+        public int subtractAndGetQueuePosition()
+        {
+<span class="nc" id="L2033">            return this.queuePosition.addAndGet(-QUEUE_INCREMENT);</span>
+        }
+
+        public void waitForAllResizers()
+        {
+<span class="nc bnc" id="L2038" title="All 2 branches missed.">            if (this.resizers.get() &gt; 0)</span>
+            {
+<span class="nc bnc" id="L2040" title="All 2 branches missed.">                for (int i = 0; i &lt; 16; i++)</span>
+                {
+<span class="nc bnc" id="L2042" title="All 2 branches missed.">                    if (this.resizers.get() == 0)</span>
+                    {
+<span class="nc" id="L2044">                        break;</span>
+                    }
+                }
+<span class="nc bnc" id="L2047" title="All 2 branches missed.">                for (int i = 0; i &lt; 16; i++)</span>
+                {
+<span class="nc bnc" id="L2049" title="All 2 branches missed.">                    if (this.resizers.get() == 0)</span>
+                    {
+<span class="nc" id="L2051">                        break;</span>
+                    }
+<span class="nc" id="L2053">                    Thread.yield();</span>
+                }
+            }
+<span class="nc bnc" id="L2056" title="All 2 branches missed.">            if (this.resizers.get() &gt; 0)</span>
+            {
+<span class="nc" id="L2058">                synchronized (this)</span>
+                {
+<span class="nc bnc" id="L2060" title="All 2 branches missed.">                    while (this.resizers.get() &gt; 0)</span>
+                    {
+                        try
+                        {
+<span class="nc" id="L2064">                            this.wait();</span>
+                        }
+<span class="nc" id="L2066">                        catch (InterruptedException e)</span>
+                        {
+                            //ginore
+<span class="nc" id="L2069">                        }</span>
+                    }
+<span class="nc" id="L2071">                }</span>
+            }
+<span class="nc" id="L2073">        }</span>
+
+        public boolean isNotDone()
+        {
+<span class="nc bnc" id="L2077" title="All 2 branches missed.">            return this.resizers.get() &gt; 0;</span>
+        }
+
+        public void zeroOutQueuePosition()
+        {
+<span class="nc" id="L2082">            this.queuePosition.set(0);</span>
+<span class="nc" id="L2083">        }</span>
+    }
+
+    public static &lt;NK, NV&gt; ConcurrentHashMapUnsafe&lt;NK, NV&gt; newMap(Map&lt;NK, NV&gt; map)
+    {
+<span class="nc" id="L2088">        ConcurrentHashMapUnsafe&lt;NK, NV&gt; result = new ConcurrentHashMapUnsafe&lt;&gt;(map.size());</span>
+<span class="nc" id="L2089">        result.putAll(map);</span>
+<span class="nc" id="L2090">        return result;</span>
+    }
+
+    @Override
+    public ConcurrentHashMapUnsafe&lt;K, V&gt; withKeyValue(K key, V value)
+    {
+<span class="nc" id="L2096">        return (ConcurrentHashMapUnsafe&lt;K, V&gt;) super.withKeyValue(key, value);</span>
+    }
+
+    @Override
+    public ConcurrentHashMapUnsafe&lt;K, V&gt; withAllKeyValues(Iterable&lt;? extends Pair&lt;? extends K, ? extends V&gt;&gt; keyValues)
+    {
+<span class="nc" id="L2102">        return (ConcurrentHashMapUnsafe&lt;K, V&gt;) super.withAllKeyValues(keyValues);</span>
+    }
+
+    @Override
+    public ConcurrentHashMapUnsafe&lt;K, V&gt; withAllKeyValueArguments(Pair&lt;? extends K, ? extends V&gt;... keyValues)
+    {
+<span class="nc" id="L2108">        return (ConcurrentHashMapUnsafe&lt;K, V&gt;) super.withAllKeyValueArguments(keyValues);</span>
+    }
+
+    @Override
+    public ConcurrentHashMapUnsafe&lt;K, V&gt; withoutKey(K key)
+    {
+<span class="nc" id="L2114">        return (ConcurrentHashMapUnsafe&lt;K, V&gt;) super.withoutKey(key);</span>
+    }
+
+    @Override
+    public ConcurrentHashMapUnsafe&lt;K, V&gt; withoutAllKeys(Iterable&lt;? extends K&gt; keys)
+    {
+<span class="nc" id="L2120">        return (ConcurrentHashMapUnsafe&lt;K, V&gt;) super.withoutAllKeys(keys);</span>
+    }
+
+    @Override
+    public MutableMap&lt;K, V&gt; clone()
+    {
+<span class="nc" id="L2126">        return ConcurrentHashMapUnsafe.newMap(this);</span>
+    }
+
+    @Override
+    public &lt;K, V&gt; MutableMap&lt;K, V&gt; newEmpty(int capacity)
+    {
+<span class="nc" id="L2132">        return ConcurrentHashMapUnsafe.newMap();</span>
+    }
+
+    @Override
+    public boolean notEmpty()
+    {
+<span class="nc bnc" id="L2138" title="All 2 branches missed.">        return !this.isEmpty();</span>
+    }
+
+    @Override
+    public void forEachWithIndex(ObjectIntProcedure&lt;? super V&gt; objectIntProcedure)
+    {
+<span class="nc" id="L2144">        Iterate.forEachWithIndex(this.values(), objectIntProcedure);</span>
+<span class="nc" id="L2145">    }</span>
+
+    @Override
+    public Iterator&lt;V&gt; iterator()
+    {
+<span class="nc" id="L2150">        return this.values().iterator();</span>
+    }
+
+    @Override
+    public MutableMap&lt;K, V&gt; newEmpty()
+    {
+<span class="nc" id="L2156">        return ConcurrentHashMapUnsafe.newMap();</span>
+    }
+
+    @Override
+    public ConcurrentMutableMap&lt;K, V&gt; tap(Procedure&lt;? super V&gt; procedure)
+    {
+<span class="nc" id="L2162">        this.each(procedure);</span>
+<span class="nc" id="L2163">        return this;</span>
+    }
+
+    @Override
+    public void forEachValue(Procedure&lt;? super V&gt; procedure)
+    {
+<span class="nc" id="L2169">        IterableIterate.forEach(this.values(), procedure);</span>
+<span class="nc" id="L2170">    }</span>
+
+    @Override
+    public void forEachKey(Procedure&lt;? super K&gt; procedure)
+    {
+<span class="nc" id="L2175">        IterableIterate.forEach(this.keySet(), procedure);</span>
+<span class="nc" id="L2176">    }</span>
+
+    @Override
+    public void forEachKeyValue(Procedure2&lt;? super K, ? super V&gt; procedure)
+    {
+<span class="nc" id="L2181">        IterableIterate.forEach(this.entrySet(), new MapEntryToProcedure2&lt;&gt;(procedure));</span>
+<span class="nc" id="L2182">    }</span>
+
+    @Override
+    public &lt;E&gt; MutableMap&lt;K, V&gt; collectKeysAndValues(
+            Iterable&lt;E&gt; iterable,
+            Function&lt;? super E, ? extends K&gt; keyFunction,
+            Function&lt;? super E, ? extends V&gt; valueFunction)
+    {
+<span class="nc" id="L2190">        Iterate.addToMap(iterable, keyFunction, valueFunction, this);</span>
+<span class="nc" id="L2191">        return this;</span>
+    }
+
+    @Override
+    public V removeKey(K key)
+    {
+<span class="nc" id="L2197">        return this.remove(key);</span>
+    }
+
+    @Override
+    public &lt;P&gt; V getIfAbsentPutWith(K key, Function&lt;? super P, ? extends V&gt; function, P parameter)
+    {
+<span class="nc" id="L2203">        int hash = this.hash(key);</span>
+<span class="nc" id="L2204">        Object[] currentArray = this.table;</span>
+<span class="nc" id="L2205">        V newValue = null;</span>
+<span class="nc" id="L2206">        boolean createdValue = false;</span>
+        while (true)
+        {
+<span class="nc" id="L2209">            int length = currentArray.length;</span>
+<span class="nc" id="L2210">            int index = ConcurrentHashMapUnsafe.indexFor(hash, length);</span>
+<span class="nc" id="L2211">            Object o = ConcurrentHashMapUnsafe.arrayAt(currentArray, index);</span>
+<span class="nc bnc" id="L2212" title="All 4 branches missed.">            if (o == RESIZED || o == RESIZING)</span>
+            {
+<span class="nc" id="L2214">                currentArray = this.helpWithResizeWhileCurrentIndex(currentArray, index);</span>
+            }
+            else
+            {
+<span class="nc" id="L2218">                Entry&lt;K, V&gt; e = (Entry&lt;K, V&gt;) o;</span>
+<span class="nc bnc" id="L2219" title="All 2 branches missed.">                while (e != null)</span>
+                {
+<span class="nc" id="L2221">                    Object candidate = e.getKey();</span>
+<span class="nc bnc" id="L2222" title="All 2 branches missed.">                    if (candidate.equals(key))</span>
+                    {
+<span class="nc" id="L2224">                        return e.getValue();</span>
+                    }
+<span class="nc" id="L2226">                    e = e.getNext();</span>
+<span class="nc" id="L2227">                }</span>
+<span class="nc bnc" id="L2228" title="All 2 branches missed.">                if (!createdValue)</span>
+                {
+<span class="nc" id="L2230">                    createdValue = true;</span>
+<span class="nc" id="L2231">                    newValue = function.valueOf(parameter);</span>
+                }
+<span class="nc" id="L2233">                Entry&lt;K, V&gt; newEntry = new Entry&lt;&gt;(key, newValue, (Entry&lt;K, V&gt;) o);</span>
+<span class="nc bnc" id="L2234" title="All 2 branches missed.">                if (ConcurrentHashMapUnsafe.casArrayAt(currentArray, index, o, newEntry))</span>
+                {
+<span class="nc" id="L2236">                    this.incrementSizeAndPossiblyResize(currentArray, length, o);</span>
+<span class="nc" id="L2237">                    return newValue;</span>
+                }
+            }
+<span class="nc" id="L2240">        }</span>
+    }
+
+    @Override
+    public V getIfAbsent(K key, Function0&lt;? extends V&gt; function)
+    {
+<span class="nc" id="L2246">        V result = this.get(key);</span>
+<span class="nc bnc" id="L2247" title="All 2 branches missed.">        if (result == null)</span>
+        {
+<span class="nc" id="L2249">            return function.value();</span>
+        }
+<span class="nc" id="L2251">        return result;</span>
+    }
+
+    @Override
+    public &lt;P&gt; V getIfAbsentWith(
+            K key,
+            Function&lt;? super P, ? extends V&gt; function,
+            P parameter)
+    {
+<span class="nc" id="L2260">        V result = this.get(key);</span>
+<span class="nc bnc" id="L2261" title="All 2 branches missed.">        if (result == null)</span>
+        {
+<span class="nc" id="L2263">            return function.valueOf(parameter);</span>
+        }
+<span class="nc" id="L2265">        return result;</span>
+    }
+
+    @Override
+    public &lt;A&gt; A ifPresentApply(K key, Function&lt;? super V, ? extends A&gt; function)
+    {
+<span class="nc" id="L2271">        V result = this.get(key);</span>
+<span class="nc bnc" id="L2272" title="All 2 branches missed.">        return result == null ? null : function.valueOf(result);</span>
+    }
+
+    @Override
+    public &lt;P&gt; void forEachWith(Procedure2&lt;? super V, ? super P&gt; procedure, P parameter)
+    {
+<span class="nc" id="L2278">        Iterate.forEachWith(this.values(), procedure, parameter);</span>
+<span class="nc" id="L2279">    }</span>
+
+    private static Unsafe getUnsafe()
+    {
+        try
+        {
+<span class="nc" id="L2285">            return Unsafe.getUnsafe();</span>
+        }
+<span class="nc" id="L2287">        catch (SecurityException ignored)</span>
+        {
+            try
+            {
+<span class="nc" id="L2291">                return AccessController.doPrivileged(new PrivilegedExceptionAction&lt;Unsafe&gt;()</span>
+<span class="nc" id="L2292">                {</span>
+                    public Unsafe run() throws Exception
+                    {
+<span class="nc" id="L2295">                        Field f = Unsafe.class.getDeclaredField(&quot;theUnsafe&quot;);</span>
+<span class="nc" id="L2296">                        f.setAccessible(true);</span>
+<span class="nc" id="L2297">                        return (Unsafe) f.get(null);</span>
+                    }
+                });
+            }
+<span class="nc" id="L2301">            catch (PrivilegedActionException e)</span>
+            {
+<span class="nc" id="L2303">                throw new RuntimeException(&quot;Could not initialize intrinsics&quot;, e.getCause());</span>
+            }
+        }
+    }
+
+    @Override
+    public V updateValue(K key, Function0&lt;? extends V&gt; factory, Function&lt;? super V, ? extends V&gt; function)
+    {
+<span class="nc" id="L2311">        int hash = this.hash(key);</span>
+<span class="nc" id="L2312">        Object[] currentArray = this.table;</span>
+<span class="nc" id="L2313">        int length = currentArray.length;</span>
+<span class="nc" id="L2314">        int index = ConcurrentHashMapUnsafe.indexFor(hash, length);</span>
+<span class="nc" id="L2315">        Object o = ConcurrentHashMapUnsafe.arrayAt(currentArray, index);</span>
+<span class="nc bnc" id="L2316" title="All 2 branches missed.">        if (o == null)</span>
+        {
+<span class="nc" id="L2318">            V result = function.valueOf(factory.value());</span>
+<span class="nc" id="L2319">            Entry&lt;K, V&gt; newEntry = new Entry&lt;&gt;(key, result, null);</span>
+<span class="nc bnc" id="L2320" title="All 2 branches missed.">            if (ConcurrentHashMapUnsafe.casArrayAt(currentArray, index, null, newEntry))</span>
+            {
+<span class="nc" id="L2322">                this.addToSize(1);</span>
+<span class="nc" id="L2323">                return result;</span>
+            }
+        }
+<span class="nc" id="L2326">        return this.slowUpdateValue(key, factory, function, hash, currentArray);</span>
+    }
+
+    private V slowUpdateValue(K key, Function0&lt;? extends V&gt; factory, Function&lt;? super V, ? extends V&gt; function, int hash, Object[] currentArray)
+    {
+        //noinspection LabeledStatement
+        outer:
+        while (true)
+        {
+<span class="nc" id="L2335">            int length = currentArray.length;</span>
+<span class="nc" id="L2336">            int index = ConcurrentHashMapUnsafe.indexFor(hash, length);</span>
+<span class="nc" id="L2337">            Object o = ConcurrentHashMapUnsafe.arrayAt(currentArray, index);</span>
+<span class="nc bnc" id="L2338" title="All 4 branches missed.">            if (o == RESIZED || o == RESIZING)</span>
+            {
+<span class="nc" id="L2340">                currentArray = this.helpWithResizeWhileCurrentIndex(currentArray, index);</span>
+            }
+            else
+            {
+<span class="nc" id="L2344">                Entry&lt;K, V&gt; e = (Entry&lt;K, V&gt;) o;</span>
+<span class="nc bnc" id="L2345" title="All 2 branches missed.">                while (e != null)</span>
+                {
+<span class="nc" id="L2347">                    Object candidate = e.getKey();</span>
+<span class="nc bnc" id="L2348" title="All 2 branches missed.">                    if (candidate.equals(key))</span>
+                    {
+<span class="nc" id="L2350">                        V oldValue = e.getValue();</span>
+<span class="nc" id="L2351">                        V newValue = function.valueOf(oldValue);</span>
+<span class="nc" id="L2352">                        Entry&lt;K, V&gt; newEntry = new Entry&lt;&gt;(e.getKey(), newValue, this.createReplacementChainForRemoval((Entry&lt;K, V&gt;) o, e));</span>
+<span class="nc bnc" id="L2353" title="All 2 branches missed.">                        if (!ConcurrentHashMapUnsafe.casArrayAt(currentArray, index, o, newEntry))</span>
+                        {
+                            //noinspection ContinueStatementWithLabel
+<span class="nc" id="L2356">                            continue outer;</span>
+                        }
+
+<span class="nc" id="L2359">                        return newValue;</span>
+                    }
+<span class="nc" id="L2361">                    e = e.getNext();</span>
+<span class="nc" id="L2362">                }</span>
+<span class="nc" id="L2363">                V result = function.valueOf(factory.value());</span>
+<span class="nc" id="L2364">                Entry&lt;K, V&gt; newEntry = new Entry&lt;&gt;(key, result, (Entry&lt;K, V&gt;) o);</span>
+<span class="nc bnc" id="L2365" title="All 2 branches missed.">                if (ConcurrentHashMapUnsafe.casArrayAt(currentArray, index, o, newEntry))</span>
+                {
+<span class="nc" id="L2367">                    this.incrementSizeAndPossiblyResize(currentArray, length, o);</span>
+<span class="nc" id="L2368">                    return result;</span>
+                }
+            }
+<span class="nc" id="L2371">        }</span>
+    }
+
+    @Override
+    public &lt;P&gt; V updateValueWith(K key, Function0&lt;? extends V&gt; factory, Function2&lt;? super V, ? super P, ? extends V&gt; function, P parameter)
+    {
+<span class="nc" id="L2377">        int hash = this.hash(key);</span>
+<span class="nc" id="L2378">        Object[] currentArray = this.table;</span>
+<span class="nc" id="L2379">        int length = currentArray.length;</span>
+<span class="nc" id="L2380">        int index = ConcurrentHashMapUnsafe.indexFor(hash, length);</span>
+<span class="nc" id="L2381">        Object o = ConcurrentHashMapUnsafe.arrayAt(currentArray, index);</span>
+<span class="nc bnc" id="L2382" title="All 2 branches missed.">        if (o == null)</span>
+        {
+<span class="nc" id="L2384">            V result = function.value(factory.value(), parameter);</span>
+<span class="nc" id="L2385">            Entry&lt;K, V&gt; newEntry = new Entry&lt;&gt;(key, result, null);</span>
+<span class="nc bnc" id="L2386" title="All 2 branches missed.">            if (ConcurrentHashMapUnsafe.casArrayAt(currentArray, index, null, newEntry))</span>
+            {
+<span class="nc" id="L2388">                this.addToSize(1);</span>
+<span class="nc" id="L2389">                return result;</span>
+            }
+        }
+<span class="nc" id="L2392">        return this.slowUpdateValueWith(key, factory, function, parameter, hash, currentArray);</span>
+    }
+
+    private &lt;P&gt; V slowUpdateValueWith(
+            K key,
+            Function0&lt;? extends V&gt; factory,
+            Function2&lt;? super V, ? super P, ? extends V&gt; function,
+            P parameter,
+            int hash,
+            Object[] currentArray)
+    {
+        //noinspection LabeledStatement
+        outer:
+        while (true)
+        {
+<span class="nc" id="L2407">            int length = currentArray.length;</span>
+<span class="nc" id="L2408">            int index = ConcurrentHashMapUnsafe.indexFor(hash, length);</span>
+<span class="nc" id="L2409">            Object o = ConcurrentHashMapUnsafe.arrayAt(currentArray, index);</span>
+<span class="nc bnc" id="L2410" title="All 4 branches missed.">            if (o == RESIZED || o == RESIZING)</span>
+            {
+<span class="nc" id="L2412">                currentArray = this.helpWithResizeWhileCurrentIndex(currentArray, index);</span>
+            }
+            else
+            {
+<span class="nc" id="L2416">                Entry&lt;K, V&gt; e = (Entry&lt;K, V&gt;) o;</span>
+<span class="nc bnc" id="L2417" title="All 2 branches missed.">                while (e != null)</span>
+                {
+<span class="nc" id="L2419">                    Object candidate = e.getKey();</span>
+<span class="nc bnc" id="L2420" title="All 2 branches missed.">                    if (candidate.equals(key))</span>
+                    {
+<span class="nc" id="L2422">                        V oldValue = e.getValue();</span>
+<span class="nc" id="L2423">                        V newValue = function.value(oldValue, parameter);</span>
+<span class="nc" id="L2424">                        Entry&lt;K, V&gt; newEntry = new Entry&lt;&gt;(e.getKey(), newValue, this.createReplacementChainForRemoval((Entry&lt;K, V&gt;) o, e));</span>
+<span class="nc bnc" id="L2425" title="All 2 branches missed.">                        if (!ConcurrentHashMapUnsafe.casArrayAt(currentArray, index, o, newEntry))</span>
+                        {
+                            //noinspection ContinueStatementWithLabel
+<span class="nc" id="L2428">                            continue outer;</span>
+                        }
+<span class="nc" id="L2430">                        return newValue;</span>
+                    }
+<span class="nc" id="L2432">                    e = e.getNext();</span>
+<span class="nc" id="L2433">                }</span>
+<span class="nc" id="L2434">                V result = function.value(factory.value(), parameter);</span>
+<span class="nc" id="L2435">                Entry&lt;K, V&gt; newEntry = new Entry&lt;&gt;(key, result, (Entry&lt;K, V&gt;) o);</span>
+<span class="nc bnc" id="L2436" title="All 2 branches missed.">                if (ConcurrentHashMapUnsafe.casArrayAt(currentArray, index, o, newEntry))</span>
+                {
+<span class="nc" id="L2438">                    this.incrementSizeAndPossiblyResize(currentArray, length, o);</span>
+<span class="nc" id="L2439">                    return result;</span>
+                }
+            }
+<span class="nc" id="L2442">        }</span>
+    }
+
+    @Override
+    public ImmutableMap&lt;K, V&gt; toImmutable()
+    {
+<span class="nc" id="L2448">        return Maps.immutable.ofMap(this);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.0.201801022044</span></div></body></html>

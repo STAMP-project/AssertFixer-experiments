@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>ArrayProcedureFJTaskRunner.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Eclipse Collections Test Coverage Aggregation</a> &gt; <a href="../index.html" class="el_bundle">eclipse-collections</a> &gt; <a href="index.source.html" class="el_package">org.eclipse.collections.impl.parallel</a> &gt; <span class="el_source">ArrayProcedureFJTaskRunner.java</span></div><h1>ArrayProcedureFJTaskRunner.java</h1><pre class="source lang-java linenums">/*
+ * Copyright (c) 2016 Goldman Sachs.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * and Eclipse Distribution License v. 1.0 which accompany this distribution.
+ * The Eclipse Public License is available at http://www.eclipse.org/legal/epl-v10.html
+ * and the Eclipse Distribution License is available at
+ * http://www.eclipse.org/org/documents/edl-v10.php.
+ */
+
+package org.eclipse.collections.impl.parallel;
+
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executor;
+
+import org.eclipse.collections.api.block.function.Function;
+import org.eclipse.collections.api.block.procedure.Procedure;
+import org.eclipse.collections.impl.utility.ArrayIterate;
+
+public final class ArrayProcedureFJTaskRunner&lt;T, BT extends Procedure&lt;? super T&gt;&gt;
+{
+<span class="nc" id="L24">    private final Function&lt;ArrayProcedureFJTask&lt;T, BT&gt;, BT&gt; procedureFunction = new ProcedureExtractor();</span>
+    private ArrayProcedureFJTask&lt;T, BT&gt;[] procedures;
+    private Throwable error;
+    private final CountDownLatch latch;
+    private final Combiner&lt;BT&gt; combiner;
+    private final BlockingQueue&lt;BT&gt; outputQueue;
+    private final int taskCount;
+
+    public ArrayProcedureFJTaskRunner(Combiner&lt;BT&gt; newCombiner, int newTaskCount)
+<span class="nc" id="L33">    {</span>
+<span class="nc" id="L34">        this.combiner = newCombiner;</span>
+<span class="nc" id="L35">        this.taskCount = newTaskCount;</span>
+<span class="nc bnc" id="L36" title="All 2 branches missed.">        if (this.combiner.useCombineOne())</span>
+        {
+<span class="nc" id="L38">            this.outputQueue = new ArrayBlockingQueue&lt;&gt;(newTaskCount);</span>
+<span class="nc" id="L39">            this.latch = null;</span>
+        }
+        else
+        {
+<span class="nc" id="L43">            this.latch = new CountDownLatch(newTaskCount);</span>
+<span class="nc" id="L44">            this.outputQueue = null;</span>
+        }
+<span class="nc" id="L46">    }</span>
+
+    /**
+     * Creates an array of ProcedureFJTasks wrapping Procedures created by the specified ProcedureFactory.
+     */
+    private void createAndExecuteTasks(Executor executor, ProcedureFactory&lt;BT&gt; procedureFactory, T[] array)
+    {
+<span class="nc" id="L53">        this.procedures = new ArrayProcedureFJTask[this.taskCount];</span>
+<span class="nc" id="L54">        int sectionSize = array.length / this.taskCount;</span>
+<span class="nc" id="L55">        int size = this.taskCount;</span>
+<span class="nc bnc" id="L56" title="All 2 branches missed.">        for (int index = 0; index &lt; size; index++)</span>
+        {
+<span class="nc bnc" id="L58" title="All 2 branches missed.">            ArrayProcedureFJTask&lt;T, BT&gt; procedureFJTask = new ArrayProcedureFJTask&lt;&gt;(this, procedureFactory, array, index,</span>
+                    sectionSize, index == this.taskCount - 1);
+<span class="nc" id="L60">            this.procedures[index] = procedureFJTask;</span>
+<span class="nc" id="L61">            executor.execute(procedureFJTask);</span>
+        }
+<span class="nc" id="L63">    }</span>
+
+    public void taskCompleted(ArrayProcedureFJTask&lt;T, BT&gt; task)
+    {
+<span class="nc bnc" id="L67" title="All 2 branches missed.">        if (this.combiner.useCombineOne())</span>
+        {
+<span class="nc" id="L69">            this.outputQueue.add(task.getProcedure());</span>
+        }
+        else
+        {
+<span class="nc" id="L73">            this.latch.countDown();</span>
+        }
+<span class="nc" id="L75">    }</span>
+
+    private void join()
+    {
+        try
+        {
+<span class="nc bnc" id="L81" title="All 2 branches missed.">            if (this.combiner.useCombineOne())</span>
+            {
+<span class="nc" id="L83">                int remainingTaskCount = this.taskCount;</span>
+<span class="nc bnc" id="L84" title="All 2 branches missed.">                while (remainingTaskCount &gt; 0)</span>
+                {
+<span class="nc" id="L86">                    this.combiner.combineOne(this.outputQueue.take());</span>
+<span class="nc" id="L87">                    remainingTaskCount--;</span>
+                }
+<span class="nc" id="L89">            }</span>
+            else
+            {
+<span class="nc" id="L92">                this.latch.await();</span>
+            }
+        }
+<span class="nc" id="L95">        catch (InterruptedException e)</span>
+        {
+<span class="nc" id="L97">            throw new RuntimeException(&quot;Combine failed&quot;, e);</span>
+<span class="nc" id="L98">        }</span>
+<span class="nc" id="L99">    }</span>
+
+    public void executeAndCombine(Executor executor, ProcedureFactory&lt;BT&gt; procedureFactory, T[] array)
+    {
+<span class="nc" id="L103">        this.createAndExecuteTasks(executor, procedureFactory, array);</span>
+<span class="nc" id="L104">        this.join();</span>
+<span class="nc bnc" id="L105" title="All 2 branches missed.">        if (this.error != null)</span>
+        {
+<span class="nc" id="L107">            throw new RuntimeException(&quot;One or more parallel tasks failed&quot;, this.error);</span>
+        }
+        //don't combine until the lock is notified
+<span class="nc" id="L110">        this.combineTasks();</span>
+<span class="nc" id="L111">    }</span>
+
+    public void setFailed(Throwable newError)
+    {
+<span class="nc" id="L115">        this.error = newError;</span>
+<span class="nc" id="L116">    }</span>
+
+    private void combineTasks()
+    {
+<span class="nc bnc" id="L120" title="All 2 branches missed.">        if (!this.combiner.useCombineOne())</span>
+        {
+<span class="nc" id="L122">            this.combiner.combineAll(ArrayIterate.collect(this.procedures, this.procedureFunction));</span>
+        }
+<span class="nc" id="L124">    }</span>
+
+<span class="nc" id="L126">    private final class ProcedureExtractor implements Function&lt;ArrayProcedureFJTask&lt;T, BT&gt;, BT&gt;</span>
+    {
+        private static final long serialVersionUID = 1L;
+
+        @Override
+        public BT valueOf(ArrayProcedureFJTask&lt;T, BT&gt; object)
+        {
+<span class="nc" id="L133">            return object.getProcedure();</span>
+        }
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.0.201801022044</span></div></body></html>

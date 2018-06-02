@@ -1,0 +1,1557 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>Predicates.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Eclipse Collections Test Coverage Aggregation</a> &gt; <a href="../index.html" class="el_bundle">eclipse-collections</a> &gt; <a href="index.source.html" class="el_package">org.eclipse.collections.impl.block.factory</a> &gt; <span class="el_source">Predicates.java</span></div><h1>Predicates.java</h1><pre class="source lang-java linenums">/*
+ * Copyright (c) 2016 Goldman Sachs.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * and Eclipse Distribution License v. 1.0 which accompany this distribution.
+ * The Eclipse Public License is available at http://www.eclipse.org/legal/epl-v10.html
+ * and the Eclipse Distribution License is available at
+ * http://www.eclipse.org/org/documents/edl-v10.php.
+ */
+
+package org.eclipse.collections.impl.block.factory;
+
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Set;
+
+import org.eclipse.collections.api.block.function.Function;
+import org.eclipse.collections.api.block.function.Function2;
+import org.eclipse.collections.api.block.predicate.Predicate;
+import org.eclipse.collections.api.block.predicate.Predicate2;
+import org.eclipse.collections.api.set.SetIterable;
+import org.eclipse.collections.impl.block.predicate.checked.CheckedPredicate;
+import org.eclipse.collections.impl.block.predicate.checked.ThrowingPredicate;
+import org.eclipse.collections.impl.set.mutable.UnifiedSet;
+import org.eclipse.collections.impl.utility.Iterate;
+
+/**
+ * The Predicates class can be used to build common Predicates to be used by methods such
+ * as detect:, select: and reject: on the Iterate, MapIterate, and ArrayIterate classes.  Predicates supports
+ * equals, not equals, less than, greater than, less than or equal to, greater than or equal to, in, not in
+ * and, or, and several other Predicate type operations.
+ */
+<span class="nc" id="L33">public abstract class Predicates&lt;T&gt;</span>
+        implements Predicate&lt;T&gt;
+{
+    private static final long serialVersionUID = 1L;
+<span class="nc" id="L37">    private static final Predicates&lt;Object&gt; ALWAYS_TRUE = new AlwaysTrue();</span>
+<span class="nc" id="L38">    private static final Predicates&lt;Object&gt; ALWAYS_FALSE = new AlwaysFalse();</span>
+<span class="nc" id="L39">    private static final Predicates&lt;Object&gt; IS_NULL = new IsNull();</span>
+<span class="nc" id="L40">    private static final Predicates&lt;Object&gt; NOT_NULL = new NotNull();</span>
+    private static final int SMALL_COLLECTION_THRESHOLD = 6;
+
+    public static &lt;T&gt; Predicates&lt;T&gt; adapt(Predicate&lt;T&gt; predicate)
+    {
+<span class="nc" id="L45">        return new PredicateAdapter&lt;&gt;(predicate);</span>
+    }
+
+    /**
+     * Allows a Java 8 lambda or method reference to be used in a method taking a predicate without requiring an actual cast.
+     * This method can be used in places where two or more method overloads could apply when used with a lambda or method
+     * reference (e.g. removeIf).
+     */
+    public static &lt;T&gt; Predicate&lt;T&gt; cast(Predicate&lt;T&gt; predicate)
+    {
+<span class="nc" id="L55">        return predicate;</span>
+    }
+
+    /**
+     * Allows a lambda or anonymous inner class that needs to throw a checked exception to be safely wrapped as a
+     * Predicate that will throw a RuntimeException, wrapping the checked exception that is the cause.
+     */
+    public static &lt;T&gt; Predicate&lt;T&gt; throwing(ThrowingPredicate&lt;T&gt; throwingPredicate)
+    {
+<span class="nc" id="L64">        return new ThrowingPredicateAdapter&lt;&gt;(throwingPredicate);</span>
+    }
+
+    /**
+     * Allows a lambda or anonymous inner class that needs to throw a checked exception to be safely wrapped as a
+     * Predicate that will throw a user specified RuntimeException based on the provided function. The function
+     * is passed the current element and the checked exception that was thrown as context arguments.
+     */
+    public static &lt;T&gt; Predicate&lt;T&gt; throwing(
+            ThrowingPredicate&lt;T&gt; throwingPredicate,
+            Function2&lt;T, ? super Throwable, ? extends RuntimeException&gt; rethrow)
+    {
+<span class="nc" id="L76">        return each -&gt;</span>
+        {
+            try
+            {
+<span class="nc" id="L80">                return throwingPredicate.safeAccept(each);</span>
+            }
+<span class="nc" id="L82">            catch (RuntimeException e)</span>
+            {
+<span class="nc" id="L84">                throw e;</span>
+            }
+<span class="nc" id="L86">            catch (Throwable t)</span>
+            {
+<span class="nc" id="L88">                throw rethrow.value(each, t);</span>
+            }
+        };
+    }
+
+    public static &lt;P, T&gt; Predicate&lt;T&gt; bind(Predicate2&lt;? super T, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc" id="L95">        return new BindPredicate2&lt;&gt;(predicate, parameter);</span>
+    }
+
+    public static &lt;T&gt; Predicate&lt;T&gt; synchronizedEach(Predicate&lt;T&gt; predicate)
+    {
+<span class="nc" id="L100">        return new SynchronizedPredicate&lt;&gt;(predicate);</span>
+    }
+
+    public static &lt;T&gt; Predicates&lt;T&gt; or(Iterable&lt;? extends Predicate&lt;? super T&gt;&gt; predicates)
+    {
+<span class="nc" id="L105">        return new OrIterablePredicate&lt;&gt;(predicates);</span>
+    }
+
+    public static &lt;T&gt; Predicates&lt;T&gt; or(Predicate&lt;? super T&gt; predicate1, Predicate&lt;? super T&gt; predicate2)
+    {
+<span class="nc" id="L110">        return new OrPredicate&lt;&gt;(predicate1, predicate2);</span>
+    }
+
+    public static &lt;T&gt; Predicates&lt;T&gt; or(Predicate&lt;? super T&gt;... predicates)
+    {
+<span class="nc" id="L115">        return new OrIterablePredicate&lt;T&gt;(Arrays.asList(predicates));</span>
+    }
+
+    public static &lt;T&gt; Predicates&lt;T&gt; and(Iterable&lt;? extends Predicate&lt;? super T&gt;&gt; predicates)
+    {
+<span class="nc" id="L120">        return new AndIterablePredicate&lt;&gt;(predicates);</span>
+    }
+
+    public static &lt;T&gt; Predicates&lt;T&gt; and(Predicate&lt;? super T&gt; predicate1, Predicate&lt;? super T&gt; predicate2)
+    {
+<span class="nc" id="L125">        return new AndPredicate&lt;&gt;(predicate1, predicate2);</span>
+    }
+
+    public static &lt;T&gt; Predicates&lt;T&gt; and(Predicate&lt;? super T&gt;... predicates)
+    {
+<span class="nc" id="L130">        return new AndIterablePredicate&lt;T&gt;(Arrays.asList(predicates));</span>
+    }
+
+    public static &lt;T&gt; Predicates&lt;T&gt; not(Predicate&lt;T&gt; predicate)
+    {
+<span class="nc" id="L135">        return new NotPredicate&lt;&gt;(predicate);</span>
+    }
+
+    public Predicates&lt;T&gt; not()
+    {
+<span class="nc" id="L140">        return Predicates.not(this);</span>
+    }
+
+    public static &lt;T&gt; Predicates&lt;T&gt; neither(Predicate&lt;? super T&gt; operation1, Predicate&lt;? super T&gt; operation2)
+    {
+<span class="nc" id="L145">        return new NeitherPredicate&lt;&gt;(operation1, operation2);</span>
+    }
+
+    public static &lt;T&gt; Predicates&lt;T&gt; noneOf(Predicate&lt;? super T&gt;... operations)
+    {
+<span class="nc" id="L150">        return new NoneOfIterablePredicate&lt;T&gt;(Arrays.asList(operations));</span>
+    }
+
+    public static &lt;T&gt; Predicates&lt;T&gt; noneOf(Iterable&lt;? extends Predicate&lt;? super T&gt;&gt; operations)
+    {
+<span class="nc" id="L155">        return new NoneOfIterablePredicate&lt;&gt;(operations);</span>
+    }
+
+    /**
+     * Tests for equality.
+     */
+    public static Predicates&lt;Object&gt; equal(Object object)
+    {
+<span class="nc bnc" id="L163" title="All 2 branches missed.">        if (object == null)</span>
+        {
+<span class="nc" id="L165">            return Predicates.isNull();</span>
+        }
+<span class="nc" id="L167">        return new EqualPredicate(object);</span>
+    }
+
+    /**
+     * Creates a predicate which returns true if an object passed to accept method is within the range, inclusive
+     * of the from and to values.
+     */
+    public static &lt;T extends Comparable&lt;? super T&gt;&gt; Predicates&lt;T&gt; betweenInclusive(T from, T to)
+    {
+<span class="nc" id="L176">        Predicates.failIfDifferentTypes(from, to);</span>
+<span class="nc" id="L177">        return new BetweenInclusive&lt;&gt;(from, to);</span>
+    }
+
+    private static void failIfDifferentTypes(Object from, Object to)
+    {
+<span class="nc bnc" id="L182" title="All 2 branches missed.">        if (!from.getClass().equals(to.getClass()))</span>
+        {
+<span class="nc" id="L184">            throw new IllegalArgumentException(&quot;Trying to do a between comparison with two different types &quot;</span>
+<span class="nc" id="L185">                    + from.getClass()</span>
+                    + ':'
+<span class="nc" id="L187">                    + to.getClass());</span>
+        }
+<span class="nc" id="L189">    }</span>
+
+    /**
+     * Creates a predicate which returns true if an object passed to accept method is within the range, exclusive
+     * of the from and to values.
+     */
+    public static &lt;T extends Comparable&lt;? super T&gt;&gt; Predicates&lt;T&gt; betweenExclusive(T from, T to)
+    {
+<span class="nc" id="L197">        Predicates.failIfDifferentTypes(from, to);</span>
+<span class="nc" id="L198">        return new BetweenExclusive&lt;&gt;(from, to);</span>
+    }
+
+    /**
+     * Creates a predicate which returns true if an object passed to accept method is within the range, inclusive
+     * of the from and exclusive from the to value.
+     */
+    public static &lt;T extends Comparable&lt;? super T&gt;&gt; Predicates&lt;T&gt; betweenInclusiveFrom(T from, T to)
+    {
+<span class="nc" id="L207">        Predicates.failIfDifferentTypes(from, to);</span>
+<span class="nc" id="L208">        return new BetweenInclusiveFrom&lt;&gt;(from, to);</span>
+    }
+
+    /**
+     * Creates a predicate which returns true if an object passed to accept method is within the range, exclusive
+     * of the from and inclusive of the to value.
+     */
+    public static &lt;T extends Comparable&lt;? super T&gt;&gt; Predicates&lt;T&gt; betweenInclusiveTo(T from, T to)
+    {
+<span class="nc" id="L217">        Predicates.failIfDifferentTypes(from, to);</span>
+<span class="nc" id="L218">        return new BetweenInclusiveTo&lt;&gt;(from, to);</span>
+    }
+
+    /**
+     * Creates a predicate which returns true if an object passed to accept method is contained in the iterable.
+     */
+    public static Predicates&lt;Object&gt; in(Iterable&lt;?&gt; iterable)
+    {
+<span class="nc bnc" id="L226" title="All 2 branches missed.">        if (iterable instanceof SetIterable&lt;?&gt;)</span>
+        {
+<span class="nc" id="L228">            return new InSetIterablePredicate((SetIterable&lt;?&gt;) iterable);</span>
+        }
+<span class="nc bnc" id="L230" title="All 2 branches missed.">        if (iterable instanceof Set&lt;?&gt;)</span>
+        {
+<span class="nc" id="L232">            return new InSetPredicate((Set&lt;?&gt;) iterable);</span>
+        }
+<span class="nc bnc" id="L234" title="All 4 branches missed.">        if (iterable instanceof Collection&lt;?&gt; &amp;&amp; ((Collection&lt;?&gt;) iterable).size() &lt;= SMALL_COLLECTION_THRESHOLD)</span>
+        {
+<span class="nc" id="L236">            return new InCollectionPredicate((Collection&lt;?&gt;) iterable);</span>
+        }
+<span class="nc" id="L238">        return new InSetIterablePredicate(UnifiedSet.newSet(iterable));</span>
+    }
+
+    public static Predicates&lt;Object&gt; in(Object... array)
+    {
+<span class="nc bnc" id="L243" title="All 2 branches missed.">        if (array.length &lt;= SMALL_COLLECTION_THRESHOLD)</span>
+        {
+<span class="nc" id="L245">            return new InCollectionPredicate(Arrays.asList(array));</span>
+        }
+<span class="nc" id="L247">        return new InSetIterablePredicate(UnifiedSet.newSetWith(array));</span>
+    }
+
+    /**
+     * Creates a predicate which returns true if an attribute selected from an object passed to accept method
+     * is contained in the iterable.
+     */
+    public static &lt;T&gt; Predicates&lt;T&gt; attributeIn(
+            Function&lt;? super T, ?&gt; function,
+            Iterable&lt;?&gt; iterable)
+    {
+<span class="nc" id="L258">        return new AttributePredicate&lt;&gt;(function, Predicates.in(iterable));</span>
+    }
+
+    public static &lt;T, V extends Comparable&lt;? super V&gt;&gt; Predicates&lt;T&gt; attributeBetweenInclusive(
+            Function&lt;? super T, ? extends V&gt; function,
+            V from,
+            V to)
+    {
+<span class="nc" id="L266">        return new AttributePredicate&lt;&gt;(function, Predicates.betweenInclusive(from, to));</span>
+    }
+
+    public static &lt;T, V extends Comparable&lt;? super V&gt;&gt; Predicates&lt;T&gt; attributeBetweenExclusive(
+            Function&lt;? super T, ? extends V&gt; function,
+            V from,
+            V to)
+    {
+<span class="nc" id="L274">        return new AttributePredicate&lt;&gt;(function, Predicates.betweenExclusive(from, to));</span>
+    }
+
+    public static &lt;T, V extends Comparable&lt;? super V&gt;&gt; Predicates&lt;T&gt; attributeBetweenInclusiveFrom(
+            Function&lt;? super T, ? extends V&gt; function,
+            V from,
+            V to)
+    {
+<span class="nc" id="L282">        return new AttributePredicate&lt;&gt;(function, Predicates.betweenInclusiveFrom(from, to));</span>
+    }
+
+    public static &lt;T, V extends Comparable&lt;? super V&gt;&gt; Predicates&lt;T&gt; attributeBetweenInclusiveTo(
+            Function&lt;? super T, ? extends V&gt; function,
+            V from,
+            V to)
+    {
+<span class="nc" id="L290">        return new AttributePredicate&lt;&gt;(function, Predicates.betweenInclusiveTo(from, to));</span>
+    }
+
+    /**
+     * Creates a predicate which returns true if an object passed to accept method is not contained in
+     * the iterable.
+     */
+    public static Predicates&lt;Object&gt; notIn(Iterable&lt;?&gt; iterable)
+    {
+<span class="nc bnc" id="L299" title="All 2 branches missed.">        if (iterable instanceof SetIterable&lt;?&gt;)</span>
+        {
+<span class="nc" id="L301">            return new NotInSetIterablePredicate((SetIterable&lt;?&gt;) iterable);</span>
+        }
+<span class="nc bnc" id="L303" title="All 2 branches missed.">        if (iterable instanceof Set&lt;?&gt;)</span>
+        {
+<span class="nc" id="L305">            return new NotInSetPredicate((Set&lt;?&gt;) iterable);</span>
+        }
+<span class="nc bnc" id="L307" title="All 4 branches missed.">        if (iterable instanceof Collection&lt;?&gt; &amp;&amp; ((Collection&lt;?&gt;) iterable).size() &lt;= SMALL_COLLECTION_THRESHOLD)</span>
+        {
+<span class="nc" id="L309">            return new NotInCollectionPredicate((Collection&lt;?&gt;) iterable);</span>
+        }
+<span class="nc" id="L311">        return new NotInSetIterablePredicate(UnifiedSet.newSet(iterable));</span>
+    }
+
+    public static Predicates&lt;Object&gt; notIn(Object... array)
+    {
+<span class="nc bnc" id="L316" title="All 2 branches missed.">        if (array.length &lt;= SMALL_COLLECTION_THRESHOLD)</span>
+        {
+<span class="nc" id="L318">            return new NotInCollectionPredicate(Arrays.asList(array));</span>
+        }
+<span class="nc" id="L320">        return new NotInSetIterablePredicate(UnifiedSet.newSetWith(array));</span>
+    }
+
+    /**
+     * Creates a predicate which returns true if an attribute selected from an object passed to accept method
+     * is not contained in the iterable.
+     */
+    public static &lt;T&gt; Predicates&lt;T&gt; attributeNotIn(
+            Function&lt;? super T, ?&gt; function,
+            Iterable&lt;?&gt; iterable)
+    {
+<span class="nc" id="L331">        return new AttributePredicate&lt;&gt;(function, Predicates.notIn(iterable));</span>
+    }
+
+    public static &lt;T extends Comparable&lt;? super T&gt;&gt; Predicates&lt;T&gt; lessThan(T object)
+    {
+<span class="nc" id="L336">        return new LessThanPredicate&lt;&gt;(object);</span>
+    }
+
+    public static &lt;T, V extends Comparable&lt;? super V&gt;&gt; Predicates&lt;T&gt; attributeLessThan(
+            Function&lt;? super T, ? extends V&gt; function,
+            V object)
+    {
+<span class="nc" id="L343">        return new AttributePredicate&lt;&gt;(function, new LessThanPredicate&lt;&gt;(object));</span>
+    }
+
+    public static &lt;T extends Comparable&lt;? super T&gt;&gt; Predicates&lt;T&gt; lessThanOrEqualTo(T object)
+    {
+<span class="nc" id="L348">        return new LessThanOrEqualPredicate&lt;&gt;(object);</span>
+    }
+
+    public static &lt;T, V extends Comparable&lt;? super V&gt;&gt; Predicates&lt;T&gt; attributeLessThanOrEqualTo(
+            Function&lt;? super T, ? extends V&gt; function,
+            V object)
+    {
+<span class="nc" id="L355">        return new AttributePredicate&lt;&gt;(function, new LessThanOrEqualPredicate&lt;&gt;(object));</span>
+    }
+
+    public static &lt;T extends Comparable&lt;? super T&gt;&gt; Predicates&lt;T&gt; greaterThan(T object)
+    {
+<span class="nc" id="L360">        return new GreaterThanPredicate&lt;&gt;(object);</span>
+    }
+
+    public static &lt;T, V extends Comparable&lt;? super V&gt;&gt; Predicates&lt;T&gt; attributeGreaterThan(
+            Function&lt;? super T, ? extends V&gt; function,
+            V object)
+    {
+<span class="nc" id="L367">        return new AttributePredicate&lt;&gt;(function, new GreaterThanPredicate&lt;&gt;(object));</span>
+    }
+
+    public static &lt;T extends Comparable&lt;? super T&gt;&gt; Predicates&lt;T&gt; greaterThanOrEqualTo(T object)
+    {
+<span class="nc" id="L372">        return new GreaterThanOrEqualPredicate&lt;&gt;(object);</span>
+    }
+
+    public static &lt;T, V extends Comparable&lt;? super V&gt;&gt; Predicates&lt;T&gt; attributeGreaterThanOrEqualTo(
+            Function&lt;? super T, ? extends V&gt; function,
+            V object)
+    {
+<span class="nc" id="L379">        return new AttributePredicate&lt;&gt;(function, new GreaterThanOrEqualPredicate&lt;&gt;(object));</span>
+    }
+
+    public static &lt;T, V&gt; Predicates&lt;T&gt; attributePredicate(
+            Function&lt;? super T, ? extends V&gt; function,
+            Predicate&lt;? super V&gt; predicate)
+    {
+<span class="nc" id="L386">        return new AttributePredicate&lt;&gt;(function, predicate);</span>
+    }
+
+    public static &lt;T&gt; Predicates&lt;T&gt; attributeEqual(
+            Function&lt;? super T, ?&gt; function,
+            Object object)
+    {
+<span class="nc" id="L393">        return new AttributePredicate&lt;&gt;(function, Predicates.equal(object));</span>
+    }
+
+    public static &lt;T&gt; Predicates&lt;Iterable&lt;T&gt;&gt; anySatisfy(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L398">        return new AnySatisfy&lt;&gt;(predicate);</span>
+    }
+
+    public static &lt;T&gt; Predicates&lt;Iterable&lt;T&gt;&gt; allSatisfy(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L403">        return new AllSatisfy&lt;&gt;(predicate);</span>
+    }
+
+    public static &lt;T&gt; Predicates&lt;Iterable&lt;T&gt;&gt; noneSatisfy(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L408">        return new NoneSatisfy&lt;&gt;(predicate);</span>
+    }
+
+    public static &lt;T, V&gt; Predicates&lt;T&gt; attributeAnySatisfy(
+            Function&lt;? super T, ? extends Iterable&lt;V&gt;&gt; function,
+            Predicate&lt;? super V&gt; predicate)
+    {
+<span class="nc" id="L415">        return Predicates.attributePredicate(function, Predicates.anySatisfy(predicate));</span>
+    }
+
+    public static &lt;T, V&gt; Predicates&lt;T&gt; attributeAllSatisfy(
+            Function&lt;? super T, ? extends Iterable&lt;V&gt;&gt; function,
+            Predicate&lt;? super V&gt; predicate)
+    {
+<span class="nc" id="L422">        return Predicates.attributePredicate(function, Predicates.allSatisfy(predicate));</span>
+    }
+
+    public static &lt;T, V&gt; Predicates&lt;T&gt; attributeNoneSatisfy(
+            Function&lt;? super T, ? extends Iterable&lt;V&gt;&gt; function,
+            Predicate&lt;? super V&gt; predicate)
+    {
+<span class="nc" id="L429">        return Predicates.attributePredicate(function, Predicates.noneSatisfy(predicate));</span>
+    }
+
+    public static Predicates&lt;Object&gt; notEqual(Object object)
+    {
+<span class="nc bnc" id="L434" title="All 2 branches missed.">        if (object == null)</span>
+        {
+<span class="nc" id="L436">            return Predicates.notNull();</span>
+        }
+<span class="nc" id="L438">        return new NotEqualPredicate(object);</span>
+    }
+
+    public static &lt;T&gt; Predicates&lt;T&gt; ifTrue(Function&lt;? super T, Boolean&gt; function)
+    {
+<span class="nc" id="L443">        return new AttributeTrue&lt;&gt;(function);</span>
+    }
+
+    public static &lt;T&gt; Predicates&lt;T&gt; ifFalse(Function&lt;? super T, Boolean&gt; function)
+    {
+<span class="nc" id="L448">        return new AttributeFalse&lt;&gt;(function);</span>
+    }
+
+    public static &lt;T&gt; Predicates&lt;T&gt; attributeNotEqual(
+            Function&lt;? super T, ?&gt; function,
+            Object object)
+    {
+<span class="nc" id="L455">        return new AttributePredicate&lt;&gt;(function, Predicates.notEqual(object));</span>
+    }
+
+    public static Predicates&lt;Object&gt; isNull()
+    {
+<span class="nc" id="L460">        return IS_NULL;</span>
+    }
+
+    public static &lt;T&gt; Predicates&lt;T&gt; attributeIsNull(Function&lt;? super T, ?&gt; function)
+    {
+<span class="nc" id="L465">        return new AttributePredicate&lt;&gt;(function, Predicates.isNull());</span>
+    }
+
+    public static Predicates&lt;Object&gt; notNull()
+    {
+<span class="nc" id="L470">        return NOT_NULL;</span>
+    }
+
+    public static &lt;T&gt; Predicates&lt;T&gt; attributeNotNull(Function&lt;? super T, ?&gt; function)
+    {
+<span class="nc" id="L475">        return new AttributePredicate&lt;&gt;(function, Predicates.notNull());</span>
+    }
+
+    public static Predicates&lt;Object&gt; sameAs(Object object)
+    {
+<span class="nc" id="L480">        return new IdentityPredicate(object);</span>
+    }
+
+    public static Predicates&lt;Object&gt; notSameAs(Object object)
+    {
+<span class="nc" id="L485">        return new NotIdentityPredicate(object);</span>
+    }
+
+    public static Predicates&lt;Object&gt; instanceOf(Class&lt;?&gt; clazz)
+    {
+<span class="nc" id="L490">        return new InstanceOfPredicate(clazz);</span>
+    }
+
+    public static Predicates&lt;Object&gt; assignableFrom(Class&lt;?&gt; clazz)
+    {
+<span class="nc" id="L495">        return new AssignableFromPredicate(clazz);</span>
+    }
+
+    public static Predicates&lt;Object&gt; notInstanceOf(Class&lt;?&gt; clazz)
+    {
+<span class="nc" id="L500">        return new NotInstanceOfPredicate(clazz);</span>
+    }
+
+    public static Predicates&lt;Object&gt; alwaysTrue()
+    {
+<span class="nc" id="L505">        return ALWAYS_TRUE;</span>
+    }
+
+    public static Predicates&lt;Object&gt; alwaysFalse()
+    {
+<span class="nc" id="L510">        return ALWAYS_FALSE;</span>
+    }
+
+    public Predicates&lt;T&gt; and(Predicate&lt;? super T&gt; op)
+    {
+<span class="nc" id="L515">        return Predicates.and(this, op);</span>
+    }
+
+    public Predicates&lt;T&gt; or(Predicate&lt;? super T&gt; op)
+    {
+<span class="nc" id="L520">        return Predicates.or(this, op);</span>
+    }
+
+    public static Predicates&lt;Class&lt;?&gt;&gt; subClass(Class&lt;?&gt; aClass)
+    {
+<span class="nc" id="L525">        return new SubclassPredicate(aClass);</span>
+    }
+
+    public static Predicates&lt;Class&lt;?&gt;&gt; superClass(Class&lt;?&gt; aClass)
+    {
+<span class="nc" id="L530">        return new SuperclassPredicate(aClass);</span>
+    }
+
+    private static final class PredicateAdapter&lt;T&gt;
+            extends Predicates&lt;T&gt;
+    {
+        private static final long serialVersionUID = 1L;
+        private final Predicate&lt;T&gt; predicate;
+
+        private PredicateAdapter(Predicate&lt;T&gt; newPredicate)
+<span class="nc" id="L540">        {</span>
+<span class="nc" id="L541">            this.predicate = newPredicate;</span>
+<span class="nc" id="L542">        }</span>
+
+        @Override
+        public boolean accept(T o)
+        {
+<span class="nc" id="L547">            return this.predicate.accept(o);</span>
+        }
+
+        @Override
+        public String toString()
+        {
+<span class="nc" id="L553">            return &quot;Predicates.adapt(&quot; + this.predicate + ')';</span>
+        }
+    }
+
+    protected static class AttributePredicate&lt;T, V&gt; extends Predicates&lt;T&gt;
+    {
+        private static final long serialVersionUID = 1L;
+        protected final Function&lt;? super T, ? extends V&gt; function;
+        protected final Predicate&lt;? super V&gt; predicate;
+
+        protected AttributePredicate(
+                Function&lt;? super T, ? extends V&gt; newFunction,
+                Predicate&lt;? super V&gt; newPredicate)
+<span class="nc" id="L566">        {</span>
+<span class="nc" id="L567">            this.function = newFunction;</span>
+<span class="nc" id="L568">            this.predicate = newPredicate;</span>
+<span class="nc" id="L569">        }</span>
+
+        @Override
+        public boolean accept(T anObject)
+        {
+<span class="nc" id="L574">            return this.predicate.accept(this.function.valueOf(anObject));</span>
+        }
+
+        @Override
+        public String toString()
+        {
+<span class="nc" id="L580">            return &quot;Predicates.attributePredicate(&quot;</span>
+                    + this.function
+                    + &quot;, &quot;
+                    + this.predicate
+                    + ')';
+        }
+    }
+
+    private static class FalseEquals implements Predicate&lt;Boolean&gt;
+    {
+        private static final long serialVersionUID = 1L;
+
+        @Override
+        public boolean accept(Boolean anObject)
+        {
+<span class="nc" id="L595">            return Boolean.FALSE.equals(anObject);</span>
+        }
+    }
+
+    private static class TrueEquals implements Predicate&lt;Boolean&gt;
+    {
+        private static final long serialVersionUID = 1L;
+
+        @Override
+        public boolean accept(Boolean anObject)
+        {
+<span class="nc" id="L606">            return Boolean.TRUE.equals(anObject);</span>
+        }
+    }
+
+    private static final class AttributeFalse&lt;T&gt; extends AttributePredicate&lt;T, Boolean&gt;
+    {
+        private static final long serialVersionUID = 1L;
+<span class="nc" id="L613">        private static final FalseEquals FALSE_EQUALS = new FalseEquals();</span>
+
+        private AttributeFalse(Function&lt;? super T, Boolean&gt; newFunction)
+        {
+<span class="nc" id="L617">            super(newFunction, FALSE_EQUALS);</span>
+<span class="nc" id="L618">        }</span>
+
+        @Override
+        public String toString()
+        {
+<span class="nc" id="L623">            return &quot;Predicates.ifFalse(&quot; + this.function + ')';</span>
+        }
+    }
+
+    private static final class AttributeTrue&lt;T&gt; extends AttributePredicate&lt;T, Boolean&gt;
+    {
+        private static final long serialVersionUID = 1L;
+<span class="nc" id="L630">        private static final TrueEquals TRUE_EQUALS = new TrueEquals();</span>
+
+        private AttributeTrue(Function&lt;? super T, Boolean&gt; newFunction)
+        {
+<span class="nc" id="L634">            super(newFunction, TRUE_EQUALS);</span>
+<span class="nc" id="L635">        }</span>
+
+        @Override
+        public String toString()
+        {
+<span class="nc" id="L640">            return &quot;Predicates.ifTrue(&quot; + this.function + ')';</span>
+        }
+    }
+
+    public static class AnySatisfy&lt;T&gt; extends Predicates&lt;Iterable&lt;T&gt;&gt;
+    {
+        private static final long serialVersionUID = 1L;
+        private final Predicate&lt;? super T&gt; predicate;
+
+        public AnySatisfy(Predicate&lt;? super T&gt; predicate)
+<span class="nc" id="L650">        {</span>
+<span class="nc" id="L651">            this.predicate = predicate;</span>
+<span class="nc" id="L652">        }</span>
+
+        @Override
+        public boolean accept(Iterable&lt;T&gt; iterable)
+        {
+<span class="nc" id="L657">            return Iterate.anySatisfy(iterable, this.predicate);</span>
+        }
+    }
+
+    public static class AllSatisfy&lt;T&gt; extends Predicates&lt;Iterable&lt;T&gt;&gt;
+    {
+        private static final long serialVersionUID = 1L;
+        private final Predicate&lt;? super T&gt; predicate;
+
+        public AllSatisfy(Predicate&lt;? super T&gt; predicate)
+<span class="nc" id="L667">        {</span>
+<span class="nc" id="L668">            this.predicate = predicate;</span>
+<span class="nc" id="L669">        }</span>
+
+        @Override
+        public boolean accept(Iterable&lt;T&gt; iterable)
+        {
+<span class="nc" id="L674">            return Iterate.allSatisfy(iterable, this.predicate);</span>
+        }
+    }
+
+    public static class NoneSatisfy&lt;T&gt; extends Predicates&lt;Iterable&lt;T&gt;&gt;
+    {
+        private static final long serialVersionUID = 1L;
+        private final Predicate&lt;? super T&gt; predicate;
+
+        public NoneSatisfy(Predicate&lt;? super T&gt; predicate)
+<span class="nc" id="L684">        {</span>
+<span class="nc" id="L685">            this.predicate = predicate;</span>
+<span class="nc" id="L686">        }</span>
+
+        @Override
+        public boolean accept(Iterable&lt;T&gt; iterable)
+        {
+<span class="nc" id="L691">            return Iterate.noneSatisfy(iterable, this.predicate);</span>
+        }
+    }
+
+    private abstract static class CompareToPredicate&lt;T extends Comparable&lt;? super T&gt;&gt;
+            extends Predicates&lt;T&gt;
+    {
+        private static final long serialVersionUID = 1L;
+        protected final T compareTo;
+
+        private CompareToPredicate(T newCompareTo)
+<span class="nc" id="L702">        {</span>
+<span class="nc" id="L703">            this.compareTo = newCompareTo;</span>
+<span class="nc" id="L704">        }</span>
+    }
+
+    protected static class LessThanPredicate&lt;T extends Comparable&lt;? super T&gt;&gt;
+            extends CompareToPredicate&lt;T&gt;
+    {
+        private static final long serialVersionUID = 1L;
+
+        protected LessThanPredicate(T newCompareTo)
+        {
+<span class="nc" id="L714">            super(newCompareTo);</span>
+<span class="nc" id="L715">        }</span>
+
+        @Override
+        public boolean accept(T o)
+        {
+<span class="nc bnc" id="L720" title="All 2 branches missed.">            return o.compareTo(this.compareTo) &lt; 0;</span>
+        }
+
+        @Override
+        public String toString()
+        {
+<span class="nc" id="L726">            return &quot;Predicates.lessThan(&quot; + this.compareTo + ')';</span>
+        }
+    }
+
+    protected abstract static class RangePredicate&lt;T extends Comparable&lt;? super T&gt;&gt;
+            extends CompareToPredicate&lt;T&gt;
+    {
+        private static final long serialVersionUID = 1L;
+        protected final T compareFrom;
+
+        protected RangePredicate(T newCompareFrom, T newCompareTo)
+        {
+<span class="nc" id="L738">            super(newCompareTo);</span>
+<span class="nc" id="L739">            this.compareFrom = newCompareFrom;</span>
+<span class="nc" id="L740">        }</span>
+    }
+
+    private static final class BetweenInclusive&lt;T extends Comparable&lt;? super T&gt;&gt;
+            extends RangePredicate&lt;T&gt;
+    {
+        private static final long serialVersionUID = 1L;
+
+        private BetweenInclusive(T newCompareFrom, T newCompareTo)
+        {
+<span class="nc" id="L750">            super(newCompareFrom, newCompareTo);</span>
+<span class="nc" id="L751">        }</span>
+
+        @Override
+        public boolean accept(T o)
+        {
+<span class="nc bnc" id="L756" title="All 4 branches missed.">            return o.compareTo(this.compareFrom) &gt;= 0 &amp;&amp; o.compareTo(this.compareTo) &lt;= 0;</span>
+        }
+    }
+
+    private static final class BetweenInclusiveTo&lt;T extends Comparable&lt;? super T&gt;&gt;
+            extends RangePredicate&lt;T&gt;
+    {
+        private static final long serialVersionUID = 1L;
+
+        private BetweenInclusiveTo(T newCompareFrom, T newCompareTo)
+        {
+<span class="nc" id="L767">            super(newCompareFrom, newCompareTo);</span>
+<span class="nc" id="L768">        }</span>
+
+        @Override
+        public boolean accept(T o)
+        {
+<span class="nc bnc" id="L773" title="All 4 branches missed.">            return o.compareTo(this.compareFrom) &gt; 0 &amp;&amp; o.compareTo(this.compareTo) &lt;= 0;</span>
+        }
+    }
+
+    private static final class BetweenInclusiveFrom&lt;T extends Comparable&lt;? super T&gt;&gt;
+            extends RangePredicate&lt;T&gt;
+    {
+        private static final long serialVersionUID = 1L;
+
+        private BetweenInclusiveFrom(T newCompareFrom, T newCompareTo)
+        {
+<span class="nc" id="L784">            super(newCompareFrom, newCompareTo);</span>
+<span class="nc" id="L785">        }</span>
+
+        @Override
+        public boolean accept(T o)
+        {
+<span class="nc bnc" id="L790" title="All 4 branches missed.">            return o.compareTo(this.compareFrom) &gt;= 0 &amp;&amp; o.compareTo(this.compareTo) &lt; 0;</span>
+        }
+    }
+
+    private static final class BetweenExclusive&lt;T extends Comparable&lt;? super T&gt;&gt;
+            extends RangePredicate&lt;T&gt;
+    {
+        private static final long serialVersionUID = 1L;
+
+        private BetweenExclusive(T newCompareFrom, T newCompareTo)
+        {
+<span class="nc" id="L801">            super(newCompareFrom, newCompareTo);</span>
+<span class="nc" id="L802">        }</span>
+
+        @Override
+        public boolean accept(T o)
+        {
+<span class="nc bnc" id="L807" title="All 4 branches missed.">            return o.compareTo(this.compareFrom) &gt; 0 &amp;&amp; o.compareTo(this.compareTo) &lt; 0;</span>
+        }
+    }
+
+    protected static class LessThanOrEqualPredicate&lt;T extends Comparable&lt;? super T&gt;&gt;
+            extends CompareToPredicate&lt;T&gt;
+    {
+        private static final long serialVersionUID = 1L;
+
+        protected LessThanOrEqualPredicate(T newCompareTo)
+        {
+<span class="nc" id="L818">            super(newCompareTo);</span>
+<span class="nc" id="L819">        }</span>
+
+        @Override
+        public boolean accept(T o)
+        {
+<span class="nc bnc" id="L824" title="All 2 branches missed.">            return o.compareTo(this.compareTo) &lt;= 0;</span>
+        }
+
+        @Override
+        public String toString()
+        {
+<span class="nc" id="L830">            return &quot;Predicates.lessThanOrEqualTo(&quot; + this.compareTo + ')';</span>
+        }
+    }
+
+    protected static class GreaterThanPredicate&lt;T extends Comparable&lt;? super T&gt;&gt;
+            extends CompareToPredicate&lt;T&gt;
+    {
+        private static final long serialVersionUID = 1L;
+
+        protected GreaterThanPredicate(T newCompareTo)
+        {
+<span class="nc" id="L841">            super(newCompareTo);</span>
+<span class="nc" id="L842">        }</span>
+
+        @Override
+        public boolean accept(T o)
+        {
+<span class="nc bnc" id="L847" title="All 2 branches missed.">            return o.compareTo(this.compareTo) &gt; 0;</span>
+        }
+
+        @Override
+        public String toString()
+        {
+<span class="nc" id="L853">            return &quot;Predicates.greaterThan(&quot; + this.compareTo + ')';</span>
+        }
+    }
+
+    protected static class GreaterThanOrEqualPredicate&lt;T extends Comparable&lt;? super T&gt;&gt;
+            extends CompareToPredicate&lt;T&gt;
+    {
+        private static final long serialVersionUID = 1L;
+
+        protected GreaterThanOrEqualPredicate(T newCompareTo)
+        {
+<span class="nc" id="L864">            super(newCompareTo);</span>
+<span class="nc" id="L865">        }</span>
+
+        @Override
+        public boolean accept(T o)
+        {
+<span class="nc bnc" id="L870" title="All 2 branches missed.">            return o.compareTo(this.compareTo) &gt;= 0;</span>
+        }
+
+        @Override
+        public String toString()
+        {
+<span class="nc" id="L876">            return &quot;Predicates.greaterThanOrEqualTo(&quot; + this.compareTo + ')';</span>
+        }
+    }
+
+    private static final class AndIterablePredicate&lt;T&gt;
+            extends AbstractIterablePredicate&lt;T&gt;
+    {
+        private static final long serialVersionUID = 1L;
+
+        private AndIterablePredicate(Iterable&lt;? extends Predicate&lt;? super T&gt;&gt; predicates)
+        {
+<span class="nc" id="L887">            super(predicates);</span>
+<span class="nc" id="L888">        }</span>
+
+        @Override
+        protected String getTypeName()
+        {
+<span class="nc" id="L893">            return &quot;and&quot;;</span>
+        }
+
+        @Override
+        public boolean accept(T anObject)
+        {
+<span class="nc" id="L899">            Predicate&lt;Predicate&lt;? super T&gt;&gt; predicate = aPredicate -&gt; aPredicate.accept(anObject);</span>
+<span class="nc" id="L900">            return Iterate.allSatisfy(this.predicates, predicate);</span>
+        }
+    }
+
+    private static final class OrIterablePredicate&lt;T&gt;
+            extends AbstractIterablePredicate&lt;T&gt;
+    {
+        private static final long serialVersionUID = 1L;
+
+        private OrIterablePredicate(Iterable&lt;? extends Predicate&lt;? super T&gt;&gt; predicates)
+        {
+<span class="nc" id="L911">            super(predicates);</span>
+<span class="nc" id="L912">        }</span>
+
+        @Override
+        protected String getTypeName()
+        {
+<span class="nc" id="L917">            return &quot;or&quot;;</span>
+        }
+
+        @Override
+        public boolean accept(T anObject)
+        {
+<span class="nc" id="L923">            Predicate&lt;Predicate&lt;? super T&gt;&gt; predicate = aPredicate -&gt; aPredicate.accept(anObject);</span>
+<span class="nc" id="L924">            return Iterate.anySatisfy(this.predicates, predicate);</span>
+        }
+    }
+
+    private static final class NoneOfIterablePredicate&lt;T&gt;
+            extends AbstractIterablePredicate&lt;T&gt;
+    {
+        private static final long serialVersionUID = 1L;
+
+        private NoneOfIterablePredicate(Iterable&lt;? extends Predicate&lt;? super T&gt;&gt; predicates)
+        {
+<span class="nc" id="L935">            super(predicates);</span>
+<span class="nc" id="L936">        }</span>
+
+        @Override
+        protected String getTypeName()
+        {
+<span class="nc" id="L941">            return &quot;noneOf&quot;;</span>
+        }
+
+        @Override
+        public boolean accept(T anObject)
+        {
+<span class="nc bnc" id="L947" title="All 2 branches missed.">            Predicate&lt;Predicate&lt;? super T&gt;&gt; predicate = aPredicate -&gt; !aPredicate.accept(anObject);</span>
+<span class="nc" id="L948">            return Iterate.allSatisfy(this.predicates, predicate);</span>
+        }
+    }
+
+    private abstract static class AbstractIterablePredicate&lt;T&gt;
+            extends Predicates&lt;T&gt;
+    {
+        private static final long serialVersionUID = 1L;
+        protected final Iterable&lt;? extends Predicate&lt;? super T&gt;&gt; predicates;
+
+        private AbstractIterablePredicate(Iterable&lt;? extends Predicate&lt;? super T&gt;&gt; predicates)
+<span class="nc" id="L959">        {</span>
+<span class="nc" id="L960">            this.predicates = predicates;</span>
+<span class="nc" id="L961">        }</span>
+
+        protected abstract String getTypeName();
+
+        @Override
+        public String toString()
+        {
+<span class="nc" id="L968">            return &quot;Predicates.&quot; + this.getTypeName() + '(' + this.predicates + ')';</span>
+        }
+    }
+
+    private static final class AndPredicate&lt;T&gt;
+            extends Predicates&lt;T&gt;
+    {
+        private static final long serialVersionUID = 1L;
+        private final Predicate&lt;? super T&gt; left;
+        private final Predicate&lt;? super T&gt; right;
+
+        private AndPredicate(Predicate&lt;? super T&gt; one, Predicate&lt;? super T&gt; two)
+<span class="nc" id="L980">        {</span>
+<span class="nc" id="L981">            this.left = one;</span>
+<span class="nc" id="L982">            this.right = two;</span>
+<span class="nc" id="L983">        }</span>
+
+        @Override
+        public boolean accept(T anObject)
+        {
+<span class="nc bnc" id="L988" title="All 4 branches missed.">            return this.left.accept(anObject) &amp;&amp; this.right.accept(anObject);</span>
+        }
+
+        @Override
+        public String toString()
+        {
+<span class="nc" id="L994">            return this.left + &quot;.and(&quot; + this.right + ')';</span>
+        }
+    }
+
+    private static final class NeitherPredicate&lt;T&gt;
+            extends Predicates&lt;T&gt;
+    {
+        private static final long serialVersionUID = 1L;
+        private final Predicate&lt;? super T&gt; left;
+        private final Predicate&lt;? super T&gt; right;
+
+        private NeitherPredicate(Predicate&lt;? super T&gt; one, Predicate&lt;? super T&gt; two)
+<span class="nc" id="L1006">        {</span>
+<span class="nc" id="L1007">            this.left = one;</span>
+<span class="nc" id="L1008">            this.right = two;</span>
+<span class="nc" id="L1009">        }</span>
+
+        @Override
+        public boolean accept(T anObject)
+        {
+<span class="nc bnc" id="L1014" title="All 4 branches missed.">            return !this.left.accept(anObject) &amp;&amp; !this.right.accept(anObject);</span>
+        }
+
+        @Override
+        public String toString()
+        {
+<span class="nc" id="L1020">            return &quot;Predicates.neither(&quot; + this.left + &quot;, &quot; + this.right + ')';</span>
+        }
+    }
+
+    private static final class OrPredicate&lt;T&gt;
+            extends Predicates&lt;T&gt;
+    {
+        private static final long serialVersionUID = 1L;
+        private final Predicate&lt;? super T&gt; left;
+        private final Predicate&lt;? super T&gt; right;
+
+        private OrPredicate(Predicate&lt;? super T&gt; one, Predicate&lt;? super T&gt; two)
+<span class="nc" id="L1032">        {</span>
+<span class="nc" id="L1033">            this.left = one;</span>
+<span class="nc" id="L1034">            this.right = two;</span>
+<span class="nc" id="L1035">        }</span>
+
+        @Override
+        public boolean accept(T anObject)
+        {
+<span class="nc bnc" id="L1040" title="All 4 branches missed.">            return this.left.accept(anObject) || this.right.accept(anObject);</span>
+        }
+
+        @Override
+        public String toString()
+        {
+<span class="nc" id="L1046">            return this.left + &quot;.or(&quot; + this.right + ')';</span>
+        }
+    }
+
+    private static final class NotPredicate&lt;T&gt;
+            extends Predicates&lt;T&gt;
+    {
+        private static final long serialVersionUID = 1L;
+        private final Predicate&lt;T&gt; predicate;
+
+        private NotPredicate(Predicate&lt;T&gt; newPredicate)
+<span class="nc" id="L1057">        {</span>
+<span class="nc" id="L1058">            this.predicate = newPredicate;</span>
+<span class="nc" id="L1059">        }</span>
+
+        @Override
+        public boolean accept(T anObject)
+        {
+<span class="nc bnc" id="L1064" title="All 2 branches missed.">            return !this.predicate.accept(anObject);</span>
+        }
+
+        @Override
+        public String toString()
+        {
+<span class="nc" id="L1070">            return &quot;Predicates.not(&quot; + this.predicate + ')';</span>
+        }
+    }
+
+    private static final class EqualPredicate
+            extends Predicates&lt;Object&gt;
+    {
+        private static final long serialVersionUID = 1L;
+        private final Object compareObject;
+
+        private EqualPredicate(Object newCompareObject)
+<span class="nc" id="L1081">        {</span>
+<span class="nc" id="L1082">            this.compareObject = newCompareObject;</span>
+<span class="nc" id="L1083">        }</span>
+
+        @Override
+        public boolean accept(Object anObject)
+        {
+<span class="nc" id="L1088">            return this.compareObject.equals(anObject);</span>
+        }
+
+        @Override
+        public String toString()
+        {
+<span class="nc" id="L1094">            return &quot;Predicates.equal(&quot; + this.compareObject + ')';</span>
+        }
+    }
+
+    private static final class InCollectionPredicate
+            extends Predicates&lt;Object&gt;
+    {
+        private static final long serialVersionUID = 1L;
+        private final Collection&lt;?&gt; collection;
+
+        private InCollectionPredicate(Collection&lt;?&gt; collection)
+<span class="nc" id="L1105">        {</span>
+<span class="nc" id="L1106">            this.collection = collection;</span>
+<span class="nc" id="L1107">        }</span>
+
+        @Override
+        public boolean accept(Object anObject)
+        {
+<span class="nc" id="L1112">            return this.collection.contains(anObject);</span>
+        }
+
+        @Override
+        public String toString()
+        {
+<span class="nc" id="L1118">            return &quot;Predicates.in(&quot; + this.collection + ')';</span>
+        }
+    }
+
+    private static final class NotInCollectionPredicate
+            extends Predicates&lt;Object&gt;
+    {
+        private static final long serialVersionUID = 1L;
+        private final Collection&lt;?&gt; collection;
+
+        private NotInCollectionPredicate(Collection&lt;?&gt; collection)
+<span class="nc" id="L1129">        {</span>
+<span class="nc" id="L1130">            this.collection = collection;</span>
+<span class="nc" id="L1131">        }</span>
+
+        @Override
+        public boolean accept(Object anObject)
+        {
+<span class="nc bnc" id="L1136" title="All 2 branches missed.">            return !this.collection.contains(anObject);</span>
+        }
+
+        @Override
+        public String toString()
+        {
+<span class="nc" id="L1142">            return &quot;Predicates.notIn(&quot; + this.collection + ')';</span>
+        }
+    }
+
+    private static final class InSetIterablePredicate
+            extends Predicates&lt;Object&gt;
+    {
+        private static final long serialVersionUID = 1L;
+        private final SetIterable&lt;?&gt; setIterable;
+
+        private InSetIterablePredicate(SetIterable&lt;?&gt; setIterable)
+<span class="nc" id="L1153">        {</span>
+<span class="nc" id="L1154">            this.setIterable = setIterable;</span>
+<span class="nc" id="L1155">        }</span>
+
+        @Override
+        public boolean accept(Object anObject)
+        {
+<span class="nc" id="L1160">            return this.setIterable.contains(anObject);</span>
+        }
+
+        @Override
+        public String toString()
+        {
+<span class="nc" id="L1166">            return &quot;Predicates.in(&quot; + this.setIterable + ')';</span>
+        }
+    }
+
+    private static final class NotInSetIterablePredicate
+            extends Predicates&lt;Object&gt;
+    {
+        private static final long serialVersionUID = 1L;
+        private final SetIterable&lt;?&gt; setIterable;
+
+        private NotInSetIterablePredicate(SetIterable&lt;?&gt; setIterable)
+<span class="nc" id="L1177">        {</span>
+<span class="nc" id="L1178">            this.setIterable = setIterable;</span>
+<span class="nc" id="L1179">        }</span>
+
+        @Override
+        public boolean accept(Object anObject)
+        {
+<span class="nc bnc" id="L1184" title="All 2 branches missed.">            return !this.setIterable.contains(anObject);</span>
+        }
+
+        @Override
+        public String toString()
+        {
+<span class="nc" id="L1190">            return &quot;Predicates.notIn(&quot; + this.setIterable + ')';</span>
+        }
+    }
+
+    private static final class InSetPredicate
+            extends Predicates&lt;Object&gt;
+    {
+        private static final long serialVersionUID = 1L;
+        private final Set&lt;?&gt; set;
+
+        private InSetPredicate(Set&lt;?&gt; set)
+<span class="nc" id="L1201">        {</span>
+<span class="nc" id="L1202">            this.set = set;</span>
+<span class="nc" id="L1203">        }</span>
+
+        @Override
+        public boolean accept(Object anObject)
+        {
+<span class="nc" id="L1208">            return this.set.contains(anObject);</span>
+        }
+
+        @Override
+        public String toString()
+        {
+<span class="nc" id="L1214">            return &quot;Predicates.in(&quot; + this.set + ')';</span>
+        }
+    }
+
+    private static final class NotInSetPredicate
+            extends Predicates&lt;Object&gt;
+    {
+        private static final long serialVersionUID = 1L;
+        private final Set&lt;?&gt; set;
+
+        private NotInSetPredicate(Set&lt;?&gt; set)
+<span class="nc" id="L1225">        {</span>
+<span class="nc" id="L1226">            this.set = set;</span>
+<span class="nc" id="L1227">        }</span>
+
+        @Override
+        public boolean accept(Object anObject)
+        {
+<span class="nc bnc" id="L1232" title="All 2 branches missed.">            return !this.set.contains(anObject);</span>
+        }
+
+        @Override
+        public String toString()
+        {
+<span class="nc" id="L1238">            return &quot;Predicates.notIn(&quot; + this.set + ')';</span>
+        }
+    }
+
+    private static final class NotEqualPredicate
+            extends Predicates&lt;Object&gt;
+    {
+        private static final long serialVersionUID = 1L;
+        private final Object compareObject;
+
+        private NotEqualPredicate(Object newCompareObject)
+<span class="nc" id="L1249">        {</span>
+<span class="nc" id="L1250">            this.compareObject = newCompareObject;</span>
+<span class="nc" id="L1251">        }</span>
+
+        @Override
+        public boolean accept(Object anObject)
+        {
+<span class="nc bnc" id="L1256" title="All 2 branches missed.">            return !this.compareObject.equals(anObject);</span>
+        }
+
+        @Override
+        public String toString()
+        {
+<span class="nc" id="L1262">            return &quot;Predicates.notEqual(&quot; + this.compareObject + ')';</span>
+        }
+    }
+
+    private static final class IsNull
+            extends Predicates&lt;Object&gt;
+    {
+        private static final long serialVersionUID = 1L;
+
+        @Override
+        public boolean accept(Object anObject)
+        {
+<span class="nc bnc" id="L1274" title="All 2 branches missed.">            return anObject == null;</span>
+        }
+
+        @Override
+        public String toString()
+        {
+<span class="nc" id="L1280">            return &quot;Predicates.isNull()&quot;;</span>
+        }
+    }
+
+    private static final class NotNull
+            extends Predicates&lt;Object&gt;
+    {
+        private static final long serialVersionUID = 1L;
+
+        @Override
+        public boolean accept(Object anObject)
+        {
+<span class="nc bnc" id="L1292" title="All 2 branches missed.">            return anObject != null;</span>
+        }
+
+        @Override
+        public String toString()
+        {
+<span class="nc" id="L1298">            return &quot;Predicates.notNull()&quot;;</span>
+        }
+    }
+
+    private static final class AssignableFromPredicate
+            extends Predicates&lt;Object&gt;
+    {
+        private static final long serialVersionUID = 1L;
+        private final Class&lt;?&gt; clazz;
+
+        private AssignableFromPredicate(Class&lt;?&gt; newClass)
+<span class="nc" id="L1309">        {</span>
+<span class="nc" id="L1310">            this.clazz = newClass;</span>
+<span class="nc" id="L1311">        }</span>
+
+        @Override
+        public boolean accept(Object anObject)
+        {
+<span class="nc" id="L1316">            return this.clazz.isAssignableFrom(anObject.getClass());</span>
+        }
+
+        @Override
+        public String toString()
+        {
+<span class="nc" id="L1322">            return &quot;Predicates.assignableFrom(&quot; + this.clazz.getName() + &quot;.class)&quot;;</span>
+        }
+    }
+
+    private static final class InstanceOfPredicate
+            extends Predicates&lt;Object&gt;
+    {
+        private static final long serialVersionUID = 1L;
+        private final Class&lt;?&gt; clazz;
+
+        private InstanceOfPredicate(Class&lt;?&gt; newClass)
+<span class="nc" id="L1333">        {</span>
+<span class="nc" id="L1334">            this.clazz = newClass;</span>
+<span class="nc" id="L1335">        }</span>
+
+        @Override
+        public boolean accept(Object anObject)
+        {
+<span class="nc" id="L1340">            return this.clazz.isInstance(anObject);</span>
+        }
+
+        @Override
+        public String toString()
+        {
+<span class="nc" id="L1346">            return &quot;Predicates.instanceOf(&quot; + this.clazz.getName() + &quot;.class)&quot;;</span>
+        }
+    }
+
+    private static final class NotInstanceOfPredicate
+            extends Predicates&lt;Object&gt;
+    {
+        private static final long serialVersionUID = 1L;
+        private final Class&lt;?&gt; clazz;
+
+        private NotInstanceOfPredicate(Class&lt;?&gt; newClass)
+<span class="nc" id="L1357">        {</span>
+<span class="nc" id="L1358">            this.clazz = newClass;</span>
+<span class="nc" id="L1359">        }</span>
+
+        @Override
+        public boolean accept(Object anObject)
+        {
+<span class="nc bnc" id="L1364" title="All 2 branches missed.">            return !this.clazz.isInstance(anObject);</span>
+        }
+
+        @Override
+        public String toString()
+        {
+<span class="nc" id="L1370">            return &quot;Predicates.notInstanceOf(&quot; + this.clazz.getName() + &quot;.class)&quot;;</span>
+        }
+    }
+
+    private static final class AlwaysTrue
+            extends Predicates&lt;Object&gt;
+    {
+        private static final long serialVersionUID = 1L;
+
+        @Override
+        public boolean accept(Object anObject)
+        {
+<span class="nc" id="L1382">            return true;</span>
+        }
+
+        @Override
+        public String toString()
+        {
+<span class="nc" id="L1388">            return &quot;Predicates.alwaysTrue()&quot;;</span>
+        }
+    }
+
+    private static final class AlwaysFalse
+            extends Predicates&lt;Object&gt;
+    {
+        private static final long serialVersionUID = 1L;
+
+        @Override
+        public boolean accept(Object anObject)
+        {
+<span class="nc" id="L1400">            return false;</span>
+        }
+
+        @Override
+        public String toString()
+        {
+<span class="nc" id="L1406">            return &quot;Predicates.alwaysFalse()&quot;;</span>
+        }
+    }
+
+    private static final class IdentityPredicate
+            extends Predicates&lt;Object&gt;
+    {
+        private static final long serialVersionUID = 1L;
+        private final Object twin;
+
+        private IdentityPredicate(Object object)
+<span class="nc" id="L1417">        {</span>
+<span class="nc" id="L1418">            this.twin = object;</span>
+<span class="nc" id="L1419">        }</span>
+
+        @Override
+        public boolean accept(Object anObject)
+        {
+<span class="nc bnc" id="L1424" title="All 2 branches missed.">            return this.twin == anObject;</span>
+        }
+
+        @Override
+        public String toString()
+        {
+<span class="nc" id="L1430">            return &quot;Predicates.sameAs(&quot; + this.twin + ')';</span>
+        }
+    }
+
+    private static final class NotIdentityPredicate
+            extends Predicates&lt;Object&gt;
+    {
+        private static final long serialVersionUID = 1L;
+        private final Object twin;
+
+        private NotIdentityPredicate(Object object)
+<span class="nc" id="L1441">        {</span>
+<span class="nc" id="L1442">            this.twin = object;</span>
+<span class="nc" id="L1443">        }</span>
+
+        @Override
+        public boolean accept(Object anObject)
+        {
+<span class="nc bnc" id="L1448" title="All 2 branches missed.">            return this.twin != anObject;</span>
+        }
+
+        @Override
+        public String toString()
+        {
+<span class="nc" id="L1454">            return &quot;Predicates.notSameAs(&quot; + this.twin + ')';</span>
+        }
+    }
+
+    private static final class SynchronizedPredicate&lt;T&gt; implements Predicate&lt;T&gt;
+    {
+        private static final long serialVersionUID = 1L;
+        private final Predicate&lt;T&gt; predicate;
+
+        private SynchronizedPredicate(Predicate&lt;T&gt; predicate)
+<span class="nc" id="L1464">        {</span>
+<span class="nc" id="L1465">            this.predicate = predicate;</span>
+<span class="nc" id="L1466">        }</span>
+
+        @Override
+        public boolean accept(T each)
+        {
+<span class="nc" id="L1471">            synchronized (each)</span>
+            {
+<span class="nc" id="L1473">                return this.predicate.accept(each);</span>
+            }
+        }
+    }
+
+    private static final class SubclassPredicate extends Predicates&lt;Class&lt;?&gt;&gt;
+    {
+        private static final long serialVersionUID = 1L;
+
+        private final Class&lt;?&gt; aClass;
+
+        private SubclassPredicate(Class&lt;?&gt; aClass)
+<span class="nc" id="L1485">        {</span>
+<span class="nc" id="L1486">            this.aClass = aClass;</span>
+<span class="nc" id="L1487">        }</span>
+
+        @Override
+        public boolean accept(Class&lt;?&gt; each)
+        {
+<span class="nc" id="L1492">            return this.aClass.isAssignableFrom(each);</span>
+        }
+    }
+
+    private static final class SuperclassPredicate extends Predicates&lt;Class&lt;?&gt;&gt;
+    {
+        private static final long serialVersionUID = 1L;
+
+        private final Class&lt;?&gt; aClass;
+
+        private SuperclassPredicate(Class&lt;?&gt; aClass)
+<span class="nc" id="L1503">        {</span>
+<span class="nc" id="L1504">            this.aClass = aClass;</span>
+<span class="nc" id="L1505">        }</span>
+
+        @Override
+        public boolean accept(Class&lt;?&gt; each)
+        {
+<span class="nc" id="L1510">            return each.isAssignableFrom(this.aClass);</span>
+        }
+    }
+
+    private static final class BindPredicate2&lt;T, P&gt; implements Predicate&lt;T&gt;
+    {
+        private static final long serialVersionUID = 1L;
+
+        private final Predicate2&lt;? super T, ? super P&gt; predicate;
+        private final P parameter;
+
+        private BindPredicate2(Predicate2&lt;? super T, ? super P&gt; predicate, P parameter)
+<span class="nc" id="L1522">        {</span>
+<span class="nc" id="L1523">            this.predicate = predicate;</span>
+<span class="nc" id="L1524">            this.parameter = parameter;</span>
+<span class="nc" id="L1525">        }</span>
+
+        @Override
+        public boolean accept(T each)
+        {
+<span class="nc" id="L1530">            return this.predicate.accept(each, this.parameter);</span>
+        }
+
+        @Override
+        public String toString()
+        {
+<span class="nc" id="L1536">            return &quot;Predicates.bind(&quot; + this.predicate + &quot;, &quot; + this.parameter + &quot;)&quot;;</span>
+        }
+    }
+
+    private static final class ThrowingPredicateAdapter&lt;T&gt; extends CheckedPredicate&lt;T&gt;
+    {
+        private static final long serialVersionUID = 1L;
+        private final ThrowingPredicate&lt;T&gt; throwingPredicate;
+
+        private ThrowingPredicateAdapter(ThrowingPredicate&lt;T&gt; throwingPredicate)
+<span class="nc" id="L1546">        {</span>
+<span class="nc" id="L1547">            this.throwingPredicate = throwingPredicate;</span>
+<span class="nc" id="L1548">        }</span>
+
+        @Override
+        public boolean safeAccept(T object) throws Exception
+        {
+<span class="nc" id="L1553">            return this.throwingPredicate.safeAccept(object);</span>
+        }
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.0.201801022044</span></div></body></html>

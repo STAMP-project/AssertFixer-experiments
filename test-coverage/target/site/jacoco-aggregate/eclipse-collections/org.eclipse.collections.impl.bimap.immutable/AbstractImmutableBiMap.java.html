@@ -1,0 +1,477 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>AbstractImmutableBiMap.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Eclipse Collections Test Coverage Aggregation</a> &gt; <a href="../index.html" class="el_bundle">eclipse-collections</a> &gt; <a href="index.source.html" class="el_package">org.eclipse.collections.impl.bimap.immutable</a> &gt; <span class="el_source">AbstractImmutableBiMap.java</span></div><h1>AbstractImmutableBiMap.java</h1><pre class="source lang-java linenums">/*
+ * Copyright (c) 2018 Goldman Sachs and others.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * and Eclipse Distribution License v. 1.0 which accompany this distribution.
+ * The Eclipse Public License is available at http://www.eclipse.org/legal/epl-v10.html
+ * and the Eclipse Distribution License is available at
+ * http://www.eclipse.org/org/documents/edl-v10.php.
+ */
+
+package org.eclipse.collections.impl.bimap.immutable;
+
+import java.io.Serializable;
+import java.util.Collection;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.Set;
+
+import org.eclipse.collections.api.RichIterable;
+import org.eclipse.collections.api.bag.ImmutableBag;
+import org.eclipse.collections.api.bag.primitive.ImmutableBooleanBag;
+import org.eclipse.collections.api.bag.primitive.ImmutableByteBag;
+import org.eclipse.collections.api.bag.primitive.ImmutableCharBag;
+import org.eclipse.collections.api.bag.primitive.ImmutableDoubleBag;
+import org.eclipse.collections.api.bag.primitive.ImmutableFloatBag;
+import org.eclipse.collections.api.bag.primitive.ImmutableIntBag;
+import org.eclipse.collections.api.bag.primitive.ImmutableLongBag;
+import org.eclipse.collections.api.bag.primitive.ImmutableShortBag;
+import org.eclipse.collections.api.bimap.ImmutableBiMap;
+import org.eclipse.collections.api.block.function.Function;
+import org.eclipse.collections.api.block.function.Function0;
+import org.eclipse.collections.api.block.function.Function2;
+import org.eclipse.collections.api.block.function.primitive.BooleanFunction;
+import org.eclipse.collections.api.block.function.primitive.ByteFunction;
+import org.eclipse.collections.api.block.function.primitive.CharFunction;
+import org.eclipse.collections.api.block.function.primitive.DoubleFunction;
+import org.eclipse.collections.api.block.function.primitive.FloatFunction;
+import org.eclipse.collections.api.block.function.primitive.IntFunction;
+import org.eclipse.collections.api.block.function.primitive.LongFunction;
+import org.eclipse.collections.api.block.function.primitive.ShortFunction;
+import org.eclipse.collections.api.block.predicate.Predicate;
+import org.eclipse.collections.api.block.predicate.Predicate2;
+import org.eclipse.collections.api.block.procedure.Procedure;
+import org.eclipse.collections.api.block.procedure.Procedure2;
+import org.eclipse.collections.api.map.ImmutableMap;
+import org.eclipse.collections.api.map.MutableMap;
+import org.eclipse.collections.api.map.primitive.ImmutableObjectDoubleMap;
+import org.eclipse.collections.api.map.primitive.ImmutableObjectLongMap;
+import org.eclipse.collections.api.map.primitive.ObjectDoubleMap;
+import org.eclipse.collections.api.map.primitive.ObjectLongMap;
+import org.eclipse.collections.api.multimap.set.ImmutableSetMultimap;
+import org.eclipse.collections.api.ordered.OrderedIterable;
+import org.eclipse.collections.api.partition.set.PartitionImmutableSet;
+import org.eclipse.collections.api.partition.set.PartitionMutableSet;
+import org.eclipse.collections.api.set.ImmutableSet;
+import org.eclipse.collections.api.set.MutableSet;
+import org.eclipse.collections.api.tuple.Pair;
+import org.eclipse.collections.impl.bimap.AbstractBiMap;
+import org.eclipse.collections.impl.bimap.mutable.HashBiMap;
+import org.eclipse.collections.impl.block.factory.Predicates;
+import org.eclipse.collections.impl.block.procedure.PartitionProcedure;
+import org.eclipse.collections.impl.block.procedure.SelectInstancesOfProcedure;
+import org.eclipse.collections.impl.factory.BiMaps;
+import org.eclipse.collections.impl.factory.Sets;
+import org.eclipse.collections.impl.list.fixed.ArrayAdapter;
+import org.eclipse.collections.impl.multimap.set.UnifiedSetMultimap;
+import org.eclipse.collections.impl.partition.set.PartitionUnifiedSet;
+import org.eclipse.collections.impl.set.mutable.UnifiedSet;
+import org.eclipse.collections.impl.utility.Iterate;
+import org.eclipse.collections.impl.utility.MapIterate;
+
+public abstract class AbstractImmutableBiMap&lt;K, V&gt; extends AbstractBiMap&lt;K, V&gt; implements ImmutableBiMap&lt;K, V&gt;, Map&lt;K, V&gt;
+{
+    private final ImmutableMap&lt;K, V&gt; delegate;
+    private final AbstractImmutableBiMap&lt;V, K&gt; inverse;
+
+    private AbstractImmutableBiMap(ImmutableMap&lt;K, V&gt; delegate, AbstractImmutableBiMap&lt;V, K&gt; valuesToKeys)
+<span class="nc" id="L78">    {</span>
+<span class="nc" id="L79">        this.delegate = delegate;</span>
+<span class="nc" id="L80">        this.inverse = valuesToKeys;</span>
+<span class="nc" id="L81">    }</span>
+
+    AbstractImmutableBiMap(ImmutableMap&lt;K, V&gt; map, ImmutableMap&lt;V, K&gt; inverse)
+<span class="nc" id="L84">    {</span>
+<span class="nc" id="L85">        this.delegate = map;</span>
+<span class="nc" id="L86">        this.inverse = new Inverse&lt;&gt;(inverse, this);</span>
+<span class="nc" id="L87">    }</span>
+
+    @Override
+    protected ImmutableMap&lt;K, V&gt; getDelegate()
+    {
+<span class="nc" id="L92">        return this.delegate;</span>
+    }
+
+    @Override
+    protected ImmutableMap&lt;V, K&gt; getInverse()
+    {
+<span class="nc" id="L98">        return this.inverse.delegate;</span>
+    }
+
+    @Override
+    public ImmutableBiMap&lt;K, V&gt; newWithKeyValue(K key, V value)
+    {
+<span class="nc" id="L104">        HashBiMap&lt;K, V&gt; map = new HashBiMap&lt;&gt;(this.delegate.castToMap());</span>
+<span class="nc" id="L105">        map.put(key, value);</span>
+<span class="nc" id="L106">        return map.toImmutable();</span>
+    }
+
+    @Override
+    public ImmutableBiMap&lt;K, V&gt; newWithAllKeyValues(Iterable&lt;? extends Pair&lt;? extends K, ? extends V&gt;&gt; keyValues)
+    {
+<span class="nc" id="L112">        HashBiMap&lt;K, V&gt; map = new HashBiMap&lt;&gt;(this.delegate.castToMap());</span>
+<span class="nc bnc" id="L113" title="All 2 branches missed.">        for (Pair&lt;? extends K, ? extends V&gt; keyValuePair : keyValues)</span>
+        {
+<span class="nc" id="L115">            map.put(keyValuePair.getOne(), keyValuePair.getTwo());</span>
+<span class="nc" id="L116">        }</span>
+<span class="nc" id="L117">        return map.toImmutable();</span>
+    }
+
+    @Override
+    public ImmutableBiMap&lt;K, V&gt; newWithAllKeyValueArguments(Pair&lt;? extends K, ? extends V&gt;... keyValuePairs)
+    {
+<span class="nc" id="L123">        return this.newWithAllKeyValues(ArrayAdapter.adapt(keyValuePairs));</span>
+    }
+
+    @Override
+    public ImmutableBiMap&lt;K, V&gt; newWithoutKey(K key)
+    {
+<span class="nc" id="L129">        HashBiMap&lt;K, V&gt; map = new HashBiMap&lt;&gt;(this.delegate.castToMap());</span>
+<span class="nc" id="L130">        map.removeKey(key);</span>
+<span class="nc" id="L131">        return map.toImmutable();</span>
+    }
+
+    @Override
+    public ImmutableBiMap&lt;K, V&gt; newWithoutAllKeys(Iterable&lt;? extends K&gt; keys)
+    {
+<span class="nc" id="L137">        HashBiMap&lt;K, V&gt; map = new HashBiMap&lt;&gt;(this.delegate.castToMap());</span>
+<span class="nc bnc" id="L138" title="All 2 branches missed.">        for (K key : keys)</span>
+        {
+<span class="nc" id="L140">            map.removeKey(key);</span>
+<span class="nc" id="L141">        }</span>
+<span class="nc" id="L142">        return map.toImmutable();</span>
+    }
+
+    @Override
+    public ImmutableBiMap&lt;V, K&gt; inverse()
+    {
+<span class="nc" id="L148">        return this.inverse;</span>
+    }
+
+    @Override
+    public ImmutableSetMultimap&lt;V, K&gt; flip()
+    {
+        // TODO: We could optimize this since we know the values are unique
+<span class="nc" id="L155">        return MapIterate.flip(this).toImmutable();</span>
+    }
+
+    @Override
+    public ImmutableBiMap&lt;V, K&gt; flipUniqueValues()
+    {
+<span class="nc" id="L161">        return this.inverse();</span>
+    }
+
+    @Override
+    public V put(K key, V value)
+    {
+<span class="nc" id="L167">        throw new UnsupportedOperationException(&quot;Cannot call put() on &quot; + this.getClass().getSimpleName());</span>
+    }
+
+    @Override
+    public void putAll(Map&lt;? extends K, ? extends V&gt; map)
+    {
+<span class="nc" id="L173">        throw new UnsupportedOperationException(&quot;Cannot call putAll() on &quot; + this.getClass().getSimpleName());</span>
+    }
+
+    @Override
+    public V remove(Object key)
+    {
+<span class="nc" id="L179">        throw new UnsupportedOperationException(&quot;Cannot call remove() on &quot; + this.getClass().getSimpleName());</span>
+    }
+
+    @Override
+    public void clear()
+    {
+<span class="nc" id="L185">        throw new UnsupportedOperationException(&quot;Cannot call clear() on &quot; + this.getClass().getSimpleName());</span>
+    }
+
+    @Override
+    public Set&lt;K&gt; keySet()
+    {
+<span class="nc" id="L191">        return this.delegate.castToMap().keySet();</span>
+    }
+
+    @Override
+    public Collection&lt;V&gt; values()
+    {
+<span class="nc" id="L197">        return this.delegate.castToMap().values();</span>
+    }
+
+    @Override
+    public Set&lt;Map.Entry&lt;K, V&gt;&gt; entrySet()
+    {
+<span class="nc" id="L203">        return this.delegate.castToMap().entrySet();</span>
+    }
+
+    @Override
+    public Iterator&lt;V&gt; iterator()
+    {
+<span class="nc" id="L209">        return this.delegate.iterator();</span>
+    }
+
+    @Override
+    public ImmutableBiMap&lt;K, V&gt; toImmutable()
+    {
+<span class="nc" id="L215">        return this;</span>
+    }
+
+    @Override
+    public Map&lt;K, V&gt; castToMap()
+    {
+<span class="nc" id="L221">        return this;</span>
+    }
+
+    public MutableMap&lt;K, V&gt; toMap()
+    {
+<span class="nc" id="L226">        return this.getDelegate().toMap();</span>
+    }
+
+    @Override
+    public &lt;K2, V2&gt; ImmutableBiMap&lt;K2, V2&gt; collect(Function2&lt;? super K, ? super V, Pair&lt;K2, V2&gt;&gt; function)
+    {
+<span class="nc" id="L232">        ImmutableMap&lt;K2, V2&gt; result = this.delegate.collect(function);</span>
+<span class="nc" id="L233">        return BiMaps.immutable.withAll(result);</span>
+    }
+
+    @Override
+    public &lt;VV&gt; ImmutableBag&lt;VV&gt; collect(Function&lt;? super V, ? extends VV&gt; function)
+    {
+<span class="nc" id="L239">        return this.delegate.collect(function);</span>
+    }
+
+    @Override
+    public &lt;R&gt; ImmutableBiMap&lt;K, R&gt; collectValues(Function2&lt;? super K, ? super V, ? extends R&gt; function)
+    {
+<span class="nc" id="L245">        ImmutableMap&lt;K, R&gt; result = this.delegate.collectValues(function);</span>
+<span class="nc" id="L246">        return BiMaps.immutable.withAll(result);</span>
+    }
+
+    @Override
+    public ImmutableBooleanBag collectBoolean(BooleanFunction&lt;? super V&gt; booleanFunction)
+    {
+<span class="nc" id="L252">        return this.delegate.collectBoolean(booleanFunction);</span>
+    }
+
+    @Override
+    public ImmutableByteBag collectByte(ByteFunction&lt;? super V&gt; byteFunction)
+    {
+<span class="nc" id="L258">        return this.delegate.collectByte(byteFunction);</span>
+    }
+
+    @Override
+    public ImmutableCharBag collectChar(CharFunction&lt;? super V&gt; charFunction)
+    {
+<span class="nc" id="L264">        return this.delegate.collectChar(charFunction);</span>
+    }
+
+    @Override
+    public ImmutableDoubleBag collectDouble(DoubleFunction&lt;? super V&gt; doubleFunction)
+    {
+<span class="nc" id="L270">        return this.delegate.collectDouble(doubleFunction);</span>
+    }
+
+    @Override
+    public ImmutableFloatBag collectFloat(FloatFunction&lt;? super V&gt; floatFunction)
+    {
+<span class="nc" id="L276">        return this.delegate.collectFloat(floatFunction);</span>
+    }
+
+    @Override
+    public ImmutableIntBag collectInt(IntFunction&lt;? super V&gt; intFunction)
+    {
+<span class="nc" id="L282">        return this.delegate.collectInt(intFunction);</span>
+    }
+
+    @Override
+    public ImmutableLongBag collectLong(LongFunction&lt;? super V&gt; longFunction)
+    {
+<span class="nc" id="L288">        return this.delegate.collectLong(longFunction);</span>
+    }
+
+    @Override
+    public ImmutableShortBag collectShort(ShortFunction&lt;? super V&gt; shortFunction)
+    {
+<span class="nc" id="L294">        return this.delegate.collectShort(shortFunction);</span>
+    }
+
+    @Override
+    public &lt;P, VV&gt; ImmutableBag&lt;VV&gt; collectWith(Function2&lt;? super V, ? super P, ? extends VV&gt; function, P parameter)
+    {
+<span class="nc" id="L300">        return this.delegate.collectWith(function, parameter);</span>
+    }
+
+    @Override
+    public &lt;VV&gt; ImmutableBag&lt;VV&gt; collectIf(Predicate&lt;? super V&gt; predicate, Function&lt;? super V, ? extends VV&gt; function)
+    {
+<span class="nc" id="L306">        return this.delegate.collectIf(predicate, function);</span>
+    }
+
+    @Override
+    public &lt;VV&gt; ImmutableBag&lt;VV&gt; flatCollect(Function&lt;? super V, ? extends Iterable&lt;VV&gt;&gt; function)
+    {
+<span class="nc" id="L312">        return this.delegate.flatCollect(function);</span>
+    }
+
+    @Override
+    public ImmutableBiMap&lt;K, V&gt; select(Predicate2&lt;? super K, ? super V&gt; predicate)
+    {
+<span class="nc" id="L318">        return MapIterate.selectMapOnEntry(this, predicate, HashBiMap.newMap()).toImmutable();</span>
+    }
+
+    @Override
+    public ImmutableBiMap&lt;K, V&gt; tap(Procedure&lt;? super V&gt; procedure)
+    {
+<span class="nc" id="L324">        this.forEach(procedure);</span>
+<span class="nc" id="L325">        return this;</span>
+    }
+
+    @Override
+    public ImmutableSet&lt;V&gt; select(Predicate&lt;? super V&gt; predicate)
+    {
+<span class="nc" id="L331">        return this.delegate.select(predicate, Sets.mutable.empty()).toImmutable();</span>
+    }
+
+    @Override
+    public &lt;P&gt; ImmutableSet&lt;V&gt; selectWith(Predicate2&lt;? super V, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc" id="L337">        return this.delegate.selectWith(predicate, parameter, Sets.mutable.empty()).toImmutable();</span>
+    }
+
+    @Override
+    public ImmutableBiMap&lt;K, V&gt; reject(Predicate2&lt;? super K, ? super V&gt; predicate)
+    {
+<span class="nc" id="L343">        return MapIterate.rejectMapOnEntry(this, predicate, HashBiMap.newMap()).toImmutable();</span>
+    }
+
+    @Override
+    public ImmutableSet&lt;V&gt; reject(Predicate&lt;? super V&gt; predicate)
+    {
+<span class="nc" id="L349">        return this.delegate.reject(predicate, Sets.mutable.empty()).toImmutable();</span>
+    }
+
+    @Override
+    public &lt;P&gt; ImmutableSet&lt;V&gt; rejectWith(Predicate2&lt;? super V, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc" id="L355">        return this.delegate.rejectWith(predicate, parameter, Sets.mutable.empty()).toImmutable();</span>
+    }
+
+    @Override
+    public PartitionImmutableSet&lt;V&gt; partition(Predicate&lt;? super V&gt; predicate)
+    {
+<span class="nc" id="L361">        PartitionMutableSet&lt;V&gt; result = new PartitionUnifiedSet&lt;&gt;();</span>
+<span class="nc" id="L362">        this.inverse.forEachKey(new PartitionProcedure&lt;&gt;(predicate, result));</span>
+<span class="nc" id="L363">        return result.toImmutable();</span>
+    }
+
+    @Override
+    public &lt;P&gt; PartitionImmutableSet&lt;V&gt; partitionWith(Predicate2&lt;? super V, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc" id="L369">        return this.partition(Predicates.bind(predicate, parameter));</span>
+    }
+
+    /**
+     * @deprecated in 8.0. Use {@link OrderedIterable#zip(Iterable)} instead.
+     */
+    @Override
+    @Deprecated
+    public &lt;S&gt; ImmutableSet&lt;Pair&lt;V, S&gt;&gt; zip(Iterable&lt;S&gt; that)
+    {
+<span class="nc bnc" id="L379" title="All 4 branches missed.">        if (that instanceof Collection || that instanceof RichIterable)</span>
+        {
+<span class="nc" id="L381">            int thatSize = Iterate.sizeOf(that);</span>
+<span class="nc" id="L382">            UnifiedSet&lt;Pair&lt;V, S&gt;&gt; target = UnifiedSet.newSet(Math.min(this.size(), thatSize));</span>
+<span class="nc" id="L383">            return this.delegate.zip(that, target).toImmutable();</span>
+        }
+<span class="nc" id="L385">        return this.delegate.zip(that, UnifiedSet.newSet()).toImmutable();</span>
+    }
+
+    /**
+     * @deprecated in 8.0. Use {@link OrderedIterable#zipWithIndex()} instead.
+     */
+    @Override
+    @Deprecated
+    public ImmutableSet&lt;Pair&lt;V, Integer&gt;&gt; zipWithIndex()
+    {
+<span class="nc" id="L395">        return this.delegate.zipWithIndex(UnifiedSet.newSet(this.size())).toImmutable();</span>
+    }
+
+    @Override
+    public &lt;V1&gt; ImmutableObjectLongMap&lt;V1&gt; sumByInt(Function&lt;? super V, ? extends V1&gt; groupBy, IntFunction&lt;? super V&gt; function)
+    {
+<span class="nc" id="L401">        ObjectLongMap&lt;V1&gt; map = this.delegate.sumByInt(groupBy, function);</span>
+<span class="nc" id="L402">        return map.toImmutable();</span>
+    }
+
+    @Override
+    public &lt;V1&gt; ImmutableObjectDoubleMap&lt;V1&gt; sumByFloat(Function&lt;? super V, ? extends V1&gt; groupBy, FloatFunction&lt;? super V&gt; function)
+    {
+<span class="nc" id="L408">        ObjectDoubleMap&lt;V1&gt; map = this.delegate.sumByFloat(groupBy, function);</span>
+<span class="nc" id="L409">        return map.toImmutable();</span>
+    }
+
+    @Override
+    public &lt;V1&gt; ImmutableObjectLongMap&lt;V1&gt; sumByLong(Function&lt;? super V, ? extends V1&gt; groupBy, LongFunction&lt;? super V&gt; function)
+    {
+<span class="nc" id="L415">        ObjectLongMap&lt;V1&gt; map = this.delegate.sumByLong(groupBy, function);</span>
+<span class="nc" id="L416">        return map.toImmutable();</span>
+    }
+
+    @Override
+    public &lt;V1&gt; ImmutableObjectDoubleMap&lt;V1&gt; sumByDouble(Function&lt;? super V, ? extends V1&gt; groupBy, DoubleFunction&lt;? super V&gt; function)
+    {
+<span class="nc" id="L422">        ObjectDoubleMap&lt;V1&gt; map = this.delegate.sumByDouble(groupBy, function);</span>
+<span class="nc" id="L423">        return map.toImmutable();</span>
+    }
+
+    @Override
+    public &lt;VV&gt; ImmutableSetMultimap&lt;VV, V&gt; groupBy(Function&lt;? super V, ? extends VV&gt; function)
+    {
+<span class="nc" id="L429">        return this.delegate.groupBy(function, new UnifiedSetMultimap&lt;VV, V&gt;()).toImmutable();</span>
+    }
+
+    @Override
+    public &lt;VV&gt; ImmutableSetMultimap&lt;VV, V&gt; groupByEach(Function&lt;? super V, ? extends Iterable&lt;VV&gt;&gt; function)
+    {
+<span class="nc" id="L435">        return this.delegate.groupByEach(function, new UnifiedSetMultimap&lt;&gt;()).toImmutable();</span>
+    }
+
+    @Override
+    public &lt;VV&gt; ImmutableBiMap&lt;VV, V&gt; groupByUniqueKey(Function&lt;? super V, ? extends VV&gt; function)
+    {
+<span class="nc" id="L441">        return BiMaps.immutable.withAll(this.delegate.groupByUniqueKey(function));</span>
+    }
+
+    @Override
+    public &lt;K2, V2&gt; ImmutableMap&lt;K2, V2&gt; aggregateBy(Function&lt;? super V, ? extends K2&gt; groupBy, Function0&lt;? extends V2&gt; zeroValueFactory, Function2&lt;? super V2, ? super V, ? extends V2&gt; nonMutatingAggregator)
+    {
+<span class="nc" id="L447">        return this.delegate.aggregateBy(groupBy, zeroValueFactory, nonMutatingAggregator);</span>
+    }
+
+    @Override
+    public &lt;K2, V2&gt; ImmutableMap&lt;K2, V2&gt; aggregateInPlaceBy(Function&lt;? super V, ? extends K2&gt; groupBy, Function0&lt;? extends V2&gt; zeroValueFactory, Procedure2&lt;? super V2, ? super V&gt; mutatingAggregator)
+    {
+<span class="nc" id="L453">        return this.delegate.aggregateInPlaceBy(groupBy, zeroValueFactory, mutatingAggregator);</span>
+    }
+
+    @Override
+    public &lt;S&gt; ImmutableSet&lt;S&gt; selectInstancesOf(Class&lt;S&gt; clazz)
+    {
+<span class="nc" id="L459">        MutableSet&lt;S&gt; result = new UnifiedSet&lt;&gt;();</span>
+<span class="nc" id="L460">        this.inverse.forEachKey(new SelectInstancesOfProcedure&lt;&gt;(clazz, result));</span>
+<span class="nc" id="L461">        return result.toImmutable();</span>
+    }
+
+    private static class Inverse&lt;K, V&gt; extends AbstractImmutableBiMap&lt;K, V&gt; implements Serializable
+    {
+        Inverse(ImmutableMap&lt;K, V&gt; delegate, AbstractImmutableBiMap&lt;V, K&gt; inverse)
+        {
+<span class="nc" id="L468">            super(delegate, inverse);</span>
+<span class="nc" id="L469">        }</span>
+
+        protected Object writeReplace()
+        {
+<span class="nc" id="L473">            return new ImmutableBiMapSerializationProxy&lt;&gt;(this);</span>
+        }
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.0.201801022044</span></div></body></html>

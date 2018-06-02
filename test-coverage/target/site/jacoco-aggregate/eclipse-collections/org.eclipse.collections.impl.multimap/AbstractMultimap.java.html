@@ -1,0 +1,267 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>AbstractMultimap.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Eclipse Collections Test Coverage Aggregation</a> &gt; <a href="../index.html" class="el_bundle">eclipse-collections</a> &gt; <a href="index.source.html" class="el_package">org.eclipse.collections.impl.multimap</a> &gt; <span class="el_source">AbstractMultimap.java</span></div><h1>AbstractMultimap.java</h1><pre class="source lang-java linenums">/*
+ * Copyright (c) 2016 Goldman Sachs.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * and Eclipse Distribution License v. 1.0 which accompany this distribution.
+ * The Eclipse Public License is available at http://www.eclipse.org/legal/epl-v10.html
+ * and the Eclipse Distribution License is available at
+ * http://www.eclipse.org/org/documents/edl-v10.php.
+ */
+
+package org.eclipse.collections.impl.multimap;
+
+import java.util.Map;
+
+import org.eclipse.collections.api.RichIterable;
+import org.eclipse.collections.api.bag.Bag;
+import org.eclipse.collections.api.bag.MutableBag;
+import org.eclipse.collections.api.block.function.Function;
+import org.eclipse.collections.api.block.function.Function2;
+import org.eclipse.collections.api.block.predicate.Predicate2;
+import org.eclipse.collections.api.block.procedure.Procedure;
+import org.eclipse.collections.api.block.procedure.Procedure2;
+import org.eclipse.collections.api.map.MapIterable;
+import org.eclipse.collections.api.multimap.Multimap;
+import org.eclipse.collections.api.multimap.MutableMultimap;
+import org.eclipse.collections.api.tuple.Pair;
+import org.eclipse.collections.impl.UnmodifiableRichIterable;
+import org.eclipse.collections.impl.block.factory.Functions;
+import org.eclipse.collections.impl.factory.Bags;
+import org.eclipse.collections.impl.tuple.Tuples;
+
+<span class="nc" id="L32">public abstract class AbstractMultimap&lt;K, V, C extends RichIterable&lt;V&gt;&gt;</span>
+        implements Multimap&lt;K, V&gt;
+{
+    protected abstract MapIterable&lt;K, C&gt; getMap();
+
+    /**
+     * Creates the collection of values for a single key.
+     * &lt;p&gt;
+     * Collections with weak, soft, or phantom references are not supported.
+     * Each call to {@code createCollection} should create a new instance.
+     * &lt;p&gt;
+     * The returned collection class determines whether duplicate key-value
+     * pairs are allowed.
+     *
+     * @return an empty collection of values
+     */
+    protected abstract C createCollection();
+
+    protected Function&lt;AbstractMultimap&lt;K, V, C&gt;, C&gt; createCollectionBlock()
+    {
+<span class="nc" id="L52">        return AbstractMultimap::createCollection;</span>
+    }
+
+    // Query Operations
+
+    @Override
+    public boolean containsKey(Object key)
+    {
+<span class="nc" id="L60">        return this.getMap().containsKey(key);</span>
+    }
+
+    @Override
+    public boolean containsValue(Object value)
+    {
+<span class="nc" id="L66">        return this.getMap().anySatisfy(collection -&gt; collection.contains(value));</span>
+    }
+
+    @Override
+    public boolean containsKeyAndValue(Object key, Object value)
+    {
+<span class="nc" id="L72">        C collection = this.getMap().get(key);</span>
+<span class="nc bnc" id="L73" title="All 4 branches missed.">        return collection != null &amp;&amp; collection.contains(value);</span>
+    }
+
+    // Views
+
+    @Override
+    public RichIterable&lt;K&gt; keysView()
+    {
+<span class="nc" id="L81">        return this.getMap().keysView();</span>
+    }
+
+    @Override
+    public RichIterable&lt;RichIterable&lt;V&gt;&gt; multiValuesView()
+    {
+<span class="nc" id="L87">        return this.getMap().valuesView().collect(UnmodifiableRichIterable::of);</span>
+    }
+
+    @Override
+    public Bag&lt;K&gt; keyBag()
+    {
+<span class="nc" id="L93">        MutableBag&lt;K&gt; bag = Bags.mutable.empty();</span>
+<span class="nc" id="L94">        this.getMap().forEachKeyValue((key, value) -&gt; bag.addOccurrences(key, value.size()));</span>
+<span class="nc" id="L95">        return bag;</span>
+    }
+
+    @Override
+    public RichIterable&lt;V&gt; valuesView()
+    {
+<span class="nc" id="L101">        return this.getMap().valuesView().flatCollect(Functions.&lt;Iterable&lt;V&gt;&gt;identity());</span>
+    }
+
+    @Override
+    public RichIterable&lt;Pair&lt;K, RichIterable&lt;V&gt;&gt;&gt; keyMultiValuePairsView()
+    {
+<span class="nc" id="L107">        return this.getMap().keyValuesView().collect(pair -&gt; Tuples.pair(pair.getOne(), UnmodifiableRichIterable.of(pair.getTwo())));</span>
+    }
+
+    @Override
+    public RichIterable&lt;Pair&lt;K, V&gt;&gt; keyValuePairsView()
+    {
+<span class="nc" id="L113">        return this.keyMultiValuePairsView().flatCollect(pair -&gt; pair.getTwo().collect(new KeyValuePairFunction&lt;&gt;(pair.getOne())));</span>
+    }
+
+    // Comparison and hashing
+
+    @Override
+    public boolean equals(Object object)
+    {
+<span class="nc bnc" id="L121" title="All 2 branches missed.">        if (object == this)</span>
+        {
+<span class="nc" id="L123">            return true;</span>
+        }
+<span class="nc bnc" id="L125" title="All 2 branches missed.">        if (object instanceof Multimap)</span>
+        {
+<span class="nc" id="L127">            Multimap&lt;?, ?&gt; that = (Multimap&lt;?, ?&gt;) object;</span>
+<span class="nc" id="L128">            return this.getMap().equals(that.toMap());</span>
+        }
+<span class="nc" id="L130">        return false;</span>
+    }
+
+    /**
+     * Returns the hash code for this multimap.
+     * &lt;p&gt;
+     * The hash code of a multimap is defined as the hash code of the map view,
+     * as returned by {@link Multimap#toMap()}.
+     *
+     * @see Map#hashCode()
+     */
+    @Override
+    public int hashCode()
+    {
+<span class="nc" id="L144">        return this.getMap().hashCode();</span>
+    }
+
+    /**
+     * Returns a string representation of the multimap, generated by calling
+     * {@code toString} on the map returned by {@link Multimap#toMap()}.
+     *
+     * @return a string representation of the multimap
+     */
+    @Override
+    public String toString()
+    {
+<span class="nc" id="L156">        return this.getMap().toString();</span>
+    }
+
+    @Override
+    public boolean notEmpty()
+    {
+<span class="nc bnc" id="L162" title="All 2 branches missed.">        return !this.isEmpty();</span>
+    }
+
+    @Override
+    public void forEachValue(Procedure&lt;? super V&gt; procedure)
+    {
+<span class="nc" id="L168">        this.getMap().forEachValue(collection -&gt; collection.forEach(procedure));</span>
+<span class="nc" id="L169">    }</span>
+
+    @Override
+    public void forEachKey(Procedure&lt;? super K&gt; procedure)
+    {
+<span class="nc" id="L174">        this.getMap().forEachKey(procedure);</span>
+<span class="nc" id="L175">    }</span>
+
+    @Override
+    public void forEachKeyValue(Procedure2&lt;? super K, ? super V&gt; procedure)
+    {
+<span class="nc" id="L180">        Procedure2&lt;V, K&gt; innerProcedure = (value, key) -&gt; procedure.value(key, value);</span>
+
+<span class="nc" id="L182">        this.getMap().forEachKeyValue((key, collection) -&gt; collection.forEachWith(innerProcedure, key));</span>
+<span class="nc" id="L183">    }</span>
+
+    @Override
+    public void forEachKeyMultiValues(Procedure2&lt;? super K, ? super Iterable&lt;V&gt;&gt; procedure)
+    {
+<span class="nc" id="L188">        this.getMap().forEachKeyValue(procedure);</span>
+<span class="nc" id="L189">    }</span>
+
+    @Override
+    public &lt;R extends MutableMultimap&lt;K, V&gt;&gt; R selectKeysValues(Predicate2&lt;? super K, ? super V&gt; predicate, R target)
+    {
+<span class="nc" id="L194">        this.getMap().forEachKeyValue((key, collection) -&gt; {</span>
+<span class="nc" id="L195">            RichIterable&lt;V&gt; selectedValues = collection.select(value -&gt; predicate.accept(key, value));</span>
+<span class="nc" id="L196">            target.putAll(key, selectedValues);</span>
+<span class="nc" id="L197">        });</span>
+<span class="nc" id="L198">        return target;</span>
+    }
+
+    @Override
+    public &lt;R extends MutableMultimap&lt;K, V&gt;&gt; R rejectKeysValues(Predicate2&lt;? super K, ? super V&gt; predicate, R target)
+    {
+<span class="nc" id="L204">        this.getMap().forEachKeyValue((key, collection) -&gt; {</span>
+<span class="nc" id="L205">            RichIterable&lt;V&gt; selectedValues = collection.reject(value -&gt; predicate.accept(key, value));</span>
+<span class="nc" id="L206">            target.putAll(key, selectedValues);</span>
+<span class="nc" id="L207">        });</span>
+<span class="nc" id="L208">        return target;</span>
+    }
+
+    @Override
+    public &lt;R extends MutableMultimap&lt;K, V&gt;&gt; R selectKeysMultiValues(Predicate2&lt;? super K, ? super Iterable&lt;V&gt;&gt; predicate, R target)
+    {
+<span class="nc" id="L214">        this.forEachKeyMultiValues((key, collection) -&gt; {</span>
+<span class="nc bnc" id="L215" title="All 2 branches missed.">            if (predicate.accept(key, collection))</span>
+            {
+<span class="nc" id="L217">                target.putAll(key, collection);</span>
+            }
+<span class="nc" id="L219">        });</span>
+<span class="nc" id="L220">        return target;</span>
+    }
+
+    @Override
+    public &lt;R extends MutableMultimap&lt;K, V&gt;&gt; R rejectKeysMultiValues(Predicate2&lt;? super K, ? super Iterable&lt;V&gt;&gt; predicate, R target)
+    {
+<span class="nc" id="L226">        this.forEachKeyMultiValues((key, collection) -&gt; {</span>
+<span class="nc bnc" id="L227" title="All 2 branches missed.">            if (!predicate.accept(key, collection))</span>
+            {
+<span class="nc" id="L229">                target.putAll(key, collection);</span>
+            }
+<span class="nc" id="L231">        });</span>
+<span class="nc" id="L232">        return target;</span>
+    }
+
+    private static final class KeyValuePairFunction&lt;V, K&gt; implements Function&lt;V, Pair&lt;K, V&gt;&gt;
+    {
+        private static final long serialVersionUID = 1L;
+
+        private final K key;
+
+        private KeyValuePairFunction(K key)
+<span class="nc" id="L242">        {</span>
+<span class="nc" id="L243">            this.key = key;</span>
+<span class="nc" id="L244">        }</span>
+
+        @Override
+        public Pair&lt;K, V&gt; valueOf(V value)
+        {
+<span class="nc" id="L249">            return Tuples.pair(this.key, value);</span>
+        }
+    }
+
+    @Override
+    public &lt;K2, V2, R extends MutableMultimap&lt;K2, V2&gt;&gt; R collectKeysValues(Function2&lt;? super K, ? super V, Pair&lt;K2, V2&gt;&gt; function, R target)
+    {
+<span class="nc" id="L256">        this.getMap().forEachKeyValue((key, collection) -&gt; collection.each(value -&gt; target.add(function.value(key, value))));</span>
+<span class="nc" id="L257">        return target;</span>
+    }
+
+    @Override
+    public &lt;V2, R extends MutableMultimap&lt;K, V2&gt;&gt; R collectValues(Function&lt;? super V, ? extends V2&gt; function, R target)
+    {
+<span class="nc" id="L263">        this.getMap().forEachKeyValue((key, collection) -&gt; target.putAll(key, collection.collect(function)));</span>
+<span class="nc" id="L264">        return target;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.0.201801022044</span></div></body></html>

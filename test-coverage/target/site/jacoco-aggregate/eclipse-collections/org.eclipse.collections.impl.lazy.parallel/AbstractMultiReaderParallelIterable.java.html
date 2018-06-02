@@ -1,0 +1,781 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>AbstractMultiReaderParallelIterable.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Eclipse Collections Test Coverage Aggregation</a> &gt; <a href="../index.html" class="el_bundle">eclipse-collections</a> &gt; <a href="index.source.html" class="el_package">org.eclipse.collections.impl.lazy.parallel</a> &gt; <span class="el_source">AbstractMultiReaderParallelIterable.java</span></div><h1>AbstractMultiReaderParallelIterable.java</h1><pre class="source lang-java linenums">/*
+ * Copyright (c) 2016 Goldman Sachs.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * and Eclipse Distribution License v. 1.0 which accompany this distribution.
+ * The Eclipse Public License is available at http://www.eclipse.org/legal/epl-v10.html
+ * and the Eclipse Distribution License is available at
+ * http://www.eclipse.org/org/documents/edl-v10.php.
+ */
+
+package org.eclipse.collections.impl.lazy.parallel;
+
+import java.util.Comparator;
+import java.util.concurrent.locks.ReadWriteLock;
+
+import org.eclipse.collections.api.ParallelIterable;
+import org.eclipse.collections.api.bag.MutableBag;
+import org.eclipse.collections.api.bag.sorted.MutableSortedBag;
+import org.eclipse.collections.api.block.function.Function;
+import org.eclipse.collections.api.block.function.Function0;
+import org.eclipse.collections.api.block.function.Function2;
+import org.eclipse.collections.api.block.function.primitive.DoubleFunction;
+import org.eclipse.collections.api.block.function.primitive.FloatFunction;
+import org.eclipse.collections.api.block.function.primitive.IntFunction;
+import org.eclipse.collections.api.block.function.primitive.LongFunction;
+import org.eclipse.collections.api.block.predicate.Predicate;
+import org.eclipse.collections.api.block.predicate.Predicate2;
+import org.eclipse.collections.api.block.procedure.Procedure;
+import org.eclipse.collections.api.block.procedure.Procedure2;
+import org.eclipse.collections.api.list.MutableList;
+import org.eclipse.collections.api.list.ParallelListIterable;
+import org.eclipse.collections.api.map.MapIterable;
+import org.eclipse.collections.api.map.MutableMap;
+import org.eclipse.collections.api.map.sorted.MutableSortedMap;
+import org.eclipse.collections.api.set.MutableSet;
+import org.eclipse.collections.api.set.ParallelUnsortedSetIterable;
+import org.eclipse.collections.api.set.sorted.MutableSortedSet;
+import org.eclipse.collections.impl.lazy.parallel.list.MultiReaderParallelListIterable;
+import org.eclipse.collections.impl.lazy.parallel.set.MultiReaderParallelUnsortedSetIterable;
+
+public abstract class AbstractMultiReaderParallelIterable&lt;T, PI extends ParallelIterable&lt;T&gt;&gt; implements ParallelIterable&lt;T&gt;
+{
+    protected final PI delegate;
+    protected final ReadWriteLock lock;
+
+    protected AbstractMultiReaderParallelIterable(PI delegate, ReadWriteLock lock)
+<span class="nc" id="L47">    {</span>
+<span class="nc" id="L48">        this.delegate = delegate;</span>
+<span class="nc" id="L49">        this.lock = lock;</span>
+<span class="nc" id="L50">    }</span>
+
+    protected &lt;A&gt; ParallelListIterable&lt;A&gt; wrap(ParallelListIterable&lt;A&gt; wrapped)
+    {
+<span class="nc" id="L54">        return new MultiReaderParallelListIterable&lt;&gt;(wrapped, this.lock);</span>
+    }
+
+    protected &lt;A&gt; ParallelUnsortedSetIterable&lt;A&gt; wrap(ParallelUnsortedSetIterable&lt;A&gt; wrapped)
+    {
+<span class="nc" id="L59">        return new MultiReaderParallelUnsortedSetIterable&lt;&gt;(wrapped, this.lock);</span>
+    }
+
+    protected &lt;A&gt; ParallelIterable&lt;A&gt; wrap(ParallelIterable&lt;A&gt; wrapped)
+    {
+<span class="nc" id="L64">        return new MultiReaderParallelIterable&lt;&gt;(wrapped, this.lock);</span>
+    }
+
+    @Override
+    public void forEach(Procedure&lt;? super T&gt; procedure)
+    {
+<span class="nc" id="L70">        this.lock.readLock().lock();</span>
+        try
+        {
+<span class="nc" id="L73">            this.delegate.forEach(procedure);</span>
+        }
+        finally
+        {
+<span class="nc" id="L77">            this.lock.readLock().unlock();</span>
+        }
+<span class="nc" id="L79">    }</span>
+
+    @Override
+    public &lt;P&gt; void forEachWith(Procedure2&lt;? super T, ? super P&gt; procedure, P parameter)
+    {
+<span class="nc" id="L84">        this.lock.readLock().lock();</span>
+        try
+        {
+<span class="nc" id="L87">            this.delegate.forEachWith(procedure, parameter);</span>
+        }
+        finally
+        {
+<span class="nc" id="L91">            this.lock.readLock().unlock();</span>
+        }
+<span class="nc" id="L93">    }</span>
+
+    @Override
+    public T detect(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L98">        this.lock.readLock().lock();</span>
+        try
+        {
+<span class="nc" id="L101">            return this.delegate.detect(predicate);</span>
+        }
+        finally
+        {
+<span class="nc" id="L105">            this.lock.readLock().unlock();</span>
+        }
+    }
+
+    @Override
+    public &lt;P&gt; T detectWith(Predicate2&lt;? super T, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc" id="L112">        this.lock.readLock().lock();</span>
+        try
+        {
+<span class="nc" id="L115">            return this.delegate.detectWith(predicate, parameter);</span>
+        }
+        finally
+        {
+<span class="nc" id="L119">            this.lock.readLock().unlock();</span>
+        }
+    }
+
+    @Override
+    public T detectIfNone(Predicate&lt;? super T&gt; predicate, Function0&lt;? extends T&gt; function)
+    {
+<span class="nc" id="L126">        this.lock.readLock().lock();</span>
+        try
+        {
+<span class="nc" id="L129">            return this.delegate.detectIfNone(predicate, function);</span>
+        }
+        finally
+        {
+<span class="nc" id="L133">            this.lock.readLock().unlock();</span>
+        }
+    }
+
+    @Override
+    public &lt;P&gt; T detectWithIfNone(Predicate2&lt;? super T, ? super P&gt; predicate, P parameter, Function0&lt;? extends T&gt; function)
+    {
+<span class="nc" id="L140">        this.lock.readLock().lock();</span>
+        try
+        {
+<span class="nc" id="L143">            return this.delegate.detectWithIfNone(predicate, parameter, function);</span>
+        }
+        finally
+        {
+<span class="nc" id="L147">            this.lock.readLock().unlock();</span>
+        }
+    }
+
+    @Override
+    public int count(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L154">        this.lock.readLock().lock();</span>
+        try
+        {
+<span class="nc" id="L157">            return this.delegate.count(predicate);</span>
+        }
+        finally
+        {
+<span class="nc" id="L161">            this.lock.readLock().unlock();</span>
+        }
+    }
+
+    @Override
+    public &lt;P&gt; int countWith(Predicate2&lt;? super T, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc" id="L168">        this.lock.readLock().lock();</span>
+        try
+        {
+<span class="nc" id="L171">            return this.delegate.countWith(predicate, parameter);</span>
+        }
+        finally
+        {
+<span class="nc" id="L175">            this.lock.readLock().unlock();</span>
+        }
+    }
+
+    @Override
+    public boolean anySatisfy(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L182">        this.lock.readLock().lock();</span>
+        try
+        {
+<span class="nc" id="L185">            return this.delegate.anySatisfy(predicate);</span>
+        }
+        finally
+        {
+<span class="nc" id="L189">            this.lock.readLock().unlock();</span>
+        }
+    }
+
+    @Override
+    public &lt;P&gt; boolean anySatisfyWith(Predicate2&lt;? super T, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc" id="L196">        this.lock.readLock().lock();</span>
+        try
+        {
+<span class="nc" id="L199">            return this.delegate.anySatisfyWith(predicate, parameter);</span>
+        }
+        finally
+        {
+<span class="nc" id="L203">            this.lock.readLock().unlock();</span>
+        }
+    }
+
+    @Override
+    public boolean allSatisfy(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L210">        this.lock.readLock().lock();</span>
+        try
+        {
+<span class="nc" id="L213">            return this.delegate.allSatisfy(predicate);</span>
+        }
+        finally
+        {
+<span class="nc" id="L217">            this.lock.readLock().unlock();</span>
+        }
+    }
+
+    @Override
+    public &lt;P&gt; boolean allSatisfyWith(Predicate2&lt;? super T, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc" id="L224">        this.lock.readLock().lock();</span>
+        try
+        {
+<span class="nc" id="L227">            return this.delegate.allSatisfyWith(predicate, parameter);</span>
+        }
+        finally
+        {
+<span class="nc" id="L231">            this.lock.readLock().unlock();</span>
+        }
+    }
+
+    @Override
+    public boolean noneSatisfy(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L238">        this.lock.readLock().lock();</span>
+        try
+        {
+<span class="nc" id="L241">            return this.delegate.noneSatisfy(predicate);</span>
+        }
+        finally
+        {
+<span class="nc" id="L245">            this.lock.readLock().unlock();</span>
+        }
+    }
+
+    @Override
+    public &lt;P&gt; boolean noneSatisfyWith(Predicate2&lt;? super T, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc" id="L252">        this.lock.readLock().lock();</span>
+        try
+        {
+<span class="nc" id="L255">            return this.delegate.noneSatisfyWith(predicate, parameter);</span>
+        }
+        finally
+        {
+<span class="nc" id="L259">            this.lock.readLock().unlock();</span>
+        }
+    }
+
+    @Override
+    public MutableList&lt;T&gt; toList()
+    {
+<span class="nc" id="L266">        this.lock.readLock().lock();</span>
+        try
+        {
+<span class="nc" id="L269">            return this.delegate.toList();</span>
+        }
+        finally
+        {
+<span class="nc" id="L273">            this.lock.readLock().unlock();</span>
+        }
+    }
+
+    @Override
+    public MutableList&lt;T&gt; toSortedList()
+    {
+<span class="nc" id="L280">        this.lock.readLock().lock();</span>
+        try
+        {
+<span class="nc" id="L283">            return this.delegate.toSortedList();</span>
+        }
+        finally
+        {
+<span class="nc" id="L287">            this.lock.readLock().unlock();</span>
+        }
+    }
+
+    @Override
+    public MutableList&lt;T&gt; toSortedList(Comparator&lt;? super T&gt; comparator)
+    {
+<span class="nc" id="L294">        this.lock.readLock().lock();</span>
+        try
+        {
+<span class="nc" id="L297">            return this.delegate.toSortedList(comparator);</span>
+        }
+        finally
+        {
+<span class="nc" id="L301">            this.lock.readLock().unlock();</span>
+        }
+    }
+
+    @Override
+    public &lt;V extends Comparable&lt;? super V&gt;&gt; MutableList&lt;T&gt; toSortedListBy(Function&lt;? super T, ? extends V&gt; function)
+    {
+<span class="nc" id="L308">        this.lock.readLock().lock();</span>
+        try
+        {
+<span class="nc" id="L311">            return this.delegate.toSortedListBy(function);</span>
+        }
+        finally
+        {
+<span class="nc" id="L315">            this.lock.readLock().unlock();</span>
+        }
+    }
+
+    @Override
+    public MutableSet&lt;T&gt; toSet()
+    {
+<span class="nc" id="L322">        this.lock.readLock().lock();</span>
+        try
+        {
+<span class="nc" id="L325">            return this.delegate.toSet();</span>
+        }
+        finally
+        {
+<span class="nc" id="L329">            this.lock.readLock().unlock();</span>
+        }
+    }
+
+    @Override
+    public MutableSortedSet&lt;T&gt; toSortedSet()
+    {
+<span class="nc" id="L336">        this.lock.readLock().lock();</span>
+        try
+        {
+<span class="nc" id="L339">            return this.delegate.toSortedSet();</span>
+        }
+        finally
+        {
+<span class="nc" id="L343">            this.lock.readLock().unlock();</span>
+        }
+    }
+
+    @Override
+    public MutableSortedSet&lt;T&gt; toSortedSet(Comparator&lt;? super T&gt; comparator)
+    {
+<span class="nc" id="L350">        this.lock.readLock().lock();</span>
+        try
+        {
+<span class="nc" id="L353">            return this.delegate.toSortedSet(comparator);</span>
+        }
+        finally
+        {
+<span class="nc" id="L357">            this.lock.readLock().unlock();</span>
+        }
+    }
+
+    @Override
+    public &lt;V extends Comparable&lt;? super V&gt;&gt; MutableSortedSet&lt;T&gt; toSortedSetBy(Function&lt;? super T, ? extends V&gt; function)
+    {
+<span class="nc" id="L364">        this.lock.readLock().lock();</span>
+        try
+        {
+<span class="nc" id="L367">            return this.delegate.toSortedSetBy(function);</span>
+        }
+        finally
+        {
+<span class="nc" id="L371">            this.lock.readLock().unlock();</span>
+        }
+    }
+
+    @Override
+    public MutableBag&lt;T&gt; toBag()
+    {
+<span class="nc" id="L378">        this.lock.readLock().lock();</span>
+        try
+        {
+<span class="nc" id="L381">            return this.delegate.toBag();</span>
+        }
+        finally
+        {
+<span class="nc" id="L385">            this.lock.readLock().unlock();</span>
+        }
+    }
+
+    @Override
+    public MutableSortedBag&lt;T&gt; toSortedBag()
+    {
+<span class="nc" id="L392">        this.lock.readLock().lock();</span>
+        try
+        {
+<span class="nc" id="L395">            return this.delegate.toSortedBag();</span>
+        }
+        finally
+        {
+<span class="nc" id="L399">            this.lock.readLock().unlock();</span>
+        }
+    }
+
+    @Override
+    public MutableSortedBag&lt;T&gt; toSortedBag(Comparator&lt;? super T&gt; comparator)
+    {
+<span class="nc" id="L406">        this.lock.readLock().lock();</span>
+        try
+        {
+<span class="nc" id="L409">            return this.delegate.toSortedBag(comparator);</span>
+        }
+        finally
+        {
+<span class="nc" id="L413">            this.lock.readLock().unlock();</span>
+        }
+    }
+
+    @Override
+    public &lt;V extends Comparable&lt;? super V&gt;&gt; MutableSortedBag&lt;T&gt; toSortedBagBy(Function&lt;? super T, ? extends V&gt; function)
+    {
+<span class="nc" id="L420">        this.lock.readLock().lock();</span>
+        try
+        {
+<span class="nc" id="L423">            return this.delegate.toSortedBagBy(function);</span>
+        }
+        finally
+        {
+<span class="nc" id="L427">            this.lock.readLock().unlock();</span>
+        }
+    }
+
+    @Override
+    public &lt;NK, NV&gt; MutableMap&lt;NK, NV&gt; toMap(Function&lt;? super T, ? extends NK&gt; keyFunction, Function&lt;? super T, ? extends NV&gt; valueFunction)
+    {
+<span class="nc" id="L434">        this.lock.readLock().lock();</span>
+        try
+        {
+<span class="nc" id="L437">            return this.delegate.toMap(keyFunction, valueFunction);</span>
+        }
+        finally
+        {
+<span class="nc" id="L441">            this.lock.readLock().unlock();</span>
+        }
+    }
+
+    @Override
+    public &lt;NK, NV&gt; MutableSortedMap&lt;NK, NV&gt; toSortedMap(Function&lt;? super T, ? extends NK&gt; keyFunction, Function&lt;? super T, ? extends NV&gt; valueFunction)
+    {
+<span class="nc" id="L448">        this.lock.readLock().lock();</span>
+        try
+        {
+<span class="nc" id="L451">            return this.delegate.toSortedMap(keyFunction, valueFunction);</span>
+        }
+        finally
+        {
+<span class="nc" id="L455">            this.lock.readLock().unlock();</span>
+        }
+    }
+
+    @Override
+    public &lt;NK, NV&gt; MutableSortedMap&lt;NK, NV&gt; toSortedMap(Comparator&lt;? super NK&gt; comparator, Function&lt;? super T, ? extends NK&gt; keyFunction, Function&lt;? super T, ? extends NV&gt; valueFunction)
+    {
+<span class="nc" id="L462">        this.lock.readLock().lock();</span>
+        try
+        {
+<span class="nc" id="L465">            return this.delegate.toSortedMap(comparator, keyFunction, valueFunction);</span>
+        }
+        finally
+        {
+<span class="nc" id="L469">            this.lock.readLock().unlock();</span>
+        }
+    }
+
+    @Override
+    public Object[] toArray()
+    {
+<span class="nc" id="L476">        this.lock.readLock().lock();</span>
+        try
+        {
+<span class="nc" id="L479">            return this.delegate.toArray();</span>
+        }
+        finally
+        {
+<span class="nc" id="L483">            this.lock.readLock().unlock();</span>
+        }
+    }
+
+    @Override
+    public &lt;T1&gt; T1[] toArray(T1[] target)
+    {
+<span class="nc" id="L490">        this.lock.readLock().lock();</span>
+        try
+        {
+<span class="nc" id="L493">            return this.delegate.toArray(target);</span>
+        }
+        finally
+        {
+<span class="nc" id="L497">            this.lock.readLock().unlock();</span>
+        }
+    }
+
+    @Override
+    public T min(Comparator&lt;? super T&gt; comparator)
+    {
+<span class="nc" id="L504">        this.lock.readLock().lock();</span>
+        try
+        {
+<span class="nc" id="L507">            return this.delegate.min(comparator);</span>
+        }
+        finally
+        {
+<span class="nc" id="L511">            this.lock.readLock().unlock();</span>
+        }
+    }
+
+    @Override
+    public T max(Comparator&lt;? super T&gt; comparator)
+    {
+<span class="nc" id="L518">        this.lock.readLock().lock();</span>
+        try
+        {
+<span class="nc" id="L521">            return this.delegate.max(comparator);</span>
+        }
+        finally
+        {
+<span class="nc" id="L525">            this.lock.readLock().unlock();</span>
+        }
+    }
+
+    @Override
+    public T min()
+    {
+<span class="nc" id="L532">        this.lock.readLock().lock();</span>
+        try
+        {
+<span class="nc" id="L535">            return this.delegate.min();</span>
+        }
+        finally
+        {
+<span class="nc" id="L539">            this.lock.readLock().unlock();</span>
+        }
+    }
+
+    @Override
+    public T max()
+    {
+<span class="nc" id="L546">        this.lock.readLock().lock();</span>
+        try
+        {
+<span class="nc" id="L549">            return this.delegate.max();</span>
+        }
+        finally
+        {
+<span class="nc" id="L553">            this.lock.readLock().unlock();</span>
+        }
+    }
+
+    @Override
+    public &lt;V extends Comparable&lt;? super V&gt;&gt; T minBy(Function&lt;? super T, ? extends V&gt; function)
+    {
+<span class="nc" id="L560">        this.lock.readLock().lock();</span>
+        try
+        {
+<span class="nc" id="L563">            return this.delegate.minBy(function);</span>
+        }
+        finally
+        {
+<span class="nc" id="L567">            this.lock.readLock().unlock();</span>
+        }
+    }
+
+    @Override
+    public &lt;V extends Comparable&lt;? super V&gt;&gt; T maxBy(Function&lt;? super T, ? extends V&gt; function)
+    {
+<span class="nc" id="L574">        this.lock.readLock().lock();</span>
+        try
+        {
+<span class="nc" id="L577">            return this.delegate.maxBy(function);</span>
+        }
+        finally
+        {
+<span class="nc" id="L581">            this.lock.readLock().unlock();</span>
+        }
+    }
+
+    @Override
+    public long sumOfInt(IntFunction&lt;? super T&gt; function)
+    {
+<span class="nc" id="L588">        this.lock.readLock().lock();</span>
+        try
+        {
+<span class="nc" id="L591">            return this.delegate.sumOfInt(function);</span>
+        }
+        finally
+        {
+<span class="nc" id="L595">            this.lock.readLock().unlock();</span>
+        }
+    }
+
+    @Override
+    public double sumOfFloat(FloatFunction&lt;? super T&gt; function)
+    {
+<span class="nc" id="L602">        this.lock.readLock().lock();</span>
+        try
+        {
+<span class="nc" id="L605">            return this.delegate.sumOfFloat(function);</span>
+        }
+        finally
+        {
+<span class="nc" id="L609">            this.lock.readLock().unlock();</span>
+        }
+    }
+
+    @Override
+    public long sumOfLong(LongFunction&lt;? super T&gt; function)
+    {
+<span class="nc" id="L616">        this.lock.readLock().lock();</span>
+        try
+        {
+<span class="nc" id="L619">            return this.delegate.sumOfLong(function);</span>
+        }
+        finally
+        {
+<span class="nc" id="L623">            this.lock.readLock().unlock();</span>
+        }
+    }
+
+    @Override
+    public double sumOfDouble(DoubleFunction&lt;? super T&gt; function)
+    {
+<span class="nc" id="L630">        this.lock.readLock().lock();</span>
+        try
+        {
+<span class="nc" id="L633">            return this.delegate.sumOfDouble(function);</span>
+        }
+        finally
+        {
+<span class="nc" id="L637">            this.lock.readLock().unlock();</span>
+        }
+    }
+
+    @Override
+    public String makeString()
+    {
+<span class="nc" id="L644">        this.lock.readLock().lock();</span>
+        try
+        {
+<span class="nc" id="L647">            return this.delegate.makeString();</span>
+        }
+        finally
+        {
+<span class="nc" id="L651">            this.lock.readLock().unlock();</span>
+        }
+    }
+
+    @Override
+    public String makeString(String separator)
+    {
+<span class="nc" id="L658">        this.lock.readLock().lock();</span>
+        try
+        {
+<span class="nc" id="L661">            return this.delegate.makeString(separator);</span>
+        }
+        finally
+        {
+<span class="nc" id="L665">            this.lock.readLock().unlock();</span>
+        }
+    }
+
+    @Override
+    public String makeString(String start, String separator, String end)
+    {
+<span class="nc" id="L672">        this.lock.readLock().lock();</span>
+        try
+        {
+<span class="nc" id="L675">            return this.delegate.makeString(start, separator, end);</span>
+        }
+        finally
+        {
+<span class="nc" id="L679">            this.lock.readLock().unlock();</span>
+        }
+    }
+
+    @Override
+    public void appendString(Appendable appendable)
+    {
+<span class="nc" id="L686">        this.lock.readLock().lock();</span>
+        try
+        {
+<span class="nc" id="L689">            this.delegate.appendString(appendable);</span>
+        }
+        finally
+        {
+<span class="nc" id="L693">            this.lock.readLock().unlock();</span>
+        }
+<span class="nc" id="L695">    }</span>
+
+    @Override
+    public void appendString(Appendable appendable, String separator)
+    {
+<span class="nc" id="L700">        this.lock.readLock().lock();</span>
+        try
+        {
+<span class="nc" id="L703">            this.delegate.appendString(appendable, separator);</span>
+        }
+        finally
+        {
+<span class="nc" id="L707">            this.lock.readLock().unlock();</span>
+        }
+<span class="nc" id="L709">    }</span>
+
+    @Override
+    public void appendString(Appendable appendable, String start, String separator, String end)
+    {
+<span class="nc" id="L714">        this.lock.readLock().lock();</span>
+        try
+        {
+<span class="nc" id="L717">            this.delegate.appendString(appendable, start, separator, end);</span>
+        }
+        finally
+        {
+<span class="nc" id="L721">            this.lock.readLock().unlock();</span>
+        }
+<span class="nc" id="L723">    }</span>
+
+    @Override
+    public &lt;V&gt; MapIterable&lt;V, T&gt; groupByUniqueKey(Function&lt;? super T, ? extends V&gt; function)
+    {
+<span class="nc" id="L728">        this.lock.readLock().lock();</span>
+        try
+        {
+<span class="nc" id="L731">            return this.delegate.groupByUniqueKey(function);</span>
+        }
+        finally
+        {
+<span class="nc" id="L735">            this.lock.readLock().unlock();</span>
+        }
+    }
+
+    @Override
+    public &lt;K, V&gt; MapIterable&lt;K, V&gt; aggregateInPlaceBy(Function&lt;? super T, ? extends K&gt; groupBy, Function0&lt;? extends V&gt; zeroValueFactory, Procedure2&lt;? super V, ? super T&gt; mutatingAggregator)
+    {
+<span class="nc" id="L742">        this.lock.readLock().lock();</span>
+        try
+        {
+<span class="nc" id="L745">            return this.delegate.aggregateInPlaceBy(groupBy, zeroValueFactory, mutatingAggregator);</span>
+        }
+        finally
+        {
+<span class="nc" id="L749">            this.lock.readLock().unlock();</span>
+        }
+    }
+
+    @Override
+    public &lt;K, V&gt; MapIterable&lt;K, V&gt; aggregateBy(Function&lt;? super T, ? extends K&gt; groupBy, Function0&lt;? extends V&gt; zeroValueFactory, Function2&lt;? super V, ? super T, ? extends V&gt; nonMutatingAggregator)
+    {
+<span class="nc" id="L756">        this.lock.readLock().lock();</span>
+        try
+        {
+<span class="nc" id="L759">            return this.delegate.aggregateBy(groupBy, zeroValueFactory, nonMutatingAggregator);</span>
+        }
+        finally
+        {
+<span class="nc" id="L763">            this.lock.readLock().unlock();</span>
+        }
+    }
+
+    @Override
+    public String toString()
+    {
+<span class="nc" id="L770">        this.lock.readLock().lock();</span>
+        try
+        {
+<span class="nc" id="L773">            return this.delegate.toString();</span>
+        }
+        finally
+        {
+<span class="nc" id="L777">            this.lock.readLock().unlock();</span>
+        }
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.0.201801022044</span></div></body></html>

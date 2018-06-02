@@ -1,0 +1,1326 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>UnmodifiableTreeMap.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Eclipse Collections Test Coverage Aggregation</a> &gt; <a href="../index.html" class="el_bundle">eclipse-collections</a> &gt; <a href="index.source.html" class="el_package">org.eclipse.collections.impl.map.sorted.mutable</a> &gt; <span class="el_source">UnmodifiableTreeMap.java</span></div><h1>UnmodifiableTreeMap.java</h1><pre class="source lang-java linenums">/*
+ * Copyright (c) 2018 Goldman Sachs and others.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * and Eclipse Distribution License v. 1.0 which accompany this distribution.
+ * The Eclipse Public License is available at http://www.eclipse.org/legal/epl-v10.html
+ * and the Eclipse Distribution License is available at
+ * http://www.eclipse.org/org/documents/edl-v10.php.
+ */
+
+package org.eclipse.collections.impl.map.sorted.mutable;
+
+import java.util.Collection;
+import java.util.Comparator;
+import java.util.Iterator;
+import java.util.Optional;
+import java.util.SortedMap;
+
+import org.eclipse.collections.api.LazyIterable;
+import org.eclipse.collections.api.RichIterable;
+import org.eclipse.collections.api.bag.MutableBag;
+import org.eclipse.collections.api.bag.sorted.MutableSortedBag;
+import org.eclipse.collections.api.block.function.Function;
+import org.eclipse.collections.api.block.function.Function0;
+import org.eclipse.collections.api.block.function.Function2;
+import org.eclipse.collections.api.block.function.primitive.BooleanFunction;
+import org.eclipse.collections.api.block.function.primitive.ByteFunction;
+import org.eclipse.collections.api.block.function.primitive.CharFunction;
+import org.eclipse.collections.api.block.function.primitive.DoubleFunction;
+import org.eclipse.collections.api.block.function.primitive.DoubleObjectToDoubleFunction;
+import org.eclipse.collections.api.block.function.primitive.FloatFunction;
+import org.eclipse.collections.api.block.function.primitive.FloatObjectToFloatFunction;
+import org.eclipse.collections.api.block.function.primitive.IntFunction;
+import org.eclipse.collections.api.block.function.primitive.IntObjectToIntFunction;
+import org.eclipse.collections.api.block.function.primitive.LongFunction;
+import org.eclipse.collections.api.block.function.primitive.LongObjectToLongFunction;
+import org.eclipse.collections.api.block.function.primitive.ObjectIntToObjectFunction;
+import org.eclipse.collections.api.block.function.primitive.ShortFunction;
+import org.eclipse.collections.api.block.predicate.Predicate;
+import org.eclipse.collections.api.block.predicate.Predicate2;
+import org.eclipse.collections.api.block.procedure.Procedure;
+import org.eclipse.collections.api.block.procedure.Procedure2;
+import org.eclipse.collections.api.block.procedure.primitive.ObjectIntProcedure;
+import org.eclipse.collections.api.collection.MutableCollection;
+import org.eclipse.collections.api.collection.primitive.MutableBooleanCollection;
+import org.eclipse.collections.api.collection.primitive.MutableByteCollection;
+import org.eclipse.collections.api.collection.primitive.MutableCharCollection;
+import org.eclipse.collections.api.collection.primitive.MutableDoubleCollection;
+import org.eclipse.collections.api.collection.primitive.MutableFloatCollection;
+import org.eclipse.collections.api.collection.primitive.MutableIntCollection;
+import org.eclipse.collections.api.collection.primitive.MutableLongCollection;
+import org.eclipse.collections.api.collection.primitive.MutableShortCollection;
+import org.eclipse.collections.api.list.MutableList;
+import org.eclipse.collections.api.list.primitive.MutableBooleanList;
+import org.eclipse.collections.api.list.primitive.MutableByteList;
+import org.eclipse.collections.api.list.primitive.MutableCharList;
+import org.eclipse.collections.api.list.primitive.MutableDoubleList;
+import org.eclipse.collections.api.list.primitive.MutableFloatList;
+import org.eclipse.collections.api.list.primitive.MutableIntList;
+import org.eclipse.collections.api.list.primitive.MutableLongList;
+import org.eclipse.collections.api.list.primitive.MutableShortList;
+import org.eclipse.collections.api.map.MutableMap;
+import org.eclipse.collections.api.map.MutableMapIterable;
+import org.eclipse.collections.api.map.primitive.MutableObjectDoubleMap;
+import org.eclipse.collections.api.map.primitive.MutableObjectLongMap;
+import org.eclipse.collections.api.map.sorted.ImmutableSortedMap;
+import org.eclipse.collections.api.map.sorted.MutableSortedMap;
+import org.eclipse.collections.api.multimap.MutableMultimap;
+import org.eclipse.collections.api.multimap.list.MutableListMultimap;
+import org.eclipse.collections.api.multimap.sortedset.MutableSortedSetMultimap;
+import org.eclipse.collections.api.ordered.OrderedIterable;
+import org.eclipse.collections.api.partition.list.PartitionMutableList;
+import org.eclipse.collections.api.set.MutableSet;
+import org.eclipse.collections.api.set.sorted.MutableSortedSet;
+import org.eclipse.collections.api.stack.MutableStack;
+import org.eclipse.collections.api.tuple.Pair;
+import org.eclipse.collections.impl.UnmodifiableIteratorAdapter;
+import org.eclipse.collections.impl.block.factory.PrimitiveFunctions;
+import org.eclipse.collections.impl.block.procedure.MutatingAggregationProcedure;
+import org.eclipse.collections.impl.block.procedure.NonMutatingAggregationProcedure;
+import org.eclipse.collections.impl.collection.mutable.UnmodifiableMutableCollection;
+import org.eclipse.collections.impl.factory.SortedMaps;
+import org.eclipse.collections.impl.factory.primitive.ObjectDoubleMaps;
+import org.eclipse.collections.impl.factory.primitive.ObjectLongMaps;
+import org.eclipse.collections.impl.map.mutable.UnifiedMap;
+import org.eclipse.collections.impl.set.mutable.UnmodifiableMutableSet;
+import org.eclipse.collections.impl.tuple.AbstractImmutableEntry;
+import org.eclipse.collections.impl.utility.LazyIterate;
+
+/**
+ * An unmodifiable view of a map.
+ *
+ * @see MutableSortedMap#asUnmodifiable()
+ */
+public class UnmodifiableTreeMap&lt;K, V&gt;
+        extends UnmodifiableSortedMap&lt;K, V&gt;
+        implements MutableSortedMap&lt;K, V&gt;
+{
+    private static final long serialVersionUID = 1L;
+
+    protected UnmodifiableTreeMap(MutableSortedMap&lt;K, V&gt; map)
+    {
+<span class="nc" id="L103">        super(map);</span>
+<span class="nc" id="L104">    }</span>
+
+    /**
+     * This method will take a MutableSortedMap and wrap it directly in a UnmodifiableMutableMap.  It will
+     * take any other non-GS-SortedMap and first adapt it will a SortedMapAdapter, and then return a
+     * UnmodifiableSortedMap that wraps the adapter.
+     */
+    public static &lt;K, V, M extends SortedMap&lt;K, V&gt;&gt; UnmodifiableTreeMap&lt;K, V&gt; of(M map)
+    {
+<span class="nc bnc" id="L113" title="All 2 branches missed.">        if (map == null)</span>
+        {
+<span class="nc" id="L115">            throw new IllegalArgumentException(&quot;cannot create a UnmodifiableSortedMap for null&quot;);</span>
+        }
+<span class="nc" id="L117">        return new UnmodifiableTreeMap&lt;&gt;(SortedMapAdapter.adapt(map));</span>
+    }
+
+    @Override
+    public V putPair(Pair&lt;? extends K, ? extends V&gt; keyValuePair)
+    {
+<span class="nc" id="L123">        throw new UnsupportedOperationException(&quot;Cannot call putPair() on &quot; + this.getClass().getSimpleName());</span>
+    }
+
+    @Override
+    public V add(Pair&lt;? extends K, ? extends V&gt; keyValuePair)
+    {
+<span class="nc" id="L129">        throw new UnsupportedOperationException(&quot;Cannot call add() on &quot; + this.getClass().getSimpleName());</span>
+    }
+
+    @Override
+    public V removeKey(K key)
+    {
+<span class="nc" id="L135">        throw new UnsupportedOperationException(&quot;Cannot call removeKey() on &quot; + this.getClass().getSimpleName());</span>
+    }
+
+    @Override
+    public MutableSortedMap&lt;K, V&gt; with(Pair&lt;K, V&gt;... pairs)
+    {
+<span class="nc" id="L141">        throw new UnsupportedOperationException(&quot;Cannot call with() on &quot; + this.getClass().getSimpleName());</span>
+    }
+
+    @Override
+    public MutableSortedMap&lt;K, V&gt; withKeyValue(K key, V value)
+    {
+<span class="nc" id="L147">        throw new UnsupportedOperationException(&quot;Cannot call withKeyValue() on &quot; + this.getClass().getSimpleName());</span>
+    }
+
+    @Override
+    public MutableSortedMap&lt;K, V&gt; withAllKeyValues(Iterable&lt;? extends Pair&lt;? extends K, ? extends V&gt;&gt; keyValues)
+    {
+<span class="nc" id="L153">        throw new UnsupportedOperationException(&quot;Cannot call withAllKeyValues() on &quot; + this.getClass().getSimpleName());</span>
+    }
+
+    @Override
+    public MutableSortedMap&lt;K, V&gt; withAllKeyValueArguments(Pair&lt;? extends K, ? extends V&gt;... keyValuePairs)
+    {
+<span class="nc" id="L159">        throw new UnsupportedOperationException(&quot;Cannot call withAllKeyValueArguments() on &quot; + this.getClass().getSimpleName());</span>
+    }
+
+    @Override
+    public MutableSortedMap&lt;K, V&gt; withoutKey(K key)
+    {
+<span class="nc" id="L165">        throw new UnsupportedOperationException(&quot;Cannot call withoutKey() on &quot; + this.getClass().getSimpleName());</span>
+    }
+
+    @Override
+    public MutableSortedMap&lt;K, V&gt; withoutAllKeys(Iterable&lt;? extends K&gt; keys)
+    {
+<span class="nc" id="L171">        throw new UnsupportedOperationException(&quot;Cannot call withoutAllKeys() on &quot; + this.getClass().getSimpleName());</span>
+    }
+
+    @Override
+    public V updateValue(K key, Function0&lt;? extends V&gt; factory, Function&lt;? super V, ? extends V&gt; function)
+    {
+<span class="nc" id="L177">        throw new UnsupportedOperationException(&quot;Cannot call updateValue() on &quot; + this.getClass().getSimpleName());</span>
+    }
+
+    @Override
+    public &lt;P&gt; V updateValueWith(
+            K key,
+            Function0&lt;? extends V&gt; factory,
+            Function2&lt;? super V, ? super P, ? extends V&gt; function,
+            P parameter)
+    {
+<span class="nc" id="L187">        throw new UnsupportedOperationException(&quot;Cannot call updateValueWith() on &quot; + this.getClass().getSimpleName());</span>
+    }
+
+    @Override
+    public &lt;E&gt; MutableSortedMap&lt;K, V&gt; collectKeysAndValues(
+            Iterable&lt;E&gt; iterable,
+            Function&lt;? super E, ? extends K&gt; keyFunction,
+            Function&lt;? super E, ? extends V&gt; valueFunction)
+    {
+<span class="nc" id="L196">        throw new UnsupportedOperationException(&quot;Cannot call collectKeysAndValues() on &quot; + this.getClass().getSimpleName());</span>
+    }
+
+    @Override
+    public V getIfAbsentPut(K key, Function0&lt;? extends V&gt; function)
+    {
+<span class="nc" id="L202">        V result = this.get(key);</span>
+<span class="nc bnc" id="L203" title="All 2 branches missed.">        if (this.isAbsent(result, key))</span>
+        {
+<span class="nc" id="L205">            throw new UnsupportedOperationException(&quot;Cannot mutate &quot; + this.getClass().getSimpleName());</span>
+        }
+<span class="nc" id="L207">        return result;</span>
+    }
+
+    @Override
+    public V getIfAbsentPut(K key, V value)
+    {
+<span class="nc" id="L213">        V result = this.get(key);</span>
+<span class="nc bnc" id="L214" title="All 2 branches missed.">        if (this.isAbsent(result, key))</span>
+        {
+<span class="nc" id="L216">            throw new UnsupportedOperationException(&quot;Cannot mutate &quot; + this.getClass().getSimpleName());</span>
+        }
+<span class="nc" id="L218">        return result;</span>
+    }
+
+    @Override
+    public V getIfAbsentPutWithKey(K key, Function&lt;? super K, ? extends V&gt; function)
+    {
+<span class="nc" id="L224">        return this.getIfAbsentPutWith(key, function, key);</span>
+    }
+
+    @Override
+    public &lt;P&gt; V getIfAbsentPutWith(
+            K key,
+            Function&lt;? super P, ? extends V&gt; function,
+            P parameter)
+    {
+<span class="nc" id="L233">        V result = this.get(key);</span>
+<span class="nc bnc" id="L234" title="All 2 branches missed.">        if (this.isAbsent(result, key))</span>
+        {
+<span class="nc" id="L236">            throw new UnsupportedOperationException(&quot;Cannot mutate &quot; + this.getClass().getSimpleName());</span>
+        }
+<span class="nc" id="L238">        return result;</span>
+    }
+
+    private boolean isAbsent(V result, K key)
+    {
+<span class="nc bnc" id="L243" title="All 4 branches missed.">        return result == null &amp;&amp; !this.containsKey(key);</span>
+    }
+
+    @Override
+    public V getIfAbsent(K key, Function0&lt;? extends V&gt; function)
+    {
+<span class="nc" id="L249">        V result = this.get(key);</span>
+<span class="nc bnc" id="L250" title="All 2 branches missed.">        if (this.isAbsent(result, key))</span>
+        {
+<span class="nc" id="L252">            return function.value();</span>
+        }
+<span class="nc" id="L254">        return result;</span>
+    }
+
+    @Override
+    public V getIfAbsentValue(K key, V value)
+    {
+<span class="nc" id="L260">        V result = this.get(key);</span>
+<span class="nc bnc" id="L261" title="All 2 branches missed.">        if (this.isAbsent(result, key))</span>
+        {
+<span class="nc" id="L263">            return value;</span>
+        }
+<span class="nc" id="L265">        return result;</span>
+    }
+
+    @Override
+    public &lt;P&gt; V getIfAbsentWith(
+            K key,
+            Function&lt;? super P, ? extends V&gt; function,
+            P parameter)
+    {
+<span class="nc" id="L274">        V result = this.get(key);</span>
+<span class="nc bnc" id="L275" title="All 2 branches missed.">        if (this.isAbsent(result, key))</span>
+        {
+<span class="nc" id="L277">            return function.valueOf(parameter);</span>
+        }
+<span class="nc" id="L279">        return result;</span>
+    }
+
+    @Override
+    public MutableSortedSetMultimap&lt;V, K&gt; flip()
+    {
+<span class="nc" id="L285">        return this.getMutableSortedMap().flip();</span>
+    }
+
+    @Override
+    public MutableSortedMap&lt;K, V&gt; clone()
+    {
+<span class="nc" id="L291">        return this;</span>
+    }
+
+    @Override
+    public MutableSortedMap&lt;K, V&gt; asUnmodifiable()
+    {
+<span class="nc" id="L297">        return this;</span>
+    }
+
+    @Override
+    public MutableSortedMap&lt;K, V&gt; asSynchronized()
+    {
+<span class="nc" id="L303">        return SynchronizedSortedMap.of(this);</span>
+    }
+
+    @Override
+    public ImmutableSortedMap&lt;K, V&gt; toImmutable()
+    {
+<span class="nc" id="L309">        return SortedMaps.immutable.withSortedMap(this);</span>
+    }
+
+    @Override
+    public Iterator&lt;V&gt; iterator()
+    {
+<span class="nc" id="L315">        return new UnmodifiableIteratorAdapter&lt;&gt;(this.getMutableSortedMap().iterator());</span>
+    }
+
+    @Override
+    public int hashCode()
+    {
+<span class="nc" id="L321">        return this.getMutableSortedMap().hashCode();</span>
+    }
+
+    @Override
+    public boolean equals(Object obj)
+    {
+<span class="nc" id="L327">        return this.getMutableSortedMap().equals(obj);</span>
+    }
+
+    @Override
+    public RichIterable&lt;K&gt; keysView()
+    {
+<span class="nc" id="L333">        return LazyIterate.adapt(this.keySet());</span>
+    }
+
+    @Override
+    public RichIterable&lt;V&gt; valuesView()
+    {
+<span class="nc" id="L339">        return LazyIterate.adapt(this.values());</span>
+    }
+
+    @Override
+    public RichIterable&lt;Pair&lt;K, V&gt;&gt; keyValuesView()
+    {
+<span class="nc" id="L345">        return LazyIterate.adapt(this.entrySet()).collect(AbstractImmutableEntry.getPairFunction());</span>
+    }
+
+    protected MutableSortedMap&lt;K, V&gt; getMutableSortedMap()
+    {
+<span class="nc" id="L350">        return (MutableSortedMap&lt;K, V&gt;) this.delegate;</span>
+    }
+
+    @Override
+    public MutableSortedMap&lt;K, V&gt; newEmpty()
+    {
+<span class="nc" id="L356">        return this.getMutableSortedMap().newEmpty();</span>
+    }
+
+    @Override
+    public boolean notEmpty()
+    {
+<span class="nc" id="L362">        return this.getMutableSortedMap().notEmpty();</span>
+    }
+
+    @Override
+    public void forEachValue(Procedure&lt;? super V&gt; procedure)
+    {
+<span class="nc" id="L368">        this.getMutableSortedMap().forEachValue(procedure);</span>
+<span class="nc" id="L369">    }</span>
+
+    @Override
+    public void forEachKey(Procedure&lt;? super K&gt; procedure)
+    {
+<span class="nc" id="L374">        this.getMutableSortedMap().forEachKey(procedure);</span>
+<span class="nc" id="L375">    }</span>
+
+    @Override
+    public void forEachKeyValue(Procedure2&lt;? super K, ? super V&gt; procedure)
+    {
+<span class="nc" id="L380">        this.getMutableSortedMap().forEachKeyValue(procedure);</span>
+<span class="nc" id="L381">    }</span>
+
+    @Override
+    public MutableMapIterable&lt;V, K&gt; flipUniqueValues()
+    {
+<span class="nc" id="L386">        return this.getMutableSortedMap().flipUniqueValues();</span>
+    }
+
+    @Override
+    public &lt;A&gt; A ifPresentApply(K key, Function&lt;? super V, ? extends A&gt; function)
+    {
+<span class="nc" id="L392">        return this.getMutableSortedMap().ifPresentApply(key, function);</span>
+    }
+
+    @Override
+    public MutableSortedMap&lt;K, V&gt; tap(Procedure&lt;? super V&gt; procedure)
+    {
+<span class="nc" id="L398">        this.forEach(procedure);</span>
+<span class="nc" id="L399">        return this;</span>
+    }
+
+    @Override
+    public void forEach(Procedure&lt;? super V&gt; procedure)
+    {
+<span class="nc" id="L405">        this.each(procedure);</span>
+<span class="nc" id="L406">    }</span>
+
+    @Override
+    public void each(Procedure&lt;? super V&gt; procedure)
+    {
+<span class="nc" id="L411">        this.getMutableSortedMap().forEach(procedure);</span>
+<span class="nc" id="L412">    }</span>
+
+    @Override
+    public void forEachWithIndex(ObjectIntProcedure&lt;? super V&gt; objectIntProcedure)
+    {
+<span class="nc" id="L417">        this.getMutableSortedMap().forEachWithIndex(objectIntProcedure);</span>
+<span class="nc" id="L418">    }</span>
+
+    @Override
+    public &lt;P&gt; void forEachWith(Procedure2&lt;? super V, ? super P&gt; procedure, P parameter)
+    {
+<span class="nc" id="L423">        this.getMutableSortedMap().forEachWith(procedure, parameter);</span>
+<span class="nc" id="L424">    }</span>
+
+    @Override
+    public &lt;R&gt; MutableSortedMap&lt;K, R&gt; collectValues(Function2&lt;? super K, ? super V, ? extends R&gt; function)
+    {
+<span class="nc" id="L429">        return this.getMutableSortedMap().collectValues(function);</span>
+    }
+
+    @Override
+    public &lt;K2, V2&gt; MutableMap&lt;K2, V2&gt; collect(Function2&lt;? super K, ? super V, Pair&lt;K2, V2&gt;&gt; function)
+    {
+<span class="nc" id="L435">        return this.getMutableSortedMap().collect(function);</span>
+    }
+
+    @Override
+    public MutableSortedMap&lt;K, V&gt; select(Predicate2&lt;? super K, ? super V&gt; predicate)
+    {
+<span class="nc" id="L441">        return this.getMutableSortedMap().select(predicate);</span>
+    }
+
+    @Override
+    public MutableSortedMap&lt;K, V&gt; reject(Predicate2&lt;? super K, ? super V&gt; predicate)
+    {
+<span class="nc" id="L447">        return this.getMutableSortedMap().reject(predicate);</span>
+    }
+
+    @Override
+    public Pair&lt;K, V&gt; detect(Predicate2&lt;? super K, ? super V&gt; predicate)
+    {
+<span class="nc" id="L453">        return this.getMutableSortedMap().detect(predicate);</span>
+    }
+
+    @Override
+    public Optional&lt;Pair&lt;K, V&gt;&gt; detectOptional(Predicate2&lt;? super K, ? super V&gt; predicate)
+    {
+<span class="nc" id="L459">        return this.getMutableSortedMap().detectOptional(predicate);</span>
+    }
+
+    @Override
+    public boolean anySatisfy(Predicate&lt;? super V&gt; predicate)
+    {
+<span class="nc" id="L465">        return this.getMutableSortedMap().anySatisfy(predicate);</span>
+    }
+
+    @Override
+    public &lt;P&gt; boolean anySatisfyWith(Predicate2&lt;? super V, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc" id="L471">        return this.getMutableSortedMap().anySatisfyWith(predicate, parameter);</span>
+    }
+
+    @Override
+    public boolean allSatisfy(Predicate&lt;? super V&gt; predicate)
+    {
+<span class="nc" id="L477">        return this.getMutableSortedMap().allSatisfy(predicate);</span>
+    }
+
+    @Override
+    public &lt;P&gt; boolean allSatisfyWith(Predicate2&lt;? super V, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc" id="L483">        return this.getMutableSortedMap().allSatisfyWith(predicate, parameter);</span>
+    }
+
+    @Override
+    public boolean noneSatisfy(Predicate&lt;? super V&gt; predicate)
+    {
+<span class="nc" id="L489">        return this.getMutableSortedMap().noneSatisfy(predicate);</span>
+    }
+
+    @Override
+    public &lt;P&gt; boolean noneSatisfyWith(Predicate2&lt;? super V, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc" id="L495">        return this.getMutableSortedMap().noneSatisfyWith(predicate, parameter);</span>
+    }
+
+    @Override
+    public void appendString(Appendable appendable)
+    {
+<span class="nc" id="L501">        this.getMutableSortedMap().appendString(appendable);</span>
+<span class="nc" id="L502">    }</span>
+
+    @Override
+    public void appendString(Appendable appendable, String separator)
+    {
+<span class="nc" id="L507">        this.getMutableSortedMap().appendString(appendable, separator);</span>
+<span class="nc" id="L508">    }</span>
+
+    @Override
+    public void appendString(Appendable appendable, String start, String separator, String end)
+    {
+<span class="nc" id="L513">        this.getMutableSortedMap().appendString(appendable, start, separator, end);</span>
+<span class="nc" id="L514">    }</span>
+
+    @Override
+    public MutableBag&lt;V&gt; toBag()
+    {
+<span class="nc" id="L519">        return this.getMutableSortedMap().toBag();</span>
+    }
+
+    @Override
+    public MutableSortedBag&lt;V&gt; toSortedBag()
+    {
+<span class="nc" id="L525">        return this.getMutableSortedMap().toSortedBag();</span>
+    }
+
+    @Override
+    public MutableSortedBag&lt;V&gt; toSortedBag(Comparator&lt;? super V&gt; comparator)
+    {
+<span class="nc" id="L531">        return this.getMutableSortedMap().toSortedBag(comparator);</span>
+    }
+
+    @Override
+    public &lt;R extends Comparable&lt;? super R&gt;&gt; MutableSortedBag&lt;V&gt; toSortedBagBy(Function&lt;? super V, ? extends R&gt; function)
+    {
+<span class="nc" id="L537">        return this.getMutableSortedMap().toSortedBagBy(function);</span>
+    }
+
+    @Override
+    public LazyIterable&lt;V&gt; asLazy()
+    {
+<span class="nc" id="L543">        return this.getMutableSortedMap().asLazy();</span>
+    }
+
+    @Override
+    public &lt;R extends Collection&lt;V&gt;&gt; R into(R target)
+    {
+<span class="nc" id="L549">        return this.getMutableSortedMap().into(target);</span>
+    }
+
+    @Override
+    public MutableList&lt;V&gt; toList()
+    {
+<span class="nc" id="L555">        return this.getMutableSortedMap().toList();</span>
+    }
+
+    @Override
+    public &lt;NK, NV&gt; MutableMap&lt;NK, NV&gt; toMap(
+            Function&lt;? super V, ? extends NK&gt; keyFunction,
+            Function&lt;? super V, ? extends NV&gt; valueFunction)
+    {
+<span class="nc" id="L563">        return this.getMutableSortedMap().toMap(keyFunction, valueFunction);</span>
+    }
+
+    @Override
+    public &lt;NK, NV&gt; MutableSortedMap&lt;NK, NV&gt; toSortedMap(
+            Function&lt;? super V, ? extends NK&gt; keyFunction,
+            Function&lt;? super V, ? extends NV&gt; valueFunction)
+    {
+<span class="nc" id="L571">        return this.getMutableSortedMap().toSortedMap(keyFunction, valueFunction);</span>
+    }
+
+    @Override
+    public &lt;NK, NV&gt; MutableSortedMap&lt;NK, NV&gt; toSortedMap(
+            Comparator&lt;? super NK&gt; comparator,
+            Function&lt;? super V, ? extends NK&gt; keyFunction,
+            Function&lt;? super V, ? extends NV&gt; valueFunction)
+    {
+<span class="nc" id="L580">        return this.getMutableSortedMap().toSortedMap(comparator, keyFunction, valueFunction);</span>
+    }
+
+    @Override
+    public &lt;KK extends Comparable&lt;? super KK&gt;, NK, NV&gt; MutableSortedMap&lt;NK, NV&gt; toSortedMapBy(
+            Function&lt;? super NK, KK&gt; sortBy,
+            Function&lt;? super V, ? extends NK&gt; keyFunction,
+            Function&lt;? super V, ? extends NV&gt; valueFunction)
+    {
+<span class="nc" id="L589">        return this.getMutableSortedMap().toSortedMapBy(sortBy, keyFunction, valueFunction);</span>
+    }
+
+    @Override
+    public MutableSet&lt;V&gt; toSet()
+    {
+<span class="nc" id="L595">        return this.getMutableSortedMap().toSet();</span>
+    }
+
+    @Override
+    public MutableList&lt;V&gt; toSortedList()
+    {
+<span class="nc" id="L601">        return this.getMutableSortedMap().toSortedList();</span>
+    }
+
+    @Override
+    public MutableList&lt;V&gt; toSortedList(Comparator&lt;? super V&gt; comparator)
+    {
+<span class="nc" id="L607">        return this.getMutableSortedMap().toSortedList(comparator);</span>
+    }
+
+    @Override
+    public &lt;R extends Comparable&lt;? super R&gt;&gt; MutableList&lt;V&gt; toSortedListBy(Function&lt;? super V, ? extends R&gt; function)
+    {
+<span class="nc" id="L613">        return this.getMutableSortedMap().toSortedListBy(function);</span>
+    }
+
+    @Override
+    public MutableSortedSet&lt;V&gt; toSortedSet()
+    {
+<span class="nc" id="L619">        return this.getMutableSortedMap().toSortedSet();</span>
+    }
+
+    @Override
+    public MutableSortedSet&lt;V&gt; toSortedSet(Comparator&lt;? super V&gt; comparator)
+    {
+<span class="nc" id="L625">        return this.getMutableSortedMap().toSortedSet(comparator);</span>
+    }
+
+    @Override
+    public &lt;R extends Comparable&lt;? super R&gt;&gt; MutableSortedSet&lt;V&gt; toSortedSetBy(Function&lt;? super V, ? extends R&gt; function)
+    {
+<span class="nc" id="L631">        return this.getMutableSortedMap().toSortedSetBy(function);</span>
+    }
+
+    @Override
+    public RichIterable&lt;RichIterable&lt;V&gt;&gt; chunk(int size)
+    {
+<span class="nc" id="L637">        return this.getMutableSortedMap().chunk(size);</span>
+    }
+
+    @Override
+    public &lt;R, C extends Collection&lt;R&gt;&gt; C collect(Function&lt;? super V, ? extends R&gt; function, C target)
+    {
+<span class="nc" id="L643">        return this.getMutableSortedMap().collect(function, target);</span>
+    }
+
+    @Override
+    public &lt;R, C extends Collection&lt;R&gt;&gt; C collectIf(Predicate&lt;? super V&gt; predicate, Function&lt;? super V, ? extends R&gt; function, C target)
+    {
+<span class="nc" id="L649">        return this.getMutableSortedMap().collectIf(predicate, function, target);</span>
+    }
+
+    @Override
+    public &lt;P, VV&gt; MutableList&lt;VV&gt; collectWith(Function2&lt;? super V, ? super P, ? extends VV&gt; function, P parameter)
+    {
+<span class="nc" id="L655">        return this.getMutableSortedMap().collectWith(function, parameter);</span>
+    }
+
+    @Override
+    public &lt;P, R, C extends Collection&lt;R&gt;&gt; C collectWith(Function2&lt;? super V, ? super P, ? extends R&gt; function, P parameter, C targetCollection)
+    {
+<span class="nc" id="L661">        return this.getMutableSortedMap().collectWith(function, parameter, targetCollection);</span>
+    }
+
+    /**
+     * @since 9.1
+     */
+    @Override
+    public &lt;R&gt; MutableList&lt;R&gt; collectWithIndex(ObjectIntToObjectFunction&lt;? super V, ? extends R&gt; function)
+    {
+<span class="nc" id="L670">        return this.getMutableSortedMap().collectWithIndex(function);</span>
+    }
+
+    /**
+     * @since 9.1
+     */
+    @Override
+    public &lt;V1, R extends Collection&lt;V1&gt;&gt; R collectWithIndex(ObjectIntToObjectFunction&lt;? super V, ? extends V1&gt; function, R target)
+    {
+<span class="nc" id="L679">        return this.getMutableSortedMap().collectWithIndex(function, target);</span>
+    }
+
+    @Override
+    public boolean contains(Object object)
+    {
+<span class="nc" id="L685">        return this.getMutableSortedMap().contains(object);</span>
+    }
+
+    @Override
+    public boolean containsAllArguments(Object... elements)
+    {
+<span class="nc" id="L691">        return this.getMutableSortedMap().containsAllArguments(elements);</span>
+    }
+
+    @Override
+    public boolean containsAllIterable(Iterable&lt;?&gt; source)
+    {
+<span class="nc" id="L697">        return this.getMutableSortedMap().containsAllIterable(source);</span>
+    }
+
+    @Override
+    public boolean containsAll(Collection&lt;?&gt; source)
+    {
+<span class="nc" id="L703">        return this.getMutableSortedMap().containsAll(source);</span>
+    }
+
+    @Override
+    public int count(Predicate&lt;? super V&gt; predicate)
+    {
+<span class="nc" id="L709">        return this.getMutableSortedMap().count(predicate);</span>
+    }
+
+    @Override
+    public &lt;P&gt; int countWith(Predicate2&lt;? super V, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc" id="L715">        return this.getMutableSortedMap().countWith(predicate, parameter);</span>
+    }
+
+    @Override
+    public V detect(Predicate&lt;? super V&gt; predicate)
+    {
+<span class="nc" id="L721">        return this.getMutableSortedMap().detect(predicate);</span>
+    }
+
+    @Override
+    public &lt;P&gt; V detectWith(Predicate2&lt;? super V, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc" id="L727">        return this.getMutableSortedMap().detectWith(predicate, parameter);</span>
+    }
+
+    @Override
+    public Optional&lt;V&gt; detectOptional(Predicate&lt;? super V&gt; predicate)
+    {
+<span class="nc" id="L733">        return this.getMutableSortedMap().detectOptional(predicate);</span>
+    }
+
+    @Override
+    public &lt;P&gt; Optional&lt;V&gt; detectWithOptional(Predicate2&lt;? super V, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc" id="L739">        return this.getMutableSortedMap().detectWithOptional(predicate, parameter);</span>
+    }
+
+    @Override
+    public V detectIfNone(Predicate&lt;? super V&gt; predicate, Function0&lt;? extends V&gt; function)
+    {
+<span class="nc" id="L745">        return this.getMutableSortedMap().detectIfNone(predicate, function);</span>
+    }
+
+    @Override
+    public &lt;P&gt; V detectWithIfNone(Predicate2&lt;? super V, ? super P&gt; predicate, P parameter, Function0&lt;? extends V&gt; function)
+    {
+<span class="nc" id="L751">        return this.getMutableSortedMap().detectWithIfNone(predicate, parameter, function);</span>
+    }
+
+    @Override
+    public &lt;R, C extends Collection&lt;R&gt;&gt; C flatCollect(Function&lt;? super V, ? extends Iterable&lt;R&gt;&gt; function, C target)
+    {
+<span class="nc" id="L757">        return this.getMutableSortedMap().flatCollect(function, target);</span>
+    }
+
+    @Override
+    public V getFirst()
+    {
+<span class="nc" id="L763">        return this.getMutableSortedMap().getFirst();</span>
+    }
+
+    @Override
+    public V getLast()
+    {
+<span class="nc" id="L769">        return this.getMutableSortedMap().getLast();</span>
+    }
+
+    @Override
+    public V getOnly()
+    {
+<span class="nc" id="L775">        return this.getMutableSortedMap().getOnly();</span>
+    }
+
+    @Override
+    public &lt;R&gt; MutableListMultimap&lt;R, V&gt; groupBy(Function&lt;? super V, ? extends R&gt; function)
+    {
+<span class="nc" id="L781">        return this.getMutableSortedMap().groupBy(function);</span>
+    }
+
+    @Override
+    public &lt;R, C extends MutableMultimap&lt;R, V&gt;&gt; C groupBy(Function&lt;? super V, ? extends R&gt; function, C target)
+    {
+<span class="nc" id="L787">        return this.getMutableSortedMap().groupBy(function, target);</span>
+    }
+
+    @Override
+    public &lt;R&gt; MutableListMultimap&lt;R, V&gt; groupByEach(Function&lt;? super V, ? extends Iterable&lt;R&gt;&gt; function)
+    {
+<span class="nc" id="L793">        return this.getMutableSortedMap().groupByEach(function);</span>
+    }
+
+    @Override
+    public &lt;R, C extends MutableMultimap&lt;R, V&gt;&gt; C groupByEach(Function&lt;? super V, ? extends Iterable&lt;R&gt;&gt; function, C target)
+    {
+<span class="nc" id="L799">        return this.getMutableSortedMap().groupByEach(function, target);</span>
+    }
+
+    @Override
+    public &lt;VV&gt; MutableMap&lt;VV, V&gt; groupByUniqueKey(Function&lt;? super V, ? extends VV&gt; function)
+    {
+<span class="nc" id="L805">        return this.getMutableSortedMap().groupByUniqueKey(function);</span>
+    }
+
+    @Override
+    public &lt;VV, R extends MutableMap&lt;VV, V&gt;&gt; R groupByUniqueKey(Function&lt;? super V, ? extends VV&gt; function, R target)
+    {
+<span class="nc" id="L811">        return this.getMutableSortedMap().groupByUniqueKey(function, target);</span>
+    }
+
+    @Override
+    public &lt;IV&gt; IV injectInto(IV injectedValue, Function2&lt;? super IV, ? super V, ? extends IV&gt; function)
+    {
+<span class="nc" id="L817">        return this.getMutableSortedMap().injectInto(injectedValue, function);</span>
+    }
+
+    @Override
+    public int injectInto(int injectedValue, IntObjectToIntFunction&lt;? super V&gt; function)
+    {
+<span class="nc" id="L823">        return this.getMutableSortedMap().injectInto(injectedValue, function);</span>
+    }
+
+    @Override
+    public long injectInto(long injectedValue, LongObjectToLongFunction&lt;? super V&gt; function)
+    {
+<span class="nc" id="L829">        return this.getMutableSortedMap().injectInto(injectedValue, function);</span>
+    }
+
+    @Override
+    public double injectInto(double injectedValue, DoubleObjectToDoubleFunction&lt;? super V&gt; function)
+    {
+<span class="nc" id="L835">        return this.getMutableSortedMap().injectInto(injectedValue, function);</span>
+    }
+
+    @Override
+    public float injectInto(float injectedValue, FloatObjectToFloatFunction&lt;? super V&gt; function)
+    {
+<span class="nc" id="L841">        return this.getMutableSortedMap().injectInto(injectedValue, function);</span>
+    }
+
+    @Override
+    public long sumOfInt(IntFunction&lt;? super V&gt; function)
+    {
+<span class="nc" id="L847">        return this.getMutableSortedMap().sumOfInt(function);</span>
+    }
+
+    @Override
+    public double sumOfFloat(FloatFunction&lt;? super V&gt; function)
+    {
+<span class="nc" id="L853">        return this.getMutableSortedMap().sumOfFloat(function);</span>
+    }
+
+    @Override
+    public long sumOfLong(LongFunction&lt;? super V&gt; function)
+    {
+<span class="nc" id="L859">        return this.getMutableSortedMap().sumOfLong(function);</span>
+    }
+
+    @Override
+    public double sumOfDouble(DoubleFunction&lt;? super V&gt; function)
+    {
+<span class="nc" id="L865">        return this.getMutableSortedMap().sumOfDouble(function);</span>
+    }
+
+    @Override
+    public &lt;V1&gt; MutableObjectLongMap&lt;V1&gt; sumByInt(Function&lt;? super V, ? extends V1&gt; groupBy, IntFunction&lt;? super V&gt; function)
+    {
+<span class="nc" id="L871">        MutableObjectLongMap&lt;V1&gt; result = ObjectLongMaps.mutable.empty();</span>
+<span class="nc" id="L872">        return this.injectInto(result, PrimitiveFunctions.sumByIntFunction(groupBy, function));</span>
+    }
+
+    @Override
+    public &lt;V1&gt; MutableObjectDoubleMap&lt;V1&gt; sumByFloat(Function&lt;? super V, ? extends V1&gt; groupBy, FloatFunction&lt;? super V&gt; function)
+    {
+<span class="nc" id="L878">        MutableObjectDoubleMap&lt;V1&gt; result = ObjectDoubleMaps.mutable.empty();</span>
+<span class="nc" id="L879">        return this.injectInto(result, PrimitiveFunctions.sumByFloatFunction(groupBy, function));</span>
+    }
+
+    @Override
+    public &lt;V1&gt; MutableObjectLongMap&lt;V1&gt; sumByLong(Function&lt;? super V, ? extends V1&gt; groupBy, LongFunction&lt;? super V&gt; function)
+    {
+<span class="nc" id="L885">        MutableObjectLongMap&lt;V1&gt; result = ObjectLongMaps.mutable.empty();</span>
+<span class="nc" id="L886">        return this.injectInto(result, PrimitiveFunctions.sumByLongFunction(groupBy, function));</span>
+    }
+
+    @Override
+    public &lt;V1&gt; MutableObjectDoubleMap&lt;V1&gt; sumByDouble(Function&lt;? super V, ? extends V1&gt; groupBy, DoubleFunction&lt;? super V&gt; function)
+    {
+<span class="nc" id="L892">        MutableObjectDoubleMap&lt;V1&gt; result = ObjectDoubleMaps.mutable.empty();</span>
+<span class="nc" id="L893">        return this.injectInto(result, PrimitiveFunctions.sumByDoubleFunction(groupBy, function));</span>
+    }
+
+    @Override
+    public String makeString()
+    {
+<span class="nc" id="L899">        return this.getMutableSortedMap().makeString();</span>
+    }
+
+    @Override
+    public String makeString(String separator)
+    {
+<span class="nc" id="L905">        return this.getMutableSortedMap().makeString(separator);</span>
+    }
+
+    @Override
+    public String makeString(String start, String separator, String end)
+    {
+<span class="nc" id="L911">        return this.getMutableSortedMap().makeString(start, separator, end);</span>
+    }
+
+    @Override
+    public V max()
+    {
+<span class="nc" id="L917">        return this.getMutableSortedMap().max();</span>
+    }
+
+    @Override
+    public V max(Comparator&lt;? super V&gt; comparator)
+    {
+<span class="nc" id="L923">        return this.getMutableSortedMap().max(comparator);</span>
+    }
+
+    @Override
+    public &lt;R extends Comparable&lt;? super R&gt;&gt; V maxBy(Function&lt;? super V, ? extends R&gt; function)
+    {
+<span class="nc" id="L929">        return this.getMutableSortedMap().maxBy(function);</span>
+    }
+
+    @Override
+    public V min()
+    {
+<span class="nc" id="L935">        return this.getMutableSortedMap().min();</span>
+    }
+
+    @Override
+    public V min(Comparator&lt;? super V&gt; comparator)
+    {
+<span class="nc" id="L941">        return this.getMutableSortedMap().min(comparator);</span>
+    }
+
+    @Override
+    public &lt;R extends Comparable&lt;? super R&gt;&gt; V minBy(Function&lt;? super V, ? extends R&gt; function)
+    {
+<span class="nc" id="L947">        return this.getMutableSortedMap().minBy(function);</span>
+    }
+
+    @Override
+    public MutableList&lt;V&gt; select(Predicate&lt;? super V&gt; predicate)
+    {
+<span class="nc" id="L953">        return this.getMutableSortedMap().select(predicate);</span>
+    }
+
+    @Override
+    public &lt;R extends Collection&lt;V&gt;&gt; R select(Predicate&lt;? super V&gt; predicate, R target)
+    {
+<span class="nc" id="L959">        return this.getMutableSortedMap().select(predicate, target);</span>
+    }
+
+    @Override
+    public &lt;P&gt; MutableList&lt;V&gt; selectWith(Predicate2&lt;? super V, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc" id="L965">        return this.getMutableSortedMap().selectWith(predicate, parameter);</span>
+    }
+
+    @Override
+    public &lt;P, R extends Collection&lt;V&gt;&gt; R selectWith(Predicate2&lt;? super V, ? super P&gt; predicate, P parameter, R targetCollection)
+    {
+<span class="nc" id="L971">        return this.getMutableSortedMap().selectWith(predicate, parameter, targetCollection);</span>
+    }
+
+    @Override
+    public &lt;R extends Collection&lt;V&gt;&gt; R reject(Predicate&lt;? super V&gt; predicate, R target)
+    {
+<span class="nc" id="L977">        return this.getMutableSortedMap().reject(predicate, target);</span>
+    }
+
+    @Override
+    public MutableList&lt;V&gt; reject(Predicate&lt;? super V&gt; predicate)
+    {
+<span class="nc" id="L983">        return this.getMutableSortedMap().reject(predicate);</span>
+    }
+
+    @Override
+    public &lt;P&gt; MutableList&lt;V&gt; rejectWith(Predicate2&lt;? super V, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc" id="L989">        return this.getMutableSortedMap().rejectWith(predicate, parameter);</span>
+    }
+
+    @Override
+    public &lt;P, R extends Collection&lt;V&gt;&gt; R rejectWith(Predicate2&lt;? super V, ? super P&gt; predicate, P parameter, R targetCollection)
+    {
+<span class="nc" id="L995">        return this.getMutableSortedMap().rejectWith(predicate, parameter, targetCollection);</span>
+    }
+
+    @Override
+    public Object[] toArray()
+    {
+<span class="nc" id="L1001">        return this.getMutableSortedMap().toArray();</span>
+    }
+
+    @Override
+    public &lt;T&gt; T[] toArray(T[] a)
+    {
+<span class="nc" id="L1007">        return this.getMutableSortedMap().toArray(a);</span>
+    }
+
+    @Override
+    public &lt;S, R extends Collection&lt;Pair&lt;V, S&gt;&gt;&gt; R zip(Iterable&lt;S&gt; that, R target)
+    {
+<span class="nc" id="L1013">        return this.getMutableSortedMap().zip(that, target);</span>
+    }
+
+    @Override
+    public &lt;R extends Collection&lt;Pair&lt;V, Integer&gt;&gt;&gt; R zipWithIndex(R target)
+    {
+<span class="nc" id="L1019">        return this.getMutableSortedMap().zipWithIndex(target);</span>
+    }
+
+    @Override
+    public &lt;R&gt; MutableList&lt;R&gt; collect(Function&lt;? super V, ? extends R&gt; function)
+    {
+<span class="nc" id="L1025">        return this.getMutableSortedMap().collect(function);</span>
+    }
+
+    @Override
+    public MutableBooleanList collectBoolean(BooleanFunction&lt;? super V&gt; booleanFunction)
+    {
+<span class="nc" id="L1031">        return this.getMutableSortedMap().collectBoolean(booleanFunction);</span>
+    }
+
+    @Override
+    public &lt;R extends MutableBooleanCollection&gt; R collectBoolean(BooleanFunction&lt;? super V&gt; booleanFunction, R target)
+    {
+<span class="nc" id="L1037">        return this.getMutableSortedMap().collectBoolean(booleanFunction, target);</span>
+    }
+
+    @Override
+    public MutableByteList collectByte(ByteFunction&lt;? super V&gt; byteFunction)
+    {
+<span class="nc" id="L1043">        return this.getMutableSortedMap().collectByte(byteFunction);</span>
+    }
+
+    @Override
+    public &lt;R extends MutableByteCollection&gt; R collectByte(ByteFunction&lt;? super V&gt; byteFunction, R target)
+    {
+<span class="nc" id="L1049">        return this.getMutableSortedMap().collectByte(byteFunction, target);</span>
+    }
+
+    @Override
+    public MutableCharList collectChar(CharFunction&lt;? super V&gt; charFunction)
+    {
+<span class="nc" id="L1055">        return this.getMutableSortedMap().collectChar(charFunction);</span>
+    }
+
+    @Override
+    public &lt;R extends MutableCharCollection&gt; R collectChar(CharFunction&lt;? super V&gt; charFunction, R target)
+    {
+<span class="nc" id="L1061">        return this.getMutableSortedMap().collectChar(charFunction, target);</span>
+    }
+
+    @Override
+    public MutableDoubleList collectDouble(DoubleFunction&lt;? super V&gt; doubleFunction)
+    {
+<span class="nc" id="L1067">        return this.getMutableSortedMap().collectDouble(doubleFunction);</span>
+    }
+
+    @Override
+    public &lt;R extends MutableDoubleCollection&gt; R collectDouble(DoubleFunction&lt;? super V&gt; doubleFunction, R target)
+    {
+<span class="nc" id="L1073">        return this.getMutableSortedMap().collectDouble(doubleFunction, target);</span>
+    }
+
+    @Override
+    public MutableFloatList collectFloat(FloatFunction&lt;? super V&gt; floatFunction)
+    {
+<span class="nc" id="L1079">        return this.getMutableSortedMap().collectFloat(floatFunction);</span>
+    }
+
+    @Override
+    public &lt;R extends MutableFloatCollection&gt; R collectFloat(FloatFunction&lt;? super V&gt; floatFunction, R target)
+    {
+<span class="nc" id="L1085">        return this.getMutableSortedMap().collectFloat(floatFunction, target);</span>
+    }
+
+    @Override
+    public MutableIntList collectInt(IntFunction&lt;? super V&gt; intFunction)
+    {
+<span class="nc" id="L1091">        return this.getMutableSortedMap().collectInt(intFunction);</span>
+    }
+
+    @Override
+    public &lt;R extends MutableIntCollection&gt; R collectInt(IntFunction&lt;? super V&gt; intFunction, R target)
+    {
+<span class="nc" id="L1097">        return this.getMutableSortedMap().collectInt(intFunction, target);</span>
+    }
+
+    @Override
+    public MutableLongList collectLong(LongFunction&lt;? super V&gt; longFunction)
+    {
+<span class="nc" id="L1103">        return this.getMutableSortedMap().collectLong(longFunction);</span>
+    }
+
+    @Override
+    public &lt;R extends MutableLongCollection&gt; R collectLong(LongFunction&lt;? super V&gt; longFunction, R target)
+    {
+<span class="nc" id="L1109">        return this.getMutableSortedMap().collectLong(longFunction, target);</span>
+    }
+
+    @Override
+    public MutableShortList collectShort(ShortFunction&lt;? super V&gt; shortFunction)
+    {
+<span class="nc" id="L1115">        return this.getMutableSortedMap().collectShort(shortFunction);</span>
+    }
+
+    @Override
+    public &lt;R extends MutableShortCollection&gt; R collectShort(ShortFunction&lt;? super V&gt; shortFunction, R target)
+    {
+<span class="nc" id="L1121">        return this.getMutableSortedMap().collectShort(shortFunction, target);</span>
+    }
+
+    @Override
+    public &lt;R&gt; MutableList&lt;R&gt; collectIf(Predicate&lt;? super V&gt; predicate, Function&lt;? super V, ? extends R&gt; function)
+    {
+<span class="nc" id="L1127">        return this.getMutableSortedMap().collectIf(predicate, function);</span>
+    }
+
+    @Override
+    public &lt;R&gt; MutableList&lt;R&gt; flatCollect(Function&lt;? super V, ? extends Iterable&lt;R&gt;&gt; function)
+    {
+<span class="nc" id="L1133">        return this.getMutableSortedMap().flatCollect(function);</span>
+    }
+
+    @Override
+    public PartitionMutableList&lt;V&gt; partition(Predicate&lt;? super V&gt; predicate)
+    {
+<span class="nc" id="L1139">        return this.getMutableSortedMap().partition(predicate);</span>
+    }
+
+    @Override
+    public &lt;P&gt; PartitionMutableList&lt;V&gt; partitionWith(Predicate2&lt;? super V, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc" id="L1145">        return this.getMutableSortedMap().partitionWith(predicate, parameter);</span>
+    }
+
+    @Override
+    public &lt;S&gt; MutableList&lt;S&gt; selectInstancesOf(Class&lt;S&gt; clazz)
+    {
+<span class="nc" id="L1151">        return this.getMutableSortedMap().selectInstancesOf(clazz);</span>
+    }
+
+    @Override
+    public &lt;S&gt; MutableList&lt;Pair&lt;V, S&gt;&gt; zip(Iterable&lt;S&gt; that)
+    {
+<span class="nc" id="L1157">        return this.getMutableSortedMap().zip(that);</span>
+    }
+
+    @Override
+    public MutableList&lt;Pair&lt;V, Integer&gt;&gt; zipWithIndex()
+    {
+<span class="nc" id="L1163">        return this.getMutableSortedMap().zipWithIndex();</span>
+    }
+
+    @Override
+    public MutableSet&lt;K&gt; keySet()
+    {
+<span class="nc" id="L1169">        return UnmodifiableMutableSet.of(this.getMutableSortedMap().keySet());</span>
+    }
+
+    @Override
+    public MutableCollection&lt;V&gt; values()
+    {
+<span class="nc" id="L1175">        return UnmodifiableMutableCollection.of(this.getMutableSortedMap().values());</span>
+    }
+
+    @Override
+    public MutableSortedMap&lt;K, V&gt; headMap(K toKey)
+    {
+<span class="nc" id="L1181">        return UnmodifiableTreeMap.of(this.getMutableSortedMap().headMap(toKey));</span>
+    }
+
+    @Override
+    public MutableSortedMap&lt;K, V&gt; tailMap(K fromKey)
+    {
+<span class="nc" id="L1187">        return UnmodifiableTreeMap.of(this.getMutableSortedMap().tailMap(fromKey));</span>
+    }
+
+    @Override
+    public MutableSortedMap&lt;K, V&gt; subMap(K fromKey, K toKey)
+    {
+<span class="nc" id="L1193">        return UnmodifiableTreeMap.of(this.getMutableSortedMap().subMap(fromKey, toKey));</span>
+    }
+
+    @Override
+    public MutableSet&lt;Entry&lt;K, V&gt;&gt; entrySet()
+    {
+<span class="nc" id="L1199">        return UnmodifiableMutableSet.of(super.entrySet());</span>
+    }
+
+    @Override
+    public &lt;K2, V2&gt; MutableMap&lt;K2, V2&gt; aggregateInPlaceBy(
+            Function&lt;? super V, ? extends K2&gt; groupBy,
+            Function0&lt;? extends V2&gt; zeroValueFactory,
+            Procedure2&lt;? super V2, ? super V&gt; mutatingAggregator)
+    {
+<span class="nc" id="L1208">        MutableMap&lt;K2, V2&gt; map = UnifiedMap.newMap();</span>
+<span class="nc" id="L1209">        this.forEach(new MutatingAggregationProcedure&lt;&gt;(map, groupBy, zeroValueFactory, mutatingAggregator));</span>
+<span class="nc" id="L1210">        return map;</span>
+    }
+
+    @Override
+    public &lt;K2, V2&gt; MutableMap&lt;K2, V2&gt; aggregateBy(
+            Function&lt;? super V, ? extends K2&gt; groupBy,
+            Function0&lt;? extends V2&gt; zeroValueFactory,
+            Function2&lt;? super V2, ? super V, ? extends V2&gt; nonMutatingAggregator)
+    {
+<span class="nc" id="L1219">        MutableMap&lt;K2, V2&gt; map = UnifiedMap.newMap();</span>
+<span class="nc" id="L1220">        this.forEach(new NonMutatingAggregationProcedure&lt;&gt;(map, groupBy, zeroValueFactory, nonMutatingAggregator));</span>
+<span class="nc" id="L1221">        return map;</span>
+    }
+
+    @Override
+    public MutableSortedMap&lt;K, V&gt; toReversed()
+    {
+<span class="nc" id="L1227">        throw new UnsupportedOperationException(this.getClass().getSimpleName() + &quot;.toReversed() not implemented yet&quot;);</span>
+    }
+
+    @Override
+    public MutableSortedMap&lt;K, V&gt; take(int count)
+    {
+<span class="nc" id="L1233">        return this.getMutableSortedMap().take(count);</span>
+    }
+
+    @Override
+    public MutableSortedMap&lt;K, V&gt; takeWhile(Predicate&lt;? super V&gt; predicate)
+    {
+<span class="nc" id="L1239">        throw new UnsupportedOperationException(this.getClass().getSimpleName() + &quot;.takeWhile() not implemented yet&quot;);</span>
+    }
+
+    @Override
+    public MutableSortedMap&lt;K, V&gt; drop(int count)
+    {
+<span class="nc" id="L1245">        return this.getMutableSortedMap().drop(count);</span>
+    }
+
+    @Override
+    public MutableSortedMap&lt;K, V&gt; dropWhile(Predicate&lt;? super V&gt; predicate)
+    {
+<span class="nc" id="L1251">        throw new UnsupportedOperationException(this.getClass().getSimpleName() + &quot;.dropWhile() not implemented yet&quot;);</span>
+    }
+
+    @Override
+    public PartitionMutableList&lt;V&gt; partitionWhile(Predicate&lt;? super V&gt; predicate)
+    {
+<span class="nc" id="L1257">        throw new UnsupportedOperationException(this.getClass().getSimpleName() + &quot;.partitionWhile() not implemented yet&quot;);</span>
+    }
+
+    @Override
+    public MutableList&lt;V&gt; distinct()
+    {
+<span class="nc" id="L1263">        throw new UnsupportedOperationException(this.getClass().getSimpleName() + &quot;.distinct() not implemented yet&quot;);</span>
+    }
+
+    @Override
+    public void reverseForEach(Procedure&lt;? super V&gt; procedure)
+    {
+<span class="nc" id="L1269">        throw new UnsupportedOperationException(this.getClass().getSimpleName() + &quot;.reverseForEach() not implemented yet&quot;);</span>
+    }
+
+    @Override
+    public void reverseForEachWithIndex(ObjectIntProcedure&lt;? super V&gt; procedure)
+    {
+<span class="nc" id="L1275">        throw new UnsupportedOperationException(this.getClass().getSimpleName() + &quot;.reverseForEachWithIndex() not implemented yet&quot;);</span>
+    }
+
+    @Override
+    public LazyIterable&lt;V&gt; asReversed()
+    {
+<span class="nc" id="L1281">        throw new UnsupportedOperationException(this.getClass().getSimpleName() + &quot;.asReversed() not implemented yet&quot;);</span>
+    }
+
+    @Override
+    public int detectLastIndex(Predicate&lt;? super V&gt; predicate)
+    {
+<span class="nc" id="L1287">        throw new UnsupportedOperationException(this.getClass().getSimpleName() + &quot;.detectLastIndex() not implemented yet&quot;);</span>
+    }
+
+    @Override
+    public int indexOf(Object object)
+    {
+<span class="nc" id="L1293">        throw new UnsupportedOperationException(this.getClass().getSimpleName() + &quot;.indexOf() not implemented yet&quot;);</span>
+    }
+
+    @Override
+    public &lt;S&gt; boolean corresponds(OrderedIterable&lt;S&gt; other, Predicate2&lt;? super V, ? super S&gt; predicate)
+    {
+<span class="nc" id="L1299">        throw new UnsupportedOperationException(this.getClass().getSimpleName() + &quot;.corresponds() not implemented yet&quot;);</span>
+    }
+
+    @Override
+    public void forEach(int startIndex, int endIndex, Procedure&lt;? super V&gt; procedure)
+    {
+<span class="nc" id="L1305">        throw new UnsupportedOperationException(this.getClass().getSimpleName() + &quot;.forEach() not implemented yet&quot;);</span>
+    }
+
+    @Override
+    public void forEachWithIndex(int fromIndex, int toIndex, ObjectIntProcedure&lt;? super V&gt; objectIntProcedure)
+    {
+<span class="nc" id="L1311">        throw new UnsupportedOperationException(this.getClass().getSimpleName() + &quot;.forEachWithIndex() not implemented yet&quot;);</span>
+    }
+
+    @Override
+    public MutableStack&lt;V&gt; toStack()
+    {
+<span class="nc" id="L1317">        throw new UnsupportedOperationException(this.getClass().getSimpleName() + &quot;.toStack() not implemented yet&quot;);</span>
+    }
+
+    @Override
+    public int detectIndex(Predicate&lt;? super V&gt; predicate)
+    {
+<span class="nc" id="L1323">        throw new UnsupportedOperationException(this.getClass().getSimpleName() + &quot;.detectIndex() not implemented yet&quot;);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.0.201801022044</span></div></body></html>

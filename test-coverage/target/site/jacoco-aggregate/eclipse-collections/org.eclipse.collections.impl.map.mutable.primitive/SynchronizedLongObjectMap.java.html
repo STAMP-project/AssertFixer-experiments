@@ -1,0 +1,1551 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>SynchronizedLongObjectMap.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Eclipse Collections Test Coverage Aggregation</a> &gt; <a href="../index.html" class="el_bundle">eclipse-collections</a> &gt; <a href="index.source.html" class="el_package">org.eclipse.collections.impl.map.mutable.primitive</a> &gt; <span class="el_source">SynchronizedLongObjectMap.java</span></div><h1>SynchronizedLongObjectMap.java</h1><pre class="source lang-java linenums">/*
+ * Copyright (c) 2018 Goldman Sachs and others.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * and Eclipse Distribution License v. 1.0 which accompany this distribution.
+ * The Eclipse Public License is available at http://www.eclipse.org/legal/epl-v10.html
+ * and the Eclipse Distribution License is available at
+ * http://www.eclipse.org/org/documents/edl-v10.php.
+ */
+
+package org.eclipse.collections.impl.map.mutable.primitive;
+
+import java.io.Serializable;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.Iterator;
+import java.util.Optional;
+
+import org.eclipse.collections.api.LongIterable;
+import org.eclipse.collections.api.LazyLongIterable;
+import org.eclipse.collections.api.LazyIterable;
+import org.eclipse.collections.api.RichIterable;
+import org.eclipse.collections.api.bag.MutableBag;
+import org.eclipse.collections.api.bag.primitive.MutableBooleanBag;
+import org.eclipse.collections.api.bag.primitive.MutableByteBag;
+import org.eclipse.collections.api.bag.primitive.MutableCharBag;
+import org.eclipse.collections.api.bag.primitive.MutableDoubleBag;
+import org.eclipse.collections.api.bag.primitive.MutableFloatBag;
+import org.eclipse.collections.api.bag.primitive.MutableIntBag;
+import org.eclipse.collections.api.bag.primitive.MutableLongBag;
+import org.eclipse.collections.api.bag.primitive.MutableShortBag;
+import org.eclipse.collections.api.bag.sorted.MutableSortedBag;
+import org.eclipse.collections.api.block.function.Function;
+import org.eclipse.collections.api.block.function.Function0;
+import org.eclipse.collections.api.block.function.Function2;
+import org.eclipse.collections.api.block.function.primitive.LongToObjectFunction;
+import org.eclipse.collections.api.block.function.primitive.BooleanFunction;
+import org.eclipse.collections.api.block.function.primitive.ByteFunction;
+import org.eclipse.collections.api.block.function.primitive.CharFunction;
+import org.eclipse.collections.api.block.function.primitive.DoubleFunction;
+import org.eclipse.collections.api.block.function.primitive.DoubleObjectToDoubleFunction;
+import org.eclipse.collections.api.block.function.primitive.FloatFunction;
+import org.eclipse.collections.api.block.function.primitive.FloatObjectToFloatFunction;
+import org.eclipse.collections.api.block.function.primitive.IntFunction;
+import org.eclipse.collections.api.block.function.primitive.IntObjectToIntFunction;
+import org.eclipse.collections.api.block.function.primitive.LongFunction;
+import org.eclipse.collections.api.block.function.primitive.LongObjectToLongFunction;
+import org.eclipse.collections.api.block.function.primitive.ShortFunction;
+import org.eclipse.collections.api.block.predicate.Predicate;
+import org.eclipse.collections.api.block.predicate.Predicate2;
+import org.eclipse.collections.api.block.predicate.primitive.LongObjectPredicate;
+import org.eclipse.collections.api.block.procedure.Procedure;
+import org.eclipse.collections.api.block.procedure.Procedure2;
+import org.eclipse.collections.api.block.procedure.primitive.LongObjectProcedure;
+import org.eclipse.collections.api.block.procedure.primitive.LongProcedure;
+import org.eclipse.collections.api.block.procedure.primitive.ObjectIntProcedure;
+import org.eclipse.collections.api.collection.primitive.MutableBooleanCollection;
+import org.eclipse.collections.api.collection.primitive.MutableByteCollection;
+import org.eclipse.collections.api.collection.primitive.MutableCharCollection;
+import org.eclipse.collections.api.collection.primitive.MutableDoubleCollection;
+import org.eclipse.collections.api.collection.primitive.MutableFloatCollection;
+import org.eclipse.collections.api.collection.primitive.MutableIntCollection;
+import org.eclipse.collections.api.collection.primitive.MutableLongCollection;
+import org.eclipse.collections.api.collection.primitive.MutableShortCollection;
+import org.eclipse.collections.api.list.MutableList;
+import org.eclipse.collections.api.map.MutableMap;
+import org.eclipse.collections.api.map.primitive.LongObjectMap;
+import org.eclipse.collections.api.map.primitive.MutableLongObjectMap;
+import org.eclipse.collections.api.map.primitive.ImmutableLongObjectMap;
+import org.eclipse.collections.api.map.primitive.MutableObjectDoubleMap;
+import org.eclipse.collections.api.map.primitive.MutableObjectLongMap;
+import org.eclipse.collections.api.map.sorted.MutableSortedMap;
+import org.eclipse.collections.api.multimap.MutableMultimap;
+import org.eclipse.collections.api.multimap.bag.MutableBagMultimap;
+import org.eclipse.collections.api.ordered.OrderedIterable;
+import org.eclipse.collections.api.partition.bag.PartitionMutableBag;
+import org.eclipse.collections.api.set.MutableSet;
+import org.eclipse.collections.api.set.primitive.MutableLongSet;
+import org.eclipse.collections.api.set.sorted.MutableSortedSet;
+import org.eclipse.collections.api.tuple.Pair;
+import org.eclipse.collections.api.tuple.primitive.LongObjectPair;
+import org.eclipse.collections.impl.SynchronizedRichIterable;
+import org.eclipse.collections.impl.collection.mutable.CollectionAdapter;
+import org.eclipse.collections.impl.collection.mutable.SynchronizedMutableCollection;
+import org.eclipse.collections.impl.factory.primitive.LongObjectMaps;
+import org.eclipse.collections.impl.primitive.SynchronizedLongIterable;
+import org.eclipse.collections.impl.set.mutable.primitive.SynchronizedLongSet;
+
+/**
+ * A synchronized view of a {@link MutableLongObjectMap}. It is imperative that the user manually synchronize on the collection when iterating over it using the
+ * standard JDK iterator or JDK 5 for loop, as per {@link Collections#synchronizedCollection(Collection)}.
+ * &lt;p&gt;
+ * This file was automatically generated from template file synchronizedPrimitiveObjectMap.stg.
+ *
+ * @see MutableLongObjectMap#asSynchronized()
+ * @see MutableMap#asSynchronized()
+ * @since 3.1.
+ */
+public class SynchronizedLongObjectMap&lt;V&gt;
+        implements MutableLongObjectMap&lt;V&gt;, Serializable
+{
+    private static final long serialVersionUID = 1L;
+    private final Object lock;
+    private final MutableLongObjectMap&lt;V&gt; map;
+
+    public SynchronizedLongObjectMap(MutableLongObjectMap&lt;V&gt; map)
+    {
+<span class="nc" id="L109">        this(map, null);</span>
+<span class="nc" id="L110">    }</span>
+
+    public SynchronizedLongObjectMap(MutableLongObjectMap&lt;V&gt; map, Object newLock)
+<span class="nc" id="L113">    {</span>
+<span class="nc bnc" id="L114" title="All 2 branches missed.">        if (map == null)</span>
+        {
+<span class="nc" id="L116">            throw new IllegalArgumentException(&quot;Cannot create a SynchronizedLongObjectMap on a null map&quot;);</span>
+        }
+
+<span class="nc" id="L119">        this.map = map;</span>
+<span class="nc bnc" id="L120" title="All 2 branches missed.">        this.lock = newLock == null ? this : newLock;</span>
+<span class="nc" id="L121">    }</span>
+
+    @Override
+    public V put(long key, V value)
+    {
+<span class="nc" id="L126">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L128">            return this.map.put(key, value);</span>
+        }
+    }
+
+    @Override
+    public V putPair(LongObjectPair&lt;V&gt; keyValuePair)
+    {
+<span class="nc" id="L135">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L137">            return this.map.put(keyValuePair.getOne(), keyValuePair.getTwo());</span>
+        }
+    }
+
+    @Override
+    public void putAll(LongObjectMap&lt;? extends V&gt; map)
+    {
+<span class="nc" id="L144">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L146">            map.forEachKeyValue(this.map::put);</span>
+<span class="nc" id="L147">        }</span>
+<span class="nc" id="L148">    }</span>
+
+    @Override
+    public V removeKey(long key)
+    {
+<span class="nc" id="L153">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L155">            return this.map.removeKey(key);</span>
+        }
+    }
+
+    @Override
+    public V remove(long key)
+    {
+<span class="nc" id="L162">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L164">            return this.map.remove(key);</span>
+        }
+    }
+
+    @Override
+    public V getIfAbsentPut(long key, V value)
+    {
+<span class="nc" id="L171">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L173">            return this.map.getIfAbsentPut(key, value);</span>
+        }
+    }
+
+    @Override
+    public V getIfAbsentPut(long key, Function0&lt;? extends V&gt; function)
+    {
+<span class="nc" id="L180">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L182">            return this.map.getIfAbsentPut(key, function);</span>
+        }
+    }
+
+    @Override
+    public V getIfAbsentPutWithKey(long key, LongToObjectFunction&lt;? extends V&gt; function)
+    {
+<span class="nc" id="L189">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L191">            return this.map.getIfAbsentPutWithKey(key, function);</span>
+        }
+    }
+
+    @Override
+    public &lt;P&gt; V getIfAbsentPutWith(long key, Function&lt;? super P, ? extends V&gt; function, P parameter)
+    {
+<span class="nc" id="L198">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L200">            return this.map.getIfAbsentPutWith(key, function, parameter);</span>
+        }
+    }
+
+    @Override
+    public V updateValue(long key, Function0&lt;? extends V&gt; factory, Function&lt;? super V, ? extends V&gt; function)
+    {
+<span class="nc" id="L207">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L209">            return this.map.updateValue(key, factory, function);</span>
+        }
+    }
+
+    @Override
+    public &lt;P&gt; V updateValueWith(long key, Function0&lt;? extends V&gt; factory, Function2&lt;? super V, ? super P, ? extends V&gt; function, P parameter)
+    {
+<span class="nc" id="L216">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L218">            return this.map.updateValueWith(key, factory, function, parameter);</span>
+        }
+    }
+
+    @Override
+    public V get(long key)
+    {
+<span class="nc" id="L225">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L227">            return this.map.get(key);</span>
+        }
+    }
+
+    @Override
+    public V getIfAbsent(long key, Function0&lt;? extends V&gt; ifAbsent)
+    {
+<span class="nc" id="L234">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L236">            return this.map.getIfAbsent(key, ifAbsent);</span>
+        }
+    }
+
+    @Override
+    public boolean containsKey(long key)
+    {
+<span class="nc" id="L243">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L245">            return this.map.containsKey(key);</span>
+        }
+    }
+
+    @Override
+    public boolean containsValue(Object value)
+    {
+<span class="nc" id="L252">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L254">            return this.map.containsValue(value);</span>
+        }
+    }
+
+    @Override
+    public MutableLongObjectMap&lt;V&gt; tap(Procedure&lt;? super V&gt; procedure)
+    {
+<span class="nc" id="L261">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L263">            this.map.forEach(procedure);</span>
+<span class="nc" id="L264">            return this;</span>
+        }
+    }
+
+    @Override
+    public void forEachValue(Procedure&lt;? super V&gt; procedure)
+    {
+<span class="nc" id="L271">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L273">            this.map.forEachValue(procedure);</span>
+<span class="nc" id="L274">        }</span>
+<span class="nc" id="L275">    }</span>
+
+    @Override
+    public void forEachKey(LongProcedure procedure)
+    {
+<span class="nc" id="L280">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L282">            this.map.forEachKey(procedure);</span>
+<span class="nc" id="L283">        }</span>
+<span class="nc" id="L284">    }</span>
+
+    @Override
+    public void forEachKeyValue(LongObjectProcedure&lt;? super V&gt; procedure)
+    {
+<span class="nc" id="L289">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L291">            this.map.forEachKeyValue(procedure);</span>
+<span class="nc" id="L292">        }</span>
+<span class="nc" id="L293">    }</span>
+
+    @Override
+    public MutableLongObjectMap&lt;V&gt; select(LongObjectPredicate&lt;? super V&gt; predicate)
+    {
+<span class="nc" id="L298">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L300">            return this.map.select(predicate);</span>
+        }
+    }
+
+    @Override
+    public MutableLongObjectMap&lt;V&gt; reject(LongObjectPredicate&lt;? super V&gt; predicate)
+    {
+<span class="nc" id="L307">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L309">            return this.map.reject(predicate);</span>
+        }
+    }
+
+    @Override
+    public int size()
+    {
+<span class="nc" id="L316">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L318">            return this.map.size();</span>
+        }
+    }
+
+    @Override
+    public boolean isEmpty()
+    {
+<span class="nc" id="L325">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L327">            return this.map.isEmpty();</span>
+        }
+    }
+
+    @Override
+    public boolean notEmpty()
+    {
+<span class="nc" id="L334">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L336">            return this.map.notEmpty();</span>
+        }
+    }
+
+    @Override
+    public V getFirst()
+    {
+<span class="nc" id="L343">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L345">            return this.map.getFirst();</span>
+        }
+    }
+
+    @Override
+    public V getLast()
+    {
+<span class="nc" id="L352">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L354">            return this.map.getLast();</span>
+        }
+    }
+
+    @Override
+    public V getOnly()
+    {
+<span class="nc" id="L361">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L363">            return this.map.getOnly();</span>
+        }
+    }
+
+    @Override
+    public boolean contains(Object object)
+    {
+<span class="nc" id="L370">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L372">            return this.map.contains(object);</span>
+        }
+    }
+
+    @Override
+    public boolean containsAllIterable(Iterable&lt;?&gt; source)
+    {
+<span class="nc" id="L379">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L381">            return this.map.containsAllIterable(source);</span>
+        }
+    }
+
+    @Override
+    public boolean containsAll(Collection&lt;?&gt; source)
+    {
+<span class="nc" id="L388">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L390">            return this.map.containsAll(source);</span>
+        }
+    }
+
+    @Override
+    public boolean containsAllArguments(Object... elements)
+    {
+<span class="nc" id="L397">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L399">            return this.map.containsAllArguments(elements);</span>
+        }
+    }
+
+    @Override
+    public MutableBag&lt;V&gt; select(Predicate&lt;? super V&gt; predicate)
+    {
+<span class="nc" id="L406">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L408">            return this.map.select(predicate);</span>
+        }
+    }
+
+    @Override
+    public &lt;R extends Collection&lt;V&gt;&gt; R select(Predicate&lt;? super V&gt; predicate, R target)
+    {
+<span class="nc" id="L415">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L417">            return this.map.select(predicate, target);</span>
+        }
+    }
+
+    @Override
+    public &lt;P&gt; MutableBag&lt;V&gt; selectWith(Predicate2&lt;? super V, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc" id="L424">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L426">            return this.map.selectWith(predicate, parameter);</span>
+        }
+    }
+
+    @Override
+    public &lt;P, R extends Collection&lt;V&gt;&gt; R selectWith(Predicate2&lt;? super V, ? super P&gt; predicate, P parameter, R targetCollection)
+    {
+<span class="nc" id="L433">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L435">            return this.map.selectWith(predicate, parameter, targetCollection);</span>
+        }
+    }
+
+    @Override
+    public PartitionMutableBag&lt;V&gt; partition(Predicate&lt;? super V&gt; predicate)
+    {
+<span class="nc" id="L442">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L444">            return this.map.partition(predicate);</span>
+        }
+    }
+
+    @Override
+    public &lt;P&gt; PartitionMutableBag&lt;V&gt; partitionWith(Predicate2&lt;? super V, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc" id="L451">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L453">            return this.map.partitionWith(predicate, parameter);</span>
+        }
+    }
+
+    @Override
+    public &lt;S&gt; MutableBag&lt;S&gt; selectInstancesOf(Class&lt;S&gt; clazz)
+    {
+<span class="nc" id="L460">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L462">            return this.map.selectInstancesOf(clazz);</span>
+        }
+    }
+
+    /**
+     * @deprecated in 7.0. Use {@link OrderedIterable#zipWithIndex()} instead.
+     */
+    @Deprecated
+    @Override
+    public MutableSet&lt;Pair&lt;V, Integer&gt;&gt; zipWithIndex()
+    {
+<span class="nc" id="L473">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L475">            return this.map.zipWithIndex();</span>
+        }
+    }
+
+    @Override
+    public &lt;R extends Collection&lt;Pair&lt;V, Integer&gt;&gt;&gt; R zipWithIndex(R target)
+    {
+<span class="nc" id="L482">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L484">            return this.map.zipWithIndex(target);</span>
+        }
+    }
+
+    @Override
+    public RichIterable&lt;RichIterable&lt;V&gt;&gt; chunk(int size)
+    {
+<span class="nc" id="L491">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L493">            return this.map.chunk(size);</span>
+        }
+    }
+
+    @Override
+    public &lt;K, VV&gt; MutableMap&lt;K, VV&gt; aggregateInPlaceBy(Function&lt;? super V, ? extends K&gt; groupBy, Function0&lt;? extends VV&gt; zeroValueFactory, Procedure2&lt;? super VV, ? super V&gt; mutatingAggregator)
+    {
+<span class="nc" id="L500">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L502">            return this.map.aggregateInPlaceBy(groupBy, zeroValueFactory, mutatingAggregator);</span>
+        }
+    }
+
+    @Override
+    public &lt;K, VV&gt; MutableMap&lt;K, VV&gt; aggregateBy(Function&lt;? super V, ? extends K&gt; groupBy, Function0&lt;? extends VV&gt; zeroValueFactory, Function2&lt;? super VV, ? super V, ? extends VV&gt; nonMutatingAggregator)
+    {
+<span class="nc" id="L509">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L511">            return this.map.aggregateBy(groupBy, zeroValueFactory, nonMutatingAggregator);</span>
+        }
+    }
+
+    @Override
+    public MutableBag&lt;V&gt; reject(Predicate&lt;? super V&gt; predicate)
+    {
+<span class="nc" id="L518">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L520">            return this.map.reject(predicate);</span>
+        }
+    }
+
+    @Override
+    public &lt;R extends Collection&lt;V&gt;&gt; R reject(Predicate&lt;? super V&gt; predicate, R target)
+    {
+<span class="nc" id="L527">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L529">            return this.map.reject(predicate, target);</span>
+        }
+    }
+
+    @Override
+    public &lt;P&gt; MutableBag&lt;V&gt; rejectWith(Predicate2&lt;? super V, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc" id="L536">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L538">            return this.map.rejectWith(predicate, parameter);</span>
+        }
+    }
+
+    @Override
+    public &lt;P, R extends Collection&lt;V&gt;&gt; R rejectWith(Predicate2&lt;? super V, ? super P&gt; predicate, P parameter, R targetCollection)
+    {
+<span class="nc" id="L545">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L547">            return this.map.rejectWith(predicate, parameter, targetCollection);</span>
+        }
+    }
+
+    @Override
+    public void clear()
+    {
+<span class="nc" id="L554">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L556">            this.map.clear();</span>
+<span class="nc" id="L557">        }</span>
+<span class="nc" id="L558">    }</span>
+
+    @Override
+    public &lt;VV&gt; MutableBag&lt;VV&gt; collect(Function&lt;? super V, ? extends VV&gt; function)
+    {
+<span class="nc" id="L563">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L565">            return this.map.collect(function);</span>
+        }
+    }
+
+    @Override
+    public MutableBooleanBag collectBoolean(BooleanFunction&lt;? super V&gt; booleanFunction)
+    {
+<span class="nc" id="L572">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L574">            return this.map.collectBoolean(booleanFunction);</span>
+        }
+    }
+
+    @Override
+    public &lt;R extends MutableBooleanCollection&gt; R collectBoolean(BooleanFunction&lt;? super V&gt; booleanFunction, R target)
+    {
+<span class="nc" id="L581">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L583">            return this.map.collectBoolean(booleanFunction, target);</span>
+        }
+    }
+
+    @Override
+    public MutableByteBag collectByte(ByteFunction&lt;? super V&gt; byteFunction)
+    {
+<span class="nc" id="L590">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L592">            return this.map.collectByte(byteFunction);</span>
+        }
+    }
+
+    @Override
+    public &lt;R extends MutableByteCollection&gt; R collectByte(ByteFunction&lt;? super V&gt; byteFunction, R target)
+    {
+<span class="nc" id="L599">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L601">            return this.map.collectByte(byteFunction, target);</span>
+        }
+    }
+
+    @Override
+    public MutableCharBag collectChar(CharFunction&lt;? super V&gt; charFunction)
+    {
+<span class="nc" id="L608">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L610">            return this.map.collectChar(charFunction);</span>
+        }
+    }
+
+    @Override
+    public &lt;R extends MutableCharCollection&gt; R collectChar(CharFunction&lt;? super V&gt; charFunction, R target)
+    {
+<span class="nc" id="L617">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L619">            return this.map.collectChar(charFunction, target);</span>
+        }
+    }
+
+    @Override
+    public MutableDoubleBag collectDouble(DoubleFunction&lt;? super V&gt; doubleFunction)
+    {
+<span class="nc" id="L626">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L628">            return this.map.collectDouble(doubleFunction);</span>
+        }
+    }
+
+    @Override
+    public &lt;R extends MutableDoubleCollection&gt; R collectDouble(DoubleFunction&lt;? super V&gt; doubleFunction, R target)
+    {
+<span class="nc" id="L635">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L637">            return this.map.collectDouble(doubleFunction, target);</span>
+        }
+    }
+
+    @Override
+    public MutableFloatBag collectFloat(FloatFunction&lt;? super V&gt; floatFunction)
+    {
+<span class="nc" id="L644">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L646">            return this.map.collectFloat(floatFunction);</span>
+        }
+    }
+
+    @Override
+    public &lt;R extends MutableFloatCollection&gt; R collectFloat(FloatFunction&lt;? super V&gt; floatFunction, R target)
+    {
+<span class="nc" id="L653">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L655">            return this.map.collectFloat(floatFunction, target);</span>
+        }
+    }
+
+    @Override
+    public MutableIntBag collectInt(IntFunction&lt;? super V&gt; intFunction)
+    {
+<span class="nc" id="L662">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L664">            return this.map.collectInt(intFunction);</span>
+        }
+    }
+
+    @Override
+    public &lt;R extends MutableIntCollection&gt; R collectInt(IntFunction&lt;? super V&gt; intFunction, R target)
+    {
+<span class="nc" id="L671">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L673">            return this.map.collectInt(intFunction, target);</span>
+        }
+    }
+
+    @Override
+    public MutableLongBag collectLong(LongFunction&lt;? super V&gt; longFunction)
+    {
+<span class="nc" id="L680">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L682">            return this.map.collectLong(longFunction);</span>
+        }
+    }
+
+    @Override
+    public &lt;R extends MutableLongCollection&gt; R collectLong(LongFunction&lt;? super V&gt; longFunction, R target)
+    {
+<span class="nc" id="L689">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L691">            return this.map.collectLong(longFunction, target);</span>
+        }
+    }
+
+    @Override
+    public MutableShortBag collectShort(ShortFunction&lt;? super V&gt; shortFunction)
+    {
+<span class="nc" id="L698">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L700">            return this.map.collectShort(shortFunction);</span>
+        }
+    }
+
+    @Override
+    public &lt;R extends MutableShortCollection&gt; R collectShort(ShortFunction&lt;? super V&gt; shortFunction, R target)
+    {
+<span class="nc" id="L707">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L709">            return this.map.collectShort(shortFunction, target);</span>
+        }
+    }
+
+    @Override
+    public &lt;P, VV&gt; MutableBag&lt;VV&gt; collectWith(Function2&lt;? super V, ? super P, ? extends VV&gt; function, P parameter)
+    {
+<span class="nc" id="L716">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L718">            return this.map.collectWith(function, parameter);</span>
+        }
+    }
+
+    @Override
+    public &lt;P, VV, R extends Collection&lt;VV&gt;&gt; R collectWith(Function2&lt;? super V, ? super P, ? extends VV&gt; function, P parameter, R targetCollection)
+    {
+<span class="nc" id="L725">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L727">            return this.map.collectWith(function, parameter, targetCollection);</span>
+        }
+    }
+
+    @Override
+    public &lt;VV, R extends Collection&lt;VV&gt;&gt; R collect(Function&lt;? super V, ? extends VV&gt; function, R target)
+    {
+<span class="nc" id="L734">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L736">            return this.map.collect(function, target);</span>
+        }
+    }
+
+    @Override
+    public &lt;VV&gt; MutableBag&lt;VV&gt; collectIf(Predicate&lt;? super V&gt; predicate, Function&lt;? super V, ? extends VV&gt; function)
+    {
+<span class="nc" id="L743">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L745">            return this.map.collectIf(predicate, function);</span>
+        }
+    }
+
+    @Override
+    public &lt;VV, R extends Collection&lt;VV&gt;&gt; R collectIf(Predicate&lt;? super V&gt; predicate, Function&lt;? super V, ? extends VV&gt; function, R target)
+    {
+<span class="nc" id="L752">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L754">            return this.map.collectIf(predicate, function, target);</span>
+        }
+    }
+
+    @Override
+    public &lt;VV&gt; MutableBag&lt;VV&gt; flatCollect(Function&lt;? super V, ? extends Iterable&lt;VV&gt;&gt; function)
+    {
+<span class="nc" id="L761">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L763">            return this.map.flatCollect(function);</span>
+        }
+    }
+
+    @Override
+    public &lt;VV, R extends Collection&lt;VV&gt;&gt; R flatCollect(Function&lt;? super V, ? extends Iterable&lt;VV&gt;&gt; function, R target)
+    {
+<span class="nc" id="L770">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L772">            return this.map.flatCollect(function, target);</span>
+        }
+    }
+
+    @Override
+    public V detect(Predicate&lt;? super V&gt; predicate)
+    {
+<span class="nc" id="L779">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L781">            return this.map.detect(predicate);</span>
+        }
+    }
+
+    @Override
+    public &lt;P&gt; V detectWith(Predicate2&lt;? super V, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc" id="L788">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L790">            return this.map.detectWith(predicate, parameter);</span>
+        }
+    }
+
+    @Override
+    public Optional&lt;V&gt; detectOptional(Predicate&lt;? super V&gt; predicate)
+    {
+<span class="nc" id="L797">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L799">            return this.map.detectOptional(predicate);</span>
+        }
+    }
+
+    @Override
+    public &lt;P&gt; Optional&lt;V&gt; detectWithOptional(Predicate2&lt;? super V, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc" id="L806">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L808">            return this.map.detectWithOptional(predicate, parameter);</span>
+        }
+    }
+
+    @Override
+    public V detectIfNone(Predicate&lt;? super V&gt; predicate, Function0&lt;? extends V&gt; function)
+    {
+<span class="nc" id="L815">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L817">            return this.map.detectIfNone(predicate, function);</span>
+        }
+    }
+
+    @Override
+    public &lt;P&gt; V detectWithIfNone(Predicate2&lt;? super V, ? super P&gt; predicate, P parameter, Function0&lt;? extends V&gt; function)
+    {
+<span class="nc" id="L824">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L826">            return this.map.detectWithIfNone(predicate, parameter, function);</span>
+        }
+    }
+
+    @Override
+    public int count(Predicate&lt;? super V&gt; predicate)
+    {
+<span class="nc" id="L833">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L835">            return this.map.count(predicate);</span>
+        }
+    }
+
+    @Override
+    public &lt;P&gt; int countWith(Predicate2&lt;? super V, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc" id="L842">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L844">            return this.map.countWith(predicate, parameter);</span>
+        }
+    }
+
+    @Override
+    public boolean anySatisfy(Predicate&lt;? super V&gt; predicate)
+    {
+<span class="nc" id="L851">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L853">            return this.map.anySatisfy(predicate);</span>
+        }
+    }
+
+    @Override
+    public &lt;P&gt; boolean anySatisfyWith(Predicate2&lt;? super V, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc" id="L860">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L862">            return this.map.anySatisfyWith(predicate, parameter);</span>
+        }
+    }
+
+    @Override
+    public boolean allSatisfy(Predicate&lt;? super V&gt; predicate)
+    {
+<span class="nc" id="L869">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L871">            return this.map.allSatisfy(predicate);</span>
+        }
+    }
+
+    @Override
+    public &lt;P&gt; boolean allSatisfyWith(Predicate2&lt;? super V, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc" id="L878">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L880">            return this.map.allSatisfyWith(predicate, parameter);</span>
+        }
+    }
+
+    @Override
+    public boolean noneSatisfy(Predicate&lt;? super V&gt; predicate)
+    {
+<span class="nc" id="L887">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L889">            return this.map.noneSatisfy(predicate);</span>
+        }
+    }
+
+    @Override
+    public &lt;P&gt; boolean noneSatisfyWith(Predicate2&lt;? super V, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc" id="L896">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L898">            return this.map.noneSatisfyWith(predicate, parameter);</span>
+        }
+    }
+
+    @Override
+    public &lt;IV&gt; IV injectInto(IV injectedValue, Function2&lt;? super IV, ? super V, ? extends IV&gt; function)
+    {
+<span class="nc" id="L905">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L907">            return this.map.injectInto(injectedValue, function);</span>
+        }
+    }
+
+    @Override
+    public int injectInto(int injectedValue, IntObjectToIntFunction&lt;? super V&gt; function)
+    {
+<span class="nc" id="L914">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L916">            return this.map.injectInto(injectedValue, function);</span>
+        }
+    }
+
+    @Override
+    public long injectInto(long injectedValue, LongObjectToLongFunction&lt;? super V&gt; function)
+    {
+<span class="nc" id="L923">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L925">            return this.map.injectInto(injectedValue, function);</span>
+        }
+    }
+
+    @Override
+    public float injectInto(float injectedValue, FloatObjectToFloatFunction&lt;? super V&gt; function)
+    {
+<span class="nc" id="L932">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L934">            return this.map.injectInto(injectedValue, function);</span>
+        }
+    }
+
+    @Override
+    public double injectInto(double injectedValue, DoubleObjectToDoubleFunction&lt;? super V&gt; function)
+    {
+<span class="nc" id="L941">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L943">            return this.map.injectInto(injectedValue, function);</span>
+        }
+    }
+
+    @Override
+    public &lt;R extends Collection&lt;V&gt;&gt; R into(R target)
+    {
+<span class="nc" id="L950">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L952">            return this.map.into(target);</span>
+        }
+    }
+
+    @Override
+    public MutableList&lt;V&gt; toList()
+    {
+<span class="nc" id="L959">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L961">            return this.map.toList();</span>
+        }
+    }
+
+    @Override
+    public MutableList&lt;V&gt; toSortedList()
+    {
+<span class="nc" id="L968">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L970">            return this.map.toSortedList();</span>
+        }
+    }
+
+    @Override
+    public MutableList&lt;V&gt; toSortedList(Comparator&lt;? super V&gt; comparator)
+    {
+<span class="nc" id="L977">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L979">            return this.map.toSortedList(comparator);</span>
+        }
+    }
+
+    @Override
+    public &lt;VV extends Comparable&lt;? super VV&gt;&gt; MutableList&lt;V&gt; toSortedListBy(Function&lt;? super V, ? extends VV&gt; function)
+    {
+<span class="nc" id="L986">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L988">            return this.map.toSortedListBy(function);</span>
+        }
+    }
+
+    @Override
+    public MutableSet&lt;V&gt; toSet()
+    {
+<span class="nc" id="L995">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L997">            return this.map.toSet();</span>
+        }
+    }
+
+    @Override
+    public MutableSortedSet&lt;V&gt; toSortedSet()
+    {
+<span class="nc" id="L1004">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L1006">            return this.map.toSortedSet();</span>
+        }
+    }
+
+    @Override
+    public MutableSortedSet&lt;V&gt; toSortedSet(Comparator&lt;? super V&gt; comparator)
+    {
+<span class="nc" id="L1013">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L1015">            return this.map.toSortedSet(comparator);</span>
+        }
+    }
+
+    @Override
+    public &lt;VV extends Comparable&lt;? super VV&gt;&gt; MutableSortedSet&lt;V&gt; toSortedSetBy(Function&lt;? super V, ? extends VV&gt; function)
+    {
+<span class="nc" id="L1022">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L1024">            return this.map.toSortedSetBy(function);</span>
+        }
+    }
+
+    @Override
+    public MutableBag&lt;V&gt; toBag()
+    {
+<span class="nc" id="L1031">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L1033">            return this.map.toBag();</span>
+        }
+    }
+
+    @Override
+    public MutableSortedBag&lt;V&gt; toSortedBag()
+    {
+<span class="nc" id="L1040">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L1042">            return this.map.toSortedBag();</span>
+        }
+    }
+
+    @Override
+    public MutableSortedBag&lt;V&gt; toSortedBag(Comparator&lt;? super V&gt; comparator)
+    {
+<span class="nc" id="L1049">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L1051">            return this.map.toSortedBag(comparator);</span>
+        }
+    }
+
+    @Override
+    public &lt;VV extends Comparable&lt;? super VV&gt;&gt; MutableSortedBag&lt;V&gt; toSortedBagBy(Function&lt;? super V, ? extends VV&gt; function)
+    {
+<span class="nc" id="L1058">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L1060">            return this.map.toSortedBagBy(function);</span>
+        }
+    }
+
+    @Override
+    public &lt;NK, NV&gt; MutableMap&lt;NK, NV&gt; toMap(Function&lt;? super V, ? extends NK&gt; keyFunction, Function&lt;? super V, ? extends NV&gt; valueFunction)
+    {
+<span class="nc" id="L1067">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L1069">            return this.map.toMap(keyFunction, valueFunction);</span>
+        }
+    }
+
+    @Override
+    public &lt;NK, NV&gt; MutableSortedMap&lt;NK, NV&gt; toSortedMap(Function&lt;? super V, ? extends NK&gt; keyFunction, Function&lt;? super V, ? extends NV&gt; valueFunction)
+    {
+<span class="nc" id="L1076">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L1078">            return this.map.toSortedMap(keyFunction, valueFunction);</span>
+        }
+    }
+
+    @Override
+    public &lt;NK, NV&gt; MutableSortedMap&lt;NK, NV&gt; toSortedMap(Comparator&lt;? super NK&gt; comparator, Function&lt;? super V, ? extends NK&gt; keyFunction, Function&lt;? super V, ? extends NV&gt; valueFunction)
+    {
+<span class="nc" id="L1085">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L1087">            return this.map.toSortedMap(comparator, keyFunction, valueFunction);</span>
+        }
+    }
+
+    @Override
+    public &lt;KK extends Comparable&lt;? super KK&gt;, NK, NV&gt; MutableSortedMap&lt;NK, NV&gt; toSortedMapBy(Function&lt;? super NK, KK&gt; sortBy, Function&lt;? super V, ? extends NK&gt; keyFunction, Function&lt;? super V, ? extends NV&gt; valueFunction)
+    {
+<span class="nc" id="L1094">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L1096">            return this.map.toSortedMapBy(sortBy, keyFunction, valueFunction);</span>
+        }
+    }
+
+    @Override
+    public LazyIterable&lt;V&gt; asLazy()
+    {
+<span class="nc" id="L1103">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L1105">            return this.map.asLazy();</span>
+        }
+    }
+
+    @Override
+    public Object[] toArray()
+    {
+<span class="nc" id="L1112">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L1114">            return this.map.toArray();</span>
+        }
+    }
+
+    @Override
+    public &lt;T&gt; T[] toArray(T[] a)
+    {
+<span class="nc" id="L1121">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L1123">            return this.map.toArray(a);</span>
+        }
+    }
+
+    @Override
+    public V min(Comparator&lt;? super V&gt; comparator)
+    {
+<span class="nc" id="L1130">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L1132">            return this.map.min(comparator);</span>
+        }
+    }
+
+    @Override
+    public V max(Comparator&lt;? super V&gt; comparator)
+    {
+<span class="nc" id="L1139">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L1141">            return this.map.max(comparator);</span>
+        }
+    }
+
+    @Override
+    public V min()
+    {
+<span class="nc" id="L1148">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L1150">            return this.map.min();</span>
+        }
+    }
+
+    @Override
+    public V max()
+    {
+<span class="nc" id="L1157">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L1159">            return this.map.max();</span>
+        }
+    }
+
+    @Override
+    public &lt;VV extends Comparable&lt;? super VV&gt;&gt; V maxBy(Function&lt;? super V, ? extends VV&gt; function)
+    {
+<span class="nc" id="L1166">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L1168">            return this.map.maxBy(function);</span>
+        }
+    }
+
+    @Override
+    public &lt;VV extends Comparable&lt;? super VV&gt;&gt; V minBy(Function&lt;? super V, ? extends VV&gt; function)
+    {
+<span class="nc" id="L1175">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L1177">            return this.map.minBy(function);</span>
+        }
+    }
+
+    @Override
+    public long sumOfInt(IntFunction&lt;? super V&gt; function)
+    {
+<span class="nc" id="L1184">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L1186">            return this.map.sumOfInt(function);</span>
+        }
+    }
+
+    @Override
+    public double sumOfFloat(FloatFunction&lt;? super V&gt; function)
+    {
+<span class="nc" id="L1193">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L1195">            return this.map.sumOfFloat(function);</span>
+        }
+    }
+
+    @Override
+    public long sumOfLong(LongFunction&lt;? super V&gt; function)
+    {
+<span class="nc" id="L1202">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L1204">            return this.map.sumOfLong(function);</span>
+        }
+    }
+
+    @Override
+    public double sumOfDouble(DoubleFunction&lt;? super V&gt; function)
+    {
+<span class="nc" id="L1211">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L1213">            return this.map.sumOfDouble(function);</span>
+        }
+    }
+
+    @Override
+    public &lt;V1&gt; MutableObjectLongMap&lt;V1&gt; sumByInt(Function&lt;? super V, ? extends V1&gt; groupBy, IntFunction&lt;? super V&gt; function)
+    {
+<span class="nc" id="L1220">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L1222">            return this.map.sumByInt(groupBy, function);</span>
+        }
+    }
+
+    @Override
+    public &lt;V1&gt; MutableObjectDoubleMap&lt;V1&gt; sumByFloat(Function&lt;? super V, ? extends V1&gt; groupBy, FloatFunction&lt;? super V&gt; function)
+    {
+<span class="nc" id="L1229">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L1231">            return this.map.sumByFloat(groupBy, function);</span>
+        }
+    }
+
+    @Override
+    public &lt;V1&gt; MutableObjectLongMap&lt;V1&gt; sumByLong(Function&lt;? super V, ? extends V1&gt; groupBy, LongFunction&lt;? super V&gt; function)
+    {
+<span class="nc" id="L1238">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L1240">            return this.map.sumByLong(groupBy, function);</span>
+        }
+    }
+
+    @Override
+    public &lt;V1&gt; MutableObjectDoubleMap&lt;V1&gt; sumByDouble(Function&lt;? super V, ? extends V1&gt; groupBy, DoubleFunction&lt;? super V&gt; function)
+    {
+<span class="nc" id="L1247">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L1249">            return this.map.sumByDouble(groupBy, function);</span>
+        }
+    }
+
+    @Override
+    public MutableLongSet keySet()
+    {
+<span class="nc" id="L1256">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L1258">            return SynchronizedLongSet.of(this.map.keySet(), this.lock);</span>
+        }
+    }
+
+    @Override
+    public Collection&lt;V&gt; values()
+    {
+<span class="nc" id="L1265">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L1267">            return SynchronizedMutableCollection.of(CollectionAdapter.adapt(this.map.values()), this.lock);</span>
+        }
+    }
+
+    @Override
+    public LazyLongIterable keysView()
+    {
+<span class="nc" id="L1274">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L1276">            return SynchronizedLongIterable.of(this.map.keysView(), this.lock).asLazy();</span>
+        }
+    }
+
+    @Override
+    public RichIterable&lt;LongObjectPair&lt;V&gt;&gt; keyValuesView()
+    {
+<span class="nc" id="L1283">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L1285">            return SynchronizedRichIterable.of(this.map.keyValuesView(), this.lock).asLazy();</span>
+        }
+    }
+
+    @Override
+    public MutableObjectLongMap&lt;V&gt; flipUniqueValues()
+    {
+<span class="nc" id="L1292">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L1294">            return this.map.flipUniqueValues();</span>
+        }
+    }
+
+    @Override
+    public boolean equals(Object obj)
+    {
+<span class="nc" id="L1301">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L1303">            return this.map.equals(obj);</span>
+        }
+    }
+
+    @Override
+    public int hashCode()
+    {
+<span class="nc" id="L1310">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L1312">            return this.map.hashCode();</span>
+        }
+    }
+
+    @Override
+    public String toString()
+    {
+<span class="nc" id="L1319">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L1321">            return this.map.toString();</span>
+        }
+    }
+
+    @Override
+    public String makeString()
+    {
+<span class="nc" id="L1328">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L1330">            return this.map.makeString();</span>
+        }
+    }
+
+    @Override
+    public String makeString(String separator)
+    {
+<span class="nc" id="L1337">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L1339">            return this.map.makeString(separator);</span>
+        }
+    }
+
+    @Override
+    public String makeString(String start, String separator, String end)
+    {
+<span class="nc" id="L1346">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L1348">            return this.map.makeString(start, separator, end);</span>
+        }
+    }
+
+    @Override
+    public void appendString(Appendable appendable)
+    {
+<span class="nc" id="L1355">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L1357">            this.map.appendString(appendable);</span>
+<span class="nc" id="L1358">        }</span>
+<span class="nc" id="L1359">    }</span>
+
+    @Override
+    public void appendString(Appendable appendable, String separator)
+    {
+<span class="nc" id="L1364">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L1366">            this.map.appendString(appendable, separator);</span>
+<span class="nc" id="L1367">        }</span>
+<span class="nc" id="L1368">    }</span>
+
+    @Override
+    public void appendString(Appendable appendable, String start, String separator, String end)
+    {
+<span class="nc" id="L1373">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L1375">            this.map.appendString(appendable, start, separator, end);</span>
+<span class="nc" id="L1376">        }</span>
+<span class="nc" id="L1377">    }</span>
+
+    @Override
+    public &lt;VV&gt; MutableBagMultimap&lt;VV, V&gt; groupBy(Function&lt;? super V, ? extends VV&gt; function)
+    {
+<span class="nc" id="L1382">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L1384">            return this.map.groupBy(function);</span>
+        }
+    }
+
+    @Override
+    public &lt;VV, R extends MutableMultimap&lt;VV, V&gt;&gt; R groupBy(Function&lt;? super V, ? extends VV&gt; function, R target)
+    {
+<span class="nc" id="L1391">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L1393">            return this.map.groupBy(function, target);</span>
+        }
+    }
+
+    @Override
+    public &lt;VV&gt; MutableBagMultimap&lt;VV, V&gt; groupByEach(Function&lt;? super V, ? extends Iterable&lt;VV&gt;&gt; function)
+    {
+<span class="nc" id="L1400">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L1402">            return this.map.groupByEach(function);</span>
+        }
+    }
+
+    @Override
+    public &lt;VV, R extends MutableMultimap&lt;VV, V&gt;&gt; R groupByEach(Function&lt;? super V, ? extends Iterable&lt;VV&gt;&gt; function, R target)
+    {
+<span class="nc" id="L1409">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L1411">            return this.map.groupByEach(function, target);</span>
+        }
+    }
+
+    @Override
+    public &lt;VV&gt; MutableMap&lt;VV, V&gt; groupByUniqueKey(Function&lt;? super V, ? extends VV&gt; function)
+    {
+<span class="nc" id="L1418">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L1420">            return this.map.groupByUniqueKey(function);</span>
+        }
+    }
+
+    @Override
+    public &lt;VV, R extends MutableMap&lt;VV, V&gt;&gt; R groupByUniqueKey(Function&lt;? super V, ? extends VV&gt; function, R target)
+    {
+<span class="nc" id="L1427">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L1429">            return this.map.groupByUniqueKey(function, target);</span>
+        }
+    }
+
+    /**
+     * @deprecated in 7.0. Use {@link OrderedIterable#zip(Iterable)} instead.
+     */
+    @Deprecated
+    @Override
+    public &lt;S&gt; MutableBag&lt;Pair&lt;V, S&gt;&gt; zip(Iterable&lt;S&gt; that)
+    {
+<span class="nc" id="L1440">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L1442">            return this.map.zip(that);</span>
+        }
+    }
+
+    @Override
+    public &lt;S, R extends Collection&lt;Pair&lt;V, S&gt;&gt;&gt; R zip(Iterable&lt;S&gt; that, R target)
+    {
+<span class="nc" id="L1449">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L1451">            return this.map.zip(that, target);</span>
+        }
+    }
+
+    @Override
+    public MutableLongObjectMap&lt;V&gt; withKeyValue(long key, V value)
+    {
+<span class="nc" id="L1458">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L1460">            this.map.withKeyValue(key, value);</span>
+<span class="nc" id="L1461">        }</span>
+<span class="nc" id="L1462">        return this;</span>
+    }
+
+    @Override
+    public MutableLongObjectMap&lt;V&gt; withoutKey(long key)
+    {
+<span class="nc" id="L1468">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L1470">            this.map.withoutKey(key);</span>
+<span class="nc" id="L1471">        }</span>
+<span class="nc" id="L1472">        return this;</span>
+    }
+
+    @Override
+    public MutableLongObjectMap&lt;V&gt; withoutAllKeys(LongIterable keys)
+    {
+<span class="nc" id="L1478">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L1480">            this.map.withoutAllKeys(keys);</span>
+<span class="nc" id="L1481">        }</span>
+<span class="nc" id="L1482">        return this;</span>
+    }
+
+    @Override
+    public MutableLongObjectMap&lt;V&gt; asUnmodifiable()
+    {
+<span class="nc" id="L1488">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L1490">            return new UnmodifiableLongObjectMap&lt;&gt;(this);</span>
+        }
+    }
+
+    @Override
+    public MutableLongObjectMap&lt;V&gt; asSynchronized()
+    {
+<span class="nc" id="L1497">        return this;</span>
+    }
+
+    @Override
+    public ImmutableLongObjectMap&lt;V&gt; toImmutable()
+    {
+<span class="nc" id="L1503">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L1505">            return LongObjectMaps.immutable.withAll(this);</span>
+        }
+    }
+
+    @Override
+    public void forEach(Procedure&lt;? super V&gt; procedure)
+    {
+<span class="nc" id="L1512">        this.each(procedure);</span>
+<span class="nc" id="L1513">    }</span>
+
+    @Override
+    public void each(Procedure&lt;? super V&gt; procedure)
+    {
+<span class="nc" id="L1518">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L1520">            this.map.forEach(procedure);</span>
+<span class="nc" id="L1521">        }</span>
+<span class="nc" id="L1522">    }</span>
+
+    @Override
+    public void forEachWithIndex(ObjectIntProcedure&lt;? super V&gt; objectIntProcedure)
+    {
+<span class="nc" id="L1527">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L1529">            this.map.forEachWithIndex(objectIntProcedure);</span>
+<span class="nc" id="L1530">        }</span>
+<span class="nc" id="L1531">    }</span>
+
+    @Override
+    public &lt;P&gt; void forEachWith(Procedure2&lt;? super V, ? super P&gt; procedure, P parameter)
+    {
+<span class="nc" id="L1536">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L1538">            this.map.forEachWith(procedure, parameter);</span>
+<span class="nc" id="L1539">        }</span>
+<span class="nc" id="L1540">    }</span>
+
+    /**
+     * Must be called in a synchronized block.
+     */
+    @Override
+    public Iterator&lt;V&gt; iterator()
+    {
+<span class="nc" id="L1548">        return this.map.iterator();</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.0.201801022044</span></div></body></html>

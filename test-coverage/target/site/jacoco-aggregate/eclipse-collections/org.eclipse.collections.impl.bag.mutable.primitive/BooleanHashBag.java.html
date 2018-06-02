@@ -1,0 +1,956 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>BooleanHashBag.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Eclipse Collections Test Coverage Aggregation</a> &gt; <a href="../index.html" class="el_bundle">eclipse-collections</a> &gt; <a href="index.source.html" class="el_package">org.eclipse.collections.impl.bag.mutable.primitive</a> &gt; <span class="el_source">BooleanHashBag.java</span></div><h1>BooleanHashBag.java</h1><pre class="source lang-java linenums">/*
+ * Copyright (c) 2018 Goldman Sachs.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * and Eclipse Distribution License v. 1.0 which accompany this distribution.
+ * The Eclipse Public License is available at http://www.eclipse.org/legal/epl-v10.html
+ * and the Eclipse Distribution License is available at
+ * http://www.eclipse.org/org/documents/edl-v10.php.
+ */
+
+package org.eclipse.collections.impl.bag.mutable.primitive;
+
+import java.io.Externalizable;
+import java.io.IOException;
+import java.io.ObjectInput;
+import java.io.ObjectOutput;
+import java.util.NoSuchElementException;
+
+import org.eclipse.collections.api.BooleanIterable;
+import org.eclipse.collections.api.LazyBooleanIterable;
+import org.eclipse.collections.api.RichIterable;
+import org.eclipse.collections.api.bag.MutableBag;
+import org.eclipse.collections.api.bag.primitive.BooleanBag;
+import org.eclipse.collections.api.bag.primitive.ImmutableBooleanBag;
+import org.eclipse.collections.api.bag.primitive.MutableBooleanBag;
+import org.eclipse.collections.api.block.function.primitive.BooleanToObjectFunction;
+import org.eclipse.collections.api.block.function.primitive.ObjectBooleanToObjectFunction;
+import org.eclipse.collections.api.block.predicate.primitive.BooleanPredicate;
+import org.eclipse.collections.api.block.predicate.primitive.IntPredicate;
+import org.eclipse.collections.api.block.procedure.primitive.BooleanIntProcedure;
+import org.eclipse.collections.api.block.procedure.primitive.BooleanProcedure;
+import org.eclipse.collections.api.iterator.BooleanIterator;
+import org.eclipse.collections.api.iterator.MutableBooleanIterator;
+import org.eclipse.collections.api.list.MutableList;
+import org.eclipse.collections.api.list.primitive.MutableBooleanList;
+import org.eclipse.collections.api.set.primitive.BooleanSet;
+import org.eclipse.collections.api.set.primitive.MutableBooleanSet;
+import org.eclipse.collections.api.tuple.primitive.BooleanIntPair;
+import org.eclipse.collections.impl.bag.mutable.HashBag;
+import org.eclipse.collections.impl.factory.Lists;
+import org.eclipse.collections.impl.factory.primitive.BooleanBags;
+import org.eclipse.collections.impl.factory.primitive.BooleanSets;
+import org.eclipse.collections.impl.lazy.primitive.LazyBooleanIterableAdapter;
+import org.eclipse.collections.impl.list.mutable.primitive.BooleanArrayList;
+import org.eclipse.collections.impl.set.mutable.primitive.BooleanHashSet;
+import org.eclipse.collections.impl.tuple.primitive.PrimitiveTuples;
+
+/**
+ * BooleanHashBag is similar to {@link HashBag}, and is memory-optimized for boolean primitives.
+ *
+ * @since 3.0.
+ */
+public final class BooleanHashBag implements MutableBooleanBag, Externalizable
+{
+    private static final long serialVersionUID = 1L;
+
+    private int falseCount;
+    private int trueCount;
+
+    public BooleanHashBag()
+<span class="nc" id="L61">    {</span>
+<span class="nc" id="L62">    }</span>
+
+    public BooleanHashBag(BooleanIterable iterable)
+    {
+<span class="nc" id="L66">        this();</span>
+<span class="nc" id="L67">        this.addAll(iterable);</span>
+<span class="nc" id="L68">    }</span>
+
+    public BooleanHashBag(boolean... elements)
+    {
+<span class="nc" id="L72">        this();</span>
+<span class="nc" id="L73">        this.addAll(elements);</span>
+<span class="nc" id="L74">    }</span>
+
+    public BooleanHashBag(BooleanHashBag bag)
+<span class="nc" id="L77">    {</span>
+<span class="nc" id="L78">        this.falseCount = bag.falseCount;</span>
+<span class="nc" id="L79">        this.trueCount = bag.trueCount;</span>
+<span class="nc" id="L80">    }</span>
+
+    public static BooleanHashBag newBagWith(boolean... source)
+    {
+<span class="nc" id="L84">        BooleanHashBag result = new BooleanHashBag();</span>
+<span class="nc" id="L85">        result.addAll(source);</span>
+<span class="nc" id="L86">        return result;</span>
+    }
+
+    public static BooleanHashBag newBag(BooleanIterable source)
+    {
+<span class="nc bnc" id="L91" title="All 2 branches missed.">        if (source instanceof BooleanHashBag)</span>
+        {
+<span class="nc" id="L93">            return new BooleanHashBag((BooleanHashBag) source);</span>
+        }
+
+<span class="nc" id="L96">        return new BooleanHashBag(source);</span>
+    }
+
+    private boolean containsFalse()
+    {
+<span class="nc bnc" id="L101" title="All 2 branches missed.">        return this.falseCount &gt; 0;</span>
+    }
+
+    private boolean containsTrue()
+    {
+<span class="nc bnc" id="L106" title="All 2 branches missed.">        return this.trueCount &gt; 0;</span>
+    }
+
+    @Override
+    public boolean isEmpty()
+    {
+<span class="nc bnc" id="L112" title="All 4 branches missed.">        return !this.containsFalse() &amp;&amp; !this.containsTrue();</span>
+    }
+
+    @Override
+    public boolean notEmpty()
+    {
+<span class="nc bnc" id="L118" title="All 4 branches missed.">        return this.containsFalse() || this.containsTrue();</span>
+    }
+
+    @Override
+    public int size()
+    {
+<span class="nc" id="L124">        return this.falseCount + this.trueCount;</span>
+    }
+
+    @Override
+    public int sizeDistinct()
+    {
+<span class="nc bnc" id="L130" title="All 4 branches missed.">        return (this.containsFalse() ? 1 : 0) + (this.containsTrue() ? 1 : 0);</span>
+    }
+
+    @Override
+    public void clear()
+    {
+<span class="nc" id="L136">        this.falseCount = 0;</span>
+<span class="nc" id="L137">        this.trueCount = 0;</span>
+<span class="nc" id="L138">    }</span>
+
+    @Override
+    public BooleanHashBag with(boolean element)
+    {
+<span class="nc" id="L143">        this.add(element);</span>
+<span class="nc" id="L144">        return this;</span>
+    }
+
+    public BooleanHashBag with(boolean element1, boolean element2)
+    {
+<span class="nc" id="L149">        this.add(element1);</span>
+<span class="nc" id="L150">        this.add(element2);</span>
+<span class="nc" id="L151">        return this;</span>
+    }
+
+    public BooleanHashBag with(boolean element1, boolean element2, boolean element3)
+    {
+<span class="nc" id="L156">        this.add(element1);</span>
+<span class="nc" id="L157">        this.add(element2);</span>
+<span class="nc" id="L158">        this.add(element3);</span>
+<span class="nc" id="L159">        return this;</span>
+    }
+
+    @Override
+    public BooleanHashBag withAll(BooleanIterable iterable)
+    {
+<span class="nc" id="L165">        this.addAll(iterable);</span>
+<span class="nc" id="L166">        return this;</span>
+    }
+
+    @Override
+    public BooleanHashBag without(boolean element)
+    {
+<span class="nc" id="L172">        this.remove(element);</span>
+<span class="nc" id="L173">        return this;</span>
+    }
+
+    @Override
+    public BooleanHashBag withoutAll(BooleanIterable iterable)
+    {
+<span class="nc" id="L179">        this.removeAll(iterable);</span>
+<span class="nc" id="L180">        return this;</span>
+    }
+
+    @Override
+    public MutableBooleanBag asUnmodifiable()
+    {
+<span class="nc" id="L186">        return new UnmodifiableBooleanBag(this);</span>
+    }
+
+    @Override
+    public MutableBooleanBag asSynchronized()
+    {
+<span class="nc" id="L192">        return new SynchronizedBooleanBag(this);</span>
+    }
+
+    @Override
+    public ImmutableBooleanBag toImmutable()
+    {
+<span class="nc" id="L198">        return BooleanBags.immutable.withAll(this);</span>
+    }
+
+    @Override
+    public boolean contains(boolean value)
+    {
+<span class="nc bnc" id="L204" title="All 2 branches missed.">        return value ? this.containsTrue() : this.containsFalse();</span>
+    }
+
+    @Override
+    public boolean containsAll(boolean... source)
+    {
+<span class="nc bnc" id="L210" title="All 2 branches missed.">        for (boolean each : source)</span>
+        {
+<span class="nc bnc" id="L212" title="All 2 branches missed.">            if (!this.contains(each))</span>
+            {
+<span class="nc" id="L214">                return false;</span>
+            }
+        }
+<span class="nc" id="L217">        return true;</span>
+    }
+
+    @Override
+    public boolean containsAll(BooleanIterable source)
+    {
+<span class="nc" id="L223">        return source.allSatisfy(this::contains);</span>
+    }
+
+    @Override
+    public int occurrencesOf(boolean item)
+    {
+<span class="nc bnc" id="L229" title="All 2 branches missed.">        return item ? this.trueCount : this.falseCount;</span>
+    }
+
+    @Override
+    public void forEachWithOccurrences(BooleanIntProcedure procedure)
+    {
+<span class="nc bnc" id="L235" title="All 2 branches missed.">        if (this.containsFalse())</span>
+        {
+<span class="nc" id="L237">            procedure.value(false, this.falseCount);</span>
+        }
+<span class="nc bnc" id="L239" title="All 2 branches missed.">        if (this.containsTrue())</span>
+        {
+<span class="nc" id="L241">            procedure.value(true, this.trueCount);</span>
+        }
+<span class="nc" id="L243">    }</span>
+
+    @Override
+    public boolean add(boolean item)
+    {
+<span class="nc bnc" id="L248" title="All 2 branches missed.">        if (item)</span>
+        {
+<span class="nc" id="L250">            this.trueCount++;</span>
+        }
+        else
+        {
+<span class="nc" id="L254">            this.falseCount++;</span>
+        }
+<span class="nc" id="L256">        return true;</span>
+    }
+
+    @Override
+    public boolean remove(boolean item)
+    {
+<span class="nc bnc" id="L262" title="All 2 branches missed.">        if (item)</span>
+        {
+<span class="nc bnc" id="L264" title="All 2 branches missed.">            if (!this.containsTrue())</span>
+            {
+<span class="nc" id="L266">                return false;</span>
+            }
+<span class="nc" id="L268">            this.trueCount--;</span>
+        }
+        else
+        {
+<span class="nc bnc" id="L272" title="All 2 branches missed.">            if (!this.containsFalse())</span>
+            {
+<span class="nc" id="L274">                return false;</span>
+            }
+<span class="nc" id="L276">            this.falseCount--;</span>
+        }
+<span class="nc" id="L278">        return true;</span>
+    }
+
+    @Override
+    public boolean addAll(boolean... source)
+    {
+<span class="nc bnc" id="L284" title="All 2 branches missed.">        if (source.length &lt; 1)</span>
+        {
+<span class="nc" id="L286">            return false;</span>
+        }
+
+<span class="nc bnc" id="L289" title="All 2 branches missed.">        for (boolean each : source)</span>
+        {
+<span class="nc" id="L291">            this.add(each);</span>
+        }
+<span class="nc" id="L293">        return true;</span>
+    }
+
+    @Override
+    public boolean addAll(BooleanIterable source)
+    {
+<span class="nc bnc" id="L299" title="All 2 branches missed.">        if (source.isEmpty())</span>
+        {
+<span class="nc" id="L301">            return false;</span>
+        }
+<span class="nc bnc" id="L303" title="All 2 branches missed.">        if (source instanceof BooleanBag)</span>
+        {
+<span class="nc" id="L305">            BooleanBag otherBag = (BooleanBag) source;</span>
+<span class="nc" id="L306">            otherBag.forEachWithOccurrences(this::addOccurrences);</span>
+<span class="nc" id="L307">        }</span>
+        else
+        {
+<span class="nc" id="L310">            BooleanIterator iterator = source.booleanIterator();</span>
+<span class="nc bnc" id="L311" title="All 2 branches missed.">            while (iterator.hasNext())</span>
+            {
+<span class="nc" id="L313">                boolean each = iterator.next();</span>
+<span class="nc" id="L314">                this.add(each);</span>
+<span class="nc" id="L315">            }</span>
+        }
+<span class="nc" id="L317">        return true;</span>
+    }
+
+    @Override
+    public boolean removeAll(boolean... source)
+    {
+<span class="nc bnc" id="L323" title="All 2 branches missed.">        if (source.length == 0)</span>
+        {
+<span class="nc" id="L325">            return false;</span>
+        }
+<span class="nc" id="L327">        int oldSize = this.size();</span>
+<span class="nc bnc" id="L328" title="All 2 branches missed.">        for (boolean each : source)</span>
+        {
+<span class="nc bnc" id="L330" title="All 2 branches missed.">            if (each)</span>
+            {
+<span class="nc" id="L332">                this.trueCount = 0;</span>
+            }
+            else
+            {
+<span class="nc" id="L336">                this.falseCount = 0;</span>
+            }
+        }
+<span class="nc bnc" id="L339" title="All 2 branches missed.">        return this.size() != oldSize;</span>
+    }
+
+    @Override
+    public boolean removeAll(BooleanIterable source)
+    {
+<span class="nc bnc" id="L345" title="All 2 branches missed.">        if (source.isEmpty())</span>
+        {
+<span class="nc" id="L347">            return false;</span>
+        }
+<span class="nc" id="L349">        int oldSize = this.size();</span>
+<span class="nc bnc" id="L350" title="All 2 branches missed.">        if (source instanceof BooleanBag)</span>
+        {
+<span class="nc" id="L352">            BooleanBag otherBag = (BooleanBag) source;</span>
+<span class="nc" id="L353">            otherBag.forEachWithOccurrences((each, occurrences) -&gt;</span>
+            {
+<span class="nc bnc" id="L355" title="All 2 branches missed.">                if (each)</span>
+                {
+<span class="nc" id="L357">                    this.trueCount = 0;</span>
+                }
+                else
+                {
+<span class="nc" id="L361">                    this.falseCount = 0;</span>
+                }
+<span class="nc" id="L363">            });</span>
+<span class="nc" id="L364">        }</span>
+        else
+        {
+<span class="nc" id="L367">            BooleanIterator iterator = source.booleanIterator();</span>
+<span class="nc bnc" id="L368" title="All 2 branches missed.">            while (iterator.hasNext())</span>
+            {
+<span class="nc" id="L370">                boolean each = iterator.next();</span>
+<span class="nc bnc" id="L371" title="All 2 branches missed.">                if (each)</span>
+                {
+<span class="nc" id="L373">                    this.trueCount = 0;</span>
+                }
+                else
+                {
+<span class="nc" id="L377">                    this.falseCount = 0;</span>
+                }
+<span class="nc" id="L379">            }</span>
+        }
+<span class="nc bnc" id="L381" title="All 2 branches missed.">        return this.size() != oldSize;</span>
+    }
+
+    @Override
+    public boolean retainAll(BooleanIterable elements)
+    {
+<span class="nc" id="L387">        int oldSize = this.size();</span>
+<span class="nc bnc" id="L388" title="All 2 branches missed.">        BooleanSet set = elements instanceof BooleanSet ? (BooleanSet) elements : elements.toSet();</span>
+<span class="nc bnc" id="L389" title="All 4 branches missed.">        if (!set.contains(true) &amp;&amp; this.containsTrue())</span>
+        {
+<span class="nc" id="L391">            this.trueCount = 0;</span>
+        }
+<span class="nc bnc" id="L393" title="All 4 branches missed.">        if (!set.contains(false) &amp;&amp; this.containsFalse())</span>
+        {
+<span class="nc" id="L395">            this.falseCount = 0;</span>
+        }
+<span class="nc bnc" id="L397" title="All 2 branches missed.">        return this.size() != oldSize;</span>
+    }
+
+    @Override
+    public boolean retainAll(boolean... source)
+    {
+<span class="nc" id="L403">        return this.retainAll(BooleanHashSet.newSetWith(source));</span>
+    }
+
+    @Override
+    public void addOccurrences(boolean item, int occurrences)
+    {
+<span class="nc bnc" id="L409" title="All 2 branches missed.">        if (occurrences &lt; 0)</span>
+        {
+<span class="nc" id="L411">            throw new IllegalArgumentException(&quot;Cannot add a negative number of occurrences&quot;);</span>
+        }
+<span class="nc bnc" id="L413" title="All 2 branches missed.">        if (occurrences &gt; 0)</span>
+        {
+<span class="nc bnc" id="L415" title="All 2 branches missed.">            if (item)</span>
+            {
+<span class="nc" id="L417">                this.trueCount += occurrences;</span>
+            }
+            else
+            {
+<span class="nc" id="L421">                this.falseCount += occurrences;</span>
+            }
+        }
+<span class="nc" id="L424">    }</span>
+
+    @Override
+    public boolean removeOccurrences(boolean item, int occurrences)
+    {
+<span class="nc bnc" id="L429" title="All 2 branches missed.">        if (occurrences &lt; 0)</span>
+        {
+<span class="nc" id="L431">            throw new IllegalArgumentException(&quot;Cannot remove a negative number of occurrences&quot;);</span>
+        }
+
+<span class="nc bnc" id="L434" title="All 2 branches missed.">        if (occurrences == 0)</span>
+        {
+<span class="nc" id="L436">            return false;</span>
+        }
+
+<span class="nc bnc" id="L439" title="All 2 branches missed.">        if (item)</span>
+        {
+<span class="nc bnc" id="L441" title="All 2 branches missed.">            if (!this.containsTrue())</span>
+            {
+<span class="nc" id="L443">                return false;</span>
+            }
+<span class="nc" id="L445">            this.trueCount -= occurrences;</span>
+<span class="nc bnc" id="L446" title="All 2 branches missed.">            if (this.trueCount &lt; 0)</span>
+            {
+<span class="nc" id="L448">                this.trueCount = 0;</span>
+            }
+        }
+        else
+        {
+<span class="nc bnc" id="L453" title="All 2 branches missed.">            if (!this.containsFalse())</span>
+            {
+<span class="nc" id="L455">                return false;</span>
+            }
+<span class="nc" id="L457">            this.falseCount -= occurrences;</span>
+<span class="nc bnc" id="L458" title="All 2 branches missed.">            if (this.falseCount &lt; 0)</span>
+            {
+<span class="nc" id="L460">                this.falseCount = 0;</span>
+            }
+        }
+<span class="nc" id="L463">        return true;</span>
+    }
+
+    @Override
+    public void forEach(BooleanProcedure procedure)
+    {
+<span class="nc" id="L469">        this.each(procedure);</span>
+<span class="nc" id="L470">    }</span>
+
+    /**
+     * @since 7.0.
+     */
+    @Override
+    public void each(BooleanProcedure procedure)
+    {
+<span class="nc bnc" id="L478" title="All 2 branches missed.">        for (int i = 0; i &lt; this.falseCount; i++)</span>
+        {
+<span class="nc" id="L480">            procedure.value(false);</span>
+        }
+<span class="nc bnc" id="L482" title="All 2 branches missed.">        for (int i = 0; i &lt; this.trueCount; i++)</span>
+        {
+<span class="nc" id="L484">            procedure.value(true);</span>
+        }
+<span class="nc" id="L486">    }</span>
+
+    @Override
+    public MutableBooleanBag select(BooleanPredicate predicate)
+    {
+<span class="nc" id="L491">        MutableBooleanBag result = new BooleanHashBag();</span>
+<span class="nc" id="L492">        this.forEachWithOccurrences((each, occurrences) -&gt;</span>
+        {
+<span class="nc bnc" id="L494" title="All 2 branches missed.">            if (predicate.accept(each))</span>
+            {
+<span class="nc" id="L496">                result.addOccurrences(each, occurrences);</span>
+            }
+<span class="nc" id="L498">        });</span>
+<span class="nc" id="L499">        return result;</span>
+    }
+
+    @Override
+    public MutableBooleanBag selectByOccurrences(IntPredicate predicate)
+    {
+<span class="nc" id="L505">        MutableBooleanBag result = new BooleanHashBag();</span>
+<span class="nc" id="L506">        this.forEachWithOccurrences((each, occurrences) -&gt;</span>
+        {
+<span class="nc bnc" id="L508" title="All 2 branches missed.">            if (predicate.accept(occurrences))</span>
+            {
+<span class="nc" id="L510">                result.addOccurrences(each, occurrences);</span>
+            }
+<span class="nc" id="L512">        });</span>
+<span class="nc" id="L513">        return result;</span>
+    }
+
+    @Override
+    public MutableList&lt;BooleanIntPair&gt; topOccurrences(int count)
+    {
+<span class="nc bnc" id="L519" title="All 2 branches missed.">        if (count &lt; 0)</span>
+        {
+<span class="nc" id="L521">            throw new IllegalArgumentException(&quot;Cannot use a value of count &lt; 0&quot;);</span>
+        }
+<span class="nc bnc" id="L523" title="All 2 branches missed.">        if (this.size() &gt; 0)</span>
+        {
+<span class="nc bnc" id="L525" title="All 2 branches missed.">            if (count == 1)</span>
+            {
+<span class="nc bnc" id="L527" title="All 2 branches missed.">                if (this.trueCount == this.falseCount)</span>
+                {
+<span class="nc" id="L529">                    return Lists.mutable.with(PrimitiveTuples.pair(true, this.trueCount), PrimitiveTuples.pair(false, this.falseCount));</span>
+                }
+<span class="nc bnc" id="L531" title="All 2 branches missed.">                if (this.trueCount &gt; this.falseCount)</span>
+                {
+<span class="nc" id="L533">                    return Lists.mutable.with(PrimitiveTuples.pair(true, this.trueCount));</span>
+                }
+<span class="nc" id="L535">                return Lists.mutable.with(PrimitiveTuples.pair(false, this.falseCount));</span>
+            }
+<span class="nc bnc" id="L537" title="All 2 branches missed.">            if (count &gt; 1)</span>
+            {
+<span class="nc bnc" id="L539" title="All 2 branches missed.">                if (this.trueCount &gt;= this.falseCount)</span>
+                {
+<span class="nc" id="L541">                    return Lists.mutable.with(</span>
+<span class="nc" id="L542">                            PrimitiveTuples.pair(true, this.trueCount),</span>
+<span class="nc" id="L543">                            PrimitiveTuples.pair(false, this.falseCount));</span>
+                }
+<span class="nc" id="L545">                return Lists.mutable.with(</span>
+<span class="nc" id="L546">                        PrimitiveTuples.pair(false, this.falseCount),</span>
+<span class="nc" id="L547">                        PrimitiveTuples.pair(true, this.trueCount));</span>
+            }
+        }
+<span class="nc" id="L550">        return Lists.mutable.empty();</span>
+    }
+
+    @Override
+    public MutableList&lt;BooleanIntPair&gt; bottomOccurrences(int count)
+    {
+<span class="nc bnc" id="L556" title="All 2 branches missed.">        if (count &lt; 0)</span>
+        {
+<span class="nc" id="L558">            throw new IllegalArgumentException(&quot;Cannot use a value of count &lt; 0&quot;);</span>
+        }
+<span class="nc bnc" id="L560" title="All 2 branches missed.">        if (this.size() &gt; 0)</span>
+        {
+<span class="nc bnc" id="L562" title="All 2 branches missed.">            if (count == 1)</span>
+            {
+<span class="nc bnc" id="L564" title="All 2 branches missed.">                if (this.trueCount == this.falseCount)</span>
+                {
+<span class="nc" id="L566">                    return Lists.mutable.with(PrimitiveTuples.pair(true, this.trueCount), PrimitiveTuples.pair(false, this.falseCount));</span>
+                }
+<span class="nc bnc" id="L568" title="All 2 branches missed.">                if (this.trueCount &lt; this.falseCount)</span>
+                {
+<span class="nc" id="L570">                    return Lists.mutable.with(PrimitiveTuples.pair(true, this.trueCount));</span>
+                }
+<span class="nc" id="L572">                return Lists.mutable.with(PrimitiveTuples.pair(false, this.falseCount));</span>
+            }
+<span class="nc bnc" id="L574" title="All 2 branches missed.">            if (count &gt; 1)</span>
+            {
+<span class="nc bnc" id="L576" title="All 2 branches missed.">                if (this.trueCount &lt;= this.falseCount)</span>
+                {
+<span class="nc" id="L578">                    return Lists.mutable.with(</span>
+<span class="nc" id="L579">                            PrimitiveTuples.pair(true, this.trueCount),</span>
+<span class="nc" id="L580">                            PrimitiveTuples.pair(false, this.falseCount));</span>
+                }
+<span class="nc" id="L582">                return Lists.mutable.with(</span>
+<span class="nc" id="L583">                        PrimitiveTuples.pair(false, this.falseCount),</span>
+<span class="nc" id="L584">                        PrimitiveTuples.pair(true, this.trueCount));</span>
+            }
+        }
+<span class="nc" id="L587">        return Lists.mutable.empty();</span>
+    }
+
+    @Override
+    public MutableBooleanBag reject(BooleanPredicate predicate)
+    {
+<span class="nc" id="L593">        MutableBooleanBag result = new BooleanHashBag();</span>
+<span class="nc" id="L594">        this.forEachWithOccurrences((each, occurrences) -&gt;</span>
+        {
+<span class="nc bnc" id="L596" title="All 2 branches missed.">            if (!predicate.accept(each))</span>
+            {
+<span class="nc" id="L598">                result.addOccurrences(each, occurrences);</span>
+            }
+<span class="nc" id="L600">        });</span>
+<span class="nc" id="L601">        return result;</span>
+    }
+
+    @Override
+    public &lt;T&gt; T injectInto(T injectedValue, ObjectBooleanToObjectFunction&lt;? super T, ? extends T&gt; function)
+    {
+<span class="nc" id="L607">        T result = injectedValue;</span>
+<span class="nc" id="L608">        BooleanIterator it = this.booleanIterator();</span>
+<span class="nc bnc" id="L609" title="All 2 branches missed.">        while (it.hasNext())</span>
+        {
+<span class="nc" id="L611">            result = function.valueOf(result, it.next());</span>
+        }
+<span class="nc" id="L613">        return result;</span>
+    }
+
+    @Override
+    public RichIterable&lt;BooleanIterable&gt; chunk(int size)
+    {
+<span class="nc bnc" id="L619" title="All 2 branches missed.">        if (size &lt;= 0)</span>
+        {
+<span class="nc" id="L621">            throw new IllegalArgumentException(&quot;Size for groups must be positive but was: &quot; + size);</span>
+        }
+<span class="nc" id="L623">        MutableList&lt;BooleanIterable&gt; result = Lists.mutable.empty();</span>
+<span class="nc bnc" id="L624" title="All 2 branches missed.">        if (this.notEmpty())</span>
+        {
+<span class="nc bnc" id="L626" title="All 2 branches missed.">            if (this.size() &lt;= size)</span>
+            {
+<span class="nc" id="L628">                result.add(BooleanBags.mutable.withAll(this));</span>
+            }
+            else
+            {
+<span class="nc" id="L632">                BooleanIterator iterator = this.booleanIterator();</span>
+<span class="nc bnc" id="L633" title="All 2 branches missed.">                while (iterator.hasNext())</span>
+                {
+<span class="nc" id="L635">                    MutableBooleanBag batch = BooleanBags.mutable.empty();</span>
+<span class="nc bnc" id="L636" title="All 4 branches missed.">                    for (int i = 0; i &lt; size &amp;&amp; iterator.hasNext(); i++)</span>
+                    {
+<span class="nc" id="L638">                        batch.add(iterator.next());</span>
+                    }
+<span class="nc" id="L640">                    result.add(batch);</span>
+<span class="nc" id="L641">                }</span>
+            }
+        }
+<span class="nc" id="L644">        return result;</span>
+    }
+
+    @Override
+    public boolean equals(Object otherBag)
+    {
+<span class="nc bnc" id="L650" title="All 2 branches missed.">        if (otherBag == this)</span>
+        {
+<span class="nc" id="L652">            return true;</span>
+        }
+<span class="nc bnc" id="L654" title="All 2 branches missed.">        if (!(otherBag instanceof BooleanBag))</span>
+        {
+<span class="nc" id="L656">            return false;</span>
+        }
+<span class="nc" id="L658">        BooleanBag bag = (BooleanBag) otherBag;</span>
+<span class="nc bnc" id="L659" title="All 2 branches missed.">        if (this.sizeDistinct() != bag.sizeDistinct())</span>
+        {
+<span class="nc" id="L661">            return false;</span>
+        }
+
+<span class="nc bnc" id="L664" title="All 4 branches missed.">        return this.falseCount == bag.occurrencesOf(false) &amp;&amp; this.trueCount == bag.occurrencesOf(true);</span>
+    }
+
+    @Override
+    public int hashCode()
+    {
+<span class="nc" id="L670">        int result = 0;</span>
+
+<span class="nc bnc" id="L672" title="All 2 branches missed.">        if (this.containsFalse())</span>
+        {
+<span class="nc" id="L674">            result = 1237 ^ this.falseCount;</span>
+        }
+<span class="nc bnc" id="L676" title="All 2 branches missed.">        if (this.containsTrue())</span>
+        {
+<span class="nc" id="L678">            result += 1231 ^ this.trueCount;</span>
+        }
+
+<span class="nc" id="L681">        return result;</span>
+    }
+
+    @Override
+    public String toString()
+    {
+<span class="nc" id="L687">        return this.makeString(&quot;[&quot;, &quot;, &quot;, &quot;]&quot;);</span>
+    }
+
+    @Override
+    public String makeString()
+    {
+<span class="nc" id="L693">        return this.makeString(&quot;, &quot;);</span>
+    }
+
+    @Override
+    public String makeString(String separator)
+    {
+<span class="nc" id="L699">        return this.makeString(&quot;&quot;, separator, &quot;&quot;);</span>
+    }
+
+    @Override
+    public String makeString(String start, String separator, String end)
+    {
+<span class="nc" id="L705">        Appendable stringBuilder = new StringBuilder();</span>
+<span class="nc" id="L706">        this.appendString(stringBuilder, start, separator, end);</span>
+<span class="nc" id="L707">        return stringBuilder.toString();</span>
+    }
+
+    @Override
+    public void appendString(Appendable appendable)
+    {
+<span class="nc" id="L713">        this.appendString(appendable, &quot;, &quot;);</span>
+<span class="nc" id="L714">    }</span>
+
+    @Override
+    public void appendString(Appendable appendable, String separator)
+    {
+<span class="nc" id="L719">        this.appendString(appendable, &quot;&quot;, separator, &quot;&quot;);</span>
+<span class="nc" id="L720">    }</span>
+
+    @Override
+    public void appendString(
+            Appendable appendable,
+            String start,
+            String separator,
+            String end)
+    {
+        try
+        {
+<span class="nc" id="L731">            appendable.append(start);</span>
+<span class="nc" id="L732">            boolean firstItem = true;</span>
+<span class="nc bnc" id="L733" title="All 2 branches missed.">            for (int i = 0; i &lt; this.falseCount; i++)</span>
+            {
+<span class="nc bnc" id="L735" title="All 2 branches missed.">                if (!firstItem)</span>
+                {
+<span class="nc" id="L737">                    appendable.append(separator);</span>
+                }
+<span class="nc" id="L739">                appendable.append(&quot;false&quot;);</span>
+<span class="nc" id="L740">                firstItem = false;</span>
+            }
+<span class="nc bnc" id="L742" title="All 2 branches missed.">            for (int i = 0; i &lt; this.trueCount; i++)</span>
+            {
+<span class="nc bnc" id="L744" title="All 2 branches missed.">                if (!firstItem)</span>
+                {
+<span class="nc" id="L746">                    appendable.append(separator);</span>
+                }
+<span class="nc" id="L748">                appendable.append(&quot;true&quot;);</span>
+<span class="nc" id="L749">                firstItem = false;</span>
+            }
+<span class="nc" id="L751">            appendable.append(end);</span>
+        }
+<span class="nc" id="L753">        catch (IOException e)</span>
+        {
+<span class="nc" id="L755">            throw new RuntimeException(e);</span>
+<span class="nc" id="L756">        }</span>
+<span class="nc" id="L757">    }</span>
+
+    @Override
+    public int count(BooleanPredicate predicate)
+    {
+<span class="nc" id="L762">        int result = 0;</span>
+<span class="nc bnc" id="L763" title="All 4 branches missed.">        if (this.containsFalse() &amp;&amp; predicate.accept(false))</span>
+        {
+<span class="nc" id="L765">            result = this.falseCount;</span>
+        }
+<span class="nc bnc" id="L767" title="All 4 branches missed.">        if (this.containsTrue() &amp;&amp; predicate.accept(true))</span>
+        {
+<span class="nc" id="L769">            result += this.trueCount;</span>
+        }
+
+<span class="nc" id="L772">        return result;</span>
+    }
+
+    @Override
+    public boolean anySatisfy(BooleanPredicate predicate)
+    {
+<span class="nc bnc" id="L778" title="All 8 branches missed.">        return this.containsFalse() &amp;&amp; predicate.accept(false) || this.containsTrue() &amp;&amp; predicate.accept(true);</span>
+    }
+
+    @Override
+    public boolean allSatisfy(BooleanPredicate predicate)
+    {
+<span class="nc bnc" id="L784" title="All 8 branches missed.">        return (!this.containsFalse() || predicate.accept(false)) &amp;&amp; (!this.containsTrue() || predicate.accept(true));</span>
+    }
+
+    @Override
+    public boolean noneSatisfy(BooleanPredicate predicate)
+    {
+<span class="nc bnc" id="L790" title="All 8 branches missed.">        return (!this.containsFalse() || !predicate.accept(false)) &amp;&amp; (!this.containsTrue() || !predicate.accept(true));</span>
+    }
+
+    @Override
+    public boolean detectIfNone(BooleanPredicate predicate, boolean ifNone)
+    {
+<span class="nc bnc" id="L796" title="All 4 branches missed.">        if (this.containsFalse() &amp;&amp; predicate.accept(false))</span>
+        {
+<span class="nc" id="L798">            return false;</span>
+        }
+
+<span class="nc bnc" id="L801" title="All 4 branches missed.">        if (this.containsTrue() &amp;&amp; predicate.accept(true))</span>
+        {
+<span class="nc" id="L803">            return true;</span>
+        }
+
+<span class="nc" id="L806">        return ifNone;</span>
+    }
+
+    @Override
+    public &lt;V&gt; MutableBag&lt;V&gt; collect(BooleanToObjectFunction&lt;? extends V&gt; function)
+    {
+<span class="nc" id="L812">        HashBag&lt;V&gt; result = HashBag.newBag();</span>
+<span class="nc bnc" id="L813" title="All 2 branches missed.">        if (this.containsFalse())</span>
+        {
+<span class="nc" id="L815">            result.addOccurrences(function.valueOf(false), this.falseCount);</span>
+        }
+<span class="nc bnc" id="L817" title="All 2 branches missed.">        if (this.containsTrue())</span>
+        {
+<span class="nc" id="L819">            result.addOccurrences(function.valueOf(true), this.trueCount);</span>
+        }
+<span class="nc" id="L821">        return result;</span>
+    }
+
+    @Override
+    public boolean[] toArray()
+    {
+<span class="nc" id="L827">        boolean[] array = new boolean[this.size()];</span>
+<span class="nc" id="L828">        int[] index = {0};</span>
+
+<span class="nc" id="L830">        this.forEachWithOccurrences((each, occurrences) -&gt;</span>
+        {
+<span class="nc bnc" id="L832" title="All 2 branches missed.">            for (int i = 0; i &lt; occurrences; i++)</span>
+            {
+<span class="nc" id="L834">                array[index[0]] = each;</span>
+<span class="nc" id="L835">                index[0]++;</span>
+            }
+<span class="nc" id="L837">        });</span>
+<span class="nc" id="L838">        return array;</span>
+    }
+
+    @Override
+    public MutableBooleanList toList()
+    {
+<span class="nc" id="L844">        return BooleanArrayList.newList(this);</span>
+    }
+
+    @Override
+    public MutableBooleanSet toSet()
+    {
+<span class="nc" id="L850">        return BooleanHashSet.newSet(this);</span>
+    }
+
+    @Override
+    public MutableBooleanBag toBag()
+    {
+<span class="nc" id="L856">        return BooleanHashBag.newBag(this);</span>
+    }
+
+    @Override
+    public LazyBooleanIterable asLazy()
+    {
+<span class="nc" id="L862">        return new LazyBooleanIterableAdapter(this);</span>
+    }
+
+    @Override
+    public MutableBooleanIterator booleanIterator()
+    {
+<span class="nc" id="L868">        return new InternalIterator(this.falseCount, this.trueCount);</span>
+    }
+
+    @Override
+    public void writeExternal(ObjectOutput out) throws IOException
+    {
+<span class="nc" id="L874">        out.writeInt(this.falseCount);</span>
+<span class="nc" id="L875">        out.writeInt(this.trueCount);</span>
+<span class="nc" id="L876">    }</span>
+
+    @Override
+    public void readExternal(ObjectInput in) throws IOException
+    {
+<span class="nc" id="L881">        this.falseCount = in.readInt();</span>
+<span class="nc" id="L882">        this.trueCount = in.readInt();</span>
+<span class="nc" id="L883">    }</span>
+
+    private final class InternalIterator implements MutableBooleanIterator
+    {
+        private int internalFalseCount;
+        private int internalTrueCount;
+        private boolean lastBooleanValue;
+<span class="nc" id="L890">        private boolean removedAlready = true;</span>
+
+        private InternalIterator(int falseCount, int trueCount)
+<span class="nc" id="L893">        {</span>
+<span class="nc" id="L894">            this.internalFalseCount = falseCount;</span>
+<span class="nc" id="L895">            this.internalTrueCount = trueCount;</span>
+<span class="nc" id="L896">        }</span>
+
+        @Override
+        public boolean hasNext()
+        {
+<span class="nc bnc" id="L901" title="All 4 branches missed.">            return this.internalFalseCount &gt; 0 || this.internalTrueCount &gt; 0;</span>
+        }
+
+        @Override
+        public boolean next()
+        {
+<span class="nc" id="L907">            this.removedAlready = false;</span>
+<span class="nc bnc" id="L908" title="All 2 branches missed.">            if (this.internalFalseCount &gt; 0)</span>
+            {
+<span class="nc" id="L910">                this.internalFalseCount--;</span>
+<span class="nc" id="L911">                this.lastBooleanValue = false;</span>
+<span class="nc" id="L912">                return false;</span>
+            }
+<span class="nc bnc" id="L914" title="All 2 branches missed.">            if (this.internalTrueCount &gt; 0)</span>
+            {
+<span class="nc" id="L916">                this.internalTrueCount--;</span>
+<span class="nc" id="L917">                this.lastBooleanValue = true;</span>
+<span class="nc" id="L918">                return true;</span>
+            }
+<span class="nc" id="L920">            throw new NoSuchElementException(&quot;next() called, but the iterator is exhausted&quot;);</span>
+        }
+
+        @Override
+        public void remove()
+        {
+<span class="nc bnc" id="L926" title="All 2 branches missed.">            if (this.removedAlready)</span>
+            {
+<span class="nc" id="L928">                throw new IllegalStateException();</span>
+            }
+<span class="nc bnc" id="L930" title="All 2 branches missed.">            if (this.lastBooleanValue)</span>
+            {
+<span class="nc" id="L932">                BooleanHashBag.this.trueCount--;</span>
+            }
+            else
+            {
+<span class="nc" id="L936">                BooleanHashBag.this.falseCount--;</span>
+            }
+<span class="nc" id="L938">            this.removedAlready = true;</span>
+<span class="nc" id="L939">        }</span>
+    }
+
+    @Override
+    public MutableBooleanSet selectUnique()
+    {
+<span class="nc" id="L945">        MutableBooleanSet result = BooleanSets.mutable.empty();</span>
+<span class="nc" id="L946">        this.forEachWithOccurrences((each, occurrences)-&gt;</span>
+            {
+<span class="nc bnc" id="L948" title="All 2 branches missed.">                if (occurrences == 1)</span>
+                {
+<span class="nc" id="L950">                    result.add(each);</span>
+                }
+<span class="nc" id="L952">            });</span>
+<span class="nc" id="L953">        return result;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.0.201801022044</span></div></body></html>

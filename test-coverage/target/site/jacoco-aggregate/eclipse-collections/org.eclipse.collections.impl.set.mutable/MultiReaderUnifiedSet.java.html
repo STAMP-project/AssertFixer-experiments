@@ -1,0 +1,1304 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>MultiReaderUnifiedSet.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Eclipse Collections Test Coverage Aggregation</a> &gt; <a href="../index.html" class="el_bundle">eclipse-collections</a> &gt; <a href="index.source.html" class="el_package">org.eclipse.collections.impl.set.mutable</a> &gt; <span class="el_source">MultiReaderUnifiedSet.java</span></div><h1>MultiReaderUnifiedSet.java</h1><pre class="source lang-java linenums">/*
+ * Copyright (c) 2016 Goldman Sachs.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * and Eclipse Distribution License v. 1.0 which accompany this distribution.
+ * The Eclipse Public License is available at http://www.eclipse.org/legal/epl-v10.html
+ * and the Eclipse Distribution License is available at
+ * http://www.eclipse.org/org/documents/edl-v10.php.
+ */
+
+package org.eclipse.collections.impl.set.mutable;
+
+import java.io.Externalizable;
+import java.io.IOException;
+import java.io.ObjectInput;
+import java.io.ObjectOutput;
+import java.util.Iterator;
+import java.util.RandomAccess;
+import java.util.Set;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
+
+import org.eclipse.collections.api.LazyIterable;
+import org.eclipse.collections.api.RichIterable;
+import org.eclipse.collections.api.block.function.Function;
+import org.eclipse.collections.api.block.function.Function2;
+import org.eclipse.collections.api.block.function.primitive.BooleanFunction;
+import org.eclipse.collections.api.block.function.primitive.ByteFunction;
+import org.eclipse.collections.api.block.function.primitive.CharFunction;
+import org.eclipse.collections.api.block.function.primitive.DoubleFunction;
+import org.eclipse.collections.api.block.function.primitive.FloatFunction;
+import org.eclipse.collections.api.block.function.primitive.IntFunction;
+import org.eclipse.collections.api.block.function.primitive.LongFunction;
+import org.eclipse.collections.api.block.function.primitive.ShortFunction;
+import org.eclipse.collections.api.block.predicate.Predicate;
+import org.eclipse.collections.api.block.predicate.Predicate2;
+import org.eclipse.collections.api.block.procedure.Procedure;
+import org.eclipse.collections.api.collection.primitive.MutableBooleanCollection;
+import org.eclipse.collections.api.collection.primitive.MutableByteCollection;
+import org.eclipse.collections.api.collection.primitive.MutableCharCollection;
+import org.eclipse.collections.api.collection.primitive.MutableDoubleCollection;
+import org.eclipse.collections.api.collection.primitive.MutableFloatCollection;
+import org.eclipse.collections.api.collection.primitive.MutableIntCollection;
+import org.eclipse.collections.api.collection.primitive.MutableLongCollection;
+import org.eclipse.collections.api.collection.primitive.MutableShortCollection;
+import org.eclipse.collections.api.list.MutableList;
+import org.eclipse.collections.api.map.MutableMap;
+import org.eclipse.collections.api.multimap.set.MutableSetMultimap;
+import org.eclipse.collections.api.ordered.OrderedIterable;
+import org.eclipse.collections.api.partition.set.PartitionMutableSet;
+import org.eclipse.collections.api.set.ImmutableSet;
+import org.eclipse.collections.api.set.MutableSet;
+import org.eclipse.collections.api.set.ParallelUnsortedSetIterable;
+import org.eclipse.collections.api.set.SetIterable;
+import org.eclipse.collections.api.set.UnsortedSetIterable;
+import org.eclipse.collections.api.set.primitive.MutableBooleanSet;
+import org.eclipse.collections.api.set.primitive.MutableByteSet;
+import org.eclipse.collections.api.set.primitive.MutableCharSet;
+import org.eclipse.collections.api.set.primitive.MutableDoubleSet;
+import org.eclipse.collections.api.set.primitive.MutableFloatSet;
+import org.eclipse.collections.api.set.primitive.MutableIntSet;
+import org.eclipse.collections.api.set.primitive.MutableLongSet;
+import org.eclipse.collections.api.set.primitive.MutableShortSet;
+import org.eclipse.collections.api.tuple.Pair;
+import org.eclipse.collections.impl.collection.mutable.AbstractMultiReaderMutableCollection;
+import org.eclipse.collections.impl.factory.Sets;
+import org.eclipse.collections.impl.lazy.parallel.set.MultiReaderParallelUnsortedSetIterable;
+import org.eclipse.collections.impl.utility.LazyIterate;
+
+import static org.eclipse.collections.impl.factory.Iterables.mList;
+
+/**
+ * MultiReadUnifiedSet provides a thread-safe wrapper around a UnifiedSet, using a ReentrantReadWriteLock.  In order to
+ * provide true thread-safety, MultiReaderFastList does not implement iterator() as all this method requires an external
+ * lock to be taken to provide thread-safe iteration.  You can use an iterator() if you use the
+ * withReadLockAndDelegate() or withWriteLockAndDelegate() methods.  Both of these methods take a parameter of type
+ * Procedure&lt;MutableSet&gt;, and a wrapped version of the underlying Unified is returned.  This wrapper guarantees that no
+ * external pointer can ever reference the underlying UnifiedSet outside of a locked procedure.  In the case of the read
+ * lock method, an Unmodifiable version of the collection is offered, which will throw UnsupportedOperationExceptions on
+ * any write methods like add or remove.
+ */
+public final class MultiReaderUnifiedSet&lt;T&gt;
+        extends AbstractMultiReaderMutableCollection&lt;T&gt;
+        implements RandomAccess, Externalizable, MutableSet&lt;T&gt;
+{
+    private static final long serialVersionUID = 1L;
+
+    private transient ReadWriteLock lock;
+    private MutableSet&lt;T&gt; delegate;
+
+    /**
+     * @deprecated Empty default constructor used for serialization.
+     */
+    @SuppressWarnings(&quot;UnusedDeclaration&quot;)
+    @Deprecated
+    public MultiReaderUnifiedSet()
+<span class="nc" id="L98">    {</span>
+        // For Externalizable use only
+<span class="nc" id="L100">    }</span>
+
+    private MultiReaderUnifiedSet(MutableSet&lt;T&gt; newDelegate)
+    {
+<span class="nc" id="L104">        this(newDelegate, new ReentrantReadWriteLock());</span>
+<span class="nc" id="L105">    }</span>
+
+    private MultiReaderUnifiedSet(MutableSet&lt;T&gt; newDelegate, ReadWriteLock newLock)
+<span class="nc" id="L108">    {</span>
+<span class="nc" id="L109">        this.lock = newLock;</span>
+<span class="nc" id="L110">        this.delegate = newDelegate;</span>
+<span class="nc" id="L111">    }</span>
+
+    public static &lt;T&gt; MultiReaderUnifiedSet&lt;T&gt; newSet()
+    {
+<span class="nc" id="L115">        return new MultiReaderUnifiedSet&lt;&gt;(UnifiedSet.newSet());</span>
+    }
+
+    public static &lt;T&gt; MultiReaderUnifiedSet&lt;T&gt; newSet(int capacity)
+    {
+<span class="nc" id="L120">        return new MultiReaderUnifiedSet&lt;&gt;(UnifiedSet.newSet(capacity));</span>
+    }
+
+    public static &lt;T&gt; MultiReaderUnifiedSet&lt;T&gt; newSet(Iterable&lt;T&gt; iterable)
+    {
+<span class="nc" id="L125">        return new MultiReaderUnifiedSet&lt;&gt;(UnifiedSet.newSet(iterable));</span>
+    }
+
+    public static &lt;T&gt; MultiReaderUnifiedSet&lt;T&gt; newSetWith(T... elements)
+    {
+<span class="nc" id="L130">        return new MultiReaderUnifiedSet&lt;&gt;(UnifiedSet.newSetWith(elements));</span>
+    }
+
+    @Override
+    protected MutableSet&lt;T&gt; getDelegate()
+    {
+<span class="nc" id="L136">        return this.delegate;</span>
+    }
+
+    @Override
+    protected ReadWriteLock getLock()
+    {
+<span class="nc" id="L142">        return this.lock;</span>
+    }
+
+    // Exposed for testing
+
+    UntouchableMutableSet&lt;T&gt; asReadUntouchable()
+    {
+<span class="nc" id="L149">        return new UntouchableMutableSet&lt;&gt;(this.delegate.asUnmodifiable());</span>
+    }
+
+    // Exposed for testing
+
+    UntouchableMutableSet&lt;T&gt; asWriteUntouchable()
+    {
+<span class="nc" id="L156">        return new UntouchableMutableSet&lt;&gt;(this.delegate);</span>
+    }
+
+    public void withReadLockAndDelegate(Procedure&lt;MutableSet&lt;T&gt;&gt; procedure)
+    {
+<span class="nc" id="L161">        this.acquireReadLock();</span>
+        try
+        {
+<span class="nc" id="L164">            UntouchableMutableSet&lt;T&gt; untouchableSet = this.asReadUntouchable();</span>
+<span class="nc" id="L165">            procedure.value(untouchableSet);</span>
+<span class="nc" id="L166">            untouchableSet.becomeUseless();</span>
+        }
+        finally
+        {
+<span class="nc" id="L170">            this.unlockReadLock();</span>
+        }
+<span class="nc" id="L172">    }</span>
+
+    public void withWriteLockAndDelegate(Procedure&lt;MutableSet&lt;T&gt;&gt; procedure)
+    {
+<span class="nc" id="L176">        this.acquireWriteLock();</span>
+        try
+        {
+<span class="nc" id="L179">            UntouchableMutableSet&lt;T&gt; untouchableSet = this.asWriteUntouchable();</span>
+<span class="nc" id="L180">            procedure.value(untouchableSet);</span>
+<span class="nc" id="L181">            untouchableSet.becomeUseless();</span>
+        }
+        finally
+        {
+<span class="nc" id="L185">            this.unlockWriteLock();</span>
+        }
+<span class="nc" id="L187">    }</span>
+
+    @Override
+    public MutableSet&lt;T&gt; asSynchronized()
+    {
+<span class="nc" id="L192">        this.acquireReadLock();</span>
+        try
+        {
+<span class="nc" id="L195">            return SynchronizedMutableSet.of(this);</span>
+        }
+        finally
+        {
+<span class="nc" id="L199">            this.unlockReadLock();</span>
+        }
+    }
+
+    @Override
+    public ImmutableSet&lt;T&gt; toImmutable()
+    {
+<span class="nc" id="L206">        this.acquireReadLock();</span>
+        try
+        {
+<span class="nc" id="L209">            return Sets.immutable.withAll(this.delegate);</span>
+        }
+        finally
+        {
+<span class="nc" id="L213">            this.unlockReadLock();</span>
+        }
+    }
+
+    @Override
+    public MutableSet&lt;T&gt; asUnmodifiable()
+    {
+<span class="nc" id="L220">        this.acquireReadLock();</span>
+        try
+        {
+<span class="nc" id="L223">            return UnmodifiableMutableSet.of(this);</span>
+        }
+        finally
+        {
+<span class="nc" id="L227">            this.unlockReadLock();</span>
+        }
+    }
+
+    @Override
+    public MutableSet&lt;T&gt; clone()
+    {
+<span class="nc" id="L234">        this.acquireReadLock();</span>
+        try
+        {
+<span class="nc" id="L237">            return new MultiReaderUnifiedSet&lt;&gt;(this.delegate.clone());</span>
+        }
+        finally
+        {
+<span class="nc" id="L241">            this.unlockReadLock();</span>
+        }
+    }
+
+    @Override
+    public &lt;V&gt; MutableSet&lt;V&gt; collect(Function&lt;? super T, ? extends V&gt; function)
+    {
+<span class="nc" id="L248">        this.acquireReadLock();</span>
+        try
+        {
+<span class="nc" id="L251">            return this.delegate.collect(function);</span>
+        }
+        finally
+        {
+<span class="nc" id="L255">            this.unlockReadLock();</span>
+        }
+    }
+
+    @Override
+    public MutableBooleanSet collectBoolean(BooleanFunction&lt;? super T&gt; booleanFunction)
+    {
+<span class="nc" id="L262">        this.acquireReadLock();</span>
+        try
+        {
+<span class="nc" id="L265">            return this.delegate.collectBoolean(booleanFunction);</span>
+        }
+        finally
+        {
+<span class="nc" id="L269">            this.unlockReadLock();</span>
+        }
+    }
+
+    @Override
+    public MutableByteSet collectByte(ByteFunction&lt;? super T&gt; byteFunction)
+    {
+<span class="nc" id="L276">        this.acquireReadLock();</span>
+        try
+        {
+<span class="nc" id="L279">            return this.delegate.collectByte(byteFunction);</span>
+        }
+        finally
+        {
+<span class="nc" id="L283">            this.unlockReadLock();</span>
+        }
+    }
+
+    @Override
+    public MutableCharSet collectChar(CharFunction&lt;? super T&gt; charFunction)
+    {
+<span class="nc" id="L290">        this.acquireReadLock();</span>
+        try
+        {
+<span class="nc" id="L293">            return this.delegate.collectChar(charFunction);</span>
+        }
+        finally
+        {
+<span class="nc" id="L297">            this.unlockReadLock();</span>
+        }
+    }
+
+    @Override
+    public MutableDoubleSet collectDouble(DoubleFunction&lt;? super T&gt; doubleFunction)
+    {
+<span class="nc" id="L304">        this.acquireReadLock();</span>
+        try
+        {
+<span class="nc" id="L307">            return this.delegate.collectDouble(doubleFunction);</span>
+        }
+        finally
+        {
+<span class="nc" id="L311">            this.unlockReadLock();</span>
+        }
+    }
+
+    @Override
+    public MutableFloatSet collectFloat(FloatFunction&lt;? super T&gt; floatFunction)
+    {
+<span class="nc" id="L318">        this.acquireReadLock();</span>
+        try
+        {
+<span class="nc" id="L321">            return this.delegate.collectFloat(floatFunction);</span>
+        }
+        finally
+        {
+<span class="nc" id="L325">            this.unlockReadLock();</span>
+        }
+    }
+
+    @Override
+    public MutableIntSet collectInt(IntFunction&lt;? super T&gt; intFunction)
+    {
+<span class="nc" id="L332">        this.acquireReadLock();</span>
+        try
+        {
+<span class="nc" id="L335">            return this.delegate.collectInt(intFunction);</span>
+        }
+        finally
+        {
+<span class="nc" id="L339">            this.unlockReadLock();</span>
+        }
+    }
+
+    @Override
+    public MutableLongSet collectLong(LongFunction&lt;? super T&gt; longFunction)
+    {
+<span class="nc" id="L346">        this.acquireReadLock();</span>
+        try
+        {
+<span class="nc" id="L349">            return this.delegate.collectLong(longFunction);</span>
+        }
+        finally
+        {
+<span class="nc" id="L353">            this.unlockReadLock();</span>
+        }
+    }
+
+    @Override
+    public MutableShortSet collectShort(ShortFunction&lt;? super T&gt; shortFunction)
+    {
+<span class="nc" id="L360">        this.acquireReadLock();</span>
+        try
+        {
+<span class="nc" id="L363">            return this.delegate.collectShort(shortFunction);</span>
+        }
+        finally
+        {
+<span class="nc" id="L367">            this.unlockReadLock();</span>
+        }
+    }
+
+    @Override
+    public &lt;V&gt; MutableSet&lt;V&gt; flatCollect(Function&lt;? super T, ? extends Iterable&lt;V&gt;&gt; function)
+    {
+<span class="nc" id="L374">        this.acquireReadLock();</span>
+        try
+        {
+<span class="nc" id="L377">            return this.delegate.flatCollect(function);</span>
+        }
+        finally
+        {
+<span class="nc" id="L381">            this.unlockReadLock();</span>
+        }
+    }
+
+    @Override
+    public &lt;V&gt; MutableSet&lt;V&gt; collectIf(
+            Predicate&lt;? super T&gt; predicate,
+            Function&lt;? super T, ? extends V&gt; function)
+    {
+<span class="nc" id="L390">        this.acquireReadLock();</span>
+        try
+        {
+<span class="nc" id="L393">            return this.delegate.collectIf(predicate, function);</span>
+        }
+        finally
+        {
+<span class="nc" id="L397">            this.unlockReadLock();</span>
+        }
+    }
+
+    @Override
+    public &lt;P, V&gt; MutableSet&lt;V&gt; collectWith(
+            Function2&lt;? super T, ? super P, ? extends V&gt; function,
+            P parameter)
+    {
+<span class="nc" id="L406">        this.acquireReadLock();</span>
+        try
+        {
+<span class="nc" id="L409">            return this.delegate.collectWith(function, parameter);</span>
+        }
+        finally
+        {
+<span class="nc" id="L413">            this.unlockReadLock();</span>
+        }
+    }
+
+    @Override
+    public MutableSet&lt;T&gt; newEmpty()
+    {
+<span class="nc" id="L420">        return MultiReaderUnifiedSet.newSet();</span>
+    }
+
+    @Override
+    public MutableSet&lt;T&gt; reject(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L426">        this.acquireReadLock();</span>
+        try
+        {
+<span class="nc" id="L429">            return this.delegate.reject(predicate);</span>
+        }
+        finally
+        {
+<span class="nc" id="L433">            this.unlockReadLock();</span>
+        }
+    }
+
+    @Override
+    public &lt;P&gt; MutableSet&lt;T&gt; rejectWith(
+            Predicate2&lt;? super T, ? super P&gt; predicate,
+            P parameter)
+    {
+<span class="nc" id="L442">        this.acquireReadLock();</span>
+        try
+        {
+<span class="nc" id="L445">            return this.delegate.rejectWith(predicate, parameter);</span>
+        }
+        finally
+        {
+<span class="nc" id="L449">            this.unlockReadLock();</span>
+        }
+    }
+
+    @Override
+    public MutableSet&lt;T&gt; tap(Procedure&lt;? super T&gt; procedure)
+    {
+<span class="nc" id="L456">        this.acquireReadLock();</span>
+        try
+        {
+<span class="nc" id="L459">            this.forEach(procedure);</span>
+<span class="nc" id="L460">            return this;</span>
+        }
+        finally
+        {
+<span class="nc" id="L464">            this.unlockReadLock();</span>
+        }
+    }
+
+    @Override
+    public MutableSet&lt;T&gt; select(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L471">        this.acquireReadLock();</span>
+        try
+        {
+<span class="nc" id="L474">            return this.delegate.select(predicate);</span>
+        }
+        finally
+        {
+<span class="nc" id="L478">            this.unlockReadLock();</span>
+        }
+    }
+
+    @Override
+    public &lt;P&gt; MutableSet&lt;T&gt; selectWith(
+            Predicate2&lt;? super T, ? super P&gt; predicate,
+            P parameter)
+    {
+<span class="nc" id="L487">        this.acquireReadLock();</span>
+        try
+        {
+<span class="nc" id="L490">            return this.delegate.selectWith(predicate, parameter);</span>
+        }
+        finally
+        {
+<span class="nc" id="L494">            this.unlockReadLock();</span>
+        }
+    }
+
+    @Override
+    public PartitionMutableSet&lt;T&gt; partition(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L501">        this.acquireReadLock();</span>
+        try
+        {
+<span class="nc" id="L504">            return this.delegate.partition(predicate);</span>
+        }
+        finally
+        {
+<span class="nc" id="L508">            this.unlockReadLock();</span>
+        }
+    }
+
+    @Override
+    public &lt;P&gt; PartitionMutableSet&lt;T&gt; partitionWith(Predicate2&lt;? super T, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc" id="L515">        this.acquireReadLock();</span>
+        try
+        {
+<span class="nc" id="L518">            return this.delegate.partitionWith(predicate, parameter);</span>
+        }
+        finally
+        {
+<span class="nc" id="L522">            this.unlockReadLock();</span>
+        }
+    }
+
+    @Override
+    public &lt;S&gt; MutableSet&lt;S&gt; selectInstancesOf(Class&lt;S&gt; clazz)
+    {
+<span class="nc" id="L529">        this.acquireReadLock();</span>
+        try
+        {
+<span class="nc" id="L532">            return this.delegate.selectInstancesOf(clazz);</span>
+        }
+        finally
+        {
+<span class="nc" id="L536">            this.unlockReadLock();</span>
+        }
+    }
+
+    @Override
+    public MutableSet&lt;T&gt; with(T element)
+    {
+<span class="nc" id="L543">        this.add(element);</span>
+<span class="nc" id="L544">        return this;</span>
+    }
+
+    @Override
+    public MutableSet&lt;T&gt; without(T element)
+    {
+<span class="nc" id="L550">        this.remove(element);</span>
+<span class="nc" id="L551">        return this;</span>
+    }
+
+    @Override
+    public MutableSet&lt;T&gt; withAll(Iterable&lt;? extends T&gt; elements)
+    {
+<span class="nc" id="L557">        this.addAllIterable(elements);</span>
+<span class="nc" id="L558">        return this;</span>
+    }
+
+    @Override
+    public MutableSet&lt;T&gt; withoutAll(Iterable&lt;? extends T&gt; elements)
+    {
+<span class="nc" id="L564">        this.removeAllIterable(elements);</span>
+<span class="nc" id="L565">        return this;</span>
+    }
+
+    @Override
+    public boolean equals(Object o)
+    {
+<span class="nc" id="L571">        this.acquireReadLock();</span>
+        try
+        {
+<span class="nc" id="L574">            return this.delegate.equals(o);</span>
+        }
+        finally
+        {
+<span class="nc" id="L578">            this.unlockReadLock();</span>
+        }
+    }
+
+    @Override
+    public int hashCode()
+    {
+<span class="nc" id="L585">        this.acquireReadLock();</span>
+        try
+        {
+<span class="nc" id="L588">            return this.delegate.hashCode();</span>
+        }
+        finally
+        {
+<span class="nc" id="L592">            this.unlockReadLock();</span>
+        }
+    }
+
+    @Override
+    public void writeExternal(ObjectOutput out) throws IOException
+    {
+<span class="nc" id="L599">        out.writeObject(this.delegate);</span>
+<span class="nc" id="L600">    }</span>
+
+    @Override
+    public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException
+    {
+<span class="nc" id="L605">        this.delegate = (MutableSet&lt;T&gt;) in.readObject();</span>
+<span class="nc" id="L606">        this.lock = new ReentrantReadWriteLock();</span>
+<span class="nc" id="L607">    }</span>
+
+    // Exposed for testing
+
+    static final class UntouchableMutableSet&lt;T&gt;
+            extends UntouchableMutableCollection&lt;T&gt;
+            implements MutableSet&lt;T&gt;
+    {
+<span class="nc" id="L615">        private final MutableList&lt;UntouchableIterator&lt;T&gt;&gt; requestedIterators = mList();</span>
+
+        private UntouchableMutableSet(MutableSet&lt;T&gt; newDelegate)
+<span class="nc" id="L618">        {</span>
+<span class="nc" id="L619">            this.delegate = newDelegate;</span>
+<span class="nc" id="L620">        }</span>
+
+        public void becomeUseless()
+        {
+<span class="nc" id="L624">            this.delegate = null;</span>
+<span class="nc" id="L625">            this.requestedIterators.each(UntouchableIterator::becomeUseless);</span>
+<span class="nc" id="L626">        }</span>
+
+        /**
+         * This must be implemented this way to guarantee a reference to the delegate doesn't escape.
+         */
+        @Override
+        public MutableSet&lt;T&gt; with(T element)
+        {
+<span class="nc" id="L634">            this.add(element);</span>
+<span class="nc" id="L635">            return this;</span>
+        }
+
+        @Override
+        public MutableSet&lt;T&gt; without(T element)
+        {
+<span class="nc" id="L641">            this.remove(element);</span>
+<span class="nc" id="L642">            return this;</span>
+        }
+
+        @Override
+        public MutableSet&lt;T&gt; withAll(Iterable&lt;? extends T&gt; elements)
+        {
+<span class="nc" id="L648">            this.addAllIterable(elements);</span>
+<span class="nc" id="L649">            return this;</span>
+        }
+
+        @Override
+        public MutableSet&lt;T&gt; withoutAll(Iterable&lt;? extends T&gt; elements)
+        {
+<span class="nc" id="L655">            this.removeAllIterable(elements);</span>
+<span class="nc" id="L656">            return this;</span>
+        }
+
+        @Override
+        public MutableSet&lt;T&gt; asSynchronized()
+        {
+<span class="nc" id="L662">            throw new UnsupportedOperationException(&quot;Cannot call asSynchronized() on &quot; + this.getClass().getSimpleName());</span>
+        }
+
+        @Override
+        public MutableSet&lt;T&gt; asUnmodifiable()
+        {
+<span class="nc" id="L668">            throw new UnsupportedOperationException(&quot;Cannot call asUnmodifiable() on &quot; + this.getClass().getSimpleName());</span>
+        }
+
+        @Override
+        public ImmutableSet&lt;T&gt; toImmutable()
+        {
+<span class="nc" id="L674">            return Sets.immutable.withAll(this.getDelegate());</span>
+        }
+
+        @Override
+        public LazyIterable&lt;T&gt; asLazy()
+        {
+<span class="nc" id="L680">            return LazyIterate.adapt(this);</span>
+        }
+
+        @Override
+        public MutableSet&lt;T&gt; clone()
+        {
+<span class="nc" id="L686">            return this.getDelegate().clone();</span>
+        }
+
+        @Override
+        public &lt;V&gt; MutableSet&lt;V&gt; collect(Function&lt;? super T, ? extends V&gt; function)
+        {
+<span class="nc" id="L692">            return this.getDelegate().collect(function);</span>
+        }
+
+        @Override
+        public MutableBooleanSet collectBoolean(BooleanFunction&lt;? super T&gt; booleanFunction)
+        {
+<span class="nc" id="L698">            return this.getDelegate().collectBoolean(booleanFunction);</span>
+        }
+
+        @Override
+        public &lt;R extends MutableBooleanCollection&gt; R collectBoolean(BooleanFunction&lt;? super T&gt; booleanFunction, R target)
+        {
+<span class="nc" id="L704">            return this.getDelegate().collectBoolean(booleanFunction, target);</span>
+        }
+
+        @Override
+        public MutableByteSet collectByte(ByteFunction&lt;? super T&gt; byteFunction)
+        {
+<span class="nc" id="L710">            return this.getDelegate().collectByte(byteFunction);</span>
+        }
+
+        @Override
+        public &lt;R extends MutableByteCollection&gt; R collectByte(ByteFunction&lt;? super T&gt; byteFunction, R target)
+        {
+<span class="nc" id="L716">            return this.getDelegate().collectByte(byteFunction, target);</span>
+        }
+
+        @Override
+        public MutableCharSet collectChar(CharFunction&lt;? super T&gt; charFunction)
+        {
+<span class="nc" id="L722">            return this.getDelegate().collectChar(charFunction);</span>
+        }
+
+        @Override
+        public &lt;R extends MutableCharCollection&gt; R collectChar(CharFunction&lt;? super T&gt; charFunction, R target)
+        {
+<span class="nc" id="L728">            return this.getDelegate().collectChar(charFunction, target);</span>
+        }
+
+        @Override
+        public MutableDoubleSet collectDouble(DoubleFunction&lt;? super T&gt; doubleFunction)
+        {
+<span class="nc" id="L734">            return this.getDelegate().collectDouble(doubleFunction);</span>
+        }
+
+        @Override
+        public &lt;R extends MutableDoubleCollection&gt; R collectDouble(DoubleFunction&lt;? super T&gt; doubleFunction, R target)
+        {
+<span class="nc" id="L740">            return this.getDelegate().collectDouble(doubleFunction, target);</span>
+        }
+
+        @Override
+        public MutableFloatSet collectFloat(FloatFunction&lt;? super T&gt; floatFunction)
+        {
+<span class="nc" id="L746">            return this.getDelegate().collectFloat(floatFunction);</span>
+        }
+
+        @Override
+        public &lt;R extends MutableFloatCollection&gt; R collectFloat(FloatFunction&lt;? super T&gt; floatFunction, R target)
+        {
+<span class="nc" id="L752">            return this.getDelegate().collectFloat(floatFunction, target);</span>
+        }
+
+        @Override
+        public MutableIntSet collectInt(IntFunction&lt;? super T&gt; intFunction)
+        {
+<span class="nc" id="L758">            return this.getDelegate().collectInt(intFunction);</span>
+        }
+
+        @Override
+        public &lt;R extends MutableIntCollection&gt; R collectInt(IntFunction&lt;? super T&gt; intFunction, R target)
+        {
+<span class="nc" id="L764">            return this.getDelegate().collectInt(intFunction, target);</span>
+        }
+
+        @Override
+        public MutableLongSet collectLong(LongFunction&lt;? super T&gt; longFunction)
+        {
+<span class="nc" id="L770">            return this.getDelegate().collectLong(longFunction);</span>
+        }
+
+        @Override
+        public &lt;R extends MutableLongCollection&gt; R collectLong(LongFunction&lt;? super T&gt; longFunction, R target)
+        {
+<span class="nc" id="L776">            return this.getDelegate().collectLong(longFunction, target);</span>
+        }
+
+        @Override
+        public MutableShortSet collectShort(ShortFunction&lt;? super T&gt; shortFunction)
+        {
+<span class="nc" id="L782">            return this.getDelegate().collectShort(shortFunction);</span>
+        }
+
+        @Override
+        public &lt;R extends MutableShortCollection&gt; R collectShort(ShortFunction&lt;? super T&gt; shortFunction, R target)
+        {
+<span class="nc" id="L788">            return this.getDelegate().collectShort(shortFunction, target);</span>
+        }
+
+        @Override
+        public &lt;V&gt; MutableSet&lt;V&gt; flatCollect(Function&lt;? super T, ? extends Iterable&lt;V&gt;&gt; function)
+        {
+<span class="nc" id="L794">            return this.getDelegate().flatCollect(function);</span>
+        }
+
+        @Override
+        public &lt;V&gt; MutableSet&lt;V&gt; collectIf(
+                Predicate&lt;? super T&gt; predicate,
+                Function&lt;? super T, ? extends V&gt; function)
+        {
+<span class="nc" id="L802">            return this.getDelegate().collectIf(predicate, function);</span>
+        }
+
+        @Override
+        public &lt;P, V&gt; MutableSet&lt;V&gt; collectWith(
+                Function2&lt;? super T, ? super P, ? extends V&gt; function,
+                P parameter)
+        {
+<span class="nc" id="L810">            return this.getDelegate().collectWith(function, parameter);</span>
+        }
+
+        @Override
+        public &lt;V&gt; MutableSetMultimap&lt;V, T&gt; groupBy(
+                Function&lt;? super T, ? extends V&gt; function)
+        {
+<span class="nc" id="L817">            return this.getDelegate().groupBy(function);</span>
+        }
+
+        @Override
+        public &lt;V&gt; MutableSetMultimap&lt;V, T&gt; groupByEach(
+                Function&lt;? super T, ? extends Iterable&lt;V&gt;&gt; function)
+        {
+<span class="nc" id="L824">            return this.getDelegate().groupByEach(function);</span>
+        }
+
+        @Override
+        public &lt;V&gt; MutableMap&lt;V, T&gt; groupByUniqueKey(Function&lt;? super T, ? extends V&gt; function)
+        {
+<span class="nc" id="L830">            return this.getDelegate().groupByUniqueKey(function);</span>
+        }
+
+        @Override
+        public MutableSet&lt;T&gt; newEmpty()
+        {
+<span class="nc" id="L836">            return this.getDelegate().newEmpty();</span>
+        }
+
+        @Override
+        public MutableSet&lt;T&gt; reject(Predicate&lt;? super T&gt; predicate)
+        {
+<span class="nc" id="L842">            return this.getDelegate().reject(predicate);</span>
+        }
+
+        @Override
+        public &lt;P&gt; MutableSet&lt;T&gt; rejectWith(
+                Predicate2&lt;? super T, ? super P&gt; predicate,
+                P parameter)
+        {
+<span class="nc" id="L850">            return this.getDelegate().rejectWith(predicate, parameter);</span>
+        }
+
+        @Override
+        public MutableSet&lt;T&gt; tap(Procedure&lt;? super T&gt; procedure)
+        {
+<span class="nc" id="L856">            this.forEach(procedure);</span>
+<span class="nc" id="L857">            return this;</span>
+        }
+
+        @Override
+        public MutableSet&lt;T&gt; select(Predicate&lt;? super T&gt; predicate)
+        {
+<span class="nc" id="L863">            return this.getDelegate().select(predicate);</span>
+        }
+
+        @Override
+        public &lt;P&gt; MutableSet&lt;T&gt; selectWith(
+                Predicate2&lt;? super T, ? super P&gt; predicate,
+                P parameter)
+        {
+<span class="nc" id="L871">            return this.getDelegate().selectWith(predicate, parameter);</span>
+        }
+
+        @Override
+        public PartitionMutableSet&lt;T&gt; partition(Predicate&lt;? super T&gt; predicate)
+        {
+<span class="nc" id="L877">            return this.getDelegate().partition(predicate);</span>
+        }
+
+        @Override
+        public &lt;P&gt; PartitionMutableSet&lt;T&gt; partitionWith(Predicate2&lt;? super T, ? super P&gt; predicate, P parameter)
+        {
+<span class="nc" id="L883">            return this.getDelegate().partitionWith(predicate, parameter);</span>
+        }
+
+        @Override
+        public &lt;S&gt; MutableSet&lt;S&gt; selectInstancesOf(Class&lt;S&gt; clazz)
+        {
+<span class="nc" id="L889">            return this.getDelegate().selectInstancesOf(clazz);</span>
+        }
+
+        @Override
+        public Iterator&lt;T&gt; iterator()
+        {
+<span class="nc" id="L895">            UntouchableIterator&lt;T&gt; iterator = new UntouchableIterator&lt;&gt;(this.delegate.iterator());</span>
+<span class="nc" id="L896">            this.requestedIterators.add(iterator);</span>
+<span class="nc" id="L897">            return iterator;</span>
+        }
+
+        /**
+         * @deprecated in 6.0. Use {@link OrderedIterable#zip(Iterable)} instead.
+         */
+        @Override
+        @Deprecated
+        public &lt;S&gt; MutableSet&lt;Pair&lt;T, S&gt;&gt; zip(Iterable&lt;S&gt; that)
+        {
+<span class="nc" id="L907">            return this.getDelegate().zip(that);</span>
+        }
+
+        /**
+         * @deprecated in 6.0. Use {@link OrderedIterable#zipWithIndex()} instead.
+         */
+        @Override
+        @Deprecated
+        public MutableSet&lt;Pair&lt;T, Integer&gt;&gt; zipWithIndex()
+        {
+<span class="nc" id="L917">            return this.getDelegate().zipWithIndex();</span>
+        }
+
+        @Override
+        public MutableSet&lt;T&gt; union(SetIterable&lt;? extends T&gt; set)
+        {
+<span class="nc" id="L923">            return this.getDelegate().union(set);</span>
+        }
+
+        @Override
+        public &lt;R extends Set&lt;T&gt;&gt; R unionInto(SetIterable&lt;? extends T&gt; set, R targetSet)
+        {
+<span class="nc" id="L929">            return this.getDelegate().unionInto(set, targetSet);</span>
+        }
+
+        @Override
+        public MutableSet&lt;T&gt; intersect(SetIterable&lt;? extends T&gt; set)
+        {
+<span class="nc" id="L935">            return this.getDelegate().intersect(set);</span>
+        }
+
+        @Override
+        public &lt;R extends Set&lt;T&gt;&gt; R intersectInto(SetIterable&lt;? extends T&gt; set, R targetSet)
+        {
+<span class="nc" id="L941">            return this.getDelegate().intersectInto(set, targetSet);</span>
+        }
+
+        @Override
+        public MutableSet&lt;T&gt; difference(SetIterable&lt;? extends T&gt; subtrahendSet)
+        {
+<span class="nc" id="L947">            return this.getDelegate().difference(subtrahendSet);</span>
+        }
+
+        @Override
+        public &lt;R extends Set&lt;T&gt;&gt; R differenceInto(SetIterable&lt;? extends T&gt; subtrahendSet, R targetSet)
+        {
+<span class="nc" id="L953">            return this.getDelegate().differenceInto(subtrahendSet, targetSet);</span>
+        }
+
+        @Override
+        public MutableSet&lt;T&gt; symmetricDifference(SetIterable&lt;? extends T&gt; setB)
+        {
+<span class="nc" id="L959">            return this.getDelegate().symmetricDifference(setB);</span>
+        }
+
+        @Override
+        public &lt;R extends Set&lt;T&gt;&gt; R symmetricDifferenceInto(SetIterable&lt;? extends T&gt; set, R targetSet)
+        {
+<span class="nc" id="L965">            return this.getDelegate().symmetricDifferenceInto(set, targetSet);</span>
+        }
+
+        @Override
+        public boolean isSubsetOf(SetIterable&lt;? extends T&gt; candidateSuperset)
+        {
+<span class="nc" id="L971">            return this.getDelegate().isSubsetOf(candidateSuperset);</span>
+        }
+
+        @Override
+        public boolean isProperSubsetOf(SetIterable&lt;? extends T&gt; candidateSuperset)
+        {
+<span class="nc" id="L977">            return this.getDelegate().isProperSubsetOf(candidateSuperset);</span>
+        }
+
+        @Override
+        public MutableSet&lt;UnsortedSetIterable&lt;T&gt;&gt; powerSet()
+        {
+<span class="nc" id="L983">            return this.getDelegate().powerSet();</span>
+        }
+
+        @Override
+        public &lt;B&gt; LazyIterable&lt;Pair&lt;T, B&gt;&gt; cartesianProduct(SetIterable&lt;B&gt; set)
+        {
+<span class="nc" id="L989">            return this.getDelegate().cartesianProduct(set);</span>
+        }
+
+        @Override
+        public ParallelUnsortedSetIterable&lt;T&gt; asParallel(ExecutorService executorService, int batchSize)
+        {
+<span class="nc" id="L995">            return this.getDelegate().asParallel(executorService, batchSize);</span>
+        }
+
+        private MutableSet&lt;T&gt; getDelegate()
+        {
+<span class="nc" id="L1000">            return (MutableSet&lt;T&gt;) this.delegate;</span>
+        }
+    }
+
+    private static final class UntouchableIterator&lt;T&gt;
+            implements Iterator&lt;T&gt;
+    {
+        private Iterator&lt;T&gt; delegate;
+
+        private UntouchableIterator(Iterator&lt;T&gt; newDelegate)
+<span class="nc" id="L1010">        {</span>
+<span class="nc" id="L1011">            this.delegate = newDelegate;</span>
+<span class="nc" id="L1012">        }</span>
+
+        @Override
+        public boolean hasNext()
+        {
+<span class="nc" id="L1017">            return this.delegate.hasNext();</span>
+        }
+
+        @Override
+        public T next()
+        {
+<span class="nc" id="L1023">            return this.delegate.next();</span>
+        }
+
+        @Override
+        public void remove()
+        {
+<span class="nc" id="L1029">            this.delegate.remove();</span>
+<span class="nc" id="L1030">        }</span>
+
+        public void becomeUseless()
+        {
+<span class="nc" id="L1034">            this.delegate = null;</span>
+<span class="nc" id="L1035">        }</span>
+    }
+
+    @Override
+    public &lt;V&gt; MutableSetMultimap&lt;V, T&gt; groupBy(Function&lt;? super T, ? extends V&gt; function)
+    {
+<span class="nc" id="L1041">        this.acquireReadLock();</span>
+        try
+        {
+<span class="nc" id="L1044">            return this.delegate.groupBy(function);</span>
+        }
+        finally
+        {
+<span class="nc" id="L1048">            this.unlockReadLock();</span>
+        }
+    }
+
+    @Override
+    public &lt;V&gt; MutableSetMultimap&lt;V, T&gt; groupByEach(Function&lt;? super T, ? extends Iterable&lt;V&gt;&gt; function)
+    {
+<span class="nc" id="L1055">        this.acquireReadLock();</span>
+        try
+        {
+<span class="nc" id="L1058">            return this.delegate.groupByEach(function);</span>
+        }
+        finally
+        {
+<span class="nc" id="L1062">            this.unlockReadLock();</span>
+        }
+    }
+
+    @Override
+    public &lt;V&gt; MutableMap&lt;V, T&gt; groupByUniqueKey(Function&lt;? super T, ? extends V&gt; function)
+    {
+<span class="nc" id="L1069">        this.acquireReadLock();</span>
+        try
+        {
+<span class="nc" id="L1072">            return this.delegate.groupByUniqueKey(function);</span>
+        }
+        finally
+        {
+<span class="nc" id="L1076">            this.unlockReadLock();</span>
+        }
+    }
+
+    /**
+     * @deprecated in 6.0. Use {@link OrderedIterable#zip(Iterable)} instead.
+     */
+    @Override
+    @Deprecated
+    public &lt;S&gt; MutableSet&lt;Pair&lt;T, S&gt;&gt; zip(Iterable&lt;S&gt; that)
+    {
+<span class="nc" id="L1087">        this.acquireReadLock();</span>
+        try
+        {
+<span class="nc" id="L1090">            return this.delegate.zip(that);</span>
+        }
+        finally
+        {
+<span class="nc" id="L1094">            this.unlockReadLock();</span>
+        }
+    }
+
+    /**
+     * @deprecated in 6.0. Use {@link OrderedIterable#zipWithIndex()} instead.
+     */
+    @Override
+    @Deprecated
+    public MutableSet&lt;Pair&lt;T, Integer&gt;&gt; zipWithIndex()
+    {
+<span class="nc" id="L1105">        this.acquireReadLock();</span>
+        try
+        {
+<span class="nc" id="L1108">            return this.delegate.zipWithIndex();</span>
+        }
+        finally
+        {
+<span class="nc" id="L1112">            this.unlockReadLock();</span>
+        }
+    }
+
+    @Override
+    public RichIterable&lt;RichIterable&lt;T&gt;&gt; chunk(int size)
+    {
+<span class="nc" id="L1119">        this.acquireReadLock();</span>
+        try
+        {
+<span class="nc" id="L1122">            return this.delegate.chunk(size);</span>
+        }
+        finally
+        {
+<span class="nc" id="L1126">            this.unlockReadLock();</span>
+        }
+    }
+
+    @Override
+    public MutableSet&lt;T&gt; union(SetIterable&lt;? extends T&gt; set)
+    {
+<span class="nc" id="L1133">        this.acquireReadLock();</span>
+        try
+        {
+<span class="nc" id="L1136">            return this.delegate.union(set);</span>
+        }
+        finally
+        {
+<span class="nc" id="L1140">            this.unlockReadLock();</span>
+        }
+    }
+
+    @Override
+    public &lt;R extends Set&lt;T&gt;&gt; R unionInto(SetIterable&lt;? extends T&gt; set, R targetSet)
+    {
+<span class="nc" id="L1147">        this.acquireReadLock();</span>
+        try
+        {
+<span class="nc" id="L1150">            return this.delegate.unionInto(set, targetSet);</span>
+        }
+        finally
+        {
+<span class="nc" id="L1154">            this.unlockReadLock();</span>
+        }
+    }
+
+    @Override
+    public MutableSet&lt;T&gt; intersect(SetIterable&lt;? extends T&gt; set)
+    {
+<span class="nc" id="L1161">        this.acquireReadLock();</span>
+        try
+        {
+<span class="nc" id="L1164">            return this.delegate.intersect(set);</span>
+        }
+        finally
+        {
+<span class="nc" id="L1168">            this.unlockReadLock();</span>
+        }
+    }
+
+    @Override
+    public &lt;R extends Set&lt;T&gt;&gt; R intersectInto(SetIterable&lt;? extends T&gt; set, R targetSet)
+    {
+<span class="nc" id="L1175">        this.acquireReadLock();</span>
+        try
+        {
+<span class="nc" id="L1178">            return this.delegate.intersectInto(set, targetSet);</span>
+        }
+        finally
+        {
+<span class="nc" id="L1182">            this.unlockReadLock();</span>
+        }
+    }
+
+    @Override
+    public MutableSet&lt;T&gt; difference(SetIterable&lt;? extends T&gt; subtrahendSet)
+    {
+<span class="nc" id="L1189">        this.acquireReadLock();</span>
+        try
+        {
+<span class="nc" id="L1192">            return this.delegate.difference(subtrahendSet);</span>
+        }
+        finally
+        {
+<span class="nc" id="L1196">            this.unlockReadLock();</span>
+        }
+    }
+
+    @Override
+    public &lt;R extends Set&lt;T&gt;&gt; R differenceInto(SetIterable&lt;? extends T&gt; subtrahendSet, R targetSet)
+    {
+<span class="nc" id="L1203">        this.acquireReadLock();</span>
+        try
+        {
+<span class="nc" id="L1206">            return this.delegate.differenceInto(subtrahendSet, targetSet);</span>
+        }
+        finally
+        {
+<span class="nc" id="L1210">            this.unlockReadLock();</span>
+        }
+    }
+
+    @Override
+    public MutableSet&lt;T&gt; symmetricDifference(SetIterable&lt;? extends T&gt; setB)
+    {
+<span class="nc" id="L1217">        this.acquireReadLock();</span>
+        try
+        {
+<span class="nc" id="L1220">            return this.delegate.symmetricDifference(setB);</span>
+        }
+        finally
+        {
+<span class="nc" id="L1224">            this.unlockReadLock();</span>
+        }
+    }
+
+    @Override
+    public &lt;R extends Set&lt;T&gt;&gt; R symmetricDifferenceInto(SetIterable&lt;? extends T&gt; set, R targetSet)
+    {
+<span class="nc" id="L1231">        this.acquireReadLock();</span>
+        try
+        {
+<span class="nc" id="L1234">            return this.delegate.symmetricDifferenceInto(set, targetSet);</span>
+        }
+        finally
+        {
+<span class="nc" id="L1238">            this.unlockReadLock();</span>
+        }
+    }
+
+    @Override
+    public boolean isSubsetOf(SetIterable&lt;? extends T&gt; candidateSuperset)
+    {
+<span class="nc" id="L1245">        this.acquireReadLock();</span>
+        try
+        {
+<span class="nc" id="L1248">            return this.delegate.isSubsetOf(candidateSuperset);</span>
+        }
+        finally
+        {
+<span class="nc" id="L1252">            this.unlockReadLock();</span>
+        }
+    }
+
+    @Override
+    public boolean isProperSubsetOf(SetIterable&lt;? extends T&gt; candidateSuperset)
+    {
+<span class="nc" id="L1259">        this.acquireReadLock();</span>
+        try
+        {
+<span class="nc" id="L1262">            return this.delegate.isProperSubsetOf(candidateSuperset);</span>
+        }
+        finally
+        {
+<span class="nc" id="L1266">            this.unlockReadLock();</span>
+        }
+    }
+
+    @Override
+    public MutableSet&lt;UnsortedSetIterable&lt;T&gt;&gt; powerSet()
+    {
+<span class="nc" id="L1273">        this.acquireReadLock();</span>
+        try
+        {
+<span class="nc" id="L1276">            return this.delegate.powerSet();</span>
+        }
+        finally
+        {
+<span class="nc" id="L1280">            this.unlockReadLock();</span>
+        }
+    }
+
+    @Override
+    public &lt;B&gt; LazyIterable&lt;Pair&lt;T, B&gt;&gt; cartesianProduct(SetIterable&lt;B&gt; set)
+    {
+<span class="nc" id="L1287">        this.acquireReadLock();</span>
+        try
+        {
+<span class="nc" id="L1290">            return this.delegate.cartesianProduct(set);</span>
+        }
+        finally
+        {
+<span class="nc" id="L1294">            this.unlockReadLock();</span>
+        }
+    }
+
+    @Override
+    public ParallelUnsortedSetIterable&lt;T&gt; asParallel(ExecutorService executorService, int batchSize)
+    {
+<span class="nc" id="L1301">        return new MultiReaderParallelUnsortedSetIterable&lt;&gt;(this.delegate.asParallel(executorService, batchSize), this.lock);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.0.201801022044</span></div></body></html>

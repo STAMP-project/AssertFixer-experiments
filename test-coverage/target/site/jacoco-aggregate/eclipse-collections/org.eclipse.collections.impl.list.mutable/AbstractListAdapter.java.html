@@ -1,0 +1,415 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>AbstractListAdapter.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Eclipse Collections Test Coverage Aggregation</a> &gt; <a href="../index.html" class="el_bundle">eclipse-collections</a> &gt; <a href="index.source.html" class="el_package">org.eclipse.collections.impl.list.mutable</a> &gt; <span class="el_source">AbstractListAdapter.java</span></div><h1>AbstractListAdapter.java</h1><pre class="source lang-java linenums">/*
+ * Copyright (c) 2017 Goldman Sachs and others.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * and Eclipse Distribution License v. 1.0 which accompany this distribution.
+ * The Eclipse Public License is available at http://www.eclipse.org/legal/epl-v10.html
+ * and the Eclipse Distribution License is available at
+ * http://www.eclipse.org/org/documents/edl-v10.php.
+ */
+
+package org.eclipse.collections.impl.list.mutable;
+
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
+import java.util.ListIterator;
+import java.util.Random;
+import java.util.concurrent.ExecutorService;
+
+import org.eclipse.collections.api.block.function.Function;
+import org.eclipse.collections.api.block.function.Function2;
+import org.eclipse.collections.api.block.function.primitive.BooleanFunction;
+import org.eclipse.collections.api.block.function.primitive.ByteFunction;
+import org.eclipse.collections.api.block.function.primitive.CharFunction;
+import org.eclipse.collections.api.block.function.primitive.DoubleFunction;
+import org.eclipse.collections.api.block.function.primitive.FloatFunction;
+import org.eclipse.collections.api.block.function.primitive.IntFunction;
+import org.eclipse.collections.api.block.function.primitive.LongFunction;
+import org.eclipse.collections.api.block.function.primitive.ShortFunction;
+import org.eclipse.collections.api.block.predicate.Predicate;
+import org.eclipse.collections.api.block.predicate.Predicate2;
+import org.eclipse.collections.api.block.procedure.Procedure;
+import org.eclipse.collections.api.list.MutableList;
+import org.eclipse.collections.api.list.ParallelListIterable;
+import org.eclipse.collections.api.list.primitive.MutableBooleanList;
+import org.eclipse.collections.api.list.primitive.MutableByteList;
+import org.eclipse.collections.api.list.primitive.MutableCharList;
+import org.eclipse.collections.api.list.primitive.MutableDoubleList;
+import org.eclipse.collections.api.list.primitive.MutableFloatList;
+import org.eclipse.collections.api.list.primitive.MutableIntList;
+import org.eclipse.collections.api.list.primitive.MutableLongList;
+import org.eclipse.collections.api.list.primitive.MutableShortList;
+import org.eclipse.collections.api.multimap.list.MutableListMultimap;
+import org.eclipse.collections.api.partition.list.PartitionMutableList;
+import org.eclipse.collections.api.stack.MutableStack;
+import org.eclipse.collections.api.tuple.Pair;
+import org.eclipse.collections.impl.block.factory.Comparators;
+import org.eclipse.collections.impl.block.factory.Functions;
+import org.eclipse.collections.impl.block.factory.HashingStrategies;
+import org.eclipse.collections.impl.collection.mutable.AbstractCollectionAdapter;
+import org.eclipse.collections.impl.lazy.ReverseIterable;
+import org.eclipse.collections.impl.lazy.parallel.list.ListIterableParallelIterable;
+import org.eclipse.collections.impl.stack.mutable.ArrayStack;
+import org.eclipse.collections.impl.utility.ListIterate;
+
+@SuppressWarnings(&quot;AbstractMethodOverridesConcreteMethod&quot;)
+<span class="nc" id="L58">public abstract class AbstractListAdapter&lt;T&gt;</span>
+        extends AbstractCollectionAdapter&lt;T&gt;
+        implements MutableList&lt;T&gt;
+{
+    @Override
+    public MutableList&lt;T&gt; clone()
+    {
+        try
+        {
+<span class="nc" id="L67">            return (MutableList&lt;T&gt;) super.clone();</span>
+        }
+<span class="nc" id="L69">        catch (CloneNotSupportedException e)</span>
+        {
+<span class="nc" id="L71">            throw new AssertionError(e);</span>
+        }
+    }
+
+    @Override
+    protected abstract List&lt;T&gt; getDelegate();
+
+    @Override
+    public boolean addAll(int index, Collection&lt;? extends T&gt; collection)
+    {
+<span class="nc" id="L81">        return this.getDelegate().addAll(index, collection);</span>
+    }
+
+    @Override
+    public MutableList&lt;T&gt; toReversed()
+    {
+<span class="nc" id="L87">        return FastList.newList(this).reverseThis();</span>
+    }
+
+    @Override
+    public MutableList&lt;T&gt; reverseThis()
+    {
+<span class="nc" id="L93">        Collections.reverse(this);</span>
+<span class="nc" id="L94">        return this;</span>
+    }
+
+    @Override
+    public MutableList&lt;T&gt; shuffleThis()
+    {
+<span class="nc" id="L100">        Collections.shuffle(this);</span>
+<span class="nc" id="L101">        return this;</span>
+    }
+
+    @Override
+    public MutableList&lt;T&gt; shuffleThis(Random rnd)
+    {
+<span class="nc" id="L107">        Collections.shuffle(this, rnd);</span>
+<span class="nc" id="L108">        return this;</span>
+    }
+
+    @Override
+    public T get(int index)
+    {
+<span class="nc" id="L114">        return this.getDelegate().get(index);</span>
+    }
+
+    @Override
+    public T set(int index, T element)
+    {
+<span class="nc" id="L120">        return this.getDelegate().set(index, element);</span>
+    }
+
+    @Override
+    public void add(int index, T element)
+    {
+<span class="nc" id="L126">        this.getDelegate().add(index, element);</span>
+<span class="nc" id="L127">    }</span>
+
+    @Override
+    public T remove(int index)
+    {
+<span class="nc" id="L132">        return this.getDelegate().remove(index);</span>
+    }
+
+    @Override
+    public int indexOf(Object o)
+    {
+<span class="nc" id="L138">        return this.getDelegate().indexOf(o);</span>
+    }
+
+    @Override
+    public int lastIndexOf(Object o)
+    {
+<span class="nc" id="L144">        return this.getDelegate().lastIndexOf(o);</span>
+    }
+
+    @Override
+    public ListIterator&lt;T&gt; listIterator()
+    {
+<span class="nc" id="L150">        return this.getDelegate().listIterator();</span>
+    }
+
+    @Override
+    public ListIterator&lt;T&gt; listIterator(int index)
+    {
+<span class="nc" id="L156">        return this.getDelegate().listIterator(index);</span>
+    }
+
+    @Override
+    public &lt;V extends Comparable&lt;? super V&gt;&gt; MutableList&lt;T&gt; sortThisBy(Function&lt;? super T, ? extends V&gt; function)
+    {
+<span class="nc" id="L162">        return this.sortThis(Comparators.byFunction(function));</span>
+    }
+
+    /**
+     * @since 9.0
+     */
+    @Override
+    public &lt;V&gt; MutableList&lt;T&gt; distinctBy(Function&lt;? super T, ? extends V&gt; function)
+    {
+<span class="nc" id="L171">        return this.distinct(HashingStrategies.fromFunction(function));</span>
+    }
+
+    @Override
+    public MutableList&lt;T&gt; sortThisByInt(IntFunction&lt;? super T&gt; function)
+    {
+<span class="nc" id="L177">        return this.sortThis(Functions.toIntComparator(function));</span>
+    }
+
+    @Override
+    public MutableList&lt;T&gt; sortThisByBoolean(BooleanFunction&lt;? super T&gt; function)
+    {
+<span class="nc" id="L183">        return this.sortThis(Functions.toBooleanComparator(function));</span>
+    }
+
+    @Override
+    public MutableList&lt;T&gt; sortThisByChar(CharFunction&lt;? super T&gt; function)
+    {
+<span class="nc" id="L189">        return this.sortThis(Functions.toCharComparator(function));</span>
+    }
+
+    @Override
+    public MutableList&lt;T&gt; sortThisByByte(ByteFunction&lt;? super T&gt; function)
+    {
+<span class="nc" id="L195">        return this.sortThis(Functions.toByteComparator(function));</span>
+    }
+
+    @Override
+    public MutableList&lt;T&gt; sortThisByShort(ShortFunction&lt;? super T&gt; function)
+    {
+<span class="nc" id="L201">        return this.sortThis(Functions.toShortComparator(function));</span>
+    }
+
+    @Override
+    public MutableList&lt;T&gt; sortThisByFloat(FloatFunction&lt;? super T&gt; function)
+    {
+<span class="nc" id="L207">        return this.sortThis(Functions.toFloatComparator(function));</span>
+    }
+
+    @Override
+    public MutableList&lt;T&gt; sortThisByLong(LongFunction&lt;? super T&gt; function)
+    {
+<span class="nc" id="L213">        return this.sortThis(Functions.toLongComparator(function));</span>
+    }
+
+    @Override
+    public MutableList&lt;T&gt; sortThisByDouble(DoubleFunction&lt;? super T&gt; function)
+    {
+<span class="nc" id="L219">        return this.sortThis(Functions.toDoubleComparator(function));</span>
+    }
+
+    @Override
+    public MutableList&lt;T&gt; subList(int fromIndex, int toIndex)
+    {
+<span class="nc" id="L225">        return ListAdapter.adapt(this.getDelegate().subList(fromIndex, toIndex));</span>
+    }
+
+    @Override
+    public boolean equals(Object o)
+    {
+<span class="nc" id="L231">        return this.getDelegate().equals(o);</span>
+    }
+
+    @Override
+    public int hashCode()
+    {
+<span class="nc" id="L237">        return this.getDelegate().hashCode();</span>
+    }
+
+    @Override
+    public MutableStack&lt;T&gt; toStack()
+    {
+<span class="nc" id="L243">        return ArrayStack.newStack(this.getDelegate());</span>
+    }
+
+    @Override
+    public ReverseIterable&lt;T&gt; asReversed()
+    {
+<span class="nc" id="L249">        return ReverseIterable.adapt(this);</span>
+    }
+
+    @Override
+    public ParallelListIterable&lt;T&gt; asParallel(ExecutorService executorService, int batchSize)
+    {
+<span class="nc" id="L255">        return new ListIterableParallelIterable&lt;&gt;(this, executorService, batchSize);</span>
+    }
+
+    @Override
+    public int binarySearch(T key, Comparator&lt;? super T&gt; comparator)
+    {
+<span class="nc" id="L261">        return Collections.binarySearch(this, key, comparator);</span>
+    }
+
+    @Override
+    public int binarySearch(T key)
+    {
+<span class="nc" id="L267">        return Collections.binarySearch((List&lt;? extends Comparable&lt;? super T&gt;&gt;) this, key);</span>
+    }
+
+    @Override
+    public &lt;V&gt; MutableListMultimap&lt;V, T&gt; groupBy(Function&lt;? super T, ? extends V&gt; function)
+    {
+<span class="nc" id="L273">        return ListIterate.groupBy(this.getDelegate(), function);</span>
+    }
+
+    @Override
+    public &lt;V&gt; MutableListMultimap&lt;V, T&gt; groupByEach(Function&lt;? super T, ? extends Iterable&lt;V&gt;&gt; function)
+    {
+<span class="nc" id="L279">        return ListIterate.groupByEach(this.getDelegate(), function);</span>
+    }
+
+    @Override
+    public MutableList&lt;T&gt; tap(Procedure&lt;? super T&gt; procedure)
+    {
+<span class="nc" id="L285">        this.forEach(procedure);</span>
+<span class="nc" id="L286">        return this;</span>
+    }
+
+    @Override
+    public MutableList&lt;T&gt; select(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L292">        return ListIterate.select(this.getDelegate(), predicate);</span>
+    }
+
+    @Override
+    public MutableList&lt;T&gt; reject(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L298">        return ListIterate.reject(this.getDelegate(), predicate);</span>
+    }
+
+    @Override
+    public &lt;S&gt; MutableList&lt;S&gt; selectInstancesOf(Class&lt;S&gt; clazz)
+    {
+<span class="nc" id="L304">        return ListIterate.selectInstancesOf(this.getDelegate(), clazz);</span>
+    }
+
+    @Override
+    public &lt;V&gt; MutableList&lt;V&gt; collect(Function&lt;? super T, ? extends V&gt; function)
+    {
+<span class="nc" id="L310">        return ListIterate.collect(this.getDelegate(), function);</span>
+    }
+
+    @Override
+    public MutableBooleanList collectBoolean(BooleanFunction&lt;? super T&gt; booleanFunction)
+    {
+<span class="nc" id="L316">        return ListIterate.collectBoolean(this.getDelegate(), booleanFunction);</span>
+    }
+
+    @Override
+    public MutableByteList collectByte(ByteFunction&lt;? super T&gt; byteFunction)
+    {
+<span class="nc" id="L322">        return ListIterate.collectByte(this.getDelegate(), byteFunction);</span>
+    }
+
+    @Override
+    public MutableCharList collectChar(CharFunction&lt;? super T&gt; charFunction)
+    {
+<span class="nc" id="L328">        return ListIterate.collectChar(this.getDelegate(), charFunction);</span>
+    }
+
+    @Override
+    public MutableDoubleList collectDouble(DoubleFunction&lt;? super T&gt; doubleFunction)
+    {
+<span class="nc" id="L334">        return ListIterate.collectDouble(this.getDelegate(), doubleFunction);</span>
+    }
+
+    @Override
+    public MutableFloatList collectFloat(FloatFunction&lt;? super T&gt; floatFunction)
+    {
+<span class="nc" id="L340">        return ListIterate.collectFloat(this.getDelegate(), floatFunction);</span>
+    }
+
+    @Override
+    public MutableIntList collectInt(IntFunction&lt;? super T&gt; intFunction)
+    {
+<span class="nc" id="L346">        return ListIterate.collectInt(this.getDelegate(), intFunction);</span>
+    }
+
+    @Override
+    public MutableLongList collectLong(LongFunction&lt;? super T&gt; longFunction)
+    {
+<span class="nc" id="L352">        return ListIterate.collectLong(this.getDelegate(), longFunction);</span>
+    }
+
+    @Override
+    public MutableShortList collectShort(ShortFunction&lt;? super T&gt; shortFunction)
+    {
+<span class="nc" id="L358">        return ListIterate.collectShort(this.getDelegate(), shortFunction);</span>
+    }
+
+    @Override
+    public &lt;V&gt; MutableList&lt;V&gt; flatCollect(Function&lt;? super T, ? extends Iterable&lt;V&gt;&gt; function)
+    {
+<span class="nc" id="L364">        return ListIterate.flatCollect(this.getDelegate(), function);</span>
+    }
+
+    @Override
+    public &lt;V&gt; MutableList&lt;V&gt; collectIf(Predicate&lt;? super T&gt; predicate, Function&lt;? super T, ? extends V&gt; function)
+    {
+<span class="nc" id="L370">        return ListIterate.collectIf(this.getDelegate(), predicate, function);</span>
+    }
+
+    @Override
+    public PartitionMutableList&lt;T&gt; partition(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L376">        return ListIterate.partition(this.getDelegate(), predicate);</span>
+    }
+
+    @Override
+    public &lt;P&gt; PartitionMutableList&lt;T&gt; partitionWith(Predicate2&lt;? super T, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc" id="L382">        return ListIterate.partitionWith(this.getDelegate(), predicate, parameter);</span>
+    }
+
+    @Override
+    public &lt;P&gt; MutableList&lt;T&gt; selectWith(Predicate2&lt;? super T, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc" id="L388">        return ListIterate.selectWith(this.getDelegate(), predicate, parameter);</span>
+    }
+
+    @Override
+    public &lt;P&gt; MutableList&lt;T&gt; rejectWith(Predicate2&lt;? super T, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc" id="L394">        return ListIterate.rejectWith(this.getDelegate(), predicate, parameter);</span>
+    }
+
+    @Override
+    public &lt;P, V&gt; MutableList&lt;V&gt; collectWith(Function2&lt;? super T, ? super P, ? extends V&gt; function, P parameter)
+    {
+<span class="nc" id="L400">        return ListIterate.collectWith(this.getDelegate(), function, parameter);</span>
+    }
+
+    @Override
+    public &lt;S&gt; MutableList&lt;Pair&lt;T, S&gt;&gt; zip(Iterable&lt;S&gt; that)
+    {
+<span class="nc" id="L406">        return ListIterate.zip(this.getDelegate(), that);</span>
+    }
+
+    @Override
+    public MutableList&lt;Pair&lt;T, Integer&gt;&gt; zipWithIndex()
+    {
+<span class="nc" id="L412">        return ListIterate.zipWithIndex(this.getDelegate());</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.0.201801022044</span></div></body></html>

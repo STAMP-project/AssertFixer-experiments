@@ -1,0 +1,1301 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>StringIterate.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Eclipse Collections Test Coverage Aggregation</a> &gt; <a href="../index.html" class="el_bundle">eclipse-collections</a> &gt; <a href="index.source.html" class="el_package">org.eclipse.collections.impl.utility</a> &gt; <span class="el_source">StringIterate.java</span></div><h1>StringIterate.java</h1><pre class="source lang-java linenums">/*
+ * Copyright (c) 2016 Goldman Sachs.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * and Eclipse Distribution License v. 1.0 which accompany this distribution.
+ * The Eclipse Public License is available at http://www.eclipse.org/legal/epl-v10.html
+ * and the Eclipse Distribution License is available at
+ * http://www.eclipse.org/org/documents/edl-v10.php.
+ */
+
+package org.eclipse.collections.impl.utility;
+
+import java.util.Collections;
+import java.util.List;
+import java.util.ListIterator;
+import java.util.StringTokenizer;
+
+import org.eclipse.collections.api.bag.MutableBag;
+import org.eclipse.collections.api.block.function.Function;
+import org.eclipse.collections.api.block.function.Function2;
+import org.eclipse.collections.api.block.function.primitive.CharToCharFunction;
+import org.eclipse.collections.api.block.predicate.primitive.CharPredicate;
+import org.eclipse.collections.api.block.procedure.Procedure;
+import org.eclipse.collections.api.block.procedure.primitive.CharProcedure;
+import org.eclipse.collections.api.collection.MutableCollection;
+import org.eclipse.collections.api.list.MutableList;
+import org.eclipse.collections.api.map.MutableMap;
+import org.eclipse.collections.api.set.MutableSet;
+import org.eclipse.collections.api.tuple.Twin;
+import org.eclipse.collections.impl.bag.mutable.HashBag;
+import org.eclipse.collections.impl.block.factory.primitive.CharPredicates;
+import org.eclipse.collections.impl.block.factory.primitive.CharToCharFunctions;
+import org.eclipse.collections.impl.block.function.primitive.CharFunction;
+import org.eclipse.collections.impl.block.function.primitive.CodePointFunction;
+import org.eclipse.collections.impl.block.predicate.CodePointPredicate;
+import org.eclipse.collections.impl.block.procedure.primitive.CodePointProcedure;
+import org.eclipse.collections.impl.factory.Lists;
+import org.eclipse.collections.impl.list.mutable.FastList;
+import org.eclipse.collections.impl.map.mutable.UnifiedMap;
+import org.eclipse.collections.impl.set.mutable.UnifiedSet;
+import org.eclipse.collections.impl.string.immutable.CharAdapter;
+import org.eclipse.collections.impl.string.immutable.CodePointAdapter;
+import org.eclipse.collections.impl.string.immutable.CodePointList;
+import org.eclipse.collections.impl.tuple.Tuples;
+
+/**
+ * A string is essentially an array of characters. In Smalltalk a String is a subclass of ArrayedCollection, which means
+ * it supports the Collection protocol. StringIterate implements the methods available on the collection protocol that
+ * make sense for Strings. Some of the methods are over-specialized, in the form of englishToUppercase() which is a fast
+ * form of uppercase, but does not work for different locales.
+ */
+public final class StringIterate
+{
+    private StringIterate()
+<span class="nc" id="L55">    {</span>
+<span class="nc" id="L56">        throw new AssertionError(&quot;Suppress default constructor for noninstantiability&quot;);</span>
+    }
+
+    /**
+     * @since 7.0.
+     */
+    public static CharAdapter asCharAdapter(String string)
+    {
+<span class="nc" id="L64">        return CharAdapter.adapt(string);</span>
+    }
+
+    /**
+     * @since 7.0.
+     */
+    public static CodePointAdapter asCodePointAdapter(String string)
+    {
+<span class="nc" id="L72">        return CodePointAdapter.adapt(string);</span>
+    }
+
+    /**
+     * @since 7.0.
+     */
+    public static CodePointList toCodePointList(String string)
+    {
+<span class="nc" id="L80">        return CodePointList.from(string);</span>
+    }
+
+    /**
+     * Converts a string of tokens separated by the specified separator to a sorted {@link MutableList}.
+     *
+     * @deprecated in 3.0.  Inlineable.  Poorly named method.  Does not actually deal properly with CSV.  This is better handled in a separate library.
+     */
+    @Deprecated
+    public static MutableList&lt;String&gt; csvTokensToSortedList(String string)
+    {
+<span class="nc" id="L91">        return StringIterate.tokensToSortedList(string, &quot;,&quot;);</span>
+    }
+
+    /**
+     * Converts a string of tokens separated by the specified separator to a sorted {@link MutableList}.
+     *
+     * @deprecated in 3.0.  Inlineable.  Poorly named method.  Does not actually deal properly with CSV.  This is better handled in a separate library.
+     */
+    @Deprecated
+    public static MutableList&lt;String&gt; csvTrimmedTokensToSortedList(String string)
+    {
+<span class="nc" id="L102">        return StringIterate.trimmedTokensToSortedList(string, &quot;,&quot;);</span>
+    }
+
+    /**
+     * Converts a string of tokens separated by the specified separator to a sorted {@link MutableList}.
+     */
+    public static MutableList&lt;String&gt; tokensToSortedList(String string, String separator)
+    {
+<span class="nc" id="L110">        return StringIterate.tokensToList(string, separator).sortThis();</span>
+    }
+
+    /**
+     * Converts a string of tokens separated by the specified separator to a sorted {@link MutableList}.
+     */
+    public static MutableList&lt;String&gt; trimmedTokensToSortedList(String string, String separator)
+    {
+<span class="nc" id="L118">        return StringIterate.trimmedTokensToList(string, separator).sortThis();</span>
+    }
+
+    /**
+     * Converts a string of tokens separated by commas to a {@link MutableList}.
+     *
+     * @deprecated in 3.0.  Inlineable.  Poorly named method.  Does not actually deal properly with CSV.  This is better handled in a separate library.
+     */
+    @Deprecated
+    public static MutableList&lt;String&gt; csvTokensToList(String string)
+    {
+<span class="nc" id="L129">        return StringIterate.tokensToList(string, &quot;,&quot;);</span>
+    }
+
+    /**
+     * Converts a string of tokens separated by commas to a {@link MutableList}.
+     *
+     * @deprecated in 3.0.  Inlineable.  Poorly named method.  Does not actually deal properly with CSV.  This is better handled in a separate library.
+     */
+    @Deprecated
+    public static MutableList&lt;String&gt; csvTrimmedTokensToList(String string)
+    {
+<span class="nc" id="L140">        return StringIterate.trimmedTokensToList(string, &quot;,&quot;);</span>
+    }
+
+    /**
+     * Converts a string of tokens separated by the specified separator to a {@link MutableList}.
+     */
+    public static MutableList&lt;String&gt; tokensToList(String string, String separator)
+    {
+<span class="nc" id="L148">        MutableList&lt;String&gt; list = Lists.mutable.empty();</span>
+<span class="nc bnc" id="L149" title="All 2 branches missed.">        for (StringTokenizer stringTokenizer = new StringTokenizer(string, separator); stringTokenizer.hasMoreTokens(); )</span>
+        {
+<span class="nc" id="L151">            String token = stringTokenizer.nextToken();</span>
+<span class="nc" id="L152">            list.add(token);</span>
+<span class="nc" id="L153">        }</span>
+<span class="nc" id="L154">        return list;</span>
+    }
+
+    /**
+     * Converts a string of tokens separated by the specified separator to a {@link MutableList}.
+     */
+    public static MutableList&lt;String&gt; trimmedTokensToList(String string, String separator)
+    {
+<span class="nc" id="L162">        return StringIterate.trimStringList(StringIterate.tokensToList(string, separator));</span>
+    }
+
+    /**
+     * Applies {@link String#trim()} to each String in the {@link List}
+     *
+     * @return the input list, mutated in place, containing trimmed strings.
+     */
+    private static &lt;L extends List&lt;String&gt;&gt; L trimStringList(L strings)
+    {
+<span class="nc bnc" id="L172" title="All 2 branches missed.">        for (ListIterator&lt;String&gt; listIt = strings.listIterator(); listIt.hasNext(); )</span>
+        {
+<span class="nc" id="L174">            String string = listIt.next().trim();</span>
+<span class="nc" id="L175">            listIt.set(string);</span>
+<span class="nc" id="L176">        }</span>
+<span class="nc" id="L177">        return strings;</span>
+    }
+
+    /**
+     * Converts a string of tokens separated by commas to a {@link MutableSet}.
+     *
+     * @deprecated in 3.0.  Inlineable.  Poorly named method.  Does not actually deal properly with CSV.  This is better handled in a separate library.
+     */
+    @Deprecated
+    public static MutableSet&lt;String&gt; csvTokensToSet(String string)
+    {
+<span class="nc" id="L188">        return StringIterate.tokensToSet(string, &quot;,&quot;);</span>
+    }
+
+    /**
+     * Converts a string of tokens to a {@link MutableSet}.
+     */
+    public static MutableSet&lt;String&gt; tokensToSet(String string, String separator)
+    {
+<span class="nc" id="L196">        MutableSet&lt;String&gt; set = UnifiedSet.newSet();</span>
+<span class="nc bnc" id="L197" title="All 2 branches missed.">        for (StringTokenizer stringTokenizer = new StringTokenizer(string, separator); stringTokenizer.hasMoreTokens(); )</span>
+        {
+<span class="nc" id="L199">            String token = stringTokenizer.nextToken();</span>
+<span class="nc" id="L200">            set.add(token);</span>
+<span class="nc" id="L201">        }</span>
+<span class="nc" id="L202">        return set;</span>
+    }
+
+    /**
+     * Converts a string of tokens to a {@link MutableMap} using a | to separate pairs, and a : to separate key and
+     * value. e.g. &quot;1:Sunday|2:Monday|3:Tuesday|4:Wednesday|5:Thursday|6:Friday|7:Saturday&quot;
+     */
+    public static MutableMap&lt;String, String&gt; tokensToMap(String string)
+    {
+<span class="nc" id="L211">        return StringIterate.tokensToMap(string, &quot;|&quot;, &quot;:&quot;);</span>
+    }
+
+    /**
+     * Converts a string of tokens to a {@link MutableMap} using the specified separators.
+     */
+    public static MutableMap&lt;String, String&gt; tokensToMap(
+            String string,
+            String pairSeparator,
+            String keyValueSeparator)
+    {
+<span class="nc" id="L222">        MutableMap&lt;String, String&gt; map = UnifiedMap.newMap();</span>
+<span class="nc bnc" id="L223" title="All 2 branches missed.">        for (StringTokenizer tokenizer = new StringTokenizer(string, pairSeparator); tokenizer.hasMoreTokens(); )</span>
+        {
+<span class="nc" id="L225">            String token = tokenizer.nextToken();</span>
+<span class="nc" id="L226">            String key = token.substring(0, token.indexOf(keyValueSeparator));</span>
+<span class="nc" id="L227">            String value = token.substring(token.indexOf(keyValueSeparator) + 1, token.length());</span>
+<span class="nc" id="L228">            map.put(key, value);</span>
+<span class="nc" id="L229">        }</span>
+<span class="nc" id="L230">        return map;</span>
+    }
+
+    /**
+     * Converts a string of tokens to a {@link MutableMap} using the specified 'key' and 'value'
+     * Functions. e.g. &quot;1:2,2:1,3:3&quot; with both functions as Functions.getStringToInteger(), will be
+     * translated a map {[1,2],[2,1],[3,3]}
+     */
+    public static &lt;K, V&gt; MutableMap&lt;K, V&gt; tokensToMap(
+            String string,
+            String separator,
+            String keyValueSeparator,
+            Function&lt;String, K&gt; keyFunction,
+            Function&lt;String, V&gt; valueFunction)
+    {
+<span class="nc" id="L245">        MutableMap&lt;K, V&gt; map = UnifiedMap.newMap();</span>
+<span class="nc bnc" id="L246" title="All 2 branches missed.">        for (StringTokenizer tokenizer = new StringTokenizer(string, separator); tokenizer.hasMoreTokens(); )</span>
+        {
+<span class="nc" id="L248">            String token = tokenizer.nextToken();</span>
+<span class="nc" id="L249">            String key = token.substring(0, token.indexOf(keyValueSeparator));</span>
+<span class="nc" id="L250">            String value = token.substring(token.indexOf(keyValueSeparator) + 1, token.length());</span>
+<span class="nc" id="L251">            map.put(keyFunction.valueOf(key), valueFunction.valueOf(value));</span>
+<span class="nc" id="L252">        }</span>
+<span class="nc" id="L253">        return map;</span>
+    }
+
+    /**
+     * Converts a string of tokens separated by the specified separator to a reverse sorted {@link MutableList}.
+     *
+     * @deprecated in 3.0.  Inlineable.  Poorly named method.  Does not actually deal properly with CSV.  This is better handled in a separate library.
+     */
+    @Deprecated
+    public static MutableList&lt;String&gt; csvTokensToReverseSortedList(String string)
+    {
+<span class="nc" id="L264">        return StringIterate.tokensToReverseSortedList(string, &quot;,&quot;);</span>
+    }
+
+    /**
+     * Converts a string of tokens separated by the specified separator to a reverse sorted {@link MutableList}.
+     */
+    public static MutableList&lt;String&gt; tokensToReverseSortedList(String string, String separator)
+    {
+<span class="nc" id="L272">        return StringIterate.tokensToList(string, separator).sortThis(Collections.reverseOrder());</span>
+    }
+
+    /**
+     * For each token in a string separated by the specified separator, execute the specified StringProcedure
+     * by calling the valueOfString method.
+     */
+    public static void forEachToken(String string, String separator, Procedure&lt;String&gt; procedure)
+    {
+<span class="nc bnc" id="L281" title="All 2 branches missed.">        for (StringTokenizer stringTokenizer = new StringTokenizer(string, separator); stringTokenizer.hasMoreTokens(); )</span>
+        {
+<span class="nc" id="L283">            String token = stringTokenizer.nextToken();</span>
+<span class="nc" id="L284">            procedure.value(token);</span>
+<span class="nc" id="L285">        }</span>
+<span class="nc" id="L286">    }</span>
+
+    /**
+     * For each token in a string separated by the specified separator, execute the specified Function2,
+     * returning the result value from the function. For more information, see
+     * {@link Iterate#injectInto(Object, Iterable, Function2)}
+     */
+    public static &lt;T, R&gt; R injectIntoTokens(
+            String string,
+            String separator,
+            R injectedValue,
+            Function2&lt;R, String, R&gt; function)
+    {
+<span class="nc" id="L299">        R result = injectedValue;</span>
+<span class="nc bnc" id="L300" title="All 2 branches missed.">        for (StringTokenizer stringTokenizer = new StringTokenizer(string, separator); stringTokenizer.hasMoreTokens(); )</span>
+        {
+<span class="nc" id="L302">            String token = stringTokenizer.nextToken();</span>
+<span class="nc" id="L303">            result = function.value(result, token);</span>
+<span class="nc" id="L304">        }</span>
+<span class="nc" id="L305">        return result;</span>
+    }
+
+    /**
+     * For each token in a {@code string} separated by the specified {@code separator}, execute the specified
+     * {@link Procedure}.
+     */
+    public static void forEachTrimmedToken(String string, String separator, Procedure&lt;String&gt; procedure)
+    {
+<span class="nc bnc" id="L314" title="All 2 branches missed.">        for (StringTokenizer stringTokenizer = new StringTokenizer(string, separator); stringTokenizer.hasMoreTokens(); )</span>
+        {
+<span class="nc" id="L316">            String token = stringTokenizer.nextToken().trim();</span>
+<span class="nc" id="L317">            procedure.value(token);</span>
+<span class="nc" id="L318">        }</span>
+<span class="nc" id="L319">    }</span>
+
+    /**
+     * For each character in the {@code string}, execute the {@link CharProcedure}.
+     *
+     * @deprecated since 3.0. Use {@link #forEach(String, CharProcedure)} instead.
+     */
+    @Deprecated
+    public static void forEach(String string, org.eclipse.collections.impl.block.procedure.primitive.CharProcedure procedure)
+    {
+<span class="nc" id="L329">        StringIterate.forEachChar(string, procedure::value);</span>
+<span class="nc" id="L330">    }</span>
+
+    /**
+     * For each character in the {@code string}, execute the {@link CharProcedure}.
+     *
+     * @deprecated since 7.0. Use {@link #forEachChar(String, CharProcedure)} instead.
+     */
+    @Deprecated
+    public static void forEach(String string, CharProcedure procedure)
+    {
+<span class="nc" id="L340">        StringIterate.forEachChar(string, procedure);</span>
+<span class="nc" id="L341">    }</span>
+
+    /**
+     * For each char in the {@code string}, execute the {@link CharProcedure}.
+     *
+     * @since 7.0
+     */
+    public static void forEachChar(String string, CharProcedure procedure)
+    {
+<span class="nc" id="L350">        int size = string.length();</span>
+<span class="nc bnc" id="L351" title="All 2 branches missed.">        for (int i = 0; i &lt; size; i++)</span>
+        {
+<span class="nc" id="L353">            procedure.value(string.charAt(i));</span>
+        }
+<span class="nc" id="L355">    }</span>
+
+    /**
+     * For each int code point in the {@code string}, execute the {@link CodePointProcedure}.
+     *
+     * @deprecated since 7.0. Use {@link #forEachCodePoint(String, CodePointProcedure)} instead.
+     */
+    @Deprecated
+    public static void forEach(String string, CodePointProcedure procedure)
+    {
+<span class="nc" id="L365">        StringIterate.forEachCodePoint(string, procedure);</span>
+<span class="nc" id="L366">    }</span>
+
+    /**
+     * For each int code point in the {@code string}, execute the {@link CodePointProcedure}.
+     *
+     * @since 7.0
+     */
+    public static void forEachCodePoint(String string, CodePointProcedure procedure)
+    {
+<span class="nc" id="L375">        int size = string.length();</span>
+<span class="nc bnc" id="L376" title="All 2 branches missed.">        for (int i = 0; i &lt; size; )</span>
+        {
+<span class="nc" id="L378">            int codePoint = string.codePointAt(i);</span>
+<span class="nc" id="L379">            procedure.value(codePoint);</span>
+<span class="nc" id="L380">            i += Character.charCount(codePoint);</span>
+<span class="nc" id="L381">        }</span>
+<span class="nc" id="L382">    }</span>
+
+    /**
+     * For each char in the {@code string} in reverse order, execute the {@link CharProcedure}.
+     *
+     * @deprecated since 7.0. Use {@link #reverseForEachChar(String, CharProcedure)} instead.
+     */
+    @Deprecated
+    public static void reverseForEach(String string, CharProcedure procedure)
+    {
+<span class="nc" id="L392">        StringIterate.reverseForEachChar(string, procedure);</span>
+<span class="nc" id="L393">    }</span>
+
+    /**
+     * For each char in the {@code string} in reverse order, execute the {@link CharProcedure}.
+     *
+     * @since 7.0
+     */
+    public static void reverseForEachChar(String string, CharProcedure procedure)
+    {
+<span class="nc bnc" id="L402" title="All 2 branches missed.">        for (int i = string.length() - 1; i &gt;= 0; i--)</span>
+        {
+<span class="nc" id="L404">            procedure.value(string.charAt(i));</span>
+        }
+<span class="nc" id="L406">    }</span>
+
+    /**
+     * For each int code point in the {@code string} in reverse order, execute the {@link CodePointProcedure}.
+     *
+     * @deprecated since 7.0. Use {@link #reverseForEachCodePoint(String, CodePointProcedure)} instead.
+     */
+    @Deprecated
+    public static void reverseForEach(String string, CodePointProcedure procedure)
+    {
+<span class="nc" id="L416">        StringIterate.reverseForEachCodePoint(string, procedure);</span>
+<span class="nc" id="L417">    }</span>
+
+    /**
+     * For each int code point in the {@code string} in reverse order, execute the {@link CodePointProcedure}.
+     *
+     * @since 7.0
+     */
+    public static void reverseForEachCodePoint(String string, CodePointProcedure procedure)
+    {
+<span class="nc bnc" id="L426" title="All 2 branches missed.">        for (int i = StringIterate.lastIndex(string); i &gt;= 0; )</span>
+        {
+<span class="nc" id="L428">            int codePoint = string.codePointAt(i);</span>
+<span class="nc" id="L429">            procedure.value(codePoint);</span>
+<span class="nc bnc" id="L430" title="All 2 branches missed.">            if (i == 0)</span>
+            {
+<span class="nc" id="L432">                i--;</span>
+            }
+            else
+            {
+<span class="nc" id="L436">                i -= StringIterate.numberOfChars(string, i);</span>
+            }
+<span class="nc" id="L438">        }</span>
+<span class="nc" id="L439">    }</span>
+
+    private static int lastIndex(String string)
+    {
+<span class="nc bnc" id="L443" title="All 2 branches missed.">        if (StringIterate.isEmpty(string))</span>
+        {
+<span class="nc" id="L445">            return -1;</span>
+        }
+<span class="nc" id="L447">        int size = string.length();</span>
+<span class="nc bnc" id="L448" title="All 2 branches missed.">        if (size &gt; 1)</span>
+        {
+<span class="nc" id="L450">            return size - StringIterate.numberOfChars(string, size);</span>
+        }
+<span class="nc" id="L452">        return 0;</span>
+    }
+
+    public static int numberOfChars(String string, int i)
+    {
+<span class="nc bnc" id="L457" title="All 2 branches missed.">        return StringIterate.isSurrogate(string, i) ? 2 : 1;</span>
+    }
+
+    public static boolean isSurrogate(String string, int i)
+    {
+<span class="nc bnc" id="L462" title="All 4 branches missed.">        return Character.isLowSurrogate(string.charAt(i - 1)) &amp;&amp; Character.isHighSurrogate(string.charAt(i - 2));</span>
+    }
+
+    /**
+     * Count the number of elements that return true for the specified {@code predicate}.
+     *
+     * @deprecated since 3.0.
+     */
+    @Deprecated
+    public static int count(String string, org.eclipse.collections.impl.block.predicate.primitive.CharPredicate predicate)
+    {
+<span class="nc" id="L473">        return StringIterate.countChar(string, predicate::accept);</span>
+    }
+
+    /**
+     * Count the number of elements that return true for the specified {@code predicate}.
+     *
+     * @deprecated since 7.0. Use {@link #countChar(String, CharPredicate)} instead.
+     */
+    @Deprecated
+    public static int count(String string, CharPredicate predicate)
+    {
+<span class="nc" id="L484">        return StringIterate.countChar(string, predicate);</span>
+    }
+
+    /**
+     * Count the number of elements that return true for the specified {@code predicate}.
+     *
+     * @since 7.0
+     */
+    public static int countChar(String string, CharPredicate predicate)
+    {
+<span class="nc" id="L494">        int count = 0;</span>
+<span class="nc" id="L495">        int size = string.length();</span>
+<span class="nc bnc" id="L496" title="All 2 branches missed.">        for (int i = 0; i &lt; size; i++)</span>
+        {
+<span class="nc bnc" id="L498" title="All 2 branches missed.">            if (predicate.accept(string.charAt(i)))</span>
+            {
+<span class="nc" id="L500">                count++;</span>
+            }
+        }
+<span class="nc" id="L503">        return count;</span>
+    }
+
+    /**
+     * Count the number of elements that return true for the specified {@code predicate}.
+     *
+     * @deprecated since 7.0. Use {@link #countCodePoint(String, CodePointPredicate)} instead.
+     */
+    @Deprecated
+    public static int count(String string, CodePointPredicate predicate)
+    {
+<span class="nc" id="L514">        return StringIterate.countCodePoint(string, predicate);</span>
+    }
+
+    /**
+     * Count the number of elements that return true for the specified {@code predicate}.
+     *
+     * @since 7.0
+     */
+    public static int countCodePoint(String string, CodePointPredicate predicate)
+    {
+<span class="nc" id="L524">        int count = 0;</span>
+<span class="nc" id="L525">        int size = string.length();</span>
+<span class="nc bnc" id="L526" title="All 2 branches missed.">        for (int i = 0; i &lt; size; )</span>
+        {
+<span class="nc" id="L528">            int codePoint = string.codePointAt(i);</span>
+<span class="nc bnc" id="L529" title="All 2 branches missed.">            if (predicate.accept(codePoint))</span>
+            {
+<span class="nc" id="L531">                count++;</span>
+            }
+<span class="nc" id="L533">            i += Character.charCount(codePoint);</span>
+<span class="nc" id="L534">        }</span>
+<span class="nc" id="L535">        return count;</span>
+    }
+
+    /**
+     * @deprecated since 3.0. Use {@link #collect(String, CharToCharFunction)} instead.
+     */
+    @Deprecated
+    public static String collect(String string, CharFunction function)
+    {
+<span class="nc" id="L544">        return StringIterate.collectChar(string, function::valueOf);</span>
+    }
+
+    /**
+     * Transform the char elements to a new string using the specified function {@code function}.
+     *
+     * @deprecated since 7.0. Use {@link #collectChar(String, CharToCharFunction)} instead.
+     */
+    @Deprecated
+    public static String collect(String string, CharToCharFunction function)
+    {
+<span class="nc" id="L555">        return StringIterate.collectChar(string, function);</span>
+    }
+
+    /**
+     * Transform the char elements to a new string using the specified function {@code function}.
+     *
+     * @since 7.0
+     */
+    public static String collectChar(String string, CharToCharFunction function)
+    {
+<span class="nc" id="L565">        int size = string.length();</span>
+<span class="nc" id="L566">        StringBuilder builder = new StringBuilder(size);</span>
+<span class="nc bnc" id="L567" title="All 2 branches missed.">        for (int i = 0; i &lt; size; i++)</span>
+        {
+<span class="nc" id="L569">            builder.append(function.valueOf(string.charAt(i)));</span>
+        }
+<span class="nc" id="L571">        return builder.toString();</span>
+    }
+
+    /**
+     * Transform the int code point elements to a new string using the specified function {@code function}.
+     *
+     * @deprecated since 7.0. Use {@link #collectCodePoint(String, CodePointFunction)} instead.
+     */
+    @Deprecated
+    public static String collect(String string, CodePointFunction function)
+    {
+<span class="nc" id="L582">        return StringIterate.collectCodePoint(string, function);</span>
+    }
+
+    /**
+     * Transform the int code point elements to a new string using the specified function {@code function}.
+     *
+     * @since 7.0
+     */
+    public static String collectCodePoint(String string, CodePointFunction function)
+    {
+<span class="nc" id="L592">        int size = string.length();</span>
+<span class="nc" id="L593">        StringBuilder builder = new StringBuilder(size);</span>
+<span class="nc bnc" id="L594" title="All 2 branches missed.">        for (int i = 0; i &lt; size; )</span>
+        {
+<span class="nc" id="L596">            int codePoint = string.codePointAt(i);</span>
+<span class="nc" id="L597">            builder.appendCodePoint(function.valueOf(codePoint));</span>
+<span class="nc" id="L598">            i += Character.charCount(codePoint);</span>
+<span class="nc" id="L599">        }</span>
+<span class="nc" id="L600">        return builder.toString();</span>
+    }
+
+    public static String englishToUpperCase(String string)
+    {
+<span class="nc bnc" id="L605" title="All 2 branches missed.">        if (StringIterate.anySatisfyChar(string, CharPredicates.isLowerCase()))</span>
+        {
+<span class="nc" id="L607">            return StringIterate.collectChar(string, CharToCharFunctions.toUpperCase());</span>
+        }
+<span class="nc" id="L609">        return string;</span>
+    }
+
+    public static String englishToLowerCase(String string)
+    {
+<span class="nc bnc" id="L614" title="All 2 branches missed.">        if (StringIterate.anySatisfyChar(string, CharPredicates.isUpperCase()))</span>
+        {
+<span class="nc" id="L616">            return StringIterate.collectChar(string, CharToCharFunctions.toLowerCase());</span>
+        }
+<span class="nc" id="L618">        return string;</span>
+    }
+
+    /**
+     * Find the first element that returns true for the specified {@code predicate}.
+     *
+     * @deprecated since 7.0. Use {@link #detectChar(String, CharPredicate)} instead.
+     */
+    @Deprecated
+    public static Character detect(String string, CharPredicate predicate)
+    {
+<span class="nc" id="L629">        return StringIterate.detectChar(string, predicate);</span>
+    }
+
+    /**
+     * Find the first element that returns true for the specified {@code predicate}.
+     *
+     * @since 7.0
+     */
+    public static Character detectChar(String string, CharPredicate predicate)
+    {
+<span class="nc" id="L639">        int size = string.length();</span>
+<span class="nc bnc" id="L640" title="All 2 branches missed.">        for (int i = 0; i &lt; size; i++)</span>
+        {
+<span class="nc" id="L642">            char character = string.charAt(i);</span>
+<span class="nc bnc" id="L643" title="All 2 branches missed.">            if (predicate.accept(character))</span>
+            {
+<span class="nc" id="L645">                return character;</span>
+            }
+        }
+<span class="nc" id="L648">        return null;</span>
+    }
+
+    /**
+     * Find the first element that returns true for the specified {@code predicate}.  Return the default char if
+     * no value is found.
+     *
+     * @deprecated since 7.0. Use {@link #detectCharIfNone(String, CharPredicate, char)} instead.
+     */
+    @Deprecated
+    public static Character detectIfNone(String string, CharPredicate predicate, char resultIfNone)
+    {
+<span class="nc" id="L660">        return StringIterate.detectCharIfNone(string, predicate, resultIfNone);</span>
+    }
+
+    /**
+     * Find the first element that returns true for the specified {@code predicate}.  Return the default char if
+     * no value is found.
+     */
+    public static Character detectCharIfNone(String string, CharPredicate predicate, char resultIfNone)
+    {
+<span class="nc" id="L669">        Character result = StringIterate.detectChar(string, predicate);</span>
+<span class="nc bnc" id="L670" title="All 2 branches missed.">        return result == null ? Character.valueOf(resultIfNone) : result;</span>
+    }
+
+    /**
+     * Find the first element that returns true for the specified {@code predicate}.  Return the first char of the
+     * default string if no value is found.
+     *
+     * @deprecated since 7.0. Use {@link #detectCharIfNone(String, CharPredicate, String)} instead.
+     */
+    @Deprecated
+    public static Character detectIfNone(String string, CharPredicate predicate, String resultIfNone)
+    {
+<span class="nc" id="L682">        return StringIterate.detectCharIfNone(string, predicate, resultIfNone);</span>
+    }
+
+    /**
+     * Find the first element that returns true for the specified {@code predicate}.  Return the first char of the
+     * default string if no value is found.
+     */
+    public static Character detectCharIfNone(String string, CharPredicate predicate, String resultIfNone)
+    {
+<span class="nc" id="L691">        Character result = StringIterate.detectChar(string, predicate);</span>
+<span class="nc bnc" id="L692" title="All 2 branches missed.">        return result == null ? Character.valueOf(resultIfNone.charAt(0)) : result;</span>
+    }
+
+    /**
+     * Count the number of occurrences of the specified char.
+     *
+     * @deprecated since 7.0. Use {@link #occurrencesOfChar(String, char)} instead.
+     */
+    @Deprecated
+    public static int occurrencesOf(String string, char value)
+    {
+<span class="nc" id="L703">        return StringIterate.occurrencesOfChar(string, value);</span>
+    }
+
+    /**
+     * Count the number of occurrences of the specified char.
+     *
+     * @since 7.0
+     */
+    public static int occurrencesOfChar(String string, char value)
+    {
+<span class="nc bnc" id="L713" title="All 2 branches missed.">        return StringIterate.countChar(string, character -&gt; value == character);</span>
+    }
+
+    /**
+     * Count the number of occurrences of the specified int code point.
+     *
+     * @deprecated since 7.0. Use {@link #occurrencesOfCodePoint(String, int)} instead.
+     */
+    @Deprecated
+    public static int occurrencesOf(String string, int value)
+    {
+<span class="nc" id="L724">        return StringIterate.occurrencesOfCodePoint(string, value);</span>
+    }
+
+    /**
+     * Count the number of occurrences of the specified int code point.
+     *
+     * @since 7.0
+     */
+    public static int occurrencesOfCodePoint(String string, int value)
+    {
+<span class="nc bnc" id="L734" title="All 2 branches missed.">        return StringIterate.countCodePoint(string, codePoint -&gt; value == codePoint);</span>
+    }
+
+    /**
+     * Count the number of occurrences of the specified {@code string}.
+     */
+    public static int occurrencesOf(String string, String singleCharacter)
+    {
+<span class="nc bnc" id="L742" title="All 2 branches missed.">        if (singleCharacter.length() != 1)</span>
+        {
+<span class="nc" id="L744">            throw new IllegalArgumentException(&quot;Argument should be a single character: &quot; + singleCharacter);</span>
+        }
+<span class="nc" id="L746">        return StringIterate.occurrencesOfChar(string, singleCharacter.charAt(0));</span>
+    }
+
+    /**
+     * @return true if any of the characters in the {@code string} answer true for the specified {@code predicate}.
+     * @deprecated since 7.0. Use {@link #anySatisfyChar(String, CharPredicate)} instead.
+     */
+    @Deprecated
+    public static boolean anySatisfy(String string, CharPredicate predicate)
+    {
+<span class="nc" id="L756">        return StringIterate.anySatisfyChar(string, predicate);</span>
+    }
+
+    /**
+     * @return true if any of the characters in the {@code string} answer true for the specified {@code predicate}.
+     * @since 7.0
+     */
+    public static boolean anySatisfyChar(String string, CharPredicate predicate)
+    {
+<span class="nc" id="L765">        int size = string.length();</span>
+<span class="nc bnc" id="L766" title="All 2 branches missed.">        for (int i = 0; i &lt; size; i++)</span>
+        {
+<span class="nc bnc" id="L768" title="All 2 branches missed.">            if (predicate.accept(string.charAt(i)))</span>
+            {
+<span class="nc" id="L770">                return true;</span>
+            }
+        }
+<span class="nc" id="L773">        return false;</span>
+    }
+
+    /**
+     * @return true if any of the code points in the {@code string} answer true for the specified {@code predicate}.
+     * @deprecated since 7.0. Use {@link #anySatisfyCodePoint(String, CodePointPredicate)} instead.
+     */
+    @Deprecated
+    public static boolean anySatisfy(String string, CodePointPredicate predicate)
+    {
+<span class="nc" id="L783">        return StringIterate.anySatisfyCodePoint(string, predicate);</span>
+    }
+
+    /**
+     * @return true if any of the code points in the {@code string} answer true for the specified {@code predicate}.
+     * @since 7.0
+     */
+    public static boolean anySatisfyCodePoint(String string, CodePointPredicate predicate)
+    {
+<span class="nc" id="L792">        int size = string.length();</span>
+<span class="nc bnc" id="L793" title="All 2 branches missed.">        for (int i = 0; i &lt; size; )</span>
+        {
+<span class="nc" id="L795">            int codePoint = string.codePointAt(i);</span>
+<span class="nc bnc" id="L796" title="All 2 branches missed.">            if (predicate.accept(codePoint))</span>
+            {
+<span class="nc" id="L798">                return true;</span>
+            }
+<span class="nc" id="L800">            i += Character.charCount(codePoint);</span>
+<span class="nc" id="L801">        }</span>
+<span class="nc" id="L802">        return false;</span>
+    }
+
+    /**
+     * @return true if all of the characters in the {@code string} answer true for the specified {@code predicate}.
+     * @deprecated since 7.0. Use {@link #allSatisfyChar(String, CharPredicate)} instead.
+     */
+    @Deprecated
+    public static boolean allSatisfy(String string, CharPredicate predicate)
+    {
+<span class="nc" id="L812">        return StringIterate.allSatisfyChar(string, predicate);</span>
+    }
+
+    /**
+     * @return true if all of the characters in the {@code string} answer true for the specified {@code predicate}.
+     * @since 7.0
+     */
+    public static boolean allSatisfyChar(String string, CharPredicate predicate)
+    {
+<span class="nc" id="L821">        int size = string.length();</span>
+<span class="nc bnc" id="L822" title="All 2 branches missed.">        for (int i = 0; i &lt; size; i++)</span>
+        {
+<span class="nc bnc" id="L824" title="All 2 branches missed.">            if (!predicate.accept(string.charAt(i)))</span>
+            {
+<span class="nc" id="L826">                return false;</span>
+            }
+        }
+<span class="nc" id="L829">        return true;</span>
+    }
+
+    /**
+     * @return true if all of the code points in the {@code string} answer true for the specified {@code predicate}.
+     * @deprecated since 7.0. Use {@link #allSatisfyCodePoint(String, CodePointPredicate)} instead.
+     */
+    @Deprecated
+    public static boolean allSatisfy(String string, CodePointPredicate predicate)
+    {
+<span class="nc" id="L839">        return StringIterate.allSatisfyCodePoint(string, predicate);</span>
+    }
+
+    /**
+     * @return true if all of the code points in the {@code string} answer true for the specified {@code predicate}.
+     * @since 7.0
+     */
+    public static boolean allSatisfyCodePoint(String string, CodePointPredicate predicate)
+    {
+<span class="nc" id="L848">        int size = string.length();</span>
+<span class="nc bnc" id="L849" title="All 2 branches missed.">        for (int i = 0; i &lt; size; )</span>
+        {
+<span class="nc" id="L851">            int codePoint = string.codePointAt(i);</span>
+<span class="nc bnc" id="L852" title="All 2 branches missed.">            if (!predicate.accept(codePoint))</span>
+            {
+<span class="nc" id="L854">                return false;</span>
+            }
+<span class="nc" id="L856">            i += Character.charCount(codePoint);</span>
+<span class="nc" id="L857">        }</span>
+<span class="nc" id="L858">        return true;</span>
+    }
+
+    /**
+     * @return true if none of the characters in the {@code string} answer true for the specified {@code predicate}.
+     * @deprecated since 7.0. Use {@link #noneSatisfyChar(String, CharPredicate)} instead.
+     */
+    @Deprecated
+    public static boolean noneSatisfy(String string, CharPredicate predicate)
+    {
+<span class="nc" id="L868">        return StringIterate.noneSatisfyChar(string, predicate);</span>
+    }
+
+    /**
+     * @return true if none of the characters in the {@code string} answer true for the specified {@code predicate}.
+     * @since 7.0
+     */
+    public static boolean noneSatisfyChar(String string, CharPredicate predicate)
+    {
+<span class="nc" id="L877">        int size = string.length();</span>
+<span class="nc bnc" id="L878" title="All 2 branches missed.">        for (int i = 0; i &lt; size; i++)</span>
+        {
+<span class="nc bnc" id="L880" title="All 2 branches missed.">            if (predicate.accept(string.charAt(i)))</span>
+            {
+<span class="nc" id="L882">                return false;</span>
+            }
+        }
+<span class="nc" id="L885">        return true;</span>
+    }
+
+    /**
+     * @return true if none of the code points in the {@code string} answer true for the specified {@code predicate}.
+     * @deprecated since 7.0. Use {@link #noneSatisfyCodePoint(String, CodePointPredicate)} instead.
+     */
+    @Deprecated
+    public static boolean noneSatisfy(String string, CodePointPredicate predicate)
+    {
+<span class="nc" id="L895">        return StringIterate.noneSatisfyCodePoint(string, predicate);</span>
+    }
+
+    /**
+     * @return true if none of the code points in the {@code string} answer true for the specified {@code predicate}.
+     * @since 7.0
+     */
+    public static boolean noneSatisfyCodePoint(String string, CodePointPredicate predicate)
+    {
+<span class="nc" id="L904">        int size = string.length();</span>
+<span class="nc bnc" id="L905" title="All 2 branches missed.">        for (int i = 0; i &lt; size; )</span>
+        {
+<span class="nc" id="L907">            int codePoint = string.codePointAt(i);</span>
+<span class="nc bnc" id="L908" title="All 2 branches missed.">            if (predicate.accept(codePoint))</span>
+            {
+<span class="nc" id="L910">                return false;</span>
+            }
+<span class="nc" id="L912">            i += Character.charCount(codePoint);</span>
+<span class="nc" id="L913">        }</span>
+<span class="nc" id="L914">        return true;</span>
+    }
+
+    /**
+     * @return a new string with all of the characters that return true for the specified {@code predicate}.
+     * @deprecated since 7.0. Use {@link #selectChar(String, CharPredicate)} instead.
+     */
+    @Deprecated
+    public static String select(String string, CharPredicate predicate)
+    {
+<span class="nc" id="L924">        return StringIterate.selectChar(string, predicate);</span>
+    }
+
+    /**
+     * @return a new string with all of the characters that return true for the specified {@code predicate}.
+     * @since 7.0
+     */
+    public static String selectChar(String string, CharPredicate predicate)
+    {
+<span class="nc" id="L933">        int size = string.length();</span>
+<span class="nc" id="L934">        StringBuilder buffer = new StringBuilder(string.length());</span>
+<span class="nc bnc" id="L935" title="All 2 branches missed.">        for (int i = 0; i &lt; size; i++)</span>
+        {
+<span class="nc" id="L937">            char character = string.charAt(i);</span>
+<span class="nc bnc" id="L938" title="All 2 branches missed.">            if (predicate.accept(character))</span>
+            {
+<span class="nc" id="L940">                buffer.append(character);</span>
+            }
+        }
+<span class="nc" id="L943">        return buffer.toString();</span>
+    }
+
+    /**
+     * @return a new string with all of the code points that return true for the specified {@code predicate}.
+     * @deprecated since 7.0. Use {@link #selectCodePoint(String, CodePointPredicate)} instead.
+     */
+    @Deprecated
+    public static String select(String string, CodePointPredicate predicate)
+    {
+<span class="nc" id="L953">        return StringIterate.selectCodePoint(string, predicate);</span>
+    }
+
+    /**
+     * @return a new string with all of the code points that return true for the specified {@code predicate}.
+     * @since 7.0
+     */
+    public static String selectCodePoint(String string, CodePointPredicate predicate)
+    {
+<span class="nc" id="L962">        int size = string.length();</span>
+<span class="nc" id="L963">        StringBuilder buffer = new StringBuilder(string.length());</span>
+<span class="nc bnc" id="L964" title="All 2 branches missed.">        for (int i = 0; i &lt; size; )</span>
+        {
+<span class="nc" id="L966">            int codePoint = string.codePointAt(i);</span>
+<span class="nc bnc" id="L967" title="All 2 branches missed.">            if (predicate.accept(codePoint))</span>
+            {
+<span class="nc" id="L969">                buffer.appendCodePoint(codePoint);</span>
+            }
+<span class="nc" id="L971">            i += Character.charCount(codePoint);</span>
+<span class="nc" id="L972">        }</span>
+<span class="nc" id="L973">        return buffer.toString();</span>
+    }
+
+    /**
+     * @return a new string excluding all of the characters that return true for the specified {@code predicate}.
+     * @deprecated since 7.0. Use {@link #rejectChar(String, CharPredicate)} instead.
+     */
+    @Deprecated
+    public static String reject(String string, CharPredicate predicate)
+    {
+<span class="nc" id="L983">        return StringIterate.rejectChar(string, predicate);</span>
+    }
+
+    /**
+     * @return a new string excluding all of the characters that return true for the specified {@code predicate}.
+     * @since 7.0
+     */
+    public static String rejectChar(String string, CharPredicate predicate)
+    {
+<span class="nc" id="L992">        int size = string.length();</span>
+<span class="nc" id="L993">        StringBuilder buffer = new StringBuilder(string.length());</span>
+<span class="nc bnc" id="L994" title="All 2 branches missed.">        for (int i = 0; i &lt; size; i++)</span>
+        {
+<span class="nc" id="L996">            char character = string.charAt(i);</span>
+<span class="nc bnc" id="L997" title="All 2 branches missed.">            if (!predicate.accept(character))</span>
+            {
+<span class="nc" id="L999">                buffer.append(character);</span>
+            }
+        }
+<span class="nc" id="L1002">        return buffer.toString();</span>
+    }
+
+    /**
+     * @return a new string excluding all of the code points that return true for the specified {@code predicate}.
+     * @deprecated since 7.0. Use {@link #rejectCodePoint(String, CodePointPredicate)} instead.
+     */
+    @Deprecated
+    public static String reject(String string, CodePointPredicate predicate)
+    {
+<span class="nc" id="L1012">        return StringIterate.rejectCodePoint(string, predicate);</span>
+    }
+
+    /**
+     * @return a new string excluding all of the code points that return true for the specified {@code predicate}.
+     * @since 7.0
+     */
+    public static String rejectCodePoint(String string, CodePointPredicate predicate)
+    {
+<span class="nc" id="L1021">        int size = string.length();</span>
+<span class="nc" id="L1022">        StringBuilder buffer = new StringBuilder(string.length());</span>
+<span class="nc bnc" id="L1023" title="All 2 branches missed.">        for (int i = 0; i &lt; size; )</span>
+        {
+<span class="nc" id="L1025">            int codePoint = string.codePointAt(i);</span>
+<span class="nc bnc" id="L1026" title="All 2 branches missed.">            if (!predicate.accept(codePoint))</span>
+            {
+<span class="nc" id="L1028">                buffer.appendCodePoint(codePoint);</span>
+            }
+<span class="nc" id="L1030">            i += Character.charCount(codePoint);</span>
+<span class="nc" id="L1031">        }</span>
+<span class="nc" id="L1032">        return buffer.toString();</span>
+    }
+
+    public static String getLastToken(String value, String separator)
+    {
+<span class="nc bnc" id="L1037" title="All 2 branches missed.">        if (StringIterate.notEmpty(value))</span>
+        {
+<span class="nc" id="L1039">            int lastIndex = value.lastIndexOf(separator);</span>
+<span class="nc bnc" id="L1040" title="All 2 branches missed.">            if (lastIndex &gt; -1)</span>
+            {
+<span class="nc" id="L1042">                return value.substring(lastIndex + separator.length());</span>
+            }
+<span class="nc" id="L1044">            return value;</span>
+        }
+<span class="nc bnc" id="L1046" title="All 2 branches missed.">        return value == null ? null : &quot;&quot;;</span>
+    }
+
+    public static String getFirstToken(String value, String separator)
+    {
+<span class="nc bnc" id="L1051" title="All 2 branches missed.">        if (StringIterate.notEmpty(value))</span>
+        {
+<span class="nc" id="L1053">            int firstIndex = value.indexOf(separator);</span>
+<span class="nc bnc" id="L1054" title="All 2 branches missed.">            if (firstIndex &gt; -1)</span>
+            {
+<span class="nc" id="L1056">                return value.substring(0, firstIndex);</span>
+            }
+<span class="nc" id="L1058">            return value;</span>
+        }
+<span class="nc bnc" id="L1060" title="All 2 branches missed.">        return value == null ? null : &quot;&quot;;</span>
+    }
+
+    public static boolean isEmpty(String string)
+    {
+<span class="nc bnc" id="L1065" title="All 4 branches missed.">        return string == null || string.length() == 0;</span>
+    }
+
+    public static boolean isEmptyOrWhitespace(String string)
+    {
+<span class="nc bnc" id="L1070" title="All 4 branches missed.">        return StringIterate.isEmpty(string) || StringIterate.isWhitespace(string);</span>
+    }
+
+    private static boolean isWhitespace(String string)
+    {
+<span class="nc" id="L1075">        return StringIterate.allSatisfyCodePoint(string, CodePointPredicate.IS_WHITESPACE);</span>
+    }
+
+    public static boolean isNumber(String string)
+    {
+<span class="nc" id="L1080">        return StringIterate.charactersSatisfy(string, CodePointPredicate.IS_DIGIT);</span>
+    }
+
+    public static boolean isAlphaNumeric(String string)
+    {
+<span class="nc" id="L1085">        return StringIterate.charactersSatisfy(string, CodePointPredicate.IS_LETTER_OR_DIGIT);</span>
+    }
+
+    private static boolean charactersSatisfy(String string, CodePointPredicate predicate)
+    {
+<span class="nc bnc" id="L1090" title="All 4 branches missed.">        return !&quot;&quot;.equals(string) &amp;&amp; StringIterate.allSatisfyCodePoint(string, predicate);</span>
+    }
+
+    public static boolean notEmpty(String string)
+    {
+<span class="nc bnc" id="L1095" title="All 2 branches missed.">        return !StringIterate.isEmpty(string);</span>
+    }
+
+    public static boolean notEmptyOrWhitespace(String string)
+    {
+<span class="nc bnc" id="L1100" title="All 2 branches missed.">        return !StringIterate.isEmptyOrWhitespace(string);</span>
+    }
+
+    public static String repeat(String template, int repeatTimes)
+    {
+<span class="nc" id="L1105">        StringBuilder buf = new StringBuilder(template.length() * repeatTimes);</span>
+<span class="nc bnc" id="L1106" title="All 2 branches missed.">        for (int i = 0; i &lt; repeatTimes; i++)</span>
+        {
+<span class="nc" id="L1108">            buf.append(template);</span>
+        }
+<span class="nc" id="L1110">        return buf.toString();</span>
+    }
+
+    public static String repeat(char c, int repeatTimes)
+    {
+<span class="nc" id="L1115">        StringBuilder buf = new StringBuilder(repeatTimes);</span>
+<span class="nc bnc" id="L1116" title="All 2 branches missed.">        for (int i = 0; i &lt; repeatTimes; i++)</span>
+        {
+<span class="nc" id="L1118">            buf.append(c);</span>
+        }
+<span class="nc" id="L1120">        return buf.toString();</span>
+    }
+
+    public static String padOrTrim(String message, int targetLength)
+    {
+<span class="nc" id="L1125">        int messageLength = message.length();</span>
+<span class="nc bnc" id="L1126" title="All 2 branches missed.">        if (messageLength &gt;= targetLength)</span>
+        {
+<span class="nc" id="L1128">            return message.substring(0, targetLength);</span>
+        }
+<span class="nc" id="L1130">        return message + StringIterate.repeat(' ', targetLength - messageLength);</span>
+    }
+
+    public static MutableList&lt;Character&gt; toList(String string)
+    {
+<span class="nc" id="L1135">        MutableList&lt;Character&gt; characters = FastList.newList(string.length());</span>
+<span class="nc" id="L1136">        StringIterate.forEachChar(string, new AddCharacterToCollection(characters));</span>
+<span class="nc" id="L1137">        return characters;</span>
+    }
+
+    public static MutableList&lt;Character&gt; toLowercaseList(String string)
+    {
+<span class="nc" id="L1142">        MutableList&lt;Character&gt; characters = FastList.newList();</span>
+<span class="nc" id="L1143">        StringIterate.forEachChar(string, new AddLowercaseCharacterToCollection(characters));</span>
+<span class="nc" id="L1144">        return characters;</span>
+    }
+
+    public static MutableList&lt;Character&gt; toUppercaseList(String string)
+    {
+<span class="nc" id="L1149">        MutableList&lt;Character&gt; characters = FastList.newList();</span>
+<span class="nc" id="L1150">        StringIterate.forEachChar(string, new AddUppercaseCharacterToCollection(characters));</span>
+<span class="nc" id="L1151">        return characters;</span>
+    }
+
+    public static MutableBag&lt;Character&gt; toBag(String string)
+    {
+<span class="nc" id="L1156">        MutableBag&lt;Character&gt; characters = HashBag.newBag();</span>
+<span class="nc" id="L1157">        StringIterate.forEachChar(string, new AddCharacterToCollection(characters));</span>
+<span class="nc" id="L1158">        return characters;</span>
+    }
+
+    public static MutableBag&lt;Character&gt; toLowercaseBag(String string)
+    {
+<span class="nc" id="L1163">        MutableBag&lt;Character&gt; characters = HashBag.newBag();</span>
+<span class="nc" id="L1164">        StringIterate.forEachChar(string, new AddLowercaseCharacterToCollection(characters));</span>
+<span class="nc" id="L1165">        return characters;</span>
+    }
+
+    public static MutableBag&lt;Character&gt; toUppercaseBag(String string)
+    {
+<span class="nc" id="L1170">        MutableBag&lt;Character&gt; characters = HashBag.newBag();</span>
+<span class="nc" id="L1171">        StringIterate.forEachChar(string, new AddUppercaseCharacterToCollection(characters));</span>
+<span class="nc" id="L1172">        return characters;</span>
+    }
+
+    public static MutableSet&lt;Character&gt; toSet(String string)
+    {
+<span class="nc" id="L1177">        MutableSet&lt;Character&gt; characters = UnifiedSet.newSet();</span>
+<span class="nc" id="L1178">        StringIterate.forEachChar(string, new AddCharacterToCollection(characters));</span>
+<span class="nc" id="L1179">        return characters;</span>
+    }
+
+    /**
+     * Partitions String in fixed size chunks.
+     *
+     * @param size the number of characters per chunk
+     * @return A {@code MutableList} containing {@code String}s of size {@code size}, except the last will be
+     * truncated (i.e. shorter) if the characters don't divide evenly.
+     * @since 5.2
+     */
+    public static MutableList&lt;String&gt; chunk(String string, int size)
+    {
+<span class="nc bnc" id="L1192" title="All 2 branches missed.">        if (size &lt;= 0)</span>
+        {
+<span class="nc" id="L1194">            throw new IllegalArgumentException(&quot;Size for groups must be positive but was: &quot; + size);</span>
+        }
+
+<span class="nc" id="L1197">        int length = string.length();</span>
+
+<span class="nc bnc" id="L1199" title="All 2 branches missed.">        if (length == 0)</span>
+        {
+<span class="nc" id="L1201">            return FastList.newList();</span>
+        }
+
+<span class="nc" id="L1204">        MutableList&lt;String&gt; result = FastList.newList((length + size - 1) / size);</span>
+
+<span class="nc" id="L1206">        int startOffset = 0;</span>
+<span class="nc bnc" id="L1207" title="All 2 branches missed.">        while (startOffset &lt; length)</span>
+        {
+<span class="nc" id="L1209">            result.add(string.substring(startOffset, Math.min(startOffset + size, length)));</span>
+<span class="nc" id="L1210">            startOffset += size;</span>
+        }
+
+<span class="nc" id="L1213">        return result;</span>
+    }
+
+    /**
+     * @deprecated in 3.0. Inlineable.
+     */
+    @Deprecated
+    public static MutableSet&lt;Character&gt; asUppercaseSet(String string)
+    {
+<span class="nc" id="L1222">        return StringIterate.toUppercaseSet(string);</span>
+    }
+
+    public static MutableSet&lt;Character&gt; toUppercaseSet(String string)
+    {
+<span class="nc" id="L1227">        MutableSet&lt;Character&gt; characters = UnifiedSet.newSet();</span>
+<span class="nc" id="L1228">        StringIterate.forEachChar(string, new AddUppercaseCharacterToCollection(characters));</span>
+<span class="nc" id="L1229">        return characters;</span>
+    }
+
+    /**
+     * @deprecated in 3.0. Inlineable.
+     */
+    @Deprecated
+    public static MutableSet&lt;Character&gt; asLowercaseSet(String string)
+    {
+<span class="nc" id="L1238">        return StringIterate.toLowercaseSet(string);</span>
+    }
+
+    public static MutableSet&lt;Character&gt; toLowercaseSet(String string)
+    {
+<span class="nc" id="L1243">        MutableSet&lt;Character&gt; characters = UnifiedSet.newSet();</span>
+<span class="nc" id="L1244">        StringIterate.forEachChar(string, new AddLowercaseCharacterToCollection(characters));</span>
+<span class="nc" id="L1245">        return characters;</span>
+    }
+
+    public static Twin&lt;String&gt; splitAtIndex(String aString, int index)
+    {
+<span class="nc" id="L1250">        return Tuples.twin(aString.substring(0, index), aString.substring(index, aString.length()));</span>
+    }
+
+    private static final class AddCharacterToCollection implements CharProcedure
+    {
+        private final MutableCollection&lt;Character&gt; characters;
+
+        private AddCharacterToCollection(MutableCollection&lt;Character&gt; characters)
+<span class="nc" id="L1258">        {</span>
+<span class="nc" id="L1259">            this.characters = characters;</span>
+<span class="nc" id="L1260">        }</span>
+
+        @Override
+        public void value(char character)
+        {
+<span class="nc" id="L1265">            this.characters.add(Character.valueOf(character));</span>
+<span class="nc" id="L1266">        }</span>
+    }
+
+    private static final class AddLowercaseCharacterToCollection implements CharProcedure
+    {
+        private final MutableCollection&lt;Character&gt; characters;
+
+        private AddLowercaseCharacterToCollection(MutableCollection&lt;Character&gt; characters)
+<span class="nc" id="L1274">        {</span>
+<span class="nc" id="L1275">            this.characters = characters;</span>
+<span class="nc" id="L1276">        }</span>
+
+        @Override
+        public void value(char character)
+        {
+<span class="nc" id="L1281">            this.characters.add(Character.valueOf(Character.toLowerCase(character)));</span>
+<span class="nc" id="L1282">        }</span>
+    }
+
+    private static final class AddUppercaseCharacterToCollection implements CharProcedure
+    {
+        private final MutableCollection&lt;Character&gt; characters;
+
+        private AddUppercaseCharacterToCollection(MutableCollection&lt;Character&gt; characters)
+<span class="nc" id="L1290">        {</span>
+<span class="nc" id="L1291">            this.characters = characters;</span>
+<span class="nc" id="L1292">        }</span>
+
+        @Override
+        public void value(char character)
+        {
+<span class="nc" id="L1297">            this.characters.add(Character.valueOf(Character.toUpperCase(character)));</span>
+<span class="nc" id="L1298">        }</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.0.201801022044</span></div></body></html>

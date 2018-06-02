@@ -1,0 +1,923 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>BooleanHashSet.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Eclipse Collections Test Coverage Aggregation</a> &gt; <a href="../index.html" class="el_bundle">eclipse-collections</a> &gt; <a href="index.source.html" class="el_package">org.eclipse.collections.impl.set.mutable.primitive</a> &gt; <span class="el_source">BooleanHashSet.java</span></div><h1>BooleanHashSet.java</h1><pre class="source lang-java linenums">/*
+ * Copyright (c) 2018 Goldman Sachs.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * and Eclipse Distribution License v. 1.0 which accompany this distribution.
+ * The Eclipse Public License is available at http://www.eclipse.org/legal/epl-v10.html
+ * and the Eclipse Distribution License is available at
+ * http://www.eclipse.org/org/documents/edl-v10.php.
+ */
+
+package org.eclipse.collections.impl.set.mutable.primitive;
+
+import java.io.Externalizable;
+import java.io.IOException;
+import java.io.ObjectInput;
+import java.io.ObjectOutput;
+import java.util.NoSuchElementException;
+
+import org.eclipse.collections.api.BooleanIterable;
+import org.eclipse.collections.api.LazyBooleanIterable;
+import org.eclipse.collections.api.RichIterable;
+import org.eclipse.collections.api.bag.primitive.MutableBooleanBag;
+import org.eclipse.collections.api.block.function.primitive.BooleanToObjectFunction;
+import org.eclipse.collections.api.block.function.primitive.ObjectBooleanToObjectFunction;
+import org.eclipse.collections.api.block.predicate.primitive.BooleanPredicate;
+import org.eclipse.collections.api.block.procedure.primitive.BooleanProcedure;
+import org.eclipse.collections.api.iterator.BooleanIterator;
+import org.eclipse.collections.api.iterator.MutableBooleanIterator;
+import org.eclipse.collections.api.list.MutableList;
+import org.eclipse.collections.api.list.primitive.MutableBooleanList;
+import org.eclipse.collections.api.set.MutableSet;
+import org.eclipse.collections.api.set.primitive.BooleanSet;
+import org.eclipse.collections.api.set.primitive.ImmutableBooleanSet;
+import org.eclipse.collections.api.set.primitive.MutableBooleanSet;
+import org.eclipse.collections.impl.bag.mutable.primitive.BooleanHashBag;
+import org.eclipse.collections.impl.block.factory.primitive.BooleanPredicates;
+import org.eclipse.collections.impl.factory.Lists;
+import org.eclipse.collections.impl.factory.primitive.BooleanSets;
+import org.eclipse.collections.impl.lazy.primitive.LazyBooleanIterableAdapter;
+import org.eclipse.collections.impl.list.mutable.primitive.BooleanArrayList;
+import org.eclipse.collections.impl.set.mutable.UnifiedSet;
+
+public class BooleanHashSet implements MutableBooleanSet, Externalizable
+{
+    private static final long serialVersionUID = 1L;
+
+    // state = 0 ==&gt; []
+    // state = 1 ==&gt; [F]
+    // state = 2 ==&gt; [T]
+    // state = 3 ==&gt; [T, F]
+    private int state;
+
+    private static class EmptyBooleanIterator implements MutableBooleanIterator
+    {
+        @Override
+        public boolean next()
+        {
+<span class="nc" id="L58">            throw new NoSuchElementException();</span>
+        }
+
+        @Override
+        public boolean hasNext()
+        {
+<span class="nc" id="L64">            return false;</span>
+        }
+
+        @Override
+        public void remove()
+        {
+<span class="nc" id="L70">            throw new IllegalStateException();</span>
+        }
+    }
+
+<span class="nc" id="L74">    private class FalseBooleanIterator implements MutableBooleanIterator</span>
+    {
+        private int currentIndex;
+
+        @Override
+        public boolean hasNext()
+        {
+<span class="nc bnc" id="L81" title="All 2 branches missed.">            return this.currentIndex == 0;</span>
+        }
+
+        @Override
+        public boolean next()
+        {
+<span class="nc bnc" id="L87" title="All 2 branches missed.">            if (this.currentIndex == 0)</span>
+            {
+<span class="nc" id="L89">                this.currentIndex++;</span>
+<span class="nc" id="L90">                return false;</span>
+            }
+<span class="nc" id="L92">            this.currentIndex = -1;</span>
+<span class="nc" id="L93">            throw new NoSuchElementException();</span>
+        }
+
+        @Override
+        public void remove()
+        {
+<span class="nc bnc" id="L99" title="All 4 branches missed.">            if (this.currentIndex == 0 || this.currentIndex == -1)</span>
+            {
+<span class="nc" id="L101">                throw new IllegalStateException();</span>
+            }
+<span class="nc" id="L103">            this.currentIndex = -1;</span>
+<span class="nc" id="L104">            BooleanHashSet.this.remove(false);</span>
+<span class="nc" id="L105">        }</span>
+    }
+
+<span class="nc" id="L108">    private class TrueBooleanIterator implements MutableBooleanIterator</span>
+    {
+        private int currentIndex;
+
+        @Override
+        public boolean hasNext()
+        {
+<span class="nc bnc" id="L115" title="All 2 branches missed.">            return this.currentIndex == 0;</span>
+        }
+
+        @Override
+        public boolean next()
+        {
+<span class="nc bnc" id="L121" title="All 2 branches missed.">            if (this.currentIndex == 0)</span>
+            {
+<span class="nc" id="L123">                this.currentIndex++;</span>
+<span class="nc" id="L124">                return true;</span>
+            }
+<span class="nc" id="L126">            this.currentIndex = -1;</span>
+<span class="nc" id="L127">            throw new NoSuchElementException();</span>
+        }
+
+        @Override
+        public void remove()
+        {
+<span class="nc bnc" id="L133" title="All 4 branches missed.">            if (this.currentIndex == 0 || this.currentIndex == -1)</span>
+            {
+<span class="nc" id="L135">                throw new IllegalStateException();</span>
+            }
+<span class="nc" id="L137">            this.currentIndex = -1;</span>
+<span class="nc" id="L138">            BooleanHashSet.this.remove(true);</span>
+<span class="nc" id="L139">        }</span>
+    }
+
+<span class="nc" id="L142">    private class FalseTrueBooleanIterator implements MutableBooleanIterator</span>
+    {
+        private int currentIndex;
+
+        @Override
+        public boolean hasNext()
+        {
+<span class="nc bnc" id="L149" title="All 2 branches missed.">            return this.currentIndex &lt; 2;</span>
+        }
+
+        @Override
+        public boolean next()
+        {
+<span class="nc bnc" id="L155" title="All 3 branches missed.">            switch (this.currentIndex)</span>
+            {
+                case 0:
+<span class="nc" id="L158">                    this.currentIndex++;</span>
+<span class="nc" id="L159">                    return false;</span>
+                case 1:
+<span class="nc" id="L161">                    this.currentIndex++;</span>
+<span class="nc" id="L162">                    return true;</span>
+                default:
+<span class="nc" id="L164">                    throw new NoSuchElementException();</span>
+            }
+        }
+
+        @Override
+        public void remove()
+        {
+<span class="nc bnc" id="L171" title="All 4 branches missed.">            switch (this.currentIndex)</span>
+            {
+                case 0:
+<span class="nc" id="L174">                    throw new IllegalStateException();</span>
+                case 1:
+<span class="nc bnc" id="L176" title="All 2 branches missed.">                    if (!BooleanHashSet.this.remove(false))</span>
+                    {
+<span class="nc" id="L178">                        throw new IllegalStateException();</span>
+                    }
+<span class="nc" id="L180">                    return;</span>
+                case 2:
+<span class="nc bnc" id="L182" title="All 2 branches missed.">                    if (!BooleanHashSet.this.remove(true))</span>
+                    {
+<span class="nc" id="L184">                        throw new IllegalStateException();</span>
+                    }
+            }
+<span class="nc" id="L187">        }</span>
+    }
+
+    public BooleanHashSet()
+<span class="nc" id="L191">    {</span>
+<span class="nc" id="L192">    }</span>
+
+    public BooleanHashSet(BooleanHashSet set)
+<span class="nc" id="L195">    {</span>
+<span class="nc" id="L196">        this.state = set.state;</span>
+<span class="nc" id="L197">    }</span>
+
+    public BooleanHashSet(boolean... elements)
+    {
+<span class="nc" id="L201">        this();</span>
+<span class="nc" id="L202">        this.addAll(elements);</span>
+<span class="nc" id="L203">    }</span>
+
+    public static BooleanHashSet newSetWith(boolean... source)
+    {
+<span class="nc" id="L207">        return new BooleanHashSet(source);</span>
+    }
+
+    public static BooleanHashSet newSet(BooleanIterable source)
+    {
+<span class="nc bnc" id="L212" title="All 2 branches missed.">        if (source instanceof BooleanHashSet)</span>
+        {
+<span class="nc" id="L214">            return new BooleanHashSet((BooleanHashSet) source);</span>
+        }
+
+<span class="nc" id="L217">        return BooleanHashSet.newSetWith(source.toArray());</span>
+    }
+
+    @Override
+    public boolean add(boolean element)
+    {
+<span class="nc bnc" id="L223" title="All 2 branches missed.">        if (this.contains(element))</span>
+        {
+<span class="nc" id="L225">            return false;</span>
+        }
+<span class="nc bnc" id="L227" title="All 2 branches missed.">        this.state |= element ? 2 : 1;</span>
+<span class="nc" id="L228">        return true;</span>
+    }
+
+    @Override
+    public boolean addAll(boolean... source)
+    {
+<span class="nc" id="L234">        int initialState = this.state;</span>
+<span class="nc bnc" id="L235" title="All 2 branches missed.">        for (boolean item : source)</span>
+        {
+<span class="nc bnc" id="L237" title="All 2 branches missed.">            if (this.state == 3)</span>
+            {
+<span class="nc bnc" id="L239" title="All 2 branches missed.">                return this.state != initialState;</span>
+            }
+<span class="nc" id="L241">            this.add(item);</span>
+        }
+<span class="nc bnc" id="L243" title="All 2 branches missed.">        return this.state != initialState;</span>
+    }
+
+    @Override
+    public boolean addAll(BooleanIterable source)
+    {
+<span class="nc" id="L249">        return this.addAll(source.toArray());</span>
+    }
+
+    @Override
+    public boolean remove(boolean value)
+    {
+<span class="nc bnc" id="L255" title="All 2 branches missed.">        if (!this.contains(value))</span>
+        {
+<span class="nc" id="L257">            return false;</span>
+        }
+<span class="nc" id="L259">        int initialState = this.state;</span>
+<span class="nc bnc" id="L260" title="All 2 branches missed.">        this.state &amp;= value ? ~2 : ~1;</span>
+<span class="nc bnc" id="L261" title="All 2 branches missed.">        return initialState != this.state;</span>
+    }
+
+    @Override
+    public boolean removeAll(BooleanIterable source)
+    {
+<span class="nc bnc" id="L267" title="All 4 branches missed.">        if (this.isEmpty() || source.isEmpty())</span>
+        {
+<span class="nc" id="L269">            return false;</span>
+        }
+<span class="nc" id="L271">        boolean modified = false;</span>
+<span class="nc" id="L272">        BooleanIterator iterator = source.booleanIterator();</span>
+<span class="nc bnc" id="L273" title="All 2 branches missed.">        while (iterator.hasNext())</span>
+        {
+<span class="nc bnc" id="L275" title="All 2 branches missed.">            if (this.state == 0)</span>
+            {
+<span class="nc" id="L277">                return modified;</span>
+            }
+<span class="nc" id="L279">            boolean item = iterator.next();</span>
+<span class="nc bnc" id="L280" title="All 2 branches missed.">            if (this.remove(item))</span>
+            {
+<span class="nc" id="L282">                modified = true;</span>
+            }
+<span class="nc" id="L284">        }</span>
+<span class="nc" id="L285">        return modified;</span>
+    }
+
+    @Override
+    public boolean removeAll(boolean... source)
+    {
+<span class="nc bnc" id="L291" title="All 4 branches missed.">        if (this.isEmpty() || source.length == 0)</span>
+        {
+<span class="nc" id="L293">            return false;</span>
+        }
+<span class="nc" id="L295">        boolean modified = false;</span>
+<span class="nc bnc" id="L296" title="All 2 branches missed.">        for (boolean item : source)</span>
+        {
+<span class="nc bnc" id="L298" title="All 2 branches missed.">            if (this.state == 0)</span>
+            {
+<span class="nc" id="L300">                return modified;</span>
+            }
+<span class="nc bnc" id="L302" title="All 2 branches missed.">            if (this.remove(item))</span>
+            {
+<span class="nc" id="L304">                modified = true;</span>
+            }
+        }
+<span class="nc" id="L307">        return modified;</span>
+    }
+
+    @Override
+    public boolean retainAll(BooleanIterable source)
+    {
+<span class="nc bnc" id="L313" title="All 2 branches missed.">        if (this.state == 0</span>
+<span class="nc bnc" id="L314" title="All 6 branches missed.">                || (source.contains(true) &amp;&amp; source.contains(false))</span>
+<span class="nc bnc" id="L315" title="All 4 branches missed.">                || (this.state == 2 &amp;&amp; source.contains(true))</span>
+<span class="nc bnc" id="L316" title="All 2 branches missed.">                || (this.state == 1 &amp;&amp; source.contains(false)))</span>
+        {
+<span class="nc" id="L318">            return false;</span>
+        }
+<span class="nc bnc" id="L320" title="All 2 branches missed.">        if (source.contains(true))</span>
+        {
+<span class="nc" id="L322">            this.state -= 1;</span>
+        }
+<span class="nc bnc" id="L324" title="All 2 branches missed.">        else if (source.contains(false))</span>
+        {
+<span class="nc" id="L326">            this.state -= 2;</span>
+        }
+        else
+        {
+<span class="nc" id="L330">            this.state = 0;</span>
+        }
+<span class="nc" id="L332">        return true;</span>
+    }
+
+    @Override
+    public boolean retainAll(boolean... source)
+    {
+<span class="nc" id="L338">        return this.retainAll(BooleanHashSet.newSetWith(source));</span>
+    }
+
+    @Override
+    public void clear()
+    {
+<span class="nc" id="L344">        this.state = 0;</span>
+<span class="nc" id="L345">    }</span>
+
+    @Override
+    public MutableBooleanIterator booleanIterator()
+    {
+<span class="nc bnc" id="L350" title="All 5 branches missed.">        switch (this.state)</span>
+        {
+            case 0:
+<span class="nc" id="L353">                return new EmptyBooleanIterator();</span>
+            case 1:
+<span class="nc" id="L355">                return new FalseBooleanIterator();</span>
+            case 2:
+<span class="nc" id="L357">                return new TrueBooleanIterator();</span>
+            case 3:
+<span class="nc" id="L359">                return new FalseTrueBooleanIterator();</span>
+            default:
+<span class="nc" id="L361">                throw new AssertionError(&quot;Invalid state&quot;);</span>
+        }
+    }
+
+    @Override
+    public void forEach(BooleanProcedure procedure)
+    {
+<span class="nc" id="L368">        this.each(procedure);</span>
+<span class="nc" id="L369">    }</span>
+
+    /**
+     * @since 7.0.
+     */
+    @Override
+    public void each(BooleanProcedure procedure)
+    {
+<span class="nc bnc" id="L377" title="All 5 branches missed.">        switch (this.state)</span>
+        {
+            case 0:
+<span class="nc" id="L380">                return;</span>
+            case 1:
+<span class="nc" id="L382">                procedure.value(false);</span>
+<span class="nc" id="L383">                return;</span>
+            case 2:
+<span class="nc" id="L385">                procedure.value(true);</span>
+<span class="nc" id="L386">                return;</span>
+            case 3:
+<span class="nc" id="L388">                procedure.value(false);</span>
+<span class="nc" id="L389">                procedure.value(true);</span>
+<span class="nc" id="L390">                return;</span>
+            default:
+<span class="nc" id="L392">                throw new AssertionError(&quot;Invalid state&quot;);</span>
+        }
+    }
+
+    @Override
+    public &lt;T&gt; T injectInto(T injectedValue, ObjectBooleanToObjectFunction&lt;? super T, ? extends T&gt; function)
+    {
+<span class="nc" id="L399">        T result = injectedValue;</span>
+<span class="nc bnc" id="L400" title="All 5 branches missed.">        switch (this.state)</span>
+        {
+            case 0:
+<span class="nc" id="L403">                return result;</span>
+            case 1:
+<span class="nc" id="L405">                result = function.valueOf(result, false);</span>
+<span class="nc" id="L406">                return result;</span>
+            case 2:
+<span class="nc" id="L408">                result = function.valueOf(result, true);</span>
+<span class="nc" id="L409">                return result;</span>
+            case 3:
+<span class="nc" id="L411">                result = function.valueOf(result, false);</span>
+<span class="nc" id="L412">                result = function.valueOf(result, true);</span>
+<span class="nc" id="L413">                return result;</span>
+            default:
+<span class="nc" id="L415">                throw new AssertionError(&quot;Invalid state&quot;);</span>
+        }
+    }
+
+    @Override
+    public RichIterable&lt;BooleanIterable&gt; chunk(int size)
+    {
+<span class="nc bnc" id="L422" title="All 2 branches missed.">        if (size &lt;= 0)</span>
+        {
+<span class="nc" id="L424">            throw new IllegalArgumentException(&quot;Size for groups must be positive but was: &quot; + size);</span>
+        }
+<span class="nc" id="L426">        MutableList&lt;BooleanIterable&gt; result = Lists.mutable.empty();</span>
+<span class="nc bnc" id="L427" title="All 5 branches missed.">        switch (this.state)</span>
+        {
+            case 0:
+<span class="nc" id="L430">                return result;</span>
+            case 1:
+<span class="nc" id="L432">                result.add(BooleanSets.mutable.with(false));</span>
+<span class="nc" id="L433">                return result;</span>
+            case 2:
+<span class="nc" id="L435">                result.add(BooleanSets.mutable.with(true));</span>
+<span class="nc" id="L436">                return result;</span>
+            case 3:
+<span class="nc bnc" id="L438" title="All 2 branches missed.">                if (size == 1)</span>
+                {
+<span class="nc" id="L440">                    result.add(BooleanSets.mutable.with(false));</span>
+<span class="nc" id="L441">                    result.add(BooleanSets.mutable.with(true));</span>
+                }
+                else
+                {
+<span class="nc" id="L445">                    result.add(BooleanSets.mutable.with(false, true));</span>
+                }
+<span class="nc" id="L447">                return result;</span>
+            default:
+<span class="nc" id="L449">                throw new AssertionError(&quot;Invalid state&quot;);</span>
+        }
+    }
+
+    @Override
+    public int count(BooleanPredicate predicate)
+    {
+<span class="nc bnc" id="L456" title="All 5 branches missed.">        switch (this.state)</span>
+        {
+            case 0:
+<span class="nc" id="L459">                return 0;</span>
+            case 1:
+<span class="nc bnc" id="L461" title="All 2 branches missed.">                return predicate.accept(false) ? 1 : 0;</span>
+            case 2:
+<span class="nc bnc" id="L463" title="All 2 branches missed.">                return predicate.accept(true) ? 1 : 0;</span>
+            case 3:
+<span class="nc" id="L465">                int count = 0;</span>
+<span class="nc bnc" id="L466" title="All 2 branches missed.">                if (predicate.accept(false))</span>
+                {
+<span class="nc" id="L468">                    count++;</span>
+                }
+<span class="nc bnc" id="L470" title="All 2 branches missed.">                if (predicate.accept(true))</span>
+                {
+<span class="nc" id="L472">                    count++;</span>
+                }
+<span class="nc" id="L474">                return count;</span>
+            default:
+<span class="nc" id="L476">                throw new AssertionError(&quot;Invalid state&quot;);</span>
+        }
+    }
+
+    @Override
+    public boolean anySatisfy(BooleanPredicate predicate)
+    {
+<span class="nc bnc" id="L483" title="All 2 branches missed.">        return this.count(predicate) &gt; 0;</span>
+    }
+
+    @Override
+    public boolean allSatisfy(BooleanPredicate predicate)
+    {
+<span class="nc bnc" id="L489" title="All 2 branches missed.">        return this.count(predicate) == this.size();</span>
+    }
+
+    @Override
+    public boolean noneSatisfy(BooleanPredicate predicate)
+    {
+<span class="nc bnc" id="L495" title="All 2 branches missed.">        return this.count(predicate) == 0;</span>
+    }
+
+    @Override
+    public BooleanHashSet select(BooleanPredicate predicate)
+    {
+<span class="nc" id="L501">        BooleanHashSet set = new BooleanHashSet();</span>
+<span class="nc bnc" id="L502" title="All 5 branches missed.">        switch (this.state)</span>
+        {
+            case 0:
+<span class="nc" id="L505">                return set;</span>
+            case 1:
+<span class="nc bnc" id="L507" title="All 2 branches missed.">                if (predicate.accept(false))</span>
+                {
+<span class="nc" id="L509">                    set.add(false);</span>
+                }
+<span class="nc" id="L511">                return set;</span>
+            case 2:
+<span class="nc bnc" id="L513" title="All 2 branches missed.">                if (predicate.accept(true))</span>
+                {
+<span class="nc" id="L515">                    set.add(true);</span>
+                }
+<span class="nc" id="L517">                return set;</span>
+            case 3:
+<span class="nc bnc" id="L519" title="All 2 branches missed.">                if (predicate.accept(false))</span>
+                {
+<span class="nc" id="L521">                    set.add(false);</span>
+                }
+<span class="nc bnc" id="L523" title="All 2 branches missed.">                if (predicate.accept(true))</span>
+                {
+<span class="nc" id="L525">                    set.add(true);</span>
+                }
+<span class="nc" id="L527">                return set;</span>
+            default:
+<span class="nc" id="L529">                throw new AssertionError(&quot;Invalid state&quot;);</span>
+        }
+    }
+
+    @Override
+    public BooleanHashSet reject(BooleanPredicate predicate)
+    {
+<span class="nc" id="L536">        return this.select(BooleanPredicates.not(predicate));</span>
+    }
+
+    @Override
+    public boolean detectIfNone(BooleanPredicate predicate, boolean ifNone)
+    {
+<span class="nc bnc" id="L542" title="All 5 branches missed.">        switch (this.state)</span>
+        {
+            case 0:
+<span class="nc" id="L545">                return ifNone;</span>
+            case 1:
+<span class="nc bnc" id="L547" title="All 4 branches missed.">                return !predicate.accept(false) &amp;&amp; ifNone;</span>
+            case 2:
+<span class="nc bnc" id="L549" title="All 4 branches missed.">                return predicate.accept(true) || ifNone;</span>
+            case 3:
+<span class="nc bnc" id="L551" title="All 2 branches missed.">                if (predicate.accept(false))</span>
+                {
+<span class="nc" id="L553">                    return false;</span>
+                }
+<span class="nc bnc" id="L555" title="All 2 branches missed.">                if (predicate.accept(true))</span>
+                {
+<span class="nc" id="L557">                    return true;</span>
+                }
+<span class="nc" id="L559">                return ifNone;</span>
+            default:
+<span class="nc" id="L561">                throw new AssertionError(&quot;Invalid state&quot;);</span>
+        }
+    }
+
+    @Override
+    public &lt;V&gt; MutableSet&lt;V&gt; collect(BooleanToObjectFunction&lt;? extends V&gt; function)
+    {
+<span class="nc" id="L568">        UnifiedSet&lt;V&gt; target = UnifiedSet.newSet(this.size());</span>
+<span class="nc bnc" id="L569" title="All 5 branches missed.">        switch (this.state)</span>
+        {
+            case 0:
+<span class="nc" id="L572">                return target;</span>
+            case 1:
+<span class="nc" id="L574">                return target.with(function.valueOf(false));</span>
+            case 2:
+<span class="nc" id="L576">                return target.with(function.valueOf(true));</span>
+            case 3:
+<span class="nc" id="L578">                target.add(function.valueOf(false));</span>
+<span class="nc" id="L579">                target.add(function.valueOf(true));</span>
+<span class="nc" id="L580">                return target;</span>
+            default:
+<span class="nc" id="L582">                throw new AssertionError(&quot;Invalid state&quot;);</span>
+        }
+    }
+
+    @Override
+    public boolean[] toArray()
+    {
+<span class="nc bnc" id="L589" title="All 5 branches missed.">        switch (this.state)</span>
+        {
+            case 0:
+<span class="nc" id="L592">                return new boolean[0];</span>
+            case 1:
+<span class="nc" id="L594">                return new boolean[]{false};</span>
+            case 2:
+<span class="nc" id="L596">                return new boolean[]{true};</span>
+            case 3:
+<span class="nc" id="L598">                return new boolean[]{false, true};</span>
+            default:
+<span class="nc" id="L600">                throw new AssertionError(&quot;Invalid state&quot;);</span>
+        }
+    }
+
+    @Override
+    public boolean contains(boolean value)
+    {
+<span class="nc bnc" id="L607" title="All 2 branches missed.">        if (this.state == 3)</span>
+        {
+<span class="nc" id="L609">            return true;</span>
+        }
+<span class="nc bnc" id="L611" title="All 2 branches missed.">        if (value)</span>
+        {
+<span class="nc bnc" id="L613" title="All 2 branches missed.">            return this.state == 2;</span>
+        }
+<span class="nc bnc" id="L615" title="All 2 branches missed.">        return this.state == 1;</span>
+    }
+
+    @Override
+    public boolean containsAll(boolean... source)
+    {
+<span class="nc bnc" id="L621" title="All 2 branches missed.">        if (this.state == 3)</span>
+        {
+<span class="nc" id="L623">            return true;</span>
+        }
+<span class="nc bnc" id="L625" title="All 2 branches missed.">        for (boolean item : source)</span>
+        {
+<span class="nc bnc" id="L627" title="All 2 branches missed.">            if (!this.contains(item))</span>
+            {
+<span class="nc" id="L629">                return false;</span>
+            }
+        }
+<span class="nc" id="L632">        return true;</span>
+    }
+
+    @Override
+    public boolean containsAll(BooleanIterable source)
+    {
+<span class="nc bnc" id="L638" title="All 2 branches missed.">        if (this.state == 3)</span>
+        {
+<span class="nc" id="L640">            return true;</span>
+        }
+<span class="nc bnc" id="L642" title="All 2 branches missed.">        for (BooleanIterator iterator = source.booleanIterator(); iterator.hasNext(); )</span>
+        {
+<span class="nc bnc" id="L644" title="All 2 branches missed.">            if (!this.contains(iterator.next()))</span>
+            {
+<span class="nc" id="L646">                return false;</span>
+            }
+        }
+<span class="nc" id="L649">        return true;</span>
+    }
+
+    @Override
+    public BooleanHashSet with(boolean element)
+    {
+<span class="nc bnc" id="L655" title="All 2 branches missed.">        if (this.state == 3)</span>
+        {
+<span class="nc" id="L657">            return this;</span>
+        }
+<span class="nc" id="L659">        this.add(element);</span>
+<span class="nc" id="L660">        return this;</span>
+    }
+
+    @Override
+    public BooleanHashSet without(boolean element)
+    {
+<span class="nc bnc" id="L666" title="All 2 branches missed.">        if (this.state == 0)</span>
+        {
+<span class="nc" id="L668">            return this;</span>
+        }
+<span class="nc" id="L670">        this.remove(element);</span>
+<span class="nc" id="L671">        return this;</span>
+    }
+
+    @Override
+    public BooleanHashSet withAll(BooleanIterable elements)
+    {
+<span class="nc bnc" id="L677" title="All 2 branches missed.">        if (this.state == 3)</span>
+        {
+<span class="nc" id="L679">            return this;</span>
+        }
+<span class="nc" id="L681">        this.addAll(elements.toArray());</span>
+<span class="nc" id="L682">        return this;</span>
+    }
+
+    @Override
+    public BooleanHashSet withoutAll(BooleanIterable elements)
+    {
+<span class="nc bnc" id="L688" title="All 2 branches missed.">        if (this.state == 0)</span>
+        {
+<span class="nc" id="L690">            return this;</span>
+        }
+<span class="nc" id="L692">        this.removeAll(elements);</span>
+<span class="nc" id="L693">        return this;</span>
+    }
+
+    @Override
+    public MutableBooleanSet asUnmodifiable()
+    {
+<span class="nc" id="L699">        return new UnmodifiableBooleanSet(this);</span>
+    }
+
+    @Override
+    public MutableBooleanSet asSynchronized()
+    {
+<span class="nc" id="L705">        return new SynchronizedBooleanSet(this);</span>
+    }
+
+    @Override
+    public BooleanSet freeze()
+    {
+<span class="nc" id="L711">        return this.toImmutable();</span>
+    }
+
+    @Override
+    public ImmutableBooleanSet toImmutable()
+    {
+<span class="nc bnc" id="L717" title="All 5 branches missed.">        switch (this.state)</span>
+        {
+            case 0:
+<span class="nc" id="L720">                return BooleanSets.immutable.with();</span>
+            case 1:
+<span class="nc" id="L722">                return BooleanSets.immutable.with(false);</span>
+            case 2:
+<span class="nc" id="L724">                return BooleanSets.immutable.with(true);</span>
+            case 3:
+<span class="nc" id="L726">                return BooleanSets.immutable.with(false, true);</span>
+            default:
+<span class="nc" id="L728">                throw new AssertionError(&quot;Invalid state&quot;);</span>
+        }
+    }
+
+    @Override
+    public int size()
+    {
+<span class="nc bnc" id="L735" title="All 4 branches missed.">        switch (this.state)</span>
+        {
+            case 0:
+<span class="nc" id="L738">                return 0;</span>
+            case 1:
+            case 2:
+<span class="nc" id="L741">                return 1;</span>
+            case 3:
+<span class="nc" id="L743">                return 2;</span>
+            default:
+<span class="nc" id="L745">                throw new AssertionError(&quot;Invalid state&quot;);</span>
+        }
+    }
+
+    @Override
+    public boolean isEmpty()
+    {
+<span class="nc bnc" id="L752" title="All 2 branches missed.">        return this.state == 0;</span>
+    }
+
+    @Override
+    public boolean notEmpty()
+    {
+<span class="nc bnc" id="L758" title="All 2 branches missed.">        return this.state != 0;</span>
+    }
+
+    @Override
+    public boolean equals(Object obj)
+    {
+<span class="nc bnc" id="L764" title="All 2 branches missed.">        if (this == obj)</span>
+        {
+<span class="nc" id="L766">            return true;</span>
+        }
+
+<span class="nc bnc" id="L769" title="All 2 branches missed.">        if (!(obj instanceof BooleanSet))</span>
+        {
+<span class="nc" id="L771">            return false;</span>
+        }
+
+<span class="nc" id="L774">        BooleanSet other = (BooleanSet) obj;</span>
+<span class="nc bnc" id="L775" title="All 4 branches missed.">        return this.contains(false) == other.contains(false) &amp;&amp; this.contains(true) == other.contains(true);</span>
+    }
+
+    @Override
+    public int hashCode()
+    {
+<span class="nc bnc" id="L781" title="All 5 branches missed.">        switch (this.state)</span>
+        {
+            case 0:
+<span class="nc" id="L784">                return 0;</span>
+            case 1:
+<span class="nc" id="L786">                return 1237;</span>
+            case 2:
+<span class="nc" id="L788">                return 1231;</span>
+            case 3:
+<span class="nc" id="L790">                return 2468;</span>
+            default:
+<span class="nc" id="L792">                throw new AssertionError(&quot;Invalid state&quot;);</span>
+        }
+    }
+
+    @Override
+    public String toString()
+    {
+<span class="nc" id="L799">        return this.makeString(&quot;[&quot;, &quot;, &quot;, &quot;]&quot;);</span>
+    }
+
+    @Override
+    public String makeString()
+    {
+<span class="nc" id="L805">        return this.makeString(&quot;, &quot;);</span>
+    }
+
+    @Override
+    public String makeString(String separator)
+    {
+<span class="nc" id="L811">        return this.makeString(&quot;&quot;, separator, &quot;&quot;);</span>
+    }
+
+    @Override
+    public String makeString(String start, String separator, String end)
+    {
+<span class="nc" id="L817">        Appendable stringBuilder = new StringBuilder();</span>
+<span class="nc" id="L818">        this.appendString(stringBuilder, start, separator, end);</span>
+<span class="nc" id="L819">        return stringBuilder.toString();</span>
+    }
+
+    @Override
+    public void appendString(Appendable appendable)
+    {
+<span class="nc" id="L825">        this.appendString(appendable, &quot;, &quot;);</span>
+<span class="nc" id="L826">    }</span>
+
+    @Override
+    public void appendString(Appendable appendable, String separator)
+    {
+<span class="nc" id="L831">        this.appendString(appendable, &quot;&quot;, separator, &quot;&quot;);</span>
+<span class="nc" id="L832">    }</span>
+
+    @Override
+    public void appendString(Appendable appendable, String start, String separator, String end)
+    {
+        try
+        {
+<span class="nc" id="L839">            appendable.append(start);</span>
+<span class="nc bnc" id="L840" title="All 5 branches missed.">            switch (this.state)</span>
+            {
+                case 0:
+<span class="nc" id="L843">                    break;</span>
+                case 1:
+<span class="nc" id="L845">                    appendable.append(String.valueOf(false));</span>
+<span class="nc" id="L846">                    break;</span>
+                case 2:
+<span class="nc" id="L848">                    appendable.append(String.valueOf(true));</span>
+<span class="nc" id="L849">                    break;</span>
+                case 3:
+<span class="nc" id="L851">                    appendable.append(String.valueOf(false));</span>
+<span class="nc" id="L852">                    appendable.append(separator);</span>
+<span class="nc" id="L853">                    appendable.append(String.valueOf(true));</span>
+<span class="nc" id="L854">                    break;</span>
+                default:
+<span class="nc" id="L856">                    throw new AssertionError(&quot;Invalid state&quot;);</span>
+            }
+<span class="nc" id="L858">            appendable.append(end);</span>
+        }
+<span class="nc" id="L860">        catch (IOException e)</span>
+        {
+<span class="nc" id="L862">            throw new RuntimeException(e);</span>
+<span class="nc" id="L863">        }</span>
+<span class="nc" id="L864">    }</span>
+
+    @Override
+    public MutableBooleanList toList()
+    {
+<span class="nc" id="L869">        return BooleanArrayList.newList(this);</span>
+    }
+
+    @Override
+    public MutableBooleanSet toSet()
+    {
+<span class="nc" id="L875">        return BooleanHashSet.newSet(this);</span>
+    }
+
+    @Override
+    public MutableBooleanBag toBag()
+    {
+<span class="nc" id="L881">        return BooleanHashBag.newBag(this);</span>
+    }
+
+    @Override
+    public LazyBooleanIterable asLazy()
+    {
+<span class="nc" id="L887">        return new LazyBooleanIterableAdapter(this);</span>
+    }
+
+    @Override
+    public void writeExternal(ObjectOutput out) throws IOException
+    {
+<span class="nc" id="L893">        out.writeInt(this.size());</span>
+<span class="nc bnc" id="L894" title="All 5 branches missed.">        switch (this.state)</span>
+        {
+            case 0:
+<span class="nc" id="L897">                return;</span>
+            case 1:
+<span class="nc" id="L899">                out.writeBoolean(false);</span>
+<span class="nc" id="L900">                return;</span>
+            case 2:
+<span class="nc" id="L902">                out.writeBoolean(true);</span>
+<span class="nc" id="L903">                return;</span>
+            case 3:
+<span class="nc" id="L905">                out.writeBoolean(false);</span>
+<span class="nc" id="L906">                out.writeBoolean(true);</span>
+<span class="nc" id="L907">                return;</span>
+            default:
+<span class="nc" id="L909">                throw new AssertionError(&quot;Invalid state&quot;);</span>
+        }
+    }
+
+    @Override
+    public void readExternal(ObjectInput in) throws IOException
+    {
+<span class="nc" id="L916">        int size = in.readInt();</span>
+<span class="nc bnc" id="L917" title="All 2 branches missed.">        for (int i = 0; i &lt; size; i++)</span>
+        {
+<span class="nc" id="L919">            this.add(in.readBoolean());</span>
+        }
+<span class="nc" id="L921">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.0.201801022044</span></div></body></html>

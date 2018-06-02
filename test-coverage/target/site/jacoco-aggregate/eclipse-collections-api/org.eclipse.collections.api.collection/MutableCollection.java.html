@@ -1,0 +1,567 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>MutableCollection.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Eclipse Collections Test Coverage Aggregation</a> &gt; <a href="../index.html" class="el_bundle">eclipse-collections-api</a> &gt; <a href="index.source.html" class="el_package">org.eclipse.collections.api.collection</a> &gt; <span class="el_source">MutableCollection.java</span></div><h1>MutableCollection.java</h1><pre class="source lang-java linenums">/*
+ * Copyright (c) 2018 Goldman Sachs and others.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * and Eclipse Distribution License v. 1.0 which accompany this distribution.
+ * The Eclipse Public License is available at http://www.eclipse.org/legal/epl-v10.html
+ * and the Eclipse Distribution License is available at
+ * http://www.eclipse.org/org/documents/edl-v10.php.
+ */
+
+package org.eclipse.collections.api.collection;
+
+import java.util.Collection;
+
+import org.eclipse.collections.api.RichIterable;
+import org.eclipse.collections.api.bag.MutableBag;
+import org.eclipse.collections.api.block.function.Function;
+import org.eclipse.collections.api.block.function.Function0;
+import org.eclipse.collections.api.block.function.Function2;
+import org.eclipse.collections.api.block.function.Function3;
+import org.eclipse.collections.api.block.function.primitive.BooleanFunction;
+import org.eclipse.collections.api.block.function.primitive.ByteFunction;
+import org.eclipse.collections.api.block.function.primitive.CharFunction;
+import org.eclipse.collections.api.block.function.primitive.DoubleFunction;
+import org.eclipse.collections.api.block.function.primitive.FloatFunction;
+import org.eclipse.collections.api.block.function.primitive.IntFunction;
+import org.eclipse.collections.api.block.function.primitive.LongFunction;
+import org.eclipse.collections.api.block.function.primitive.ShortFunction;
+import org.eclipse.collections.api.block.predicate.Predicate;
+import org.eclipse.collections.api.block.predicate.Predicate2;
+import org.eclipse.collections.api.block.procedure.Procedure;
+import org.eclipse.collections.api.block.procedure.Procedure2;
+import org.eclipse.collections.api.collection.primitive.MutableBooleanCollection;
+import org.eclipse.collections.api.collection.primitive.MutableByteCollection;
+import org.eclipse.collections.api.collection.primitive.MutableCharCollection;
+import org.eclipse.collections.api.collection.primitive.MutableDoubleCollection;
+import org.eclipse.collections.api.collection.primitive.MutableFloatCollection;
+import org.eclipse.collections.api.collection.primitive.MutableIntCollection;
+import org.eclipse.collections.api.collection.primitive.MutableLongCollection;
+import org.eclipse.collections.api.collection.primitive.MutableShortCollection;
+import org.eclipse.collections.api.list.MutableList;
+import org.eclipse.collections.api.map.MutableMap;
+import org.eclipse.collections.api.map.primitive.MutableObjectDoubleMap;
+import org.eclipse.collections.api.map.primitive.MutableObjectLongMap;
+import org.eclipse.collections.api.multimap.MutableMultimap;
+import org.eclipse.collections.api.ordered.OrderedIterable;
+import org.eclipse.collections.api.partition.PartitionMutableCollection;
+import org.eclipse.collections.api.tuple.Pair;
+import org.eclipse.collections.api.tuple.Twin;
+
+/**
+ * MutableCollection is an interface which extends the base java.util.Collection interface and adds several internal
+ * iterator methods, from the Smalltalk Collection protocol.  These include variations of forEach, select, reject,
+ * detect, collect, injectInto, anySatisfy, allSatisfy. These include count, remove, partition, collectIf.  The API also
+ * includes converter methods to convert a MutableCollection to a List (toList), to a sorted List (toSortedList), to a
+ * Set (toSet), and to a Map (toMap).
+ * &lt;p&gt;
+ * There are several extensions to MutableCollection, including MutableList, MutableSet, and MutableBag.
+ */
+public interface MutableCollection&lt;T&gt;
+        extends Collection&lt;T&gt;, RichIterable&lt;T&gt;
+{
+    /**
+     * This method allows mutable and fixed size collections the ability to add elements to their existing elements.
+     * In order to support fixed size a new instance of a collection would have to be returned taking the elements of
+     * the original collection and appending the new element to form the new collection.  In the case of mutable
+     * collections, the original collection is modified, and is returned.  In order to use this method properly with
+     * mutable and fixed size collections the following approach must be taken:
+     * &lt;p&gt;
+     * &lt;pre&gt;
+     * MutableCollection&amp;lt;String&amp;gt; list = list.with(&quot;1&quot;);
+     * list = list.with(&quot;2&quot;);
+     * return list;
+     * &lt;/pre&gt;
+     * In the case of {@link FixedSizeCollection} a new instance of MutableCollection will be returned by with, and any
+     * variables that previously referenced the original collection will need to be redirected to reference the
+     * new instance.  For other MutableCollection types you will replace the reference to collection with the same
+     * collection, since the instance will return &quot;this&quot; after calling add on itself.
+     *
+     * @see #add(Object)
+     */
+    MutableCollection&lt;T&gt; with(T element);
+
+    /**
+     * This method allows mutable and fixed size collections the ability to remove elements from their existing elements.
+     * In order to support fixed size a new instance of a collection would have to be returned containing the elements
+     * that would be left from the original collection after calling remove.  In the case of mutable collections, the
+     * original collection is modified, and is returned.  In order to use this method properly with mutable and fixed
+     * size collections the following approach must be taken:
+     * &lt;p&gt;
+     * &lt;pre&gt;
+     * MutableCollection&amp;lt;String&amp;gt; list = list.without(&quot;1&quot;);
+     * list = list.without(&quot;2&quot;);
+     * return list;
+     * &lt;/pre&gt;
+     * In the case of {@link FixedSizeCollection} a new instance of MutableCollection will be returned by without, and
+     * any variables that previously referenced the original collection will need to be redirected to reference the
+     * new instance.  For other MutableCollection types you will replace the reference to collection with the same
+     * collection, since the instance will return &quot;this&quot; after calling remove on itself.
+     *
+     * @see #remove(Object)
+     */
+    MutableCollection&lt;T&gt; without(T element);
+
+    /**
+     * This method allows mutable and fixed size collections the ability to add multiple elements to their existing
+     * elements. In order to support fixed size a new instance of a collection would have to be returned taking the
+     * elements of  the original collection and appending the new elements to form the new collection.  In the case of
+     * mutable collections, the original collection is modified, and is returned.  In order to use this method properly
+     * with mutable and fixed size collections the following approach must be taken:
+     * &lt;p&gt;
+     * &lt;pre&gt;
+     * MutableCollection&amp;lt;String&amp;gt; list = list.withAll(FastList.newListWith(&quot;1&quot;, &quot;2&quot;));
+     * &lt;/pre&gt;
+     * In the case of {@link FixedSizeCollection} a new instance of MutableCollection will be returned by withAll, and
+     * any variables that previously referenced the original collection will need to be redirected to reference the
+     * new instance.  For other MutableCollection types you will replace the reference to collection with the same
+     * collection, since the instance will return &quot;this&quot; after calling addAll on itself.
+     *
+     * @see #addAll(Collection)
+     */
+    MutableCollection&lt;T&gt; withAll(Iterable&lt;? extends T&gt; elements);
+
+    /**
+     * This method allows mutable and fixed size collections the ability to remove multiple elements from their existing
+     * elements.  In order to support fixed size a new instance of a collection would have to be returned containing the
+     * elements that would be left from the original collection after calling removeAll.  In the case of mutable
+     * collections, the original collection is modified, and is returned.  In order to use this method properly with
+     * mutable and fixed size collections the following approach must be taken:
+     * &lt;p&gt;
+     * &lt;pre&gt;
+     * MutableCollection&amp;lt;String&amp;gt; list = list.withoutAll(FastList.newListWith(&quot;1&quot;, &quot;2&quot;));
+     * &lt;/pre&gt;
+     * In the case of {@link FixedSizeCollection} a new instance of MutableCollection will be returned by withoutAll,
+     * and any variables that previously referenced the original collection will need to be redirected to reference the
+     * new instance.  For other MutableCollection types you will replace the reference to collection with the same
+     * collection, since the instance will return &quot;this&quot; after calling removeAll on itself.
+     *
+     * @see #removeAll(Collection)
+     */
+    MutableCollection&lt;T&gt; withoutAll(Iterable&lt;? extends T&gt; elements);
+
+    /**
+     * Creates a new empty mutable version of the same collection type.  For example, if this instance is a FastList,
+     * this method will return a new empty FastList.  If the class of this instance is immutable or fixed size (i.e.
+     * SingletonList) then a mutable alternative to the class will be provided.
+     */
+    MutableCollection&lt;T&gt; newEmpty();
+
+    @Override
+    MutableCollection&lt;T&gt; tap(Procedure&lt;? super T&gt; procedure);
+
+    /**
+     * Returns a MutableCollection with all elements that evaluate to true for the specified predicate.
+     * &lt;p&gt;
+     * &lt;pre&gt;
+     * MutableCollection&amp;lt;Integer&amp;gt; livesInLondon =
+     *     people.select(person -&gt; person.getAddress().getCity().equals(&quot;London&quot;));
+     * &lt;/pre&gt;
+     */
+    @Override
+    MutableCollection&lt;T&gt; select(Predicate&lt;? super T&gt; predicate);
+
+    /**
+     * Returns a MutableCollection with all elements that evaluate to true for the specified predicate2 and parameter.
+     * &lt;p&gt;
+     * &lt;pre&gt;
+     * MutableCollection&amp;lt;Integer&amp;gt; fives =
+     *     integers.selectWith(Predicates2.equal(), Integer.valueOf(5));
+     * &lt;/pre&gt;
+     */
+    @Override
+    &lt;P&gt; MutableCollection&lt;T&gt; selectWith(Predicate2&lt;? super T, ? super P&gt; predicate, P parameter);
+
+    /**
+     * Returns a MutableCollection with all elements that evaluate to false for the specified predicate.
+     * &lt;p&gt;
+     * &lt;pre&gt;
+     * MutableCollection&amp;lt;Person&amp;gt; notSmiths =
+     *     people.reject(person -&gt; person.person.getLastName().equals(&quot;Smith&quot;));
+     * &lt;/pre&gt;
+     * Using the &lt;code&gt;Predicates&lt;/code&gt; factory:
+     * &lt;p&gt;
+     * &lt;pre&gt;
+     * MutableCollection&amp;lt;Person&amp;gt; notSmiths = people.reject(Predicates.attributeEqual(&quot;lastName&quot;, &quot;Smith&quot;));
+     * &lt;/pre&gt;
+     */
+    @Override
+    MutableCollection&lt;T&gt; reject(Predicate&lt;? super T&gt; predicate);
+
+    /**
+     * Returns a MutableCollection with all elements that evaluate to false for the specified predicate2 and parameter.
+     * &lt;p&gt;
+     * &lt;pre&gt;e.g.
+     * MutableCollection&amp;lt;Integer&amp;gt; selected =
+     *     integers.rejectWith(Predicates2.equal(), Integer.valueOf(5));
+     * &lt;/pre&gt;
+     */
+    @Override
+    &lt;P&gt; MutableCollection&lt;T&gt; rejectWith(Predicate2&lt;? super T, ? super P&gt; predicate, P parameter);
+
+    /**
+     * Filters a collection into two separate collections based on a predicate returned via a Pair.
+     * &lt;p&gt;
+     * &lt;pre&gt;e.g.
+     * return lastNames.&lt;b&gt;selectAndRejectWith&lt;/b&gt;(Predicates2.lessThan(), &quot;Mason&quot;);
+     * &lt;/pre&gt;
+     *
+     * @deprecated since 6.0 use {@link RichIterable#partitionWith(Predicate2, Object)} instead.
+     */
+    @Deprecated
+    &lt;P&gt; Twin&lt;MutableList&lt;T&gt;&gt; selectAndRejectWith(Predicate2&lt;? super T, ? super P&gt; predicate, P parameter);
+
+    /**
+     * {@inheritDoc}
+     * Co-variant example for MutableCollection:
+     * &lt;pre&gt;
+     * PartitionMutableCollection&amp;lt;Person&amp;gt; newYorkersAndNonNewYorkers =
+     *     people.partition(person -&gt; person.getAddress().getState().getName().equals(&quot;New York&quot;));
+     * &lt;/pre&gt;
+     */
+    @Override
+    PartitionMutableCollection&lt;T&gt; partition(Predicate&lt;? super T&gt; predicate);
+
+    /**
+     * {@inheritDoc}
+     * Co-variant example for MutableCollection:
+     * &lt;pre&gt;
+     * PartitionMutableCollection&amp;lt;Person&gt;&amp;gt newYorkersAndNonNewYorkers =
+     *     people.partitionWith((Person person, String state) -&gt; person.getAddress().getState().getName().equals(state), &quot;New York&quot;);
+     * &lt;/pre&gt;
+     */
+    @Override
+    &lt;P&gt; PartitionMutableCollection&lt;T&gt; partitionWith(Predicate2&lt;? super T, ? super P&gt; predicate, P parameter);
+
+    /**
+     * {@inheritDoc}
+     * Co-variant example for MutableCollection:
+     * &lt;pre&gt;
+     * MutableCollection&amp;lt;Integer&amp;gt; integers =
+     *     List.mutable.with(new Integer(0), new Long(0L), new Double(0.0)).selectInstancesOf(Integer.class);
+     * &lt;/pre&gt;
+     *
+     * @since 2.0
+     */
+    @Override
+    &lt;S&gt; MutableCollection&lt;S&gt; selectInstancesOf(Class&lt;S&gt; clazz);
+
+    /**
+     * Removes all elements in the collection that evaluate to true for the specified predicate.
+     * &lt;p&gt;
+     * &lt;pre&gt;e.g.
+     * return lastNames.&lt;b&gt;removeIf&lt;/b&gt;(Predicates.isNull());
+     * &lt;/pre&gt;
+     */
+    boolean removeIf(Predicate&lt;? super T&gt; predicate);
+
+    /**
+     * Removes all elements in the collection that evaluate to true for the specified predicate2 and parameter.
+     * &lt;p&gt;
+     * &lt;pre&gt;
+     * return lastNames.&lt;b&gt;removeIfWith&lt;/b&gt;(Predicates2.isNull(), null);
+     * &lt;/pre&gt;
+     */
+    &lt;P&gt; boolean removeIfWith(Predicate2&lt;? super T, ? super P&gt; predicate, P parameter);
+
+    /**
+     * Returns a new MutableCollection with the results of applying the specified function to each element of the source
+     * collection.
+     * &lt;p&gt;
+     * &lt;pre&gt;
+     * MutableCollection&amp;lt;String&amp;gt; names =
+     *     people.collect(person -&gt; person.getFirstName() + &quot; &quot; + person.getLastName());
+     * &lt;/pre&gt;
+     */
+    @Override
+    &lt;V&gt; MutableCollection&lt;V&gt; collect(Function&lt;? super T, ? extends V&gt; function);
+
+    /**
+     * {@inheritDoc}
+     * Co-variant example for MutableCollection:
+     * &lt;pre&gt;
+     * MutableBooleanCollection licenses =
+     *     people.collectBoolean(person -&gt; person.hasDrivingLicense());
+     * &lt;/pre&gt;
+     */
+    @Override
+    MutableBooleanCollection collectBoolean(BooleanFunction&lt;? super T&gt; booleanFunction);
+
+    /**
+     * {@inheritDoc}
+     * Co-variant example for MutableCollection:
+     * &lt;pre&gt;
+     * MutableByteCollection bytes =
+     *     people.collectByte(person -&gt; person.getCode());
+     * &lt;/pre&gt;
+     */
+    @Override
+    MutableByteCollection collectByte(ByteFunction&lt;? super T&gt; byteFunction);
+
+    /**
+     * {@inheritDoc}
+     * Co-variant example for MutableCollection:
+     * &lt;pre&gt;
+     * MutableCharCollection chars =
+     *     people.collectChar(person -&gt; person.getMiddleInitial());
+     * &lt;/pre&gt;
+     */
+    @Override
+    MutableCharCollection collectChar(CharFunction&lt;? super T&gt; charFunction);
+
+    /**
+     * {@inheritDoc}
+     * Co-variant example for MutableCollection:
+     * &lt;pre&gt;
+     * MutableDoubleCollection doubles =
+     *     people.collectDouble(person -&gt; person.getMilesFromNorthPole());
+     * &lt;/pre&gt;
+     */
+    @Override
+    MutableDoubleCollection collectDouble(DoubleFunction&lt;? super T&gt; doubleFunction);
+
+    /**
+     * {@inheritDoc}
+     * Co-variant example for MutableCollection:
+     * &lt;pre&gt;
+     * MutableFloatCollection floats =
+     *     people.collectFloat(person -&gt; person.getHeightInInches());
+     * &lt;/pre&gt;
+     */
+    @Override
+    MutableFloatCollection collectFloat(FloatFunction&lt;? super T&gt; floatFunction);
+
+    /**
+     * {@inheritDoc}
+     * Co-variant example for MutableCollection:
+     * &lt;pre&gt;
+     * MutableIntCollection ints =
+     *     people.collectInt(person -&gt; person.getAge());
+     * &lt;/pre&gt;
+     */
+    @Override
+    MutableIntCollection collectInt(IntFunction&lt;? super T&gt; intFunction);
+
+    /**
+     * {@inheritDoc}
+     * Co-variant example for MutableCollection:
+     * &lt;pre&gt;
+     * MutableLongCollection longs =
+     *     people.collectLong(person -&gt; person.getGuid());
+     * &lt;/pre&gt;
+     */
+    @Override
+    MutableLongCollection collectLong(LongFunction&lt;? super T&gt; longFunction);
+
+    /**
+     * {@inheritDoc}
+     * Co-variant example for MutableCollection:
+     * &lt;pre&gt;
+     * MutableShortCollection shorts =
+     *     people.collectShort(person -&gt; person.getNumberOfJunkMailItemsReceivedPerMonth());
+     * &lt;/pre&gt;
+     */
+    @Override
+    MutableShortCollection collectShort(ShortFunction&lt;? super T&gt; shortFunction);
+
+    /**
+     * {@inheritDoc}
+     * Co-variant example for MutableCollection:
+     * &lt;pre&gt;
+     * MutableCollection&amp;lt;Integer&amp;gt; integers =
+     *     Lists.mutable.with(1, 2, 3).collectWith((each, parameter) -&gt; each + parameter, Integer.valueOf(1));
+     * &lt;/pre&gt;
+     * &lt;p&gt;
+     */
+    @Override
+    &lt;P, V&gt; MutableCollection&lt;V&gt; collectWith(Function2&lt;? super T, ? super P, ? extends V&gt; function, P parameter);
+
+    /**
+     * Returns a new MutableCollection with the results of applying the specified function to each element of the source
+     * collection, but only for elements that evaluate to true for the specified predicate.
+     * &lt;p&gt;
+     * &lt;pre&gt;
+     * MutableCollection&amp;lt;String&amp;gt; collected =
+     *     Lists.mutable.of().with(1, 2, 3).collectIf(Predicates.notNull(), Functions.getToString())
+     * &lt;/pre&gt;
+     */
+    @Override
+    &lt;V&gt; MutableCollection&lt;V&gt; collectIf(Predicate&lt;? super T&gt; predicate, Function&lt;? super T, ? extends V&gt; function);
+
+    /**
+     * {@inheritDoc}
+     * Co-variant example for MutableCollection:
+     * &lt;pre&gt;
+     * Function&amp;lt;Person, List&amp;lt;Address&amp;gt;&amp;gt; addressFunction = Person::getAddresses;
+     * MutableCollection&amp;lt;Person&amp;gt; people = ...;
+     * MutableCollection&amp;lt;List&amp;lt;Address&amp;gt;&amp;gt; addresses = people.collect(addressFunction);
+     * MutableCollection&amp;lt;Address&amp;gt; addresses = people.flatCollect(addressFunction);
+     * &lt;/pre&gt;
+     *
+     * @param function The {@link Function} to apply
+     * @return a new flattened collection produced by applying the given {@code function}
+     * @since 1.0
+     */
+    @Override
+    &lt;V&gt; MutableCollection&lt;V&gt; flatCollect(Function&lt;? super T, ? extends Iterable&lt;V&gt;&gt; function);
+
+    /**
+     * @since 9.2
+     */
+    @Override
+    default &lt;P, V&gt; MutableCollection&lt;V&gt; flatCollectWith(Function2&lt;? super T, ? super P, ? extends Iterable&lt;V&gt;&gt; function, P parameter)
+    {
+<span class="nc" id="L414">        return this.flatCollect(each -&gt; function.apply(each, parameter));</span>
+    }
+
+    &lt;IV, P&gt; IV injectIntoWith(
+            IV injectValue,
+            Function3&lt;? super IV, ? super T, ? super P, ? extends IV&gt; function,
+            P parameter);
+
+    /**
+     * Returns an unmodifiable view of this collection.  This is the equivalent of using
+     * {@code Collections.unmodifiableCollection(this)} with a return type that supports the full
+     * iteration protocols available on {@code MutableCollection}.  Methods which would
+     * mutate the underlying collection will throw UnsupportedOperationExceptions.
+     *
+     * @return an unmodifiable view of this collection.
+     * @see java.util.Collections#unmodifiableCollection(Collection)
+     * @since 1.0
+     */
+    MutableCollection&lt;T&gt; asUnmodifiable();
+
+    /**
+     * Returns a synchronized wrapper backed by this collection. This is the equivalent of using
+     * {@code Collections.synchronizedCollection(this)} only with a return type that supports the full
+     * iteration protocols available on {@code MutableCollection}.
+     *
+     * The preferred way of iterating over a synchronized collection is to use the internal iteration
+     * methods which are properly synchronized internally.
+     *
+     * &lt;pre&gt;
+     *  MutableCollection synchedCollection = collection.asSynchronized();
+     *     ...
+     *  synchedCollection.forEach(each -&gt; ... );
+     *  synchedCollection.select(each -&gt; ... );
+     *  synchedCollection.collect(each -&gt; ... );
+     * &lt;/pre&gt;
+     *
+     * If you want to iterate using an imperative style, you must protect external iterators using
+     * a synchronized block.  This includes explicit iterators as well as JDK 5 style for loops.
+     * &lt;p&gt;
+     *
+     * @return a synchronized view of this collection.
+     * @see java.util.Collections#synchronizedCollection(Collection)
+     * @since 1.0
+     */
+    MutableCollection&lt;T&gt; asSynchronized();
+
+    /**
+     * Converts this {@code MutableCollection} to an {@code ImmutableCollection}.
+     *
+     * @since 1.0
+     */
+    ImmutableCollection&lt;T&gt; toImmutable();
+
+    @Override
+    &lt;V&gt; MutableObjectLongMap&lt;V&gt; sumByInt(Function&lt;? super T, ? extends V&gt; groupBy, IntFunction&lt;? super T&gt; function);
+
+    @Override
+    &lt;V&gt; MutableObjectDoubleMap&lt;V&gt; sumByFloat(Function&lt;? super T, ? extends V&gt; groupBy, FloatFunction&lt;? super T&gt; function);
+
+    @Override
+    &lt;V&gt; MutableObjectLongMap&lt;V&gt; sumByLong(Function&lt;? super T, ? extends V&gt; groupBy, LongFunction&lt;? super T&gt; function);
+
+    @Override
+    &lt;V&gt; MutableObjectDoubleMap&lt;V&gt; sumByDouble(Function&lt;? super T, ? extends V&gt; groupBy, DoubleFunction&lt;? super T&gt; function);
+
+    /**
+     * @since 9.0
+     */
+    @Override
+    default &lt;V&gt; MutableBag&lt;V&gt; countBy(Function&lt;? super T, ? extends V&gt; function)
+    {
+<span class="nc" id="L485">        return this.asLazy().&lt;V&gt;collect(function).toBag();</span>
+    }
+
+    /**
+     * @since 9.0
+     */
+    @Override
+    default &lt;V, P&gt; MutableBag&lt;V&gt; countByWith(Function2&lt;? super T, ? super P, ? extends V&gt; function, P parameter)
+    {
+<span class="nc" id="L494">        return this.asLazy().&lt;P, V&gt;collectWith(function, parameter).toBag();</span>
+    }
+
+    /**
+     * @since 10.0.0
+     */
+    @Override
+    default &lt;V&gt; MutableBag&lt;V&gt; countByEach(Function&lt;? super T, ? extends Iterable&lt;V&gt;&gt; function)
+    {
+<span class="nc" id="L503">        return this.asLazy().&lt;V&gt;flatCollect(function).toBag();</span>
+    }
+
+    /**
+     * {@inheritDoc}
+     * Co-variant example for MutableCollection:
+     * &lt;pre&gt;
+     * MutableMultimap&amp;lt;String, Person&amp;gt; peopleByLastName =
+     *     people.groupBy(Person::getLastName);
+     * &lt;/pre&gt;
+     */
+    @Override
+    &lt;V&gt; MutableMultimap&lt;V, T&gt; groupBy(Function&lt;? super T, ? extends V&gt; function);
+
+    @Override
+    &lt;V&gt; MutableMultimap&lt;V, T&gt; groupByEach(Function&lt;? super T, ? extends Iterable&lt;V&gt;&gt; function);
+
+    @Override
+    &lt;V&gt; MutableMap&lt;V, T&gt; groupByUniqueKey(Function&lt;? super T, ? extends V&gt; function);
+
+    /**
+     * @deprecated in 6.0. Use {@link OrderedIterable#zip(Iterable)} instead.
+     */
+    @Override
+    @Deprecated
+    &lt;S&gt; MutableCollection&lt;Pair&lt;T, S&gt;&gt; zip(Iterable&lt;S&gt; that);
+
+    /**
+     * @deprecated in 6.0. Use {@link OrderedIterable#zipWithIndex()} instead.
+     */
+    @Override
+    @Deprecated
+    MutableCollection&lt;Pair&lt;T, Integer&gt;&gt; zipWithIndex();
+
+    /**
+     * @see #addAll(Collection)
+     * @since 1.0
+     */
+    boolean addAllIterable(Iterable&lt;? extends T&gt; iterable);
+
+    /**
+     * @see #removeAll(Collection)
+     * @since 1.0
+     */
+    boolean removeAllIterable(Iterable&lt;?&gt; iterable);
+
+    /**
+     * @see #retainAll(Collection)
+     * @since 1.0
+     */
+    boolean retainAllIterable(Iterable&lt;?&gt; iterable);
+
+    @Override
+    &lt;K, V&gt; MutableMap&lt;K, V&gt; aggregateInPlaceBy(
+            Function&lt;? super T, ? extends K&gt; groupBy,
+            Function0&lt;? extends V&gt; zeroValueFactory,
+            Procedure2&lt;? super V, ? super T&gt; mutatingAggregator);
+
+    @Override
+    &lt;K, V&gt; MutableMap&lt;K, V&gt; aggregateBy(
+            Function&lt;? super T, ? extends K&gt; groupBy,
+            Function0&lt;? extends V&gt; zeroValueFactory,
+            Function2&lt;? super V, ? super T, ? extends V&gt; nonMutatingAggregator);
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.0.201801022044</span></div></body></html>

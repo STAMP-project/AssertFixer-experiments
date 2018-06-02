@@ -1,0 +1,452 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>AbstractLazyIterable.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Eclipse Collections Test Coverage Aggregation</a> &gt; <a href="../index.html" class="el_bundle">eclipse-collections</a> &gt; <a href="index.source.html" class="el_package">org.eclipse.collections.impl.lazy</a> &gt; <span class="el_source">AbstractLazyIterable.java</span></div><h1>AbstractLazyIterable.java</h1><pre class="source lang-java linenums">/*
+ * Copyright (c) 2016 Goldman Sachs.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * and Eclipse Distribution License v. 1.0 which accompany this distribution.
+ * The Eclipse Public License is available at http://www.eclipse.org/legal/epl-v10.html
+ * and the Eclipse Distribution License is available at
+ * http://www.eclipse.org/org/documents/edl-v10.php.
+ */
+
+package org.eclipse.collections.impl.lazy;
+
+import java.util.Collection;
+import java.util.Comparator;
+import java.util.Iterator;
+import java.util.Optional;
+
+import org.eclipse.collections.api.LazyBooleanIterable;
+import org.eclipse.collections.api.LazyByteIterable;
+import org.eclipse.collections.api.LazyCharIterable;
+import org.eclipse.collections.api.LazyDoubleIterable;
+import org.eclipse.collections.api.LazyFloatIterable;
+import org.eclipse.collections.api.LazyIntIterable;
+import org.eclipse.collections.api.LazyIterable;
+import org.eclipse.collections.api.LazyLongIterable;
+import org.eclipse.collections.api.LazyShortIterable;
+import org.eclipse.collections.api.RichIterable;
+import org.eclipse.collections.api.block.function.Function;
+import org.eclipse.collections.api.block.function.Function0;
+import org.eclipse.collections.api.block.function.Function2;
+import org.eclipse.collections.api.block.function.primitive.BooleanFunction;
+import org.eclipse.collections.api.block.function.primitive.ByteFunction;
+import org.eclipse.collections.api.block.function.primitive.CharFunction;
+import org.eclipse.collections.api.block.function.primitive.DoubleFunction;
+import org.eclipse.collections.api.block.function.primitive.FloatFunction;
+import org.eclipse.collections.api.block.function.primitive.IntFunction;
+import org.eclipse.collections.api.block.function.primitive.LongFunction;
+import org.eclipse.collections.api.block.function.primitive.ShortFunction;
+import org.eclipse.collections.api.block.predicate.Predicate;
+import org.eclipse.collections.api.block.predicate.Predicate2;
+import org.eclipse.collections.api.block.procedure.Procedure;
+import org.eclipse.collections.api.block.procedure.Procedure2;
+import org.eclipse.collections.api.map.MapIterable;
+import org.eclipse.collections.api.map.MutableMap;
+import org.eclipse.collections.api.map.primitive.MutableObjectDoubleMap;
+import org.eclipse.collections.api.map.primitive.MutableObjectLongMap;
+import org.eclipse.collections.api.map.primitive.ObjectDoubleMap;
+import org.eclipse.collections.api.map.primitive.ObjectLongMap;
+import org.eclipse.collections.api.multimap.Multimap;
+import org.eclipse.collections.api.partition.list.PartitionMutableList;
+import org.eclipse.collections.api.stack.MutableStack;
+import org.eclipse.collections.api.tuple.Pair;
+import org.eclipse.collections.impl.AbstractRichIterable;
+import org.eclipse.collections.impl.block.factory.Functions;
+import org.eclipse.collections.impl.block.factory.Predicates;
+import org.eclipse.collections.impl.block.factory.PrimitiveFunctions;
+import org.eclipse.collections.impl.block.factory.Procedures2;
+import org.eclipse.collections.impl.block.procedure.MaxByProcedure;
+import org.eclipse.collections.impl.block.procedure.MaxComparatorProcedure;
+import org.eclipse.collections.impl.block.procedure.MaxProcedure;
+import org.eclipse.collections.impl.block.procedure.MinByProcedure;
+import org.eclipse.collections.impl.block.procedure.MinComparatorProcedure;
+import org.eclipse.collections.impl.block.procedure.MinProcedure;
+import org.eclipse.collections.impl.block.procedure.MutatingAggregationProcedure;
+import org.eclipse.collections.impl.block.procedure.NonMutatingAggregationProcedure;
+import org.eclipse.collections.impl.block.procedure.PartitionProcedure;
+import org.eclipse.collections.impl.lazy.primitive.CollectBooleanIterable;
+import org.eclipse.collections.impl.lazy.primitive.CollectByteIterable;
+import org.eclipse.collections.impl.lazy.primitive.CollectCharIterable;
+import org.eclipse.collections.impl.lazy.primitive.CollectDoubleIterable;
+import org.eclipse.collections.impl.lazy.primitive.CollectFloatIterable;
+import org.eclipse.collections.impl.lazy.primitive.CollectIntIterable;
+import org.eclipse.collections.impl.lazy.primitive.CollectLongIterable;
+import org.eclipse.collections.impl.lazy.primitive.CollectShortIterable;
+import org.eclipse.collections.impl.map.mutable.UnifiedMap;
+import org.eclipse.collections.impl.map.mutable.primitive.ObjectDoubleHashMap;
+import org.eclipse.collections.impl.map.mutable.primitive.ObjectLongHashMap;
+import org.eclipse.collections.impl.multimap.list.FastListMultimap;
+import org.eclipse.collections.impl.partition.list.PartitionFastList;
+import org.eclipse.collections.impl.stack.mutable.ArrayStack;
+import org.eclipse.collections.impl.utility.LazyIterate;
+
+/**
+ * AbstractLazyIterable provides a base from which deferred iterables such as SelectIterable,
+ * RejectIterable and CollectIterable can be derived.
+ */
+<span class="nc" id="L87">public abstract class AbstractLazyIterable&lt;T&gt;</span>
+        extends AbstractRichIterable&lt;T&gt;
+        implements LazyIterable&lt;T&gt;
+{
+    @Override
+    public LazyIterable&lt;T&gt; asLazy()
+    {
+<span class="nc" id="L94">        return this;</span>
+    }
+
+    @Override
+    public &lt;R extends Collection&lt;T&gt;&gt; R into(R target)
+    {
+<span class="nc" id="L100">        this.forEachWith(Procedures2.addToCollection(), target);</span>
+<span class="nc" id="L101">        return target;</span>
+    }
+
+    @Override
+    public &lt;E&gt; E[] toArray(E[] array)
+    {
+<span class="nc" id="L107">        return this.toList().toArray(array);</span>
+    }
+
+    @Override
+    public int size()
+    {
+<span class="nc" id="L113">        return this.count(Predicates.alwaysTrue());</span>
+    }
+
+    @Override
+    public boolean isEmpty()
+    {
+<span class="nc bnc" id="L119" title="All 2 branches missed.">        return !this.anySatisfy(Predicates.alwaysTrue());</span>
+    }
+
+    @Override
+    public T getFirst()
+    {
+<span class="nc" id="L125">        return this.detect(Predicates.alwaysTrue());</span>
+    }
+
+    @Override
+    public T getLast()
+    {
+<span class="nc" id="L131">        T[] result = (T[]) new Object[1];</span>
+<span class="nc" id="L132">        this.each(each -&gt; result[0] = each);</span>
+<span class="nc" id="L133">        return result[0];</span>
+    }
+
+    @Override
+    public T getOnly()
+    {
+<span class="nc" id="L139">        Iterator&lt;T&gt; iterator = this.iterator();</span>
+
+<span class="nc bnc" id="L141" title="All 2 branches missed.">        if (!iterator.hasNext())</span>
+        {
+<span class="nc" id="L143">            throw new IllegalStateException(&quot;Size must be 1 but was 0&quot;);</span>
+        }
+
+<span class="nc" id="L146">        T result = iterator.next();</span>
+<span class="nc bnc" id="L147" title="All 2 branches missed.">        if (iterator.hasNext())</span>
+        {
+<span class="nc" id="L149">            throw new IllegalStateException(&quot;Size must be 1 but was greater than 1&quot;);</span>
+        }
+
+<span class="nc" id="L152">        return result;</span>
+    }
+
+    @Override
+    public LazyIterable&lt;T&gt; select(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L158">        return LazyIterate.select(this, predicate);</span>
+    }
+
+    @Override
+    public &lt;P&gt; LazyIterable&lt;T&gt; selectWith(Predicate2&lt;? super T, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc" id="L164">        return LazyIterate.select(this, Predicates.bind(predicate, parameter));</span>
+    }
+
+    @Override
+    public LazyIterable&lt;T&gt; reject(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L170">        return LazyIterate.reject(this, predicate);</span>
+    }
+
+    @Override
+    public &lt;P&gt; LazyIterable&lt;T&gt; rejectWith(Predicate2&lt;? super T, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc" id="L176">        return LazyIterate.reject(this, Predicates.bind(predicate, parameter));</span>
+    }
+
+    @Override
+    public PartitionMutableList&lt;T&gt; partition(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L182">        PartitionMutableList&lt;T&gt; partitionMutableList = new PartitionFastList&lt;&gt;();</span>
+<span class="nc" id="L183">        this.forEach(new PartitionProcedure&lt;&gt;(predicate, partitionMutableList));</span>
+<span class="nc" id="L184">        return partitionMutableList;</span>
+    }
+
+    @Override
+    public &lt;P&gt; PartitionMutableList&lt;T&gt; partitionWith(Predicate2&lt;? super T, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc" id="L190">        return this.partition(Predicates.bind(predicate, parameter));</span>
+    }
+
+    @Override
+    public &lt;S&gt; LazyIterable&lt;S&gt; selectInstancesOf(Class&lt;S&gt; clazz)
+    {
+<span class="nc" id="L196">        return LazyIterate.selectInstancesOf(this, clazz);</span>
+    }
+
+    @Override
+    public &lt;V&gt; LazyIterable&lt;V&gt; collect(Function&lt;? super T, ? extends V&gt; function)
+    {
+<span class="nc" id="L202">        return LazyIterate.collect(this, function);</span>
+    }
+
+    @Override
+    public LazyBooleanIterable collectBoolean(BooleanFunction&lt;? super T&gt; booleanFunction)
+    {
+<span class="nc" id="L208">        return new CollectBooleanIterable&lt;&gt;(this, booleanFunction);</span>
+    }
+
+    @Override
+    public LazyByteIterable collectByte(ByteFunction&lt;? super T&gt; byteFunction)
+    {
+<span class="nc" id="L214">        return new CollectByteIterable&lt;&gt;(this, byteFunction);</span>
+    }
+
+    @Override
+    public LazyCharIterable collectChar(CharFunction&lt;? super T&gt; charFunction)
+    {
+<span class="nc" id="L220">        return new CollectCharIterable&lt;&gt;(this, charFunction);</span>
+    }
+
+    @Override
+    public LazyDoubleIterable collectDouble(DoubleFunction&lt;? super T&gt; doubleFunction)
+    {
+<span class="nc" id="L226">        return new CollectDoubleIterable&lt;&gt;(this, doubleFunction);</span>
+    }
+
+    @Override
+    public LazyFloatIterable collectFloat(FloatFunction&lt;? super T&gt; floatFunction)
+    {
+<span class="nc" id="L232">        return new CollectFloatIterable&lt;&gt;(this, floatFunction);</span>
+    }
+
+    @Override
+    public LazyIntIterable collectInt(IntFunction&lt;? super T&gt; intFunction)
+    {
+<span class="nc" id="L238">        return new CollectIntIterable&lt;&gt;(this, intFunction);</span>
+    }
+
+    @Override
+    public LazyLongIterable collectLong(LongFunction&lt;? super T&gt; longFunction)
+    {
+<span class="nc" id="L244">        return new CollectLongIterable&lt;&gt;(this, longFunction);</span>
+    }
+
+    @Override
+    public LazyShortIterable collectShort(ShortFunction&lt;? super T&gt; shortFunction)
+    {
+<span class="nc" id="L250">        return new CollectShortIterable&lt;&gt;(this, shortFunction);</span>
+    }
+
+    @Override
+    public &lt;P, V&gt; LazyIterable&lt;V&gt; collectWith(Function2&lt;? super T, ? super P, ? extends V&gt; function, P parameter)
+    {
+<span class="nc" id="L256">        return LazyIterate.collect(this, Functions.bind(function, parameter));</span>
+    }
+
+    @Override
+    public &lt;V&gt; LazyIterable&lt;V&gt; flatCollect(Function&lt;? super T, ? extends Iterable&lt;V&gt;&gt; function)
+    {
+<span class="nc" id="L262">        return LazyIterate.flatCollect(this, function);</span>
+    }
+
+    @Override
+    public LazyIterable&lt;T&gt; concatenate(Iterable&lt;T&gt; iterable)
+    {
+<span class="nc" id="L268">        return LazyIterate.concatenate(this, iterable);</span>
+    }
+
+    @Override
+    public &lt;V&gt; LazyIterable&lt;V&gt; collectIf(Predicate&lt;? super T&gt; predicate, Function&lt;? super T, ? extends V&gt; function)
+    {
+<span class="nc" id="L274">        return LazyIterate.collectIf(this, predicate, function);</span>
+    }
+
+    @Override
+    public LazyIterable&lt;T&gt; take(int count)
+    {
+<span class="nc" id="L280">        return LazyIterate.take(this, count);</span>
+    }
+
+    @Override
+    public LazyIterable&lt;T&gt; drop(int count)
+    {
+<span class="nc" id="L286">        return LazyIterate.drop(this, count);</span>
+    }
+
+    @Override
+    public LazyIterable&lt;T&gt; takeWhile(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L292">        return LazyIterate.takeWhile(this, predicate);</span>
+    }
+
+    @Override
+    public LazyIterable&lt;T&gt; dropWhile(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L298">        return LazyIterate.dropWhile(this, predicate);</span>
+    }
+
+    @Override
+    public LazyIterable&lt;T&gt; distinct()
+    {
+<span class="nc" id="L304">        return LazyIterate.distinct(this);</span>
+    }
+
+    public MutableStack&lt;T&gt; toStack()
+    {
+<span class="nc" id="L309">        return ArrayStack.newStack(this);</span>
+    }
+
+    @Override
+    public &lt;V&gt; Multimap&lt;V, T&gt; groupBy(Function&lt;? super T, ? extends V&gt; function)
+    {
+<span class="nc" id="L315">        return this.groupBy(function, FastListMultimap.newMultimap());</span>
+    }
+
+    @Override
+    public &lt;V&gt; Multimap&lt;V, T&gt; groupByEach(Function&lt;? super T, ? extends Iterable&lt;V&gt;&gt; function)
+    {
+<span class="nc" id="L321">        return this.groupByEach(function, FastListMultimap.newMultimap());</span>
+    }
+
+    @Override
+    public &lt;V&gt; MapIterable&lt;V, T&gt; groupByUniqueKey(Function&lt;? super T, ? extends V&gt; function)
+    {
+<span class="nc" id="L327">        return this.groupByUniqueKey(function, UnifiedMap.newMap(this.size()));</span>
+    }
+
+    @Override
+    public &lt;S&gt; LazyIterable&lt;Pair&lt;T, S&gt;&gt; zip(Iterable&lt;S&gt; that)
+    {
+<span class="nc" id="L333">        return LazyIterate.zip(this, that);</span>
+    }
+
+    @Override
+    public LazyIterable&lt;Pair&lt;T, Integer&gt;&gt; zipWithIndex()
+    {
+<span class="nc" id="L339">        return LazyIterate.zipWithIndex(this);</span>
+    }
+
+    @Override
+    public LazyIterable&lt;RichIterable&lt;T&gt;&gt; chunk(int size)
+    {
+<span class="nc" id="L345">        return LazyIterate.chunk(this, size);</span>
+    }
+
+    @Override
+    public LazyIterable&lt;T&gt; tap(Procedure&lt;? super T&gt; procedure)
+    {
+<span class="nc" id="L351">        return LazyIterate.tap(this, procedure);</span>
+    }
+
+    @Override
+    public &lt;K, V&gt; MapIterable&lt;K, V&gt; aggregateInPlaceBy(
+            Function&lt;? super T, ? extends K&gt; groupBy,
+            Function0&lt;? extends V&gt; zeroValueFactory,
+            Procedure2&lt;? super V, ? super T&gt; mutatingAggregator)
+    {
+<span class="nc" id="L360">        MutableMap&lt;K, V&gt; map = UnifiedMap.newMap();</span>
+<span class="nc" id="L361">        this.forEach(new MutatingAggregationProcedure&lt;&gt;(map, groupBy, zeroValueFactory, mutatingAggregator));</span>
+<span class="nc" id="L362">        return map;</span>
+    }
+
+    @Override
+    public &lt;K, V&gt; MapIterable&lt;K, V&gt; aggregateBy(
+            Function&lt;? super T, ? extends K&gt; groupBy,
+            Function0&lt;? extends V&gt; zeroValueFactory,
+            Function2&lt;? super V, ? super T, ? extends V&gt; nonMutatingAggregator)
+    {
+<span class="nc" id="L371">        MutableMap&lt;K, V&gt; map = UnifiedMap.newMap();</span>
+<span class="nc" id="L372">        this.forEach(new NonMutatingAggregationProcedure&lt;&gt;(map, groupBy, zeroValueFactory, nonMutatingAggregator));</span>
+<span class="nc" id="L373">        return map;</span>
+    }
+
+    @Override
+    public &lt;V&gt; ObjectLongMap&lt;V&gt; sumByInt(Function&lt;? super T, ? extends V&gt; groupBy, IntFunction&lt;? super T&gt; function)
+    {
+<span class="nc" id="L379">        MutableObjectLongMap&lt;V&gt; result = ObjectLongHashMap.newMap();</span>
+<span class="nc" id="L380">        return this.injectInto(result, PrimitiveFunctions.sumByIntFunction(groupBy, function));</span>
+    }
+
+    @Override
+    public &lt;V&gt; ObjectDoubleMap&lt;V&gt; sumByFloat(Function&lt;? super T, ? extends V&gt; groupBy, FloatFunction&lt;? super T&gt; function)
+    {
+<span class="nc" id="L386">        MutableObjectDoubleMap&lt;V&gt; result = ObjectDoubleHashMap.newMap();</span>
+<span class="nc" id="L387">        return this.injectInto(result, PrimitiveFunctions.sumByFloatFunction(groupBy, function));</span>
+    }
+
+    @Override
+    public &lt;V&gt; ObjectLongMap&lt;V&gt; sumByLong(Function&lt;? super T, ? extends V&gt; groupBy, LongFunction&lt;? super T&gt; function)
+    {
+<span class="nc" id="L393">        MutableObjectLongMap&lt;V&gt; result = ObjectLongHashMap.newMap();</span>
+<span class="nc" id="L394">        return this.injectInto(result, PrimitiveFunctions.sumByLongFunction(groupBy, function));</span>
+    }
+
+    @Override
+    public &lt;V&gt; ObjectDoubleMap&lt;V&gt; sumByDouble(Function&lt;? super T, ? extends V&gt; groupBy, DoubleFunction&lt;? super T&gt; function)
+    {
+<span class="nc" id="L400">        MutableObjectDoubleMap&lt;V&gt; result = ObjectDoubleHashMap.newMap();</span>
+<span class="nc" id="L401">        return this.injectInto(result, PrimitiveFunctions.sumByDoubleFunction(groupBy, function));</span>
+    }
+
+    @Override
+    public Optional&lt;T&gt; minOptional(Comparator&lt;? super T&gt; comparator)
+    {
+<span class="nc" id="L407">        MinComparatorProcedure&lt;T&gt; minComparatorProcedure = new MinComparatorProcedure&lt;&gt;(comparator);</span>
+<span class="nc" id="L408">        this.forEach(minComparatorProcedure);</span>
+<span class="nc" id="L409">        return minComparatorProcedure.getResultOptional();</span>
+    }
+
+    @Override
+    public Optional&lt;T&gt; maxOptional(Comparator&lt;? super T&gt; comparator)
+    {
+<span class="nc" id="L415">        MaxComparatorProcedure&lt;T&gt; maxComparatorProcedure = new MaxComparatorProcedure&lt;&gt;(comparator);</span>
+<span class="nc" id="L416">        this.forEach(maxComparatorProcedure);</span>
+<span class="nc" id="L417">        return maxComparatorProcedure.getResultOptional();</span>
+    }
+
+    @Override
+    public Optional&lt;T&gt; minOptional()
+    {
+<span class="nc" id="L423">        MinProcedure&lt;T&gt; minProcedure = new MinProcedure&lt;&gt;();</span>
+<span class="nc" id="L424">        this.forEach(minProcedure);</span>
+<span class="nc" id="L425">        return minProcedure.getResultOptional();</span>
+    }
+
+    @Override
+    public Optional&lt;T&gt; maxOptional()
+    {
+<span class="nc" id="L431">        MaxProcedure&lt;T&gt; maxProcedure = new MaxProcedure&lt;&gt;();</span>
+<span class="nc" id="L432">        this.forEach(maxProcedure);</span>
+<span class="nc" id="L433">        return maxProcedure.getResultOptional();</span>
+    }
+
+    @Override
+    public &lt;V extends Comparable&lt;? super V&gt;&gt; Optional&lt;T&gt; minByOptional(Function&lt;? super T, ? extends V&gt; function)
+    {
+<span class="nc" id="L439">        MinByProcedure&lt;T, V&gt; minByProcedure = new MinByProcedure&lt;&gt;(function);</span>
+<span class="nc" id="L440">        this.forEach(minByProcedure);</span>
+<span class="nc" id="L441">        return minByProcedure.getResultOptional();</span>
+    }
+
+    @Override
+    public &lt;V extends Comparable&lt;? super V&gt;&gt; Optional&lt;T&gt; maxByOptional(Function&lt;? super T, ? extends V&gt; function)
+    {
+<span class="nc" id="L447">        MaxByProcedure&lt;T, V&gt; maxByProcedure = new MaxByProcedure&lt;&gt;(function);</span>
+<span class="nc" id="L448">        this.forEach(maxByProcedure);</span>
+<span class="nc" id="L449">        return maxByProcedure.getResultOptional();</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.0.201801022044</span></div></body></html>

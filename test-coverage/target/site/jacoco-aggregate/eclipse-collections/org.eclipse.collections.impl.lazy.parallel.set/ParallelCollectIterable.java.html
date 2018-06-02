@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>ParallelCollectIterable.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Eclipse Collections Test Coverage Aggregation</a> &gt; <a href="../index.html" class="el_bundle">eclipse-collections</a> &gt; <a href="index.source.html" class="el_package">org.eclipse.collections.impl.lazy.parallel.set</a> &gt; <span class="el_source">ParallelCollectIterable.java</span></div><h1>ParallelCollectIterable.java</h1><pre class="source lang-java linenums">/*
+ * Copyright (c) 2016 Goldman Sachs.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * and Eclipse Distribution License v. 1.0 which accompany this distribution.
+ * The Eclipse Public License is available at http://www.eclipse.org/legal/epl-v10.html
+ * and the Eclipse Distribution License is available at
+ * http://www.eclipse.org/org/documents/edl-v10.php.
+ */
+
+package org.eclipse.collections.impl.lazy.parallel.set;
+
+import java.util.concurrent.ExecutorService;
+
+import org.eclipse.collections.api.LazyIterable;
+import org.eclipse.collections.api.annotation.Beta;
+import org.eclipse.collections.api.bag.MutableBag;
+import org.eclipse.collections.api.block.function.Function;
+import org.eclipse.collections.api.block.predicate.Predicate;
+import org.eclipse.collections.api.block.procedure.Procedure;
+import org.eclipse.collections.api.map.MapIterable;
+import org.eclipse.collections.api.multimap.bag.UnsortedBagMultimap;
+import org.eclipse.collections.impl.block.factory.Functions;
+import org.eclipse.collections.impl.block.factory.Predicates;
+import org.eclipse.collections.impl.lazy.parallel.AbstractParallelIterable;
+import org.eclipse.collections.impl.lazy.parallel.AbstractParallelIterableImpl;
+import org.eclipse.collections.impl.lazy.parallel.Batch;
+
+@Beta
+public class ParallelCollectIterable&lt;T, V&gt; extends AbstractParallelIterableImpl&lt;V, Batch&lt;V&gt;&gt;
+{
+    private final AbstractParallelIterable&lt;T, ? extends Batch&lt;T&gt;&gt; delegate;
+    private final Function&lt;? super T, ? extends V&gt; function;
+
+    public ParallelCollectIterable(AbstractParallelIterable&lt;T, ? extends Batch&lt;T&gt;&gt; delegate, Function&lt;? super T, ? extends V&gt; function)
+<span class="nc" id="L36">    {</span>
+<span class="nc" id="L37">        this.delegate = delegate;</span>
+<span class="nc" id="L38">        this.function = function;</span>
+<span class="nc" id="L39">    }</span>
+
+    @Override
+    public ExecutorService getExecutorService()
+    {
+<span class="nc" id="L44">        return this.delegate.getExecutorService();</span>
+    }
+
+    @Override
+    public int getBatchSize()
+    {
+<span class="nc" id="L50">        return this.delegate.getBatchSize();</span>
+    }
+
+    @Override
+    public LazyIterable&lt;Batch&lt;V&gt;&gt; split()
+    {
+<span class="nc" id="L56">        return this.delegate.split().collect(eachBatch -&gt; eachBatch.collect(this.function));</span>
+    }
+
+    @Override
+    public void forEach(Procedure&lt;? super V&gt; procedure)
+    {
+<span class="nc" id="L62">        this.delegate.forEach(Functions.bind(procedure, this.function));</span>
+<span class="nc" id="L63">    }</span>
+
+    @Override
+    public boolean anySatisfy(Predicate&lt;? super V&gt; predicate)
+    {
+<span class="nc" id="L68">        return this.delegate.anySatisfy(Predicates.attributePredicate(this.function, predicate));</span>
+    }
+
+    @Override
+    public boolean allSatisfy(Predicate&lt;? super V&gt; predicate)
+    {
+<span class="nc" id="L74">        return this.delegate.allSatisfy(Predicates.attributePredicate(this.function, predicate));</span>
+    }
+
+    @Override
+    public V detect(Predicate&lt;? super V&gt; predicate)
+    {
+<span class="nc" id="L80">        T resultItem = this.delegate.detect(Predicates.attributePredicate(this.function, predicate));</span>
+<span class="nc bnc" id="L81" title="All 2 branches missed.">        return resultItem == null ? null : this.function.valueOf(resultItem);</span>
+    }
+
+    @Override
+    public Object[] toArray()
+    {
+        // TODO: Implement in parallel
+<span class="nc" id="L88">        return this.delegate.toList().collect(this.function).toArray();</span>
+    }
+
+    @Override
+    public &lt;E&gt; E[] toArray(E[] array)
+    {
+        // TODO: Implement in parallel
+<span class="nc" id="L95">        return this.delegate.toList().collect(this.function).toArray(array);</span>
+    }
+
+    @Override
+    public &lt;V1&gt; UnsortedBagMultimap&lt;V1, V&gt; groupBy(Function&lt;? super V, ? extends V1&gt; function)
+    {
+        // TODO: Implement in parallel
+<span class="nc" id="L102">        MutableBag&lt;V&gt; mutableBag = this.delegate.toBag().collect(this.function);</span>
+<span class="nc" id="L103">        return mutableBag.groupBy(function);</span>
+    }
+
+    @Override
+    public &lt;V1&gt; UnsortedBagMultimap&lt;V1, V&gt; groupByEach(Function&lt;? super V, ? extends Iterable&lt;V1&gt;&gt; function)
+    {
+        // TODO: Implement in parallel
+<span class="nc" id="L110">        MutableBag&lt;V&gt; mutableBag = this.delegate.toBag().collect(this.function);</span>
+<span class="nc" id="L111">        return mutableBag.groupByEach(function);</span>
+    }
+
+    @Override
+    public &lt;V1&gt; MapIterable&lt;V1, V&gt; groupByUniqueKey(Function&lt;? super V, ? extends V1&gt; function)
+    {
+        // TODO: Implement in parallel
+<span class="nc" id="L118">        MutableBag&lt;V&gt; mutableBag = this.delegate.toBag().collect(this.function);</span>
+<span class="nc" id="L119">        return mutableBag.groupByUniqueKey(function);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.0.201801022044</span></div></body></html>

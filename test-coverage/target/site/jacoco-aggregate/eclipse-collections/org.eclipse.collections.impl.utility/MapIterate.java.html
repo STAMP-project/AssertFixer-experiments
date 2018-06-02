@@ -1,0 +1,1000 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>MapIterate.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Eclipse Collections Test Coverage Aggregation</a> &gt; <a href="../index.html" class="el_bundle">eclipse-collections</a> &gt; <a href="index.source.html" class="el_package">org.eclipse.collections.impl.utility</a> &gt; <span class="el_source">MapIterate.java</span></div><h1>MapIterate.java</h1><pre class="source lang-java linenums">/*
+ * Copyright (c) 2016 Goldman Sachs.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * and Eclipse Distribution License v. 1.0 which accompany this distribution.
+ * The Eclipse Public License is available at http://www.eclipse.org/legal/epl-v10.html
+ * and the Eclipse Distribution License is available at
+ * http://www.eclipse.org/org/documents/edl-v10.php.
+ */
+
+package org.eclipse.collections.impl.utility;
+
+import java.util.Collection;
+import java.util.Comparator;
+import java.util.Map;
+import java.util.Optional;
+
+import org.eclipse.collections.api.RichIterable;
+import org.eclipse.collections.api.block.function.Function;
+import org.eclipse.collections.api.block.function.Function0;
+import org.eclipse.collections.api.block.function.Function2;
+import org.eclipse.collections.api.block.function.primitive.BooleanFunction;
+import org.eclipse.collections.api.block.function.primitive.ByteFunction;
+import org.eclipse.collections.api.block.function.primitive.CharFunction;
+import org.eclipse.collections.api.block.function.primitive.DoubleFunction;
+import org.eclipse.collections.api.block.function.primitive.FloatFunction;
+import org.eclipse.collections.api.block.function.primitive.IntFunction;
+import org.eclipse.collections.api.block.function.primitive.LongFunction;
+import org.eclipse.collections.api.block.function.primitive.ShortFunction;
+import org.eclipse.collections.api.block.predicate.Predicate;
+import org.eclipse.collections.api.block.predicate.Predicate2;
+import org.eclipse.collections.api.block.procedure.Procedure;
+import org.eclipse.collections.api.block.procedure.Procedure2;
+import org.eclipse.collections.api.collection.primitive.MutableBooleanCollection;
+import org.eclipse.collections.api.collection.primitive.MutableByteCollection;
+import org.eclipse.collections.api.collection.primitive.MutableCharCollection;
+import org.eclipse.collections.api.collection.primitive.MutableDoubleCollection;
+import org.eclipse.collections.api.collection.primitive.MutableFloatCollection;
+import org.eclipse.collections.api.collection.primitive.MutableIntCollection;
+import org.eclipse.collections.api.collection.primitive.MutableLongCollection;
+import org.eclipse.collections.api.collection.primitive.MutableShortCollection;
+import org.eclipse.collections.api.list.MutableList;
+import org.eclipse.collections.api.map.ImmutableMap;
+import org.eclipse.collections.api.map.MapIterable;
+import org.eclipse.collections.api.map.MutableMap;
+import org.eclipse.collections.api.map.UnsortedMapIterable;
+import org.eclipse.collections.api.map.sorted.SortedMapIterable;
+import org.eclipse.collections.api.multimap.set.MutableSetMultimap;
+import org.eclipse.collections.api.multimap.sortedset.MutableSortedSetMultimap;
+import org.eclipse.collections.api.tuple.Pair;
+import org.eclipse.collections.impl.block.factory.Predicates;
+import org.eclipse.collections.impl.block.procedure.CollectProcedure;
+import org.eclipse.collections.impl.block.procedure.CollectionAddProcedure;
+import org.eclipse.collections.impl.block.procedure.CountProcedure;
+import org.eclipse.collections.impl.block.procedure.MapEntryToProcedure2;
+import org.eclipse.collections.impl.block.procedure.MapPutProcedure;
+import org.eclipse.collections.impl.block.procedure.RejectProcedure;
+import org.eclipse.collections.impl.block.procedure.SelectProcedure;
+import org.eclipse.collections.impl.block.procedure.primitive.CollectBooleanProcedure;
+import org.eclipse.collections.impl.block.procedure.primitive.CollectByteProcedure;
+import org.eclipse.collections.impl.block.procedure.primitive.CollectCharProcedure;
+import org.eclipse.collections.impl.block.procedure.primitive.CollectDoubleProcedure;
+import org.eclipse.collections.impl.block.procedure.primitive.CollectFloatProcedure;
+import org.eclipse.collections.impl.block.procedure.primitive.CollectIntProcedure;
+import org.eclipse.collections.impl.block.procedure.primitive.CollectLongProcedure;
+import org.eclipse.collections.impl.block.procedure.primitive.CollectShortProcedure;
+import org.eclipse.collections.impl.factory.Multimaps;
+import org.eclipse.collections.impl.list.mutable.FastList;
+import org.eclipse.collections.impl.list.mutable.primitive.BooleanArrayList;
+import org.eclipse.collections.impl.list.mutable.primitive.ByteArrayList;
+import org.eclipse.collections.impl.list.mutable.primitive.CharArrayList;
+import org.eclipse.collections.impl.list.mutable.primitive.DoubleArrayList;
+import org.eclipse.collections.impl.list.mutable.primitive.FloatArrayList;
+import org.eclipse.collections.impl.list.mutable.primitive.IntArrayList;
+import org.eclipse.collections.impl.list.mutable.primitive.LongArrayList;
+import org.eclipse.collections.impl.list.mutable.primitive.ShortArrayList;
+import org.eclipse.collections.impl.map.mutable.MapAdapter;
+import org.eclipse.collections.impl.map.mutable.UnifiedMap;
+import org.eclipse.collections.impl.multimap.set.sorted.TreeSortedSetMultimap;
+import org.eclipse.collections.impl.tuple.AbstractImmutableEntry;
+import org.eclipse.collections.impl.tuple.Tuples;
+import org.eclipse.collections.impl.utility.internal.IterableIterate;
+
+/**
+ * The MapIterate class provides a few of the methods from the Smalltalk Collection Protocol.  This includes:
+ * &lt;ul&gt;
+ * &lt;li&gt;select: -- a.k.a. filter&lt;/li&gt;
+ * &lt;li&gt;reject: -- a.k.a. not-filter&lt;/li&gt;
+ * &lt;li&gt;collect: -- a.k.a. transform, map, tear-off&lt;/li&gt;
+ * &lt;li&gt;inject:into: -- closely related to reduce and fold&lt;/li&gt;
+ * &lt;li&gt;detect: -- a.k.a. find, search&lt;/li&gt;
+ * &lt;li&gt;detect:ifNone:&lt;/li&gt;
+ * &lt;li&gt;anySatisfy: -- a.k.a. exists&lt;/li&gt;
+ * &lt;li&gt;allSatisfy:&lt;/li&gt;
+ * &lt;/ul&gt;
+ * Since Maps have two data-points per entry (i.e. key and value), most of the implementations in this class
+ * iterates over the values only, unless otherwise specified.
+ * To iterate over the keys, use keySet() with standard {@link Iterate} methods.
+ *
+ * @see Iterate
+ * @since 1.0
+ */
+public final class MapIterate
+{
+    private MapIterate()
+<span class="nc" id="L106">    {</span>
+<span class="nc" id="L107">        throw new AssertionError(&quot;Suppress default constructor for noninstantiability&quot;);</span>
+    }
+
+    /**
+     * A null-safe check on a map to see if it isEmpty.  A null collection results in {@code true}.
+     */
+    public static boolean isEmpty(Map&lt;?, ?&gt; map)
+    {
+<span class="nc bnc" id="L115" title="All 4 branches missed.">        return map == null || map.isEmpty();</span>
+    }
+
+    /**
+     * A null-safe check on a map to see if it notEmpty.  A null collection results in {@code false}.
+     */
+    public static boolean notEmpty(Map&lt;?, ?&gt; map)
+    {
+<span class="nc bnc" id="L123" title="All 4 branches missed.">        return map != null &amp;&amp; !map.isEmpty();</span>
+    }
+
+    /**
+     * Get and return the value in the Map at the specified key, or if there is no value at the key, return the result
+     * of evaluating the specified {@link Function0}, and put that value in the map at the specified key.
+     * &lt;p&gt;
+     * This method handles the {@code null}-value-at-key case correctly.
+     */
+    public static &lt;K, V&gt; V getIfAbsentPut(Map&lt;K, V&gt; map, K key, Function0&lt;? extends V&gt; instanceBlock)
+    {
+<span class="nc bnc" id="L134" title="All 2 branches missed.">        if (map instanceof MutableMap)</span>
+        {
+<span class="nc" id="L136">            return ((MutableMap&lt;K, V&gt;) map).getIfAbsentPut(key, instanceBlock);</span>
+        }
+<span class="nc" id="L138">        V result = map.get(key);</span>
+<span class="nc bnc" id="L139" title="All 2 branches missed.">        if (MapIterate.isAbsent(result, map, key))</span>
+        {
+<span class="nc" id="L141">            result = instanceBlock.value();</span>
+<span class="nc" id="L142">            map.put(key, result);</span>
+        }
+<span class="nc" id="L144">        return result;</span>
+    }
+
+    /**
+     * Get and return the value in the Map at the specified key, or if there is no value at the key, return the result
+     * of evaluating the specified {@link Function} with the {@code parameter}, and put that value in the map at
+     * the specified key.
+     */
+    public static &lt;K, V, P&gt; V getIfAbsentPutWith(
+            Map&lt;K, V&gt; map,
+            K key,
+            Function&lt;? super P, ? extends V&gt; function,
+            P parameter)
+    {
+<span class="nc" id="L158">        V result = map.get(key);</span>
+<span class="nc bnc" id="L159" title="All 2 branches missed.">        if (MapIterate.isAbsent(result, map, key))</span>
+        {
+<span class="nc" id="L161">            result = function.valueOf(parameter);</span>
+<span class="nc" id="L162">            map.put(key, result);</span>
+        }
+<span class="nc" id="L164">        return result;</span>
+    }
+
+    /**
+     * Get and return the value in the Map that corresponds to the specified key, or if there is no value
+     * at the key, return the result of evaluating the specified {@link Function0}.
+     */
+    public static &lt;K, V&gt; V getIfAbsent(Map&lt;K, V&gt; map, K key, Function0&lt;? extends V&gt; instanceBlock)
+    {
+<span class="nc bnc" id="L173" title="All 2 branches missed.">        if (map instanceof UnsortedMapIterable)</span>
+        {
+<span class="nc" id="L175">            return ((MapIterable&lt;K, V&gt;) map).getIfAbsent(key, instanceBlock);</span>
+        }
+<span class="nc" id="L177">        V result = map.get(key);</span>
+<span class="nc bnc" id="L178" title="All 2 branches missed.">        if (MapIterate.isAbsent(result, map, key))</span>
+        {
+<span class="nc" id="L180">            result = instanceBlock.value();</span>
+        }
+<span class="nc" id="L182">        return result;</span>
+    }
+
+    /**
+     * Get and return the value in the Map that corresponds to the specified key, or if there is no value
+     * at the key, return the result of evaluating the specified {@link Function} with the specified parameter.
+     */
+    public static &lt;K, V, P&gt; V getIfAbsentWith(
+            Map&lt;K, V&gt; map,
+            K key,
+            Function&lt;? super P, ? extends V&gt; function,
+            P parameter)
+    {
+<span class="nc bnc" id="L195" title="All 2 branches missed.">        if (map instanceof UnsortedMapIterable)</span>
+        {
+<span class="nc" id="L197">            return ((MapIterable&lt;K, V&gt;) map).getIfAbsentWith(key, function, parameter);</span>
+        }
+<span class="nc" id="L199">        V result = map.get(key);</span>
+<span class="nc bnc" id="L200" title="All 2 branches missed.">        if (MapIterate.isAbsent(result, map, key))</span>
+        {
+<span class="nc" id="L202">            result = function.valueOf(parameter);</span>
+        }
+<span class="nc" id="L204">        return result;</span>
+    }
+
+    /**
+     * Get and return the value in the Map at the specified key, or if there is no value at the key, return the
+     * {@code defaultValue}.
+     */
+    public static &lt;K, V&gt; V getIfAbsentDefault(Map&lt;K, V&gt; map, K key, V defaultValue)
+    {
+<span class="nc" id="L213">        V result = map.get(key);</span>
+<span class="nc bnc" id="L214" title="All 2 branches missed.">        if (MapIterate.isAbsent(result, map, key))</span>
+        {
+<span class="nc" id="L216">            result = defaultValue;</span>
+        }
+<span class="nc" id="L218">        return result;</span>
+    }
+
+    private static &lt;K, V&gt; boolean isAbsent(V result, Map&lt;K, V&gt; map, K key)
+    {
+<span class="nc bnc" id="L223" title="All 4 branches missed.">        return result == null &amp;&amp; !map.containsKey(key);</span>
+    }
+
+    /**
+     * If there is a value in the Map tat the specified key, return the result of applying the specified Function
+     * on the value, otherwise return null.
+     */
+    public static &lt;K, V, A&gt; A ifPresentApply(
+            Map&lt;K, V&gt; map,
+            K key,
+            Function&lt;? super V, ? extends A&gt; function)
+    {
+<span class="nc bnc" id="L235" title="All 2 branches missed.">        if (map instanceof UnsortedMapIterable)</span>
+        {
+<span class="nc" id="L237">            return ((MapIterable&lt;K, V&gt;) map).ifPresentApply(key, function);</span>
+        }
+<span class="nc" id="L239">        V result = map.get(key);</span>
+<span class="nc bnc" id="L240" title="All 2 branches missed.">        return MapIterate.isAbsent(result, map, key) ? null : function.valueOf(result);</span>
+    }
+
+    /**
+     * @see Iterate#select(Iterable, Predicate)
+     */
+    public static &lt;K, V&gt; MutableList&lt;V&gt; select(Map&lt;K, V&gt; map, Predicate&lt;? super V&gt; predicate)
+    {
+<span class="nc" id="L248">        return MapIterate.select(map, predicate, FastList.newList());</span>
+    }
+
+    /**
+     * @see Iterate#select(Iterable, Predicate, Collection)
+     */
+    public static &lt;K, V, R extends Collection&lt;V&gt;&gt; R select(
+            Map&lt;K, V&gt; map,
+            Predicate&lt;? super V&gt; predicate,
+            R targetCollection)
+    {
+<span class="nc" id="L259">        Procedure&lt;V&gt; procedure = new SelectProcedure&lt;&gt;(predicate, targetCollection);</span>
+<span class="nc" id="L260">        MapIterate.forEachValue(map, procedure);</span>
+<span class="nc" id="L261">        return targetCollection;</span>
+    }
+
+    /**
+     * @see Iterate#count(Iterable, Predicate)
+     */
+    public static &lt;K, V&gt; int count(Map&lt;K, V&gt; map, Predicate&lt;? super V&gt; predicate)
+    {
+<span class="nc" id="L269">        CountProcedure&lt;V&gt; procedure = new CountProcedure&lt;&gt;(predicate);</span>
+<span class="nc" id="L270">        MapIterate.forEachValue(map, procedure);</span>
+<span class="nc" id="L271">        return procedure.getCount();</span>
+    }
+
+    /**
+     * For each &lt;em&gt;entry&lt;/em&gt; of the source map, the Predicate2 is evaluated.
+     * If the result of the evaluation is true, the map entry is moved to a result map.
+     * The result map is returned containing all entries in the source map that evaluated to true.
+     */
+    public static &lt;K, V&gt; MutableMap&lt;K, V&gt; selectMapOnEntry(
+            Map&lt;K, V&gt; map,
+            Predicate2&lt;? super K, ? super V&gt; predicate)
+    {
+<span class="nc" id="L283">        return MapIterate.selectMapOnEntry(map, predicate, UnifiedMap.newMap());</span>
+    }
+
+    /**
+     * For each &lt;em&gt;entry&lt;/em&gt; of the source map, the Predicate2 is evaluated.
+     * If the result of the evaluation is true, the map entry is moved to a result map.
+     * The result map is returned containing all entries in the source map that evaluated to true.
+     */
+    public static &lt;K, V, R extends Map&lt;K, V&gt;&gt; R selectMapOnEntry(
+            Map&lt;K, V&gt; map,
+            Predicate2&lt;? super K, ? super V&gt; predicate,
+            R target)
+    {
+<span class="nc" id="L296">        Procedure2&lt;K, V&gt; mapTransferProcedure = new MapPutProcedure&lt;&gt;(target);</span>
+<span class="nc" id="L297">        Procedure2&lt;K, V&gt; procedure = (key, value) -&gt; {</span>
+<span class="nc bnc" id="L298" title="All 2 branches missed.">            if (predicate.accept(key, value))</span>
+            {
+<span class="nc" id="L300">                mapTransferProcedure.value(key, value);</span>
+            }
+<span class="nc" id="L302">        };</span>
+<span class="nc" id="L303">        MapIterate.forEachKeyValue(map, procedure);</span>
+
+<span class="nc" id="L305">        return target;</span>
+    }
+
+    /**
+     * For each &lt;em&gt;key&lt;/em&gt; of the source map, the Predicate is evaluated.
+     * If the result of the evaluation is true, the map entry is moved to a result map.
+     * The result map is returned containing all entries in the source map that evaluated to true.
+     */
+    public static &lt;K, V&gt; MutableMap&lt;K, V&gt; selectMapOnKey(Map&lt;K, V&gt; map, Predicate&lt;? super K&gt; predicate)
+    {
+<span class="nc" id="L315">        MutableMap&lt;K, V&gt; resultMap = UnifiedMap.newMap();</span>
+<span class="nc" id="L316">        Procedure2&lt;K, V&gt; mapTransferProcedure = new MapPutProcedure&lt;&gt;(resultMap);</span>
+<span class="nc" id="L317">        Procedure2&lt;K, V&gt; procedure = (key, value) -&gt; {</span>
+<span class="nc bnc" id="L318" title="All 2 branches missed.">            if (predicate.accept(key))</span>
+            {
+<span class="nc" id="L320">                mapTransferProcedure.value(key, value);</span>
+            }
+<span class="nc" id="L322">        };</span>
+<span class="nc" id="L323">        MapIterate.forEachKeyValue(map, procedure);</span>
+<span class="nc" id="L324">        return resultMap;</span>
+    }
+
+    /**
+     * For each &lt;em&gt;value&lt;/em&gt; of the source map, the Predicate is evaluated.
+     * If the result of the evaluation is true, the map entry is moved to a result map.
+     * The result map is returned containing all entries in the source map that evaluated to true.
+     */
+    public static &lt;K, V&gt; MutableMap&lt;K, V&gt; selectMapOnValue(Map&lt;K, V&gt; map, Predicate&lt;? super V&gt; predicate)
+    {
+<span class="nc" id="L334">        MutableMap&lt;K, V&gt; resultMap = UnifiedMap.newMap();</span>
+<span class="nc" id="L335">        Procedure2&lt;K, V&gt; mapTransferProcedure = new MapPutProcedure&lt;&gt;(resultMap);</span>
+<span class="nc" id="L336">        Procedure2&lt;K, V&gt; procedure = (key, value) -&gt; {</span>
+<span class="nc bnc" id="L337" title="All 2 branches missed.">            if (predicate.accept(value))</span>
+            {
+<span class="nc" id="L339">                mapTransferProcedure.value(key, value);</span>
+            }
+<span class="nc" id="L341">        };</span>
+<span class="nc" id="L342">        MapIterate.forEachKeyValue(map, procedure);</span>
+<span class="nc" id="L343">        return resultMap;</span>
+    }
+
+    /**
+     * @see Iterate#reject(Iterable, Predicate)
+     */
+    public static &lt;K, V&gt; MutableList&lt;V&gt; reject(Map&lt;K, V&gt; map, Predicate&lt;? super V&gt; predicate)
+    {
+<span class="nc" id="L351">        return MapIterate.reject(map, predicate, FastList.newList());</span>
+    }
+
+    /**
+     * @see Iterate#reject(Iterable, Predicate, Collection)
+     */
+    public static &lt;K, V, R extends Collection&lt;V&gt;&gt; R reject(
+            Map&lt;K, V&gt; map,
+            Predicate&lt;? super V&gt; predicate,
+            R targetCollection)
+    {
+<span class="nc" id="L362">        Procedure&lt;V&gt; procedure = new RejectProcedure&lt;&gt;(predicate, targetCollection);</span>
+<span class="nc" id="L363">        MapIterate.forEachValue(map, procedure);</span>
+<span class="nc" id="L364">        return targetCollection;</span>
+    }
+
+    /**
+     * For each &lt;em&gt;value&lt;/em&gt; of the map, predicate is evaluated with the element as the parameter.
+     * Each element which causes predicate to evaluate to false is included in the new collection.
+     */
+    public static &lt;K, V&gt; MutableMap&lt;K, V&gt; rejectMapOnEntry(
+            Map&lt;K, V&gt; map,
+            Predicate2&lt;? super K, ? super V&gt; predicate)
+    {
+<span class="nc" id="L375">        return MapIterate.rejectMapOnEntry(map, predicate, UnifiedMap.newMap());</span>
+    }
+
+    /**
+     * For each &lt;em&gt;value&lt;/em&gt; of the map, predicate is evaluated with the element as the parameter.
+     * Each element which causes predicate to evaluate to false is added to the targetCollection.
+     */
+    public static &lt;K, V, R extends Map&lt;K, V&gt;&gt; R rejectMapOnEntry(
+            Map&lt;K, V&gt; map,
+            Predicate2&lt;? super K, ? super V&gt; predicate,
+            R target)
+    {
+<span class="nc" id="L387">        MapIterate.forEachKeyValue(map, (argument1, argument2) -&gt; {</span>
+<span class="nc bnc" id="L388" title="All 2 branches missed.">            if (!predicate.accept(argument1, argument2))</span>
+            {
+<span class="nc" id="L390">                target.put(argument1, argument2);</span>
+            }
+<span class="nc" id="L392">        });</span>
+
+<span class="nc" id="L394">        return target;</span>
+    }
+
+    /**
+     * Adds all the &lt;em&gt;keys&lt;/em&gt; from map to a the specified targetCollection.
+     */
+    public static &lt;K, V&gt; Collection&lt;K&gt; addAllKeysTo(Map&lt;K, V&gt; map, Collection&lt;K&gt; targetCollection)
+    {
+<span class="nc" id="L402">        MapIterate.forEachKey(map, CollectionAddProcedure.on(targetCollection));</span>
+<span class="nc" id="L403">        return targetCollection;</span>
+    }
+
+    /**
+     * Adds all the &lt;em&gt;values&lt;/em&gt; from map to a the specified targetCollection.
+     */
+    public static &lt;K, V&gt; Collection&lt;V&gt; addAllValuesTo(Map&lt;K, V&gt; map, Collection&lt;V&gt; targetCollection)
+    {
+<span class="nc" id="L411">        MapIterate.forEachValue(map, CollectionAddProcedure.on(targetCollection));</span>
+<span class="nc" id="L412">        return targetCollection;</span>
+    }
+
+    /**
+     * @see Iterate#collect(Iterable, Function)
+     */
+    public static &lt;K, V, A&gt; MutableList&lt;A&gt; collect(
+            Map&lt;K, V&gt; map,
+            Function&lt;? super V, ? extends A&gt; function)
+    {
+<span class="nc" id="L422">        return collect(map, function, FastList.newList(map.size()));</span>
+    }
+
+    /**
+     * @see RichIterable#collectBoolean(BooleanFunction)
+     */
+    public static &lt;K, V&gt; MutableBooleanCollection collectBoolean(
+            Map&lt;K, V&gt; map,
+            BooleanFunction&lt;? super V&gt; booleanFunction)
+    {
+<span class="nc" id="L432">        return collectBoolean(map, booleanFunction, new BooleanArrayList(map.size()));</span>
+    }
+
+    /**
+     * @see RichIterable#collectBoolean(BooleanFunction, MutableBooleanCollection)
+     */
+    public static &lt;K, V, R extends MutableBooleanCollection&gt; R collectBoolean(
+            Map&lt;K, V&gt; map,
+            BooleanFunction&lt;? super V&gt; booleanFunction,
+            R target)
+    {
+<span class="nc" id="L443">        MapIterate.forEachValue(map, new CollectBooleanProcedure&lt;&gt;(booleanFunction, target));</span>
+<span class="nc" id="L444">        return target;</span>
+    }
+
+    /**
+     * @see RichIterable#collectByte(ByteFunction)
+     */
+    public static &lt;K, V&gt; MutableByteCollection collectByte(
+            Map&lt;K, V&gt; map,
+            ByteFunction&lt;? super V&gt; byteFunction)
+    {
+<span class="nc" id="L454">        return collectByte(map, byteFunction, new ByteArrayList(map.size()));</span>
+    }
+
+    /**
+     * @see RichIterable#collectByte(ByteFunction, MutableByteCollection)
+     */
+    public static &lt;K, V, R extends MutableByteCollection&gt; R collectByte(
+            Map&lt;K, V&gt; map,
+            ByteFunction&lt;? super V&gt; byteFunction,
+            R target)
+    {
+<span class="nc" id="L465">        MapIterate.forEachValue(map, new CollectByteProcedure&lt;&gt;(byteFunction, target));</span>
+<span class="nc" id="L466">        return target;</span>
+    }
+
+    /**
+     * @see RichIterable#collectChar(CharFunction)
+     */
+    public static &lt;K, V&gt; MutableCharCollection collectChar(
+            Map&lt;K, V&gt; map,
+            CharFunction&lt;? super V&gt; charFunction)
+    {
+<span class="nc" id="L476">        return collectChar(map, charFunction, new CharArrayList(map.size()));</span>
+    }
+
+    /**
+     * @see RichIterable#collectChar(CharFunction, MutableCharCollection)
+     */
+    public static &lt;K, V, R extends MutableCharCollection&gt; R collectChar(
+            Map&lt;K, V&gt; map,
+            CharFunction&lt;? super V&gt; charFunction,
+            R target)
+    {
+<span class="nc" id="L487">        MapIterate.forEachValue(map, new CollectCharProcedure&lt;&gt;(charFunction, target));</span>
+<span class="nc" id="L488">        return target;</span>
+    }
+
+    /**
+     * @see RichIterable#collectDouble(DoubleFunction)
+     */
+    public static &lt;K, V&gt; MutableDoubleCollection collectDouble(
+            Map&lt;K, V&gt; map,
+            DoubleFunction&lt;? super V&gt; doubleFunction)
+    {
+<span class="nc" id="L498">        return collectDouble(map, doubleFunction, new DoubleArrayList(map.size()));</span>
+    }
+
+    /**
+     * @see RichIterable#collectDouble(DoubleFunction, MutableDoubleCollection)
+     */
+    public static &lt;K, V, R extends MutableDoubleCollection&gt; R collectDouble(
+            Map&lt;K, V&gt; map,
+            DoubleFunction&lt;? super V&gt; doubleFunction,
+            R target)
+    {
+<span class="nc" id="L509">        MapIterate.forEachValue(map, new CollectDoubleProcedure&lt;&gt;(doubleFunction, target));</span>
+<span class="nc" id="L510">        return target;</span>
+    }
+
+    /**
+     * @see RichIterable#collectFloat(FloatFunction)
+     */
+    public static &lt;K, V&gt; MutableFloatCollection collectFloat(
+            Map&lt;K, V&gt; map,
+            FloatFunction&lt;? super V&gt; floatFunction)
+    {
+<span class="nc" id="L520">        return collectFloat(map, floatFunction, new FloatArrayList(map.size()));</span>
+    }
+
+    /**
+     * @see RichIterable#collectFloat(FloatFunction, MutableFloatCollection)
+     */
+    public static &lt;K, V, R extends MutableFloatCollection&gt; R collectFloat(
+            Map&lt;K, V&gt; map,
+            FloatFunction&lt;? super V&gt; floatFunction,
+            R target)
+    {
+<span class="nc" id="L531">        MapIterate.forEachValue(map, new CollectFloatProcedure&lt;&gt;(floatFunction, target));</span>
+<span class="nc" id="L532">        return target;</span>
+    }
+
+    /**
+     * @see RichIterable#collectInt(IntFunction)
+     */
+    public static &lt;K, V&gt; MutableIntCollection collectInt(
+            Map&lt;K, V&gt; map,
+            IntFunction&lt;? super V&gt; intFunction)
+    {
+<span class="nc" id="L542">        return collectInt(map, intFunction, new IntArrayList(map.size()));</span>
+    }
+
+    /**
+     * @see RichIterable#collectInt(IntFunction, MutableIntCollection)
+     */
+    public static &lt;K, V, R extends MutableIntCollection&gt; R collectInt(
+            Map&lt;K, V&gt; map,
+            IntFunction&lt;? super V&gt; intFunction,
+            R target)
+    {
+<span class="nc" id="L553">        MapIterate.forEachValue(map, new CollectIntProcedure&lt;&gt;(intFunction, target));</span>
+<span class="nc" id="L554">        return target;</span>
+    }
+
+    /**
+     * @see RichIterable#collectLong(LongFunction)
+     */
+    public static &lt;K, V&gt; MutableLongCollection collectLong(
+            Map&lt;K, V&gt; map,
+            LongFunction&lt;? super V&gt; longFunction)
+    {
+<span class="nc" id="L564">        return collectLong(map, longFunction, new LongArrayList(map.size()));</span>
+    }
+
+    /**
+     * @see RichIterable#collectLong(LongFunction, MutableLongCollection)
+     */
+    public static &lt;K, V, R extends MutableLongCollection&gt; R collectLong(
+            Map&lt;K, V&gt; map,
+            LongFunction&lt;? super V&gt; longFunction,
+            R target)
+    {
+<span class="nc" id="L575">        MapIterate.forEachValue(map, new CollectLongProcedure&lt;&gt;(longFunction, target));</span>
+<span class="nc" id="L576">        return target;</span>
+    }
+
+    /**
+     * @see RichIterable#collectShort(ShortFunction)
+     */
+    public static &lt;K, V&gt; MutableShortCollection collectShort(
+            Map&lt;K, V&gt; map,
+            ShortFunction&lt;? super V&gt; shortFunction)
+    {
+<span class="nc" id="L586">        return collectShort(map, shortFunction, new ShortArrayList(map.size()));</span>
+    }
+
+    /**
+     * @see RichIterable#collectShort(ShortFunction, MutableShortCollection)
+     */
+    public static &lt;K, V, R extends MutableShortCollection&gt; R collectShort(
+            Map&lt;K, V&gt; map,
+            ShortFunction&lt;? super V&gt; shortFunction,
+            R target)
+    {
+<span class="nc" id="L597">        MapIterate.forEachValue(map, new CollectShortProcedure&lt;&gt;(shortFunction, target));</span>
+<span class="nc" id="L598">        return target;</span>
+    }
+
+    /**
+     * For each value of the map, the function is evaluated with the key and value as the parameter.
+     * The results of these evaluations are collected into a new UnifiedMap.
+     */
+    public static &lt;K, V, K2, V2&gt; MutableMap&lt;K2, V2&gt; collect(
+            Map&lt;K, V&gt; map,
+            Function2&lt;? super K, ? super V, Pair&lt;K2, V2&gt;&gt; function)
+    {
+<span class="nc" id="L609">        return MapIterate.collect(map, function, UnifiedMap.newMap(map.size()));</span>
+    }
+
+    /**
+     * For each value of the map, the function is evaluated with the key and value as the parameter.
+     * The results of these evaluations are collected into the target map.
+     */
+    public static &lt;K1, V1, K2, V2, R extends Map&lt;K2, V2&gt;&gt; R collect(
+            Map&lt;K1, V1&gt; map,
+            Function2&lt;? super K1, ? super V1, Pair&lt;K2, V2&gt;&gt; function,
+            R target)
+    {
+<span class="nc" id="L621">        MapIterate.forEachKeyValue(map, (key, value) -&gt; {</span>
+<span class="nc" id="L622">            Pair&lt;K2, V2&gt; pair = function.value(key, value);</span>
+<span class="nc" id="L623">            target.put(pair.getOne(), pair.getTwo());</span>
+<span class="nc" id="L624">        });</span>
+<span class="nc" id="L625">        return target;</span>
+    }
+
+    /**
+     * For each key and value of the map, the function is evaluated with the key and value as the parameter.
+     * The results of these evaluations are collected into the target map.
+     */
+    public static &lt;K, V, V2&gt; MutableMap&lt;K, V2&gt; collectValues(
+            Map&lt;K, V&gt; map,
+            Function2&lt;? super K, ? super V, ? extends V2&gt; function)
+    {
+<span class="nc" id="L636">        return MapIterate.collectValues(map, function, UnifiedMap.newMap(map.size()));</span>
+    }
+
+    /**
+     * For each key and value of the map, the function is evaluated with the key and value as the parameter.
+     * The results of these evaluations are collected into the target map.
+     */
+    public static &lt;K, V, V2, R extends Map&lt;K, V2&gt;&gt; R collectValues(
+            Map&lt;K, V&gt; map,
+            Function2&lt;? super K, ? super V, ? extends V2&gt; function,
+            R target)
+    {
+<span class="nc" id="L648">        MapIterate.forEachKeyValue(map, (key, value) -&gt; target.put(key, function.value(key, value)));</span>
+
+<span class="nc" id="L650">        return target;</span>
+    }
+
+    /**
+     * For each value of the map, the Predicate2 is evaluated with the key and value as the parameter,
+     * and if true, then {@code function} is applied.
+     * The results of these evaluations are collected into a new map.
+     */
+    public static &lt;K1, V1, K2, V2&gt; MutableMap&lt;K2, V2&gt; collectIf(
+            Map&lt;K1, V1&gt; map,
+            Function2&lt;? super K1, ? super V1, Pair&lt;K2, V2&gt;&gt; function,
+            Predicate2&lt;? super K1, ? super V1&gt; predicate)
+    {
+<span class="nc" id="L663">        return MapIterate.collectIf(map, function, predicate, UnifiedMap.newMap());</span>
+    }
+
+    /**
+     * For each value of the map, the Predicate2 is evaluated with the key and value as the parameter,
+     * and if true, then {@code function} is applied.
+     * The results of these evaluations are collected into the target map.
+     */
+    public static &lt;K1, V1, K2, V2&gt; MutableMap&lt;K2, V2&gt; collectIf(
+            Map&lt;K1, V1&gt; map,
+            Function2&lt;? super K1, ? super V1, Pair&lt;K2, V2&gt;&gt; function,
+            Predicate2&lt;? super K1, ? super V1&gt; predicate,
+            Map&lt;K2, V2&gt; target)
+    {
+<span class="nc" id="L677">        MutableMap&lt;K2, V2&gt; result = MapAdapter.adapt(target);</span>
+
+<span class="nc" id="L679">        MapIterate.forEachKeyValue(map, (key, value) -&gt; {</span>
+<span class="nc bnc" id="L680" title="All 2 branches missed.">            if (predicate.accept(key, value))</span>
+            {
+<span class="nc" id="L682">                Pair&lt;K2, V2&gt; pair = function.value(key, value);</span>
+<span class="nc" id="L683">                result.put(pair.getOne(), pair.getTwo());</span>
+            }
+<span class="nc" id="L685">        });</span>
+
+<span class="nc" id="L687">        return result;</span>
+    }
+
+    /**
+     * For each key-value entry of a map, applies a function to each, and adds the transformed entry to a new Map.
+     */
+    public static &lt;K1, V1, K2, V2&gt; MutableMap&lt;K2, V2&gt; collect(
+            Map&lt;K1, V1&gt; map,
+            Function&lt;? super K1, ? extends K2&gt; keyFunction,
+            Function&lt;? super V1, ? extends V2&gt; valueFunction)
+    {
+<span class="nc" id="L698">        return MapIterate.collect(map, keyFunction, valueFunction, UnifiedMap.newMap());</span>
+    }
+
+    /**
+     * For each key-value entry of a map, applies a function to each, and adds the transformed entry to the target Map.
+     */
+    public static &lt;K1, V1, K2, V2&gt; MutableMap&lt;K2, V2&gt; collect(
+            Map&lt;K1, V1&gt; map,
+            Function&lt;? super K1, ? extends K2&gt; keyFunction,
+            Function&lt;? super V1, ? extends V2&gt; valueFunction,
+            Map&lt;K2, V2&gt; target)
+    {
+<span class="nc" id="L710">        return MapIterate.collect(map, (key, value) -&gt; Tuples.pair(keyFunction.valueOf(key), valueFunction.valueOf(value)), MapAdapter.adapt(target));</span>
+    }
+
+    /**
+     * @see Iterate#collect(Iterable, Function, Collection)
+     */
+    public static &lt;K, V, A, R extends Collection&lt;A&gt;&gt; R collect(
+            Map&lt;K, V&gt; map,
+            Function&lt;? super V, ? extends A&gt; function,
+            R targetCollection)
+    {
+<span class="nc" id="L721">        Procedure&lt;V&gt; procedure = new CollectProcedure&lt;&gt;(function, targetCollection);</span>
+<span class="nc" id="L722">        MapIterate.forEachValue(map, procedure);</span>
+<span class="nc" id="L723">        return targetCollection;</span>
+    }
+
+    /**
+     * For each value of the map, {@code procedure} is evaluated with the value as the parameter.
+     */
+    public static &lt;K, V&gt; void forEachValue(Map&lt;K, V&gt; map, Procedure&lt;? super V&gt; procedure)
+    {
+<span class="nc bnc" id="L731" title="All 2 branches missed.">        if (map == null)</span>
+        {
+<span class="nc" id="L733">            throw new IllegalArgumentException(&quot;Cannot perform a forEachValue on null&quot;);</span>
+        }
+
+<span class="nc bnc" id="L736" title="All 2 branches missed.">        if (MapIterate.notEmpty(map))</span>
+        {
+<span class="nc bnc" id="L738" title="All 2 branches missed.">            if (map instanceof UnsortedMapIterable)</span>
+            {
+<span class="nc" id="L740">                ((MapIterable&lt;K, V&gt;) map).forEachValue(procedure);</span>
+            }
+            else
+            {
+<span class="nc" id="L744">                IterableIterate.forEach(map.values(), procedure);</span>
+            }
+        }
+<span class="nc" id="L747">    }</span>
+
+    /**
+     * For each key of the map, {@code procedure} is evaluated with the key as the parameter.
+     */
+    public static &lt;K, V&gt; void forEachKey(Map&lt;K, V&gt; map, Procedure&lt;? super K&gt; procedure)
+    {
+<span class="nc bnc" id="L754" title="All 2 branches missed.">        if (map == null)</span>
+        {
+<span class="nc" id="L756">            throw new IllegalArgumentException(&quot;Cannot perform a forEachKey on null&quot;);</span>
+        }
+
+<span class="nc bnc" id="L759" title="All 2 branches missed.">        if (MapIterate.notEmpty(map))</span>
+        {
+<span class="nc bnc" id="L761" title="All 2 branches missed.">            if (map instanceof UnsortedMapIterable)</span>
+            {
+<span class="nc" id="L763">                ((MapIterable&lt;K, V&gt;) map).forEachKey(procedure);</span>
+            }
+            else
+            {
+<span class="nc" id="L767">                IterableIterate.forEach(map.keySet(), procedure);</span>
+            }
+        }
+<span class="nc" id="L770">    }</span>
+
+    /**
+     * For each entry of the map, {@code procedure} is evaluated with the element as the parameter.
+     */
+    public static &lt;K, V&gt; void forEachKeyValue(Map&lt;K, V&gt; map, Procedure2&lt;? super K, ? super V&gt; procedure)
+    {
+<span class="nc bnc" id="L777" title="All 2 branches missed.">        if (map == null)</span>
+        {
+<span class="nc" id="L779">            throw new IllegalArgumentException(&quot;Cannot perform a forEachKeyValue on null&quot;);</span>
+        }
+
+<span class="nc bnc" id="L782" title="All 2 branches missed.">        if (MapIterate.notEmpty(map))</span>
+        {
+<span class="nc bnc" id="L784" title="All 2 branches missed.">            if (map instanceof UnsortedMapIterable)</span>
+            {
+<span class="nc" id="L786">                ((MapIterable&lt;K, V&gt;) map).forEachKeyValue(procedure);</span>
+            }
+            else
+            {
+<span class="nc" id="L790">                IterableIterate.forEach(map.entrySet(), new MapEntryToProcedure2&lt;&gt;(procedure));</span>
+            }
+        }
+<span class="nc" id="L793">    }</span>
+
+    /**
+     * @see MapIterable#flipUniqueValues()
+     */
+    public static &lt;K, V&gt; MutableMap&lt;V, K&gt; flipUniqueValues(MapIterable&lt;K, V&gt; mapIterable)
+    {
+<span class="nc" id="L800">        MutableMap&lt;V, K&gt; result = UnifiedMap.newMap();</span>
+
+<span class="nc" id="L802">        mapIterable.forEachKeyValue((key, value) -&gt; {</span>
+<span class="nc" id="L803">            K oldKey = result.put(value, key);</span>
+<span class="nc bnc" id="L804" title="All 2 branches missed.">            if (oldKey != null)</span>
+            {
+<span class="nc" id="L806">                throw new IllegalStateException(&quot;Duplicate value: &quot; + value + &quot; found at key: &quot; + oldKey + &quot; and key: &quot; + key);</span>
+            }
+<span class="nc" id="L808">        });</span>
+<span class="nc" id="L809">        return result;</span>
+    }
+
+    public static &lt;K, V&gt; Pair&lt;K, V&gt; detect(
+            Map&lt;K, V&gt; map,
+            Predicate2&lt;? super K, ? super V&gt; predicate)
+    {
+<span class="nc bnc" id="L816" title="All 2 branches missed.">        if (map == null)</span>
+        {
+<span class="nc" id="L818">            throw new IllegalArgumentException(&quot;Cannot perform a detect on null&quot;);</span>
+        }
+
+<span class="nc bnc" id="L821" title="All 4 branches missed.">        if (map instanceof ImmutableMap || map instanceof MutableMap)</span>
+        {
+            RichIterable&lt;Pair&lt;K, V&gt;&gt; entries;
+<span class="nc bnc" id="L824" title="All 2 branches missed.">            if (map instanceof ImmutableMap)</span>
+            {
+<span class="nc" id="L826">                entries = ((ImmutableMap&lt;K, V&gt;) map).keyValuesView();</span>
+            }
+            else
+            {
+<span class="nc" id="L830">                entries = LazyIterate.adapt(map.entrySet()).collect(AbstractImmutableEntry.getPairFunction());</span>
+            }
+<span class="nc" id="L832">            return entries.detect(each -&gt; predicate.accept(each.getOne(), each.getTwo()));</span>
+        }
+
+<span class="nc bnc" id="L835" title="All 2 branches missed.">        for (Map.Entry&lt;K, V&gt; entry : map.entrySet())</span>
+        {
+<span class="nc bnc" id="L837" title="All 2 branches missed.">            if (predicate.accept(entry.getKey(), entry.getValue()))</span>
+            {
+<span class="nc" id="L839">                return Tuples.pairFrom(entry);</span>
+            }
+<span class="nc" id="L841">        }</span>
+<span class="nc" id="L842">        return null;</span>
+    }
+
+    /**
+     * @see Iterate#detect(Iterable, Predicate)
+     */
+    public static &lt;K, V&gt; V detect(Map&lt;K, V&gt; map, Predicate&lt;? super V&gt; predicate)
+    {
+<span class="nc" id="L850">        return IterableIterate.detect(map.values(), predicate);</span>
+    }
+
+    public static &lt;K, V&gt; Optional&lt;Pair&lt;K, V&gt;&gt; detectOptional(
+            Map&lt;K, V&gt; map,
+            Predicate2&lt;? super K, ? super V&gt; predicate)
+    {
+<span class="nc" id="L857">        return Optional.ofNullable(MapIterate.detect(map, predicate));</span>
+    }
+
+    /**
+     * @see Iterate#detectOptional(Iterable, Predicate)
+     */
+    public static &lt;K, V&gt; Optional&lt;V&gt; detectOptional(Map&lt;K, V&gt; map, Predicate&lt;? super V&gt; predicate)
+    {
+<span class="nc" id="L865">        return IterableIterate.detectOptional(map.values(), predicate);</span>
+    }
+
+    /**
+     * @see Iterate#detectIfNone(Iterable, Predicate, Object)
+     */
+    public static &lt;K, V&gt; V detectIfNone(Map&lt;K, V&gt; map, Predicate&lt;? super V&gt; predicate, V ifNone)
+    {
+<span class="nc" id="L873">        return Iterate.detectIfNone(map.values(), predicate, ifNone);</span>
+    }
+
+    /**
+     * @see Iterate#injectInto(Object, Iterable, Function2)
+     */
+    public static &lt;K, V, IV&gt; IV injectInto(
+            IV injectValue,
+            Map&lt;K, V&gt; map,
+            Function2&lt;? super IV, ? super V, ? extends IV&gt; function)
+    {
+<span class="nc" id="L884">        return Iterate.injectInto(injectValue, map.values(), function);</span>
+    }
+
+    /**
+     * Same as {@link #injectInto(Object, Map, Function2)}, but only applies the value to the function
+     * if the predicate returns true for the value.
+     *
+     * @see #injectInto(Object, Map, Function2)
+     */
+    public static &lt;IV, K, V&gt; IV injectIntoIf(
+            IV initialValue,
+            Map&lt;K, V&gt; map,
+            Predicate&lt;? super V&gt; predicate,
+            Function2&lt;? super IV, ? super V, ? extends IV&gt; function)
+    {
+<span class="nc" id="L899">        Function2&lt;IV, ? super V, IV&gt; ifFunction = (accumulator, item) -&gt; {</span>
+<span class="nc bnc" id="L900" title="All 2 branches missed.">            if (predicate.accept(item))</span>
+            {
+<span class="nc" id="L902">                return function.value(accumulator, item);</span>
+            }
+<span class="nc" id="L904">            return accumulator;</span>
+        };
+<span class="nc" id="L906">        return Iterate.injectInto(initialValue, map.values(), ifFunction);</span>
+    }
+
+    /**
+     * @see Iterate#anySatisfy(Iterable, Predicate)
+     */
+    public static &lt;K, V&gt; boolean anySatisfy(Map&lt;K, V&gt; map, Predicate&lt;? super V&gt; predicate)
+    {
+<span class="nc" id="L914">        return IterableIterate.anySatisfy(map.values(), predicate);</span>
+    }
+
+    /**
+     * @see Iterate#allSatisfy(Iterable, Predicate)
+     */
+    public static &lt;K, V&gt; boolean allSatisfy(Map&lt;K, V&gt; map, Predicate&lt;? super V&gt; predicate)
+    {
+<span class="nc" id="L922">        return IterableIterate.allSatisfy(map.values(), predicate);</span>
+    }
+
+    /**
+     * @see Iterate#noneSatisfy(Iterable, Predicate)
+     */
+    public static &lt;K, V&gt; boolean noneSatisfy(Map&lt;K, V&gt; map, Predicate&lt;? super V&gt; predicate)
+    {
+<span class="nc" id="L930">        return IterableIterate.noneSatisfy(map.values(), predicate);</span>
+    }
+
+    /**
+     * Iterate over the specified map applying the specified Function to each value
+     * and return the results as a List.
+     */
+    public static &lt;K, V&gt; MutableList&lt;Pair&lt;K, V&gt;&gt; toListOfPairs(Map&lt;K, V&gt; map)
+    {
+<span class="nc" id="L939">        MutableList&lt;Pair&lt;K, V&gt;&gt; pairs = FastList.newList(map.size());</span>
+<span class="nc" id="L940">        MapIterate.forEachKeyValue(map, (key, value) -&gt; pairs.add(Tuples.pair(key, value)));</span>
+<span class="nc" id="L941">        return pairs;</span>
+    }
+
+    /**
+     * Iterate over the specified map applying the specified Function to each value
+     * and return the results as a sorted List using the specified Comparator.
+     */
+    public static &lt;K, V&gt; MutableList&lt;V&gt; toSortedList(
+            Map&lt;K, V&gt; map,
+            Comparator&lt;? super V&gt; comparator)
+    {
+<span class="nc" id="L952">        return Iterate.toSortedList(map.values(), comparator);</span>
+    }
+
+    /**
+     * Return a new map swapping key-value for value-key.
+     * If the original map contains entries with the same value, the result mapping is undefined,
+     * in that the last entry applied wins (the order of application is undefined).
+     */
+    public static &lt;K, V&gt; MutableMap&lt;V, K&gt; reverseMapping(Map&lt;K, V&gt; map)
+    {
+<span class="nc" id="L962">        MutableMap&lt;V, K&gt; reverseMap = UnifiedMap.newMap(map.size());</span>
+<span class="nc" id="L963">        MapIterate.forEachKeyValue(map, (sourceKey, sourceValue) -&gt; reverseMap.put(sourceValue, sourceKey));</span>
+<span class="nc" id="L964">        return reverseMap;</span>
+    }
+
+    /**
+     * Return the number of occurrences of object in the specified map.
+     */
+    public static &lt;K, V&gt; int occurrencesOf(Map&lt;K, V&gt; map, V object)
+    {
+<span class="nc" id="L972">        return Iterate.count(map.values(), Predicates.equal(object));</span>
+    }
+
+    /**
+     * Return the number of occurrences where object is equal to the specified attribute in the specified map.
+     */
+    public static &lt;K, V, A&gt; int occurrencesOfAttribute(
+            Map&lt;K, V&gt; map,
+            Function&lt;? super V, ? extends A&gt; function,
+            A object)
+    {
+<span class="nc" id="L983">        return Iterate.count(map.values(), Predicates.attributeEqual(function, object));</span>
+    }
+
+    public static &lt;K, V&gt; MutableSetMultimap&lt;V, K&gt; flip(MapIterable&lt;K, V&gt; iMap)
+    {
+<span class="nc" id="L988">        MutableSetMultimap&lt;V, K&gt; result = Multimaps.mutable.set.with();</span>
+<span class="nc" id="L989">        iMap.forEachKeyValue((key, val) -&gt; result.put(val, key));</span>
+<span class="nc" id="L990">        return result;</span>
+    }
+
+    public static &lt;K, V&gt; MutableSortedSetMultimap&lt;V, K&gt; flip(SortedMapIterable&lt;K, V&gt; iMap)
+    {
+<span class="nc" id="L995">        MutableSortedSetMultimap&lt;V, K&gt; result = new TreeSortedSetMultimap&lt;&gt;(iMap.comparator());</span>
+<span class="nc" id="L996">        iMap.forEachKeyValue((key, val) -&gt; result.put(val, key));</span>
+<span class="nc" id="L997">        return result;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.0.201801022044</span></div></body></html>

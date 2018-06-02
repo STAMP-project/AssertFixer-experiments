@@ -1,0 +1,1085 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>LongArrayList.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Eclipse Collections Test Coverage Aggregation</a> &gt; <a href="../index.html" class="el_bundle">eclipse-collections</a> &gt; <a href="index.source.html" class="el_package">org.eclipse.collections.impl.list.mutable.primitive</a> &gt; <span class="el_source">LongArrayList.java</span></div><h1>LongArrayList.java</h1><pre class="source lang-java linenums">/*
+ * Copyright (c) 2018 Goldman Sachs and others.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * and Eclipse Distribution License v. 1.0 which accompany this distribution.
+ * The Eclipse Public License is available at http://www.eclipse.org/legal/epl-v10.html
+ * and the Eclipse Distribution License is available at
+ * http://www.eclipse.org/org/documents/edl-v10.php.
+ */
+
+package org.eclipse.collections.impl.list.mutable.primitive;
+
+import java.io.Externalizable;
+import java.io.IOException;
+import java.io.ObjectInput;
+import java.io.ObjectOutput;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Iterator;
+import java.util.NoSuchElementException;
+
+import org.eclipse.collections.api.LongIterable;
+import org.eclipse.collections.api.LazyLongIterable;
+import org.eclipse.collections.api.RichIterable;
+import org.eclipse.collections.api.block.function.primitive.ObjectLongIntToObjectFunction;
+import org.eclipse.collections.api.block.function.primitive.ObjectLongToObjectFunction;
+import org.eclipse.collections.api.block.function.primitive.LongToObjectFunction;
+import org.eclipse.collections.api.block.predicate.primitive.LongPredicate;
+import org.eclipse.collections.api.block.procedure.primitive.LongIntProcedure;
+import org.eclipse.collections.api.block.procedure.primitive.LongProcedure;
+import org.eclipse.collections.api.collection.primitive.MutableLongCollection;
+import org.eclipse.collections.api.iterator.MutableLongIterator;
+import org.eclipse.collections.api.iterator.LongIterator;
+import org.eclipse.collections.api.list.MutableList;
+import org.eclipse.collections.api.list.primitive.LongList;
+import org.eclipse.collections.api.list.primitive.ImmutableLongList;
+import org.eclipse.collections.api.list.primitive.MutableLongList;
+import org.eclipse.collections.api.set.primitive.LongSet;
+import org.eclipse.collections.api.set.primitive.MutableLongSet;
+import org.eclipse.collections.api.tuple.primitive.LongLongPair;
+import org.eclipse.collections.api.tuple.primitive.LongObjectPair;
+import org.eclipse.collections.impl.factory.Lists;
+import org.eclipse.collections.impl.factory.primitive.LongLists;
+import org.eclipse.collections.impl.lazy.primitive.ReverseLongIterable;
+import org.eclipse.collections.impl.list.mutable.FastList;
+import org.eclipse.collections.impl.primitive.AbstractLongIterable;
+import org.eclipse.collections.impl.set.mutable.primitive.LongHashSet;
+import org.eclipse.collections.impl.tuple.primitive.PrimitiveTuples;
+import org.eclipse.collections.impl.utility.Iterate;
+
+/**
+ * LongArrayList is similar to {@link FastList}, and is memory-optimized for long primitives.
+ * This file was automatically generated from template file primitiveArrayList.stg.
+ *
+ * @since 3.0.
+ */
+public class LongArrayList extends AbstractLongIterable
+        implements MutableLongList, Externalizable
+{
+    private static final long serialVersionUID = 1L;
+<span class="nc" id="L61">    private static final long[] DEFAULT_SIZED_EMPTY_ARRAY = {};</span>
+<span class="nc" id="L62">    private static final long[] ZERO_SIZED_ARRAY = {};</span>
+    private static final int MAXIMUM_ARRAY_SIZE = Integer.MAX_VALUE - 8;
+
+    protected int size;
+<span class="nc" id="L66">    protected transient long[] items = DEFAULT_SIZED_EMPTY_ARRAY;</span>
+
+    public LongArrayList()
+<span class="nc" id="L69">    {</span>
+<span class="nc" id="L70">    }</span>
+
+    public LongArrayList(int initialCapacity)
+<span class="nc" id="L73">    {</span>
+<span class="nc bnc" id="L74" title="All 2 branches missed.">        this.items = initialCapacity == 0 ? ZERO_SIZED_ARRAY : new long[initialCapacity];</span>
+<span class="nc" id="L75">    }</span>
+
+    public LongArrayList(long... array)
+<span class="nc" id="L78">    {</span>
+<span class="nc" id="L79">        this.size = array.length;</span>
+<span class="nc" id="L80">        this.items = array;</span>
+<span class="nc" id="L81">    }</span>
+
+    /**
+     * Creates a new list using the passed {@code elements} argument as the backing store.
+     * &lt;p&gt;
+     * !!! WARNING: This method uses the passed in array, so can be very unsafe if the original
+     * array is held onto anywhere else. !!!
+     */
+    public static LongArrayList newListWith(long... elements)
+    {
+<span class="nc" id="L91">        return new LongArrayList(elements);</span>
+    }
+
+    public static LongArrayList newList(LongIterable source)
+    {
+<span class="nc" id="L96">        return LongArrayList.newListWith(source.toArray());</span>
+    }
+
+    public static LongArrayList newWithNValues(int size, long value)
+    {
+<span class="nc" id="L101">        LongArrayList newList = new LongArrayList(size);</span>
+<span class="nc" id="L102">        newList.size = size;</span>
+<span class="nc" id="L103">        Arrays.fill(newList.items, value);</span>
+<span class="nc" id="L104">        return newList;</span>
+    }
+
+    @Override
+    public int size()
+    {
+<span class="nc" id="L110">        return this.size;</span>
+    }
+
+    @Override
+    public void clear()
+    {
+<span class="nc" id="L116">        Arrays.fill(this.items, 0, size, 0L);</span>
+<span class="nc" id="L117">        this.size = 0;</span>
+<span class="nc" id="L118">    }</span>
+
+    @Override
+    public boolean contains(long value)
+    {
+<span class="nc bnc" id="L123" title="All 2 branches missed.">        for (int i = 0; i &lt; this.size; i++)</span>
+        {
+<span class="nc bnc" id="L125" title="All 2 branches missed.">            if (this.items[i] == value)</span>
+            {
+<span class="nc" id="L127">                return true;</span>
+            }
+        }
+<span class="nc" id="L130">        return false;</span>
+    }
+
+    @Override
+    public long get(int index)
+    {
+<span class="nc bnc" id="L136" title="All 2 branches missed.">        if (index &lt; this.size)</span>
+        {
+<span class="nc" id="L138">            return this.items[index];</span>
+        }
+<span class="nc" id="L140">        throw this.newIndexOutOfBoundsException(index);</span>
+    }
+
+    private IndexOutOfBoundsException newIndexOutOfBoundsException(int index)
+    {
+<span class="nc" id="L145">        return new IndexOutOfBoundsException(&quot;Index: &quot; + index + &quot; Size: &quot; + this.size);</span>
+    }
+
+    @Override
+    public long getFirst()
+    {
+<span class="nc" id="L151">        this.checkEmpty();</span>
+<span class="nc" id="L152">        return this.items[0];</span>
+    }
+
+    @Override
+    public long getLast()
+    {
+<span class="nc" id="L158">        this.checkEmpty();</span>
+<span class="nc" id="L159">        return this.items[this.size() - 1];</span>
+    }
+
+    private void checkEmpty()
+    {
+<span class="nc bnc" id="L164" title="All 2 branches missed.">        if (this.isEmpty())</span>
+        {
+<span class="nc" id="L166">            throw this.newIndexOutOfBoundsException(0);</span>
+        }
+<span class="nc" id="L168">    }</span>
+
+    @Override
+    public int indexOf(long value)
+    {
+<span class="nc bnc" id="L173" title="All 2 branches missed.">        for (int i = 0; i &lt; this.size; i++)</span>
+        {
+<span class="nc bnc" id="L175" title="All 2 branches missed.">            if (this.items[i] == value)</span>
+            {
+<span class="nc" id="L177">                return i;</span>
+            }
+        }
+<span class="nc" id="L180">        return -1;</span>
+    }
+
+    @Override
+    public int lastIndexOf(long value)
+    {
+<span class="nc bnc" id="L186" title="All 2 branches missed.">        for (int i = this.size - 1; i &gt;= 0; i--)</span>
+        {
+<span class="nc bnc" id="L188" title="All 2 branches missed.">            if (this.items[i] == value)</span>
+            {
+<span class="nc" id="L190">                return i;</span>
+            }
+        }
+<span class="nc" id="L193">        return -1;</span>
+    }
+
+    public void trimToSize()
+    {
+<span class="nc bnc" id="L198" title="All 2 branches missed.">        if (this.size &lt; this.items.length)</span>
+        {
+<span class="nc" id="L200">            this.transferItemsToNewArrayWithCapacity(this.size);</span>
+        }
+<span class="nc" id="L202">    }</span>
+
+    private void transferItemsToNewArrayWithCapacity(int newCapacity)
+    {
+<span class="nc" id="L206">        this.items = this.copyItemsWithNewCapacity(newCapacity);</span>
+<span class="nc" id="L207">    }</span>
+
+    private long[] copyItemsWithNewCapacity(int newCapacity)
+    {
+<span class="nc" id="L211">        long[] newItems = new long[newCapacity];</span>
+<span class="nc" id="L212">        System.arraycopy(this.items, 0, newItems, 0, Math.min(this.size, newCapacity));</span>
+<span class="nc" id="L213">        return newItems;</span>
+    }
+
+    private int sizePlusFiftyPercent(int oldSize)
+    {
+<span class="nc" id="L218">        int result = oldSize + (oldSize &gt;&gt; 1) + 1;</span>
+<span class="nc bnc" id="L219" title="All 2 branches missed.">        return result &lt; oldSize ? MAXIMUM_ARRAY_SIZE : result;</span>
+    }
+
+    public void ensureCapacity(int minCapacity)
+    {
+<span class="nc" id="L224">        int oldCapacity = this.items.length;</span>
+<span class="nc bnc" id="L225" title="All 2 branches missed.">        if (minCapacity &gt; oldCapacity)</span>
+        {
+<span class="nc" id="L227">            int newCapacity = Math.max(this.sizePlusFiftyPercent(oldCapacity), minCapacity);</span>
+<span class="nc" id="L228">            this.transferItemsToNewArrayWithCapacity(newCapacity);</span>
+        }
+<span class="nc" id="L230">    }</span>
+
+    private void ensureCapacityForAdd()
+    {
+<span class="nc bnc" id="L234" title="All 2 branches missed.">        if (this.items == DEFAULT_SIZED_EMPTY_ARRAY)</span>
+        {
+<span class="nc" id="L236">            this.items = new long[10];</span>
+        }
+        else
+        {
+<span class="nc" id="L240">            this.transferItemsToNewArrayWithCapacity(this.sizePlusFiftyPercent(this.size));</span>
+        }
+<span class="nc" id="L242">    }</span>
+
+    @Override
+    public boolean add(long newItem)
+    {
+<span class="nc bnc" id="L247" title="All 2 branches missed.">        if (this.items.length == this.size)</span>
+        {
+<span class="nc" id="L249">            this.ensureCapacityForAdd();</span>
+        }
+<span class="nc" id="L251">        this.items[this.size] = newItem;</span>
+<span class="nc" id="L252">        this.size++;</span>
+<span class="nc" id="L253">        return true;</span>
+    }
+
+    @Override
+    public boolean addAll(long... source)
+    {
+<span class="nc bnc" id="L259" title="All 2 branches missed.">        if (source.length &lt; 1)</span>
+        {
+<span class="nc" id="L261">            return false;</span>
+        }
+<span class="nc" id="L263">        this.copyItems(source.length, source);</span>
+<span class="nc" id="L264">        return true;</span>
+    }
+
+    @Override
+    public boolean addAll(LongIterable source)
+    {
+<span class="nc bnc" id="L270" title="All 2 branches missed.">        if (source instanceof LongArrayList)</span>
+        {
+<span class="nc bnc" id="L272" title="All 2 branches missed.">            if (source.isEmpty())</span>
+            {
+<span class="nc" id="L274">                return false;</span>
+            }
+<span class="nc" id="L276">            LongArrayList other = (LongArrayList) source;</span>
+<span class="nc" id="L277">            this.copyItems(other.size(), other.items);</span>
+<span class="nc" id="L278">            return true;</span>
+        }
+<span class="nc" id="L280">        return this.addAll(source.toArray());</span>
+    }
+
+    private void copyItems(int sourceSize, long[] source)
+    {
+<span class="nc" id="L285">        int newSize = this.size + sourceSize;</span>
+<span class="nc" id="L286">        this.ensureCapacity(newSize);</span>
+<span class="nc" id="L287">        System.arraycopy(source, 0, this.items, this.size, sourceSize);</span>
+<span class="nc" id="L288">        this.size = newSize;</span>
+<span class="nc" id="L289">    }</span>
+
+    private void throwOutOfBounds(int index)
+    {
+<span class="nc" id="L293">        throw this.newIndexOutOfBoundsException(index);</span>
+    }
+
+    @Override
+    public void addAtIndex(int index, long element)
+    {
+<span class="nc bnc" id="L299" title="All 4 branches missed.">        if (index &gt; -1 &amp;&amp; index &lt; this.size)</span>
+        {
+<span class="nc" id="L301">            this.addAtIndexLessThanSize(index, element);</span>
+        }
+<span class="nc bnc" id="L303" title="All 2 branches missed.">        else if (index == this.size)</span>
+        {
+<span class="nc" id="L305">            this.add(element);</span>
+        }
+        else
+        {
+<span class="nc" id="L309">            this.throwOutOfBounds(index);</span>
+        }
+<span class="nc" id="L311">    }</span>
+
+    private void addAtIndexLessThanSize(int index, long element)
+    {
+<span class="nc" id="L315">        int oldSize = this.size;</span>
+<span class="nc" id="L316">        this.size++;</span>
+<span class="nc bnc" id="L317" title="All 2 branches missed.">        if (this.items.length == oldSize)</span>
+        {
+<span class="nc" id="L319">            long[] newItems = new long[this.sizePlusFiftyPercent(oldSize)];</span>
+<span class="nc bnc" id="L320" title="All 2 branches missed.">            if (index &gt; 0)</span>
+            {
+<span class="nc" id="L322">                System.arraycopy(this.items, 0, newItems, 0, index);</span>
+            }
+<span class="nc" id="L324">            System.arraycopy(this.items, index, newItems, index + 1, oldSize - index);</span>
+<span class="nc" id="L325">            this.items = newItems;</span>
+<span class="nc" id="L326">        }</span>
+        else
+        {
+<span class="nc" id="L329">            System.arraycopy(this.items, index, this.items, index + 1, oldSize - index);</span>
+        }
+<span class="nc" id="L331">        this.items[index] = element;</span>
+<span class="nc" id="L332">    }</span>
+
+    @Override
+    public boolean addAllAtIndex(int index, long... source)
+    {
+<span class="nc bnc" id="L337" title="All 4 branches missed.">        if (index &gt; this.size || index &lt; 0)</span>
+        {
+<span class="nc" id="L339">            this.throwOutOfBounds(index);</span>
+        }
+<span class="nc bnc" id="L341" title="All 2 branches missed.">        if (source.length == 0)</span>
+        {
+<span class="nc" id="L343">            return false;</span>
+        }
+<span class="nc" id="L345">        int sourceSize = source.length;</span>
+<span class="nc" id="L346">        int newSize = this.size + sourceSize;</span>
+<span class="nc" id="L347">        this.ensureCapacity(newSize);</span>
+<span class="nc" id="L348">        this.shiftElementsAtIndex(index, sourceSize);</span>
+<span class="nc" id="L349">        System.arraycopy(source, 0, this.items, index, sourceSize);</span>
+<span class="nc" id="L350">        this.size = newSize;</span>
+<span class="nc" id="L351">        return true;</span>
+    }
+
+    @Override
+    public boolean addAllAtIndex(int index, LongIterable source)
+    {
+<span class="nc" id="L357">        return this.addAllAtIndex(index, source.toArray());</span>
+    }
+
+    private void shiftElementsAtIndex(int index, int sourceSize)
+    {
+<span class="nc" id="L362">        int numberToMove = this.size - index;</span>
+<span class="nc bnc" id="L363" title="All 2 branches missed.">        if (numberToMove &gt; 0)</span>
+        {
+<span class="nc" id="L365">            System.arraycopy(this.items, index, this.items, index + sourceSize, numberToMove);</span>
+        }
+<span class="nc" id="L367">    }</span>
+
+    @Override
+    public boolean remove(long value)
+    {
+<span class="nc" id="L372">        int index = this.indexOf(value);</span>
+<span class="nc bnc" id="L373" title="All 2 branches missed.">        if (index &gt;= 0)</span>
+        {
+<span class="nc" id="L375">            this.removeAtIndex(index);</span>
+<span class="nc" id="L376">            return true;</span>
+        }
+<span class="nc" id="L378">        return false;</span>
+    }
+
+    @Override
+    public boolean removeIf(LongPredicate predicate)
+    {
+<span class="nc" id="L384">        int currentFilledIndex = 0;</span>
+<span class="nc bnc" id="L385" title="All 2 branches missed.">        for (int i = 0; i &lt; this.size; i++)</span>
+        {
+<span class="nc" id="L387">            long item = this.items[i];</span>
+<span class="nc bnc" id="L388" title="All 2 branches missed.">            if (!predicate.accept(item))</span>
+            {
+                // keep it
+<span class="nc bnc" id="L391" title="All 2 branches missed.">                if (currentFilledIndex != i)</span>
+                {
+<span class="nc" id="L393">                    this.items[currentFilledIndex] = item;</span>
+                }
+<span class="nc" id="L395">                currentFilledIndex++;</span>
+            }
+        }
+<span class="nc bnc" id="L398" title="All 2 branches missed.">        boolean changed = currentFilledIndex &lt; this.size;</span>
+<span class="nc" id="L399">        this.wipeAndResetTheEnd(currentFilledIndex);</span>
+<span class="nc" id="L400">        return changed;</span>
+    }
+
+    private void wipeAndResetTheEnd(int newCurrentFilledIndex)
+    {
+<span class="nc bnc" id="L405" title="All 2 branches missed.">        for (int i = newCurrentFilledIndex; i &lt; this.size; i++)</span>
+        {
+<span class="nc" id="L407">            this.items[i] = 0L;</span>
+        }
+<span class="nc" id="L409">        this.size = newCurrentFilledIndex;</span>
+<span class="nc" id="L410">    }</span>
+
+    @Override
+    public boolean removeAll(LongIterable source)
+    {
+<span class="nc" id="L415">        boolean modified = false;</span>
+<span class="nc bnc" id="L416" title="All 2 branches missed.">        for (int index = 0; index &lt; this.size; index++)</span>
+        {
+<span class="nc bnc" id="L418" title="All 2 branches missed.">            if (source.contains(this.get(index)))</span>
+            {
+<span class="nc" id="L420">                this.removeAtIndex(index);</span>
+<span class="nc" id="L421">                index--;</span>
+<span class="nc" id="L422">                modified = true;</span>
+            }
+        }
+<span class="nc" id="L425">        return modified;</span>
+    }
+
+    @Override
+    public boolean removeAll(long... source)
+    {
+<span class="nc" id="L431">        LongHashSet set = LongHashSet.newSetWith(source);</span>
+<span class="nc" id="L432">        long[] newItems = new long[this.size];</span>
+<span class="nc" id="L433">        int count = 0;</span>
+<span class="nc" id="L434">        int oldSize = this.size;</span>
+<span class="nc bnc" id="L435" title="All 2 branches missed.">        for (int index = 0; index &lt; this.size; index++)</span>
+        {
+<span class="nc bnc" id="L437" title="All 2 branches missed.">            if (!set.contains(this.items[index]))</span>
+            {
+<span class="nc" id="L439">                newItems[count] = this.items[index];</span>
+<span class="nc" id="L440">                count++;</span>
+            }
+        }
+<span class="nc" id="L443">        this.items = newItems;</span>
+<span class="nc" id="L444">        this.size = count;</span>
+<span class="nc bnc" id="L445" title="All 2 branches missed.">        return oldSize != this.size;</span>
+    }
+
+    @Override
+    public boolean retainAll(LongIterable source)
+    {
+<span class="nc" id="L451">        int oldSize = this.size();</span>
+<span class="nc bnc" id="L452" title="All 2 branches missed.">        final LongSet sourceSet = source instanceof LongSet ? (LongSet) source : source.toSet();</span>
+<span class="nc" id="L453">        LongArrayList retained = this.select(sourceSet::contains);</span>
+<span class="nc" id="L454">        this.size = retained.size;</span>
+<span class="nc" id="L455">        this.items = retained.items;</span>
+<span class="nc bnc" id="L456" title="All 2 branches missed.">        return oldSize != this.size();</span>
+    }
+
+    @Override
+    public boolean retainAll(long... source)
+    {
+<span class="nc" id="L462">        return this.retainAll(LongHashSet.newSetWith(source));</span>
+    }
+
+    @Override
+    public long removeAtIndex(int index)
+    {
+<span class="nc" id="L468">        long previous = this.get(index);</span>
+<span class="nc" id="L469">        int totalOffset = this.size - index - 1;</span>
+<span class="nc bnc" id="L470" title="All 2 branches missed.">        if (totalOffset &gt; 0)</span>
+        {
+<span class="nc" id="L472">            System.arraycopy(this.items, index + 1, this.items, index, totalOffset);</span>
+        }
+<span class="nc" id="L474">        --this.size;</span>
+<span class="nc" id="L475">        this.items[this.size] = 0L;</span>
+<span class="nc" id="L476">        return previous;</span>
+    }
+
+    @Override
+    public long set(int index, long element)
+    {
+<span class="nc" id="L482">        long previous = this.get(index);</span>
+<span class="nc" id="L483">        this.items[index] = element;</span>
+<span class="nc" id="L484">        return previous;</span>
+    }
+
+    @Override
+    public LongArrayList with(long element)
+    {
+<span class="nc" id="L490">        this.add(element);</span>
+<span class="nc" id="L491">        return this;</span>
+    }
+
+    @Override
+    public LongArrayList without(long element)
+    {
+<span class="nc" id="L497">        this.remove(element);</span>
+<span class="nc" id="L498">        return this;</span>
+    }
+
+    @Override
+    public LongArrayList withAll(LongIterable elements)
+    {
+<span class="nc" id="L504">        this.addAll(elements.toArray());</span>
+<span class="nc" id="L505">        return this;</span>
+    }
+
+    @Override
+    public LongArrayList withoutAll(LongIterable elements)
+    {
+<span class="nc" id="L511">        this.removeAll(elements);</span>
+<span class="nc" id="L512">        return this;</span>
+    }
+
+    public LongArrayList with(long element1, long element2)
+    {
+<span class="nc" id="L517">        this.add(element1);</span>
+<span class="nc" id="L518">        this.add(element2);</span>
+<span class="nc" id="L519">        return this;</span>
+    }
+
+    public LongArrayList with(long element1, long element2, long element3)
+    {
+<span class="nc" id="L524">        this.add(element1);</span>
+<span class="nc" id="L525">        this.add(element2);</span>
+<span class="nc" id="L526">        this.add(element3);</span>
+<span class="nc" id="L527">        return this;</span>
+    }
+
+    public LongArrayList with(long element1, long element2, long element3, long... elements)
+    {
+<span class="nc" id="L532">        this.add(element1);</span>
+<span class="nc" id="L533">        this.add(element2);</span>
+<span class="nc" id="L534">        this.add(element3);</span>
+<span class="nc" id="L535">        return this.withArrayCopy(elements, 0, elements.length);</span>
+    }
+
+    private LongArrayList withArrayCopy(long[] elements, int begin, int length)
+    {
+<span class="nc" id="L540">        this.ensureCapacity(this.size + length);</span>
+<span class="nc" id="L541">        System.arraycopy(elements, begin, this.items, this.size, length);</span>
+<span class="nc" id="L542">        this.size += length;</span>
+<span class="nc" id="L543">        return this;</span>
+    }
+
+    @Override
+    public MutableLongIterator longIterator()
+    {
+<span class="nc" id="L549">        return new InternalLongIterator();</span>
+    }
+
+    @Override
+    public void forEach(LongProcedure procedure)
+    {
+<span class="nc" id="L555">        this.each(procedure);</span>
+<span class="nc" id="L556">    }</span>
+
+    /**
+     * @since 7.0.
+     */
+    @Override
+    public void each(LongProcedure procedure)
+    {
+<span class="nc bnc" id="L564" title="All 2 branches missed.">        for (int i = 0; i &lt; this.size; i++)</span>
+        {
+<span class="nc" id="L566">            procedure.value(this.items[i]);</span>
+        }
+<span class="nc" id="L568">    }</span>
+
+    @Override
+    public void forEachWithIndex(LongIntProcedure procedure)
+    {
+<span class="nc bnc" id="L573" title="All 2 branches missed.">        for (int i = 0; i &lt; this.size; i++)</span>
+        {
+<span class="nc" id="L575">            procedure.value(this.items[i], i);</span>
+        }
+<span class="nc" id="L577">    }</span>
+
+    @Override
+    public &lt;T&gt; T injectInto(T injectedValue, ObjectLongToObjectFunction&lt;? super T, ? extends T&gt; function)
+    {
+<span class="nc" id="L582">        T result = injectedValue;</span>
+<span class="nc bnc" id="L583" title="All 2 branches missed.">        for (int i = 0; i &lt; this.size; i++)</span>
+        {
+<span class="nc" id="L585">            result = function.valueOf(result, this.items[i]);</span>
+        }
+<span class="nc" id="L587">        return result;</span>
+    }
+
+    @Override
+    public &lt;T&gt; T injectIntoWithIndex(T injectedValue, ObjectLongIntToObjectFunction&lt;? super T, ? extends T&gt; function)
+    {
+<span class="nc" id="L593">        T result = injectedValue;</span>
+<span class="nc bnc" id="L594" title="All 2 branches missed.">        for (int i = 0; i &lt; this.size; i++)</span>
+        {
+<span class="nc" id="L596">            result = function.valueOf(result, this.items[i], i);</span>
+        }
+<span class="nc" id="L598">        return result;</span>
+    }
+
+    @Override
+    public RichIterable&lt;LongIterable&gt; chunk(int size)
+    {
+<span class="nc bnc" id="L604" title="All 2 branches missed.">        if (size &lt;= 0)</span>
+        {
+<span class="nc" id="L606">            throw new IllegalArgumentException(&quot;Size for groups must be positive but was: &quot; + size);</span>
+        }
+<span class="nc" id="L608">        MutableList&lt;LongIterable&gt; result = Lists.mutable.empty();</span>
+<span class="nc bnc" id="L609" title="All 2 branches missed.">        if (this.notEmpty())</span>
+        {
+<span class="nc bnc" id="L611" title="All 2 branches missed.">            if (this.size() &lt;= size)</span>
+            {
+<span class="nc" id="L613">                result.add(LongLists.mutable.withAll(this));</span>
+            }
+            else
+            {
+<span class="nc" id="L617">                LongIterator iterator = this.longIterator();</span>
+<span class="nc bnc" id="L618" title="All 2 branches missed.">                while (iterator.hasNext())</span>
+                {
+<span class="nc" id="L620">                    MutableLongList batch = LongLists.mutable.empty();</span>
+<span class="nc bnc" id="L621" title="All 4 branches missed.">                    for (int i = 0; i &lt; size &amp;&amp; iterator.hasNext(); i++)</span>
+                    {
+<span class="nc" id="L623">                        batch.add(iterator.next());</span>
+                    }
+<span class="nc" id="L625">                    result.add(batch);</span>
+<span class="nc" id="L626">                }</span>
+            }
+        }
+<span class="nc" id="L629">        return result;</span>
+    }
+
+    @Override
+    public int count(LongPredicate predicate)
+    {
+<span class="nc" id="L635">        int count = 0;</span>
+<span class="nc bnc" id="L636" title="All 2 branches missed.">        for (int i = 0; i &lt; this.size; i++)</span>
+        {
+<span class="nc bnc" id="L638" title="All 2 branches missed.">            if (predicate.accept(this.items[i]))</span>
+            {
+<span class="nc" id="L640">                count++;</span>
+            }
+        }
+<span class="nc" id="L643">        return count;</span>
+    }
+
+    @Override
+    public boolean anySatisfy(LongPredicate predicate)
+    {
+<span class="nc bnc" id="L649" title="All 2 branches missed.">        for (int i = 0; i &lt; this.size; i++)</span>
+        {
+<span class="nc bnc" id="L651" title="All 2 branches missed.">            if (predicate.accept(this.items[i]))</span>
+            {
+<span class="nc" id="L653">                return true;</span>
+            }
+        }
+<span class="nc" id="L656">        return false;</span>
+    }
+
+    @Override
+    public boolean allSatisfy(LongPredicate predicate)
+    {
+<span class="nc bnc" id="L662" title="All 2 branches missed.">        for (int i = 0; i &lt; this.size; i++)</span>
+        {
+<span class="nc bnc" id="L664" title="All 2 branches missed.">            if (!predicate.accept(this.items[i]))</span>
+            {
+<span class="nc" id="L666">                return false;</span>
+            }
+        }
+<span class="nc" id="L669">        return true;</span>
+    }
+
+    @Override
+    public boolean noneSatisfy(LongPredicate predicate)
+    {
+<span class="nc bnc" id="L675" title="All 2 branches missed.">        return !this.anySatisfy(predicate);</span>
+    }
+
+    @Override
+    public LongArrayList select(LongPredicate predicate)
+    {
+<span class="nc" id="L681">        return this.select(predicate, new LongArrayList());</span>
+    }
+
+    /**
+     * @since 8.1.
+     */
+    @Override
+    public &lt;R extends MutableLongCollection&gt; R select(LongPredicate predicate, R target)
+    {
+<span class="nc bnc" id="L690" title="All 2 branches missed.">        for (int i = 0; i &lt; this.size; i++)</span>
+        {
+<span class="nc" id="L692">            long item = this.items[i];</span>
+<span class="nc bnc" id="L693" title="All 2 branches missed.">            if (predicate.accept(item))</span>
+            {
+<span class="nc" id="L695">                target.add(item);</span>
+            }
+        }
+<span class="nc" id="L698">        return target;</span>
+    }
+
+    @Override
+    public LongArrayList reject(LongPredicate predicate)
+    {
+<span class="nc" id="L704">        return this.reject(predicate, new LongArrayList());</span>
+    }
+
+    /**
+     * @since 8.1.
+     */
+    @Override
+    public &lt;R extends MutableLongCollection&gt; R reject(LongPredicate predicate, R target)
+    {
+<span class="nc bnc" id="L713" title="All 2 branches missed.">        for (int i = 0; i &lt; this.size; i++)</span>
+        {
+<span class="nc" id="L715">            long item = this.items[i];</span>
+<span class="nc bnc" id="L716" title="All 2 branches missed.">            if (!predicate.accept(item))</span>
+            {
+<span class="nc" id="L718">                target.add(item);</span>
+            }
+        }
+<span class="nc" id="L721">        return target;</span>
+    }
+
+    @Override
+    public long detectIfNone(LongPredicate predicate, long ifNone)
+    {
+<span class="nc bnc" id="L727" title="All 2 branches missed.">        for (int i = 0; i &lt; this.size; i++)</span>
+        {
+<span class="nc" id="L729">            long item = this.items[i];</span>
+<span class="nc bnc" id="L730" title="All 2 branches missed.">            if (predicate.accept(item))</span>
+            {
+<span class="nc" id="L732">                return item;</span>
+            }
+        }
+<span class="nc" id="L735">        return ifNone;</span>
+    }
+
+    @Override
+    public &lt;V&gt; MutableList&lt;V&gt; collect(LongToObjectFunction&lt;? extends V&gt; function)
+    {
+<span class="nc" id="L741">        return this.collect(function, FastList.newList(this.size));</span>
+    }
+
+    /**
+     * @since 8.1.
+     */
+    @Override
+    public &lt;V, R extends Collection&lt;V&gt;&gt; R collect(LongToObjectFunction&lt;? extends V&gt; function, R target)
+    {
+<span class="nc bnc" id="L750" title="All 2 branches missed.">        for (int i = 0; i &lt; this.size; i++)</span>
+        {
+<span class="nc" id="L752">            target.add(function.valueOf(this.items[i]));</span>
+        }
+<span class="nc" id="L754">        return target;</span>
+    }
+
+    @Override
+    public long max()
+    {
+<span class="nc bnc" id="L760" title="All 2 branches missed.">        if (this.isEmpty())</span>
+        {
+<span class="nc" id="L762">            throw new NoSuchElementException();</span>
+        }
+<span class="nc" id="L764">        long max = this.items[0];</span>
+<span class="nc bnc" id="L765" title="All 2 branches missed.">        for (int i = 1; i &lt; this.size; i++)</span>
+        {
+<span class="nc" id="L767">            long value = this.items[i];</span>
+<span class="nc bnc" id="L768" title="All 2 branches missed.">            if (max &lt; value)</span>
+            {
+<span class="nc" id="L770">                max = value;</span>
+            }
+        }
+<span class="nc" id="L773">        return max;</span>
+    }
+
+    @Override
+    public long min()
+    {
+<span class="nc bnc" id="L779" title="All 2 branches missed.">        if (this.isEmpty())</span>
+        {
+<span class="nc" id="L781">            throw new NoSuchElementException();</span>
+        }
+<span class="nc" id="L783">        long min = this.items[0];</span>
+<span class="nc bnc" id="L784" title="All 2 branches missed.">        for (int i = 1; i &lt; this.size; i++)</span>
+        {
+<span class="nc" id="L786">            long value = this.items[i];</span>
+<span class="nc bnc" id="L787" title="All 2 branches missed.">            if (value &lt; min)</span>
+            {
+<span class="nc" id="L789">                min = value;</span>
+            }
+        }
+<span class="nc" id="L792">        return min;</span>
+    }
+
+    @Override
+    public long sum()
+    {
+<span class="nc" id="L798">        long result = 0L;</span>
+<span class="nc bnc" id="L799" title="All 2 branches missed.">        for (int i = 0; i &lt; this.size; i++)</span>
+        {
+<span class="nc" id="L801">            result += this.items[i];</span>
+        }
+<span class="nc" id="L803">        return result;</span>
+    }
+
+    @Override
+    public long dotProduct(LongList list)
+    {
+<span class="nc bnc" id="L809" title="All 2 branches missed.">        if (this.size != list.size())</span>
+        {
+<span class="nc" id="L811">            throw new IllegalArgumentException(&quot;Lists used in dotProduct must be the same size&quot;);</span>
+        }
+<span class="nc" id="L813">        long sum = 0L;</span>
+<span class="nc bnc" id="L814" title="All 2 branches missed.">        for (int i = 0; i &lt; this.size; i++)</span>
+        {
+<span class="nc" id="L816">            sum += this.items[i] * list.get(i);</span>
+        }
+<span class="nc" id="L818">        return sum;</span>
+    }
+
+    @Override
+    public long[] toArray()
+    {
+<span class="nc" id="L824">        long[] newItems = new long[this.size];</span>
+<span class="nc" id="L825">        System.arraycopy(this.items, 0, newItems, 0, this.size);</span>
+<span class="nc" id="L826">        return newItems;</span>
+    }
+
+    @Override
+    public boolean equals(Object otherList)
+    {
+<span class="nc bnc" id="L832" title="All 2 branches missed.">        if (otherList == this)</span>
+        {
+<span class="nc" id="L834">            return true;</span>
+        }
+<span class="nc bnc" id="L836" title="All 2 branches missed.">        if (!(otherList instanceof LongList))</span>
+        {
+<span class="nc" id="L838">            return false;</span>
+        }
+<span class="nc" id="L840">        LongList list = (LongList) otherList;</span>
+<span class="nc bnc" id="L841" title="All 2 branches missed.">        if (this.size != list.size())</span>
+        {
+<span class="nc" id="L843">            return false;</span>
+        }
+<span class="nc bnc" id="L845" title="All 2 branches missed.">        for (int i = 0; i &lt; this.size; i++)</span>
+        {
+<span class="nc bnc" id="L847" title="All 2 branches missed.">            if (this.items[i] != list.get(i))</span>
+            {
+<span class="nc" id="L849">                return false;</span>
+            }
+        }
+<span class="nc" id="L852">        return true;</span>
+    }
+
+    @Override
+    public int hashCode()
+    {
+<span class="nc" id="L858">        int hashCode = 1;</span>
+<span class="nc bnc" id="L859" title="All 2 branches missed.">        for (int i = 0; i &lt; this.size; i++)</span>
+        {
+<span class="nc" id="L861">            long item = this.items[i];</span>
+<span class="nc" id="L862">            hashCode = 31 * hashCode + (int) (item ^ item &gt;&gt;&gt; 32);</span>
+        }
+<span class="nc" id="L864">        return hashCode;</span>
+    }
+
+    @Override
+    public void appendString(
+            Appendable appendable,
+            String start,
+            String separator,
+            String end)
+    {
+        try
+        {
+<span class="nc" id="L876">            appendable.append(start);</span>
+<span class="nc bnc" id="L877" title="All 2 branches missed.">            for (int i = 0; i &lt; this.size; i++)</span>
+            {
+<span class="nc bnc" id="L879" title="All 2 branches missed.">                if (i &gt; 0)</span>
+                {
+<span class="nc" id="L881">                    appendable.append(separator);</span>
+                }
+<span class="nc" id="L883">                long value = this.items[i];</span>
+<span class="nc" id="L884">                appendable.append(String.valueOf(value));</span>
+            }
+<span class="nc" id="L886">            appendable.append(end);</span>
+        }
+<span class="nc" id="L888">        catch (IOException e)</span>
+        {
+<span class="nc" id="L890">            throw new RuntimeException(e);</span>
+<span class="nc" id="L891">        }</span>
+<span class="nc" id="L892">    }</span>
+
+    @Override
+    public MutableLongList asUnmodifiable()
+    {
+<span class="nc" id="L897">        return new UnmodifiableLongList(this);</span>
+    }
+
+    @Override
+    public MutableLongList asSynchronized()
+    {
+<span class="nc" id="L903">        return new SynchronizedLongList(this);</span>
+    }
+
+    @Override
+    public ImmutableLongList toImmutable()
+    {
+<span class="nc bnc" id="L909" title="All 2 branches missed.">        if (this.size == 0)</span>
+        {
+<span class="nc" id="L911">            return LongLists.immutable.empty();</span>
+        }
+<span class="nc bnc" id="L913" title="All 2 branches missed.">        if (this.size == 1)</span>
+        {
+<span class="nc" id="L915">            return LongLists.immutable.with(this.items[0]);</span>
+        }
+<span class="nc" id="L917">        return LongLists.immutable.with(this.toArray());</span>
+    }
+
+    @Override
+    public void writeExternal(ObjectOutput out) throws IOException
+    {
+<span class="nc" id="L923">        out.writeInt(this.size);</span>
+<span class="nc bnc" id="L924" title="All 2 branches missed.">        for (int i = 0; i &lt; this.size; i++)</span>
+        {
+<span class="nc" id="L926">            out.writeLong(this.items[i]);</span>
+        }
+<span class="nc" id="L928">    }</span>
+
+    @Override
+    public void readExternal(ObjectInput in) throws IOException
+    {
+<span class="nc" id="L933">        this.size = in.readInt();</span>
+<span class="nc" id="L934">        this.items = new long[this.size];</span>
+<span class="nc bnc" id="L935" title="All 2 branches missed.">        for (int i = 0; i &lt; this.size; i++)</span>
+        {
+<span class="nc" id="L937">            this.items[i] = in.readLong();</span>
+        }
+<span class="nc" id="L939">    }</span>
+
+    @Override
+    public LazyLongIterable asReversed()
+    {
+<span class="nc" id="L944">        return ReverseLongIterable.adapt(this);</span>
+    }
+
+    @Override
+    public LongArrayList reverseThis()
+    {
+<span class="nc" id="L950">        int endIndex = this.size - 1;</span>
+<span class="nc bnc" id="L951" title="All 2 branches missed.">        for (int i = 0; i &lt; this.size / 2; i++)</span>
+        {
+<span class="nc" id="L953">            long tempSwapValue = this.items[i];</span>
+<span class="nc" id="L954">            this.items[i] = this.items[endIndex - i];</span>
+<span class="nc" id="L955">            this.items[endIndex - i] = tempSwapValue;</span>
+        }
+<span class="nc" id="L957">        return this;</span>
+    }
+
+    @Override
+    public LongArrayList sortThis()
+    {
+<span class="nc" id="L963">        Arrays.sort(this.items, 0, this.size);</span>
+<span class="nc" id="L964">        return this;</span>
+    }
+
+    @Override
+    public LongArrayList toReversed()
+    {
+<span class="nc" id="L970">        return LongArrayList.newList(this.asReversed());</span>
+    }
+
+    @Override
+    public int binarySearch(long value)
+    {
+<span class="nc" id="L976">        return Arrays.binarySearch(this.items, 0, this.size, value);</span>
+    }
+
+    @Override
+    public MutableLongList distinct()
+    {
+<span class="nc" id="L982">        LongArrayList target = new LongArrayList();</span>
+<span class="nc" id="L983">        MutableLongSet seenSoFar = new LongHashSet(this.size());</span>
+
+<span class="nc bnc" id="L985" title="All 2 branches missed.">        for (int i = 0; i &lt; this.size; i++)</span>
+        {
+<span class="nc" id="L987">            long each = this.items[i];</span>
+<span class="nc bnc" id="L988" title="All 2 branches missed.">            if (seenSoFar.add(each))</span>
+            {
+<span class="nc" id="L990">                target.add(each);</span>
+            }
+        }
+<span class="nc" id="L993">        return target;</span>
+    }
+
+    @Override
+    public MutableLongList subList(int fromIndex, int toIndex)
+    {
+<span class="nc" id="L999">        throw new UnsupportedOperationException(&quot;subList not yet implemented!&quot;);</span>
+    }
+
+    /**
+     * @since 9.1.
+     */
+    @Override
+    public MutableList&lt;LongLongPair&gt; zipLong(LongIterable iterable)
+    {
+<span class="nc" id="L1008">        int size = this.size();</span>
+<span class="nc" id="L1009">        int otherSize = iterable.size();</span>
+<span class="nc" id="L1010">        MutableList&lt;LongLongPair&gt; target = Lists.mutable.withInitialCapacity(Math.min(size, otherSize));</span>
+<span class="nc" id="L1011">        LongIterator iterator = iterable.longIterator();</span>
+<span class="nc bnc" id="L1012" title="All 4 branches missed.">        for (int i = 0; i &lt; size &amp;&amp; i &lt; otherSize; i++)</span>
+        {
+<span class="nc" id="L1014">            target.add(PrimitiveTuples.pair(this.items[i], iterator.next()));</span>
+        }
+<span class="nc" id="L1016">        return target;</span>
+    }
+
+    /**
+     * Creates a new empty LongArrayList.
+     *
+     * @since 9.2.
+     */
+    public LongArrayList newEmpty()
+    {
+<span class="nc" id="L1026">        return new LongArrayList();</span>
+    }
+
+    /**
+     * @since 9.1.
+     */
+    @Override
+    public &lt;T&gt; MutableList&lt;LongObjectPair&lt;T&gt;&gt; zip(Iterable&lt;T&gt; iterable)
+    {
+<span class="nc" id="L1035">        int size = this.size();</span>
+<span class="nc" id="L1036">        int otherSize = Iterate.sizeOf(iterable);</span>
+<span class="nc" id="L1037">        MutableList&lt;LongObjectPair&lt;T&gt;&gt; target = Lists.mutable.withInitialCapacity(Math.min(size, otherSize));</span>
+<span class="nc" id="L1038">        Iterator&lt;T&gt; iterator = iterable.iterator();</span>
+<span class="nc bnc" id="L1039" title="All 4 branches missed.">        for (int i = 0; i &lt; size &amp;&amp; iterator.hasNext(); i++)</span>
+        {
+<span class="nc" id="L1041">            target.add(PrimitiveTuples.pair(this.items[i], iterator.next()));</span>
+        }
+<span class="nc" id="L1043">        return target;</span>
+    }
+
+<span class="nc" id="L1046">    private class InternalLongIterator implements MutableLongIterator</span>
+    {
+        /**
+         * Index of element to be returned by subsequent call to next.
+         */
+        private int currentIndex;
+<span class="nc" id="L1052">        private int lastIndex = -1;</span>
+
+        @Override
+        public boolean hasNext()
+        {
+<span class="nc bnc" id="L1057" title="All 2 branches missed.">            return this.currentIndex != LongArrayList.this.size();</span>
+        }
+
+        @Override
+        public long next()
+        {
+<span class="nc bnc" id="L1063" title="All 2 branches missed.">            if (!this.hasNext())</span>
+            {
+<span class="nc" id="L1065">                throw new NoSuchElementException();</span>
+            }
+<span class="nc" id="L1067">            long next = LongArrayList.this.items[this.currentIndex];</span>
+<span class="nc" id="L1068">            this.lastIndex = this.currentIndex++;</span>
+<span class="nc" id="L1069">            return next;</span>
+        }
+
+        @Override
+        public void remove()
+        {
+<span class="nc bnc" id="L1075" title="All 2 branches missed.">            if (this.lastIndex == -1)</span>
+            {
+<span class="nc" id="L1077">                throw new IllegalStateException();</span>
+            }
+<span class="nc" id="L1079">            LongArrayList.this.removeAtIndex(this.lastIndex);</span>
+<span class="nc" id="L1080">            this.currentIndex--;</span>
+<span class="nc" id="L1081">            this.lastIndex = -1;</span>
+<span class="nc" id="L1082">        }</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.0.201801022044</span></div></body></html>

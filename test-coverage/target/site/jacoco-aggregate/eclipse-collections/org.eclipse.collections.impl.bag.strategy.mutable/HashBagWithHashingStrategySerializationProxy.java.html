@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>HashBagWithHashingStrategySerializationProxy.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Eclipse Collections Test Coverage Aggregation</a> &gt; <a href="../index.html" class="el_bundle">eclipse-collections</a> &gt; <a href="index.source.html" class="el_package">org.eclipse.collections.impl.bag.strategy.mutable</a> &gt; <span class="el_source">HashBagWithHashingStrategySerializationProxy.java</span></div><h1>HashBagWithHashingStrategySerializationProxy.java</h1><pre class="source lang-java linenums">/*
+ * Copyright (c) 2016 Bhavana Hindupur.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * and Eclipse Distribution License v. 1.0 which accompany this distribution.
+ * The Eclipse Public License is available at http://www.eclipse.org/legal/epl-v10.html
+ * and the Eclipse Distribution License is available at
+ * http://www.eclipse.org/org/documents/edl-v10.php.
+ */
+
+package org.eclipse.collections.impl.bag.strategy.mutable;
+
+import java.io.Externalizable;
+import java.io.IOException;
+import java.io.ObjectInput;
+import java.io.ObjectOutput;
+
+import org.eclipse.collections.api.block.HashingStrategy;
+import org.eclipse.collections.impl.block.procedure.checked.CheckedObjectIntProcedure;
+
+class HashBagWithHashingStrategySerializationProxy&lt;T&gt; implements Externalizable
+{
+    private static final long serialVersionUID = 1L;
+
+    private HashBagWithHashingStrategy&lt;T&gt; bagWithHashingStrategy;
+
+    @SuppressWarnings(&quot;UnusedDeclaration&quot;)
+    public HashBagWithHashingStrategySerializationProxy()
+<span class="nc" id="L29">    {</span>
+        // Empty constructor for Externalizable class
+<span class="nc" id="L31">    }</span>
+
+    HashBagWithHashingStrategySerializationProxy(HashBagWithHashingStrategy&lt;T&gt; bagWithHashingStrategy)
+<span class="nc" id="L34">    {</span>
+<span class="nc" id="L35">        this.bagWithHashingStrategy = bagWithHashingStrategy;</span>
+<span class="nc" id="L36">    }</span>
+
+    @Override
+    public void writeExternal(ObjectOutput out) throws IOException
+    {
+<span class="nc" id="L41">        out.writeObject(this.bagWithHashingStrategy.hashingStrategy());</span>
+<span class="nc" id="L42">        out.writeInt(this.bagWithHashingStrategy.sizeDistinct());</span>
+        try
+        {
+<span class="nc" id="L45">            this.bagWithHashingStrategy.forEachWithOccurrences(new CheckedObjectIntProcedure&lt;T&gt;()</span>
+<span class="nc" id="L46">            {</span>
+                public void safeValue(T object, int index) throws IOException
+                {
+<span class="nc" id="L49">                    out.writeObject(object);</span>
+<span class="nc" id="L50">                    out.writeInt(index);</span>
+<span class="nc" id="L51">                }</span>
+            });
+        }
+<span class="nc" id="L54">        catch (RuntimeException e)</span>
+        {
+<span class="nc bnc" id="L56" title="All 2 branches missed.">            if (e.getCause() instanceof IOException)</span>
+            {
+<span class="nc" id="L58">                throw (IOException) e.getCause();</span>
+            }
+<span class="nc" id="L60">            throw e;</span>
+<span class="nc" id="L61">        }</span>
+<span class="nc" id="L62">    }</span>
+
+    @Override
+    public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException
+    {
+<span class="nc" id="L67">        HashingStrategy&lt;T&gt; hashingStrategy = (HashingStrategy&lt;T&gt;) in.readObject();</span>
+<span class="nc" id="L68">        int size = in.readInt();</span>
+<span class="nc" id="L69">        HashBagWithHashingStrategy&lt;T&gt; deserializedBag = new HashBagWithHashingStrategy&lt;&gt;(hashingStrategy, size);</span>
+
+<span class="nc bnc" id="L71" title="All 2 branches missed.">        for (int i = 0; i &lt; size; i++)</span>
+        {
+<span class="nc" id="L73">            deserializedBag.addOccurrences((T) in.readObject(), in.readInt());</span>
+        }
+
+<span class="nc" id="L76">        this.bagWithHashingStrategy = deserializedBag;</span>
+<span class="nc" id="L77">    }</span>
+
+    protected Object readResolve()
+    {
+<span class="nc" id="L81">        return this.bagWithHashingStrategy;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.0.201801022044</span></div></body></html>

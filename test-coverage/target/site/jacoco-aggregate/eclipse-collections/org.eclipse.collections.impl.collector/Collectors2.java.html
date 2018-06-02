@@ -1,0 +1,1953 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>Collectors2.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Eclipse Collections Test Coverage Aggregation</a> &gt; <a href="../index.html" class="el_bundle">eclipse-collections</a> &gt; <a href="index.source.html" class="el_package">org.eclipse.collections.impl.collector</a> &gt; <span class="el_source">Collectors2.java</span></div><h1>Collectors2.java</h1><pre class="source lang-java linenums">/*
+ * Copyright (c) 2018 Goldman Sachs and others.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * and Eclipse Distribution License v. 1.0 which accompany this distribution.
+ * The Eclipse Public License is available at http://www.eclipse.org/legal/epl-v10.html
+ * and the Eclipse Distribution License is available at
+ * http://www.eclipse.org/org/documents/edl-v10.php.
+ */
+
+package org.eclipse.collections.impl.collector;
+
+import java.math.BigDecimal;
+import java.math.BigInteger;
+import java.util.Collection;
+import java.util.Comparator;
+import java.util.Iterator;
+import java.util.StringJoiner;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.BinaryOperator;
+import java.util.function.Supplier;
+import java.util.stream.Collector;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
+import org.eclipse.collections.api.RichIterable;
+import org.eclipse.collections.api.bag.ImmutableBag;
+import org.eclipse.collections.api.bag.MutableBag;
+import org.eclipse.collections.api.bag.sorted.ImmutableSortedBag;
+import org.eclipse.collections.api.bag.sorted.MutableSortedBag;
+import org.eclipse.collections.api.bimap.ImmutableBiMap;
+import org.eclipse.collections.api.bimap.MutableBiMap;
+import org.eclipse.collections.api.block.function.Function;
+import org.eclipse.collections.api.block.function.Function0;
+import org.eclipse.collections.api.block.function.Function2;
+import org.eclipse.collections.api.block.function.primitive.BooleanFunction;
+import org.eclipse.collections.api.block.function.primitive.ByteFunction;
+import org.eclipse.collections.api.block.function.primitive.CharFunction;
+import org.eclipse.collections.api.block.function.primitive.DoubleFunction;
+import org.eclipse.collections.api.block.function.primitive.FloatFunction;
+import org.eclipse.collections.api.block.function.primitive.IntFunction;
+import org.eclipse.collections.api.block.function.primitive.LongFunction;
+import org.eclipse.collections.api.block.function.primitive.ShortFunction;
+import org.eclipse.collections.api.block.predicate.Predicate;
+import org.eclipse.collections.api.block.predicate.Predicate2;
+import org.eclipse.collections.api.collection.MutableCollection;
+import org.eclipse.collections.api.collection.primitive.MutableBooleanCollection;
+import org.eclipse.collections.api.collection.primitive.MutableByteCollection;
+import org.eclipse.collections.api.collection.primitive.MutableCharCollection;
+import org.eclipse.collections.api.collection.primitive.MutableDoubleCollection;
+import org.eclipse.collections.api.collection.primitive.MutableFloatCollection;
+import org.eclipse.collections.api.collection.primitive.MutableIntCollection;
+import org.eclipse.collections.api.collection.primitive.MutableLongCollection;
+import org.eclipse.collections.api.collection.primitive.MutableShortCollection;
+import org.eclipse.collections.api.list.ImmutableList;
+import org.eclipse.collections.api.list.MutableList;
+import org.eclipse.collections.api.map.ImmutableMap;
+import org.eclipse.collections.api.map.MutableMap;
+import org.eclipse.collections.api.map.MutableMapIterable;
+import org.eclipse.collections.api.map.primitive.MutableObjectDoubleMap;
+import org.eclipse.collections.api.map.primitive.MutableObjectLongMap;
+import org.eclipse.collections.api.multimap.ImmutableMultimap;
+import org.eclipse.collections.api.multimap.MutableMultimap;
+import org.eclipse.collections.api.multimap.bag.ImmutableBagMultimap;
+import org.eclipse.collections.api.multimap.bag.MutableBagMultimap;
+import org.eclipse.collections.api.multimap.list.ImmutableListMultimap;
+import org.eclipse.collections.api.multimap.list.MutableListMultimap;
+import org.eclipse.collections.api.multimap.set.ImmutableSetMultimap;
+import org.eclipse.collections.api.multimap.set.MutableSetMultimap;
+import org.eclipse.collections.api.ordered.OrderedIterable;
+import org.eclipse.collections.api.partition.PartitionMutableCollection;
+import org.eclipse.collections.api.set.ImmutableSet;
+import org.eclipse.collections.api.set.MutableSet;
+import org.eclipse.collections.api.set.sorted.ImmutableSortedSet;
+import org.eclipse.collections.api.set.sorted.MutableSortedSet;
+import org.eclipse.collections.api.stack.ImmutableStack;
+import org.eclipse.collections.api.stack.MutableStack;
+import org.eclipse.collections.api.tuple.Pair;
+import org.eclipse.collections.api.tuple.primitive.ObjectIntPair;
+import org.eclipse.collections.impl.block.factory.Comparators;
+import org.eclipse.collections.impl.block.factory.PrimitiveFunctions;
+import org.eclipse.collections.impl.factory.Bags;
+import org.eclipse.collections.impl.factory.BiMaps;
+import org.eclipse.collections.impl.factory.Lists;
+import org.eclipse.collections.impl.factory.Maps;
+import org.eclipse.collections.impl.factory.Multimaps;
+import org.eclipse.collections.impl.factory.Sets;
+import org.eclipse.collections.impl.factory.SortedBags;
+import org.eclipse.collections.impl.factory.SortedSets;
+import org.eclipse.collections.impl.factory.Stacks;
+import org.eclipse.collections.impl.map.mutable.primitive.ObjectDoubleHashMap;
+import org.eclipse.collections.impl.map.mutable.primitive.ObjectLongHashMap;
+import org.eclipse.collections.impl.tuple.Tuples;
+import org.eclipse.collections.impl.tuple.primitive.PrimitiveTuples;
+import org.eclipse.collections.impl.utility.Iterate;
+
+/**
+ * &lt;p&gt;A set of Collectors for Eclipse Collections types and algorithms.&lt;/p&gt;
+ *
+ * &lt;p&gt;Includes converter Collectors to{Immutable}{Sorted}{List/Set/Bag/Map/BiMap/Multimap}.&lt;br&gt;
+ * Includes Collectors for select, reject, partition.&lt;br&gt;
+ * Includes Collectors for collect, collect{Boolean/Byte/Char/Short/Int/Float/Long/Double}.&lt;br&gt;
+ * Includes Collectors for makeString, zip, chunk.&lt;br&gt;
+ * Includes Collectors for sumBy{Int/Float/Long/Double}.&lt;/p&gt;
+ *
+ * &lt;p&gt;Use these Collectors with @{@link RichIterable#reduceInPlace(Collector)} and @{@link Stream#collect(Collector)}.&lt;/p&gt;
+ *
+ * @since 8.0
+ */
+public final class Collectors2
+{
+<span class="nc" id="L112">    private static final Collector.Characteristics[] EMPTY_CHARACTERISTICS = {};</span>
+<span class="nc" id="L113">    private static final Collector&lt;?, ?, String&gt; DEFAULT_MAKE_STRING = Collectors2.makeString(&quot;, &quot;);</span>
+
+    private Collectors2()
+<span class="nc" id="L116">    {</span>
+<span class="nc" id="L117">        throw new AssertionError(&quot;Suppress default constructor for noninstantiability&quot;);</span>
+    }
+
+    /**
+     * &lt;p&gt;Returns a String composed of elements separated by &quot;, &quot;.&lt;/p&gt;
+     * &lt;p&gt;Examples:&lt;/p&gt;
+     * {@code System.out.println(Interval.oneTo(5).stream().collect(Collectors2.makeString()));}&lt;br&gt;
+     * {@code System.out.println(Interval.oneTo(5).reduceInPlace(Collectors2.makeString()));}
+     * &lt;p&gt;Prints:&lt;/p&gt;
+     * &lt;pre&gt;
+     * 1, 2, 3, 4, 5
+     * 1, 2, 3, 4, 5
+     * &lt;/pre&gt;
+     * &lt;p&gt;
+     * Equivalent to using @{@link RichIterable#makeString()}
+     * &lt;/p&gt;
+     * {@code System.out.println(Interval.oneTo(5).makeString());}
+     */
+    public static &lt;T&gt; Collector&lt;T, ?, String&gt; makeString()
+    {
+<span class="nc" id="L137">        return (Collector&lt;T, ?, String&gt;) DEFAULT_MAKE_STRING;</span>
+    }
+
+    /**
+     * &lt;p&gt;Returns a String composed of elements separated by the specified separator.&lt;/p&gt;
+     * &lt;p&gt;Examples:&lt;/p&gt;
+     * {@code System.out.println(Interval.oneTo(5).stream().collect(Collectors2.makeString(&quot;&quot;)));}&lt;br&gt;
+     * {@code System.out.println(Interval.oneTo(5).reduceInPlace(Collectors2.makeString(&quot;&quot;)));}
+     * &lt;p&gt;Prints:&lt;/p&gt;
+     * &lt;pre&gt;
+     * 12345
+     * 12345
+     * &lt;/pre&gt;
+     * &lt;p&gt;
+     * Equivalent to using @{@link RichIterable#makeString(String)}
+     * &lt;/p&gt;
+     * {@code System.out.println(Interval.oneTo(5).makeString(&quot;&quot;));}
+     */
+    public static &lt;T&gt; Collector&lt;T, ?, String&gt; makeString(CharSequence separator)
+    {
+<span class="nc" id="L157">        return Collectors2.makeString(&quot;&quot;, separator, &quot;&quot;);</span>
+    }
+
+    /**
+     * &lt;p&gt;Returns a String composed of elements separated by the specified separator and beginning with start
+     * String and ending with end String.&lt;/p&gt;
+     * &lt;p&gt;Examples:&lt;/p&gt;
+     * {@code System.out.println(Interval.oneTo(5).stream().collect(Collectors2.makeString(&quot;[&quot;, &quot;:&quot;, &quot;]&quot;)));}&lt;br&gt;
+     * {@code System.out.println(Interval.oneTo(5).reduceInPlace(Collectors2.makeString(&quot;[&quot;, &quot;:&quot;, &quot;]&quot;)));}
+     * &lt;p&gt;Prints:&lt;/p&gt;
+     * &lt;pre&gt;
+     * [1:2:3:4:5]
+     * [1:2:3:4:5]
+     * &lt;/pre&gt;
+     * &lt;p&gt;
+     * Equivalent to using @{@link RichIterable#makeString(String, String, String)}}
+     * &lt;/p&gt;
+     * {@code System.out.println(Interval.oneTo(5).makeString(&quot;[&quot;, &quot;:&quot;, &quot;]&quot;));}
+     */
+    public static &lt;T&gt; Collector&lt;T, ?, String&gt; makeString(CharSequence start, CharSequence separator, CharSequence end)
+    {
+<span class="nc" id="L178">        return Collector.of(</span>
+<span class="nc" id="L179">                () -&gt; new StringJoiner(separator, start, end),</span>
+<span class="nc" id="L180">                (joiner, each) -&gt; joiner.add(String.valueOf(each)),</span>
+                StringJoiner::merge,
+                StringJoiner::toString,
+                EMPTY_CHARACTERISTICS);
+    }
+
+    /**
+     * &lt;p&gt;Returns the elements as a MutableList.&lt;/p&gt;
+     * &lt;p&gt;Examples:&lt;/p&gt;
+     * {@code MutableList&lt;Integer&gt; numbers1 = Interval.oneTo(5).stream().collect(Collectors2.toList());}&lt;br&gt;
+     * {@code MutableList&lt;Integer&gt; numbers2 = Interval.oneTo(5).reduceInPlace(Collectors2.toList());}
+     * &lt;p&gt;
+     * Equivalent to using @{@link RichIterable#toList()}}
+     * &lt;/p&gt;
+     * {@code MutableList&lt;Integer&gt; numbers = Interval.oneTo(5).toList();}
+     */
+    public static &lt;T&gt; Collector&lt;T, ?, MutableList&lt;T&gt;&gt; toList()
+    {
+<span class="nc" id="L198">        return Collector.of(</span>
+                Lists.mutable::empty,
+                MutableList::add,
+                MutableList::withAll,
+                EMPTY_CHARACTERISTICS);
+    }
+
+    /**
+     * &lt;p&gt;Returns the elements as an ImmutableList.&lt;/p&gt;
+     * &lt;p&gt;Examples:&lt;/p&gt;
+     * {@code ImmutableList&lt;Integer&gt; numbers1 = Interval.oneTo(5).stream().collect(Collectors2.toImmutableList());}&lt;br&gt;
+     * {@code ImmutableList&lt;Integer&gt; numbers2 = Interval.oneTo(5).reduceInPlace(Collectors2.toImmutableList());}
+     * &lt;p&gt;
+     * Equivalent to using @{@link RichIterable#toList()} followed by: @{@link MutableList#toImmutable()}.
+     * &lt;/p&gt;
+     * {@code ImmutableList&lt;Integer&gt; numbers = Interval.oneTo(5).toList().toImmutable();}
+     */
+    public static &lt;T&gt; Collector&lt;T, ?, ImmutableList&lt;T&gt;&gt; toImmutableList()
+    {
+<span class="nc" id="L217">        return Collector.&lt;T, MutableList&lt;T&gt;, ImmutableList&lt;T&gt;&gt;of(</span>
+                Lists.mutable::empty,
+                MutableList::add,
+                MutableList::withAll,
+                MutableList::toImmutable,
+                EMPTY_CHARACTERISTICS);
+    }
+
+    /**
+     * &lt;p&gt;Returns the elements as a MutableSet.&lt;/p&gt;
+     * &lt;p&gt;Examples:&lt;/p&gt;
+     * {@code MutableSet&lt;Integer&gt; set1 = Interval.oneTo(5).stream().collect(Collectors2.toSet());}&lt;br&gt;
+     * {@code MutableSet&lt;Integer&gt; set2 =Interval.oneTo(5).reduceInPlace(Collectors2.toSet());}
+     * &lt;p&gt;
+     * Equivalent to using @{@link RichIterable#toSet()}}
+     * &lt;/p&gt;
+     * {@code MutableSet&lt;Integer&gt; set = Interval.oneTo(5).toSet();}
+     */
+    public static &lt;T&gt; Collector&lt;T, ?, MutableSet&lt;T&gt;&gt; toSet()
+    {
+<span class="nc" id="L237">        return Collector.of(</span>
+                Sets.mutable::empty,
+                MutableSet::add,
+                MutableSet::withAll,
+                Collector.Characteristics.UNORDERED);
+    }
+
+    /**
+     * &lt;p&gt;Returns the elements as an ImmutableSet.&lt;/p&gt;
+     * &lt;p&gt;Examples:&lt;/p&gt;
+     * {@code ImmutableSet&lt;Integer&gt; set1 = Interval.oneTo(5).stream().collect(Collectors2.toImmutableSet());}&lt;br&gt;
+     * {@code ImmutableSet&lt;Integer&gt; set2 = Interval.oneTo(5).reduceInPlace(Collectors2.toImmutableSet());}
+     * &lt;p&gt;
+     * Equivalent to using @{@link RichIterable#toSet()} followed by: @{@link MutableSet#toImmutable()}.
+     * &lt;/p&gt;
+     * {@code ImmutableSet&lt;Integer&gt; set = Interval.oneTo(5).toSet().toImmutable();}
+     */
+    public static &lt;T&gt; Collector&lt;T, ?, ImmutableSet&lt;T&gt;&gt; toImmutableSet()
+    {
+<span class="nc" id="L256">        return Collector.&lt;T, MutableSet&lt;T&gt;, ImmutableSet&lt;T&gt;&gt;of(</span>
+                Sets.mutable::empty,
+                MutableSet::add,
+                MutableSet::withAll,
+                MutableSet::toImmutable,
+                Collector.Characteristics.UNORDERED);
+    }
+
+    /**
+     * &lt;p&gt;Returns the elements as a MutableSortedSet.&lt;/p&gt;
+     * &lt;p&gt;Examples:&lt;/p&gt;
+     * {@code MutableSortedSet&lt;Integer&gt; set1 = Interval.oneTo(5).stream().collect(Collectors2.toSortedSet());}&lt;br&gt;
+     * {@code MutableSortedSet&lt;Integer&gt; set2 = Interval.oneTo(5).reduceInPlace(Collectors2.toSortedSet());}
+     * &lt;p&gt;
+     * Equivalent to using @{@link RichIterable#toSortedSet()}}.
+     * &lt;/p&gt;
+     * {@code MutableSortedSet&lt;Integer&gt; set = Interval.oneTo(5).toSortedSet();}
+     */
+    public static &lt;T&gt; Collector&lt;T, ?, MutableSortedSet&lt;T&gt;&gt; toSortedSet()
+    {
+<span class="nc" id="L276">        return Collector.of(</span>
+                SortedSets.mutable::empty,
+                MutableSortedSet::add,
+                MutableSortedSet::withAll,
+                Collector.Characteristics.UNORDERED);
+    }
+
+    /**
+     * &lt;p&gt;Returns the elements as an ImmutableSortedSet.&lt;/p&gt;
+     * &lt;p&gt;Examples:&lt;/p&gt;
+     * {@code ImmutableSortedSet&lt;Integer&gt; set1 = Interval.oneTo(5).stream().collect(Collectors2.toImmutableSortedSet());}&lt;br&gt;
+     * {@code ImmutableSortedSet&lt;Integer&gt; set2 = Interval.oneTo(5).reduceInPlace(Collectors2.toImmutableSortedSet());}
+     * &lt;p&gt;
+     * Equivalent to using @{@link RichIterable#toSortedSet()} followed by: @{@link MutableSortedSet#toImmutable()}.
+     * &lt;/p&gt;
+     * {@code ImmutableSortedSet&lt;Integer&gt; set = Interval.oneTo(5).toSortedSet().toImmutable();}
+     */
+    public static &lt;T&gt; Collector&lt;T, ?, ImmutableSortedSet&lt;T&gt;&gt; toImmutableSortedSet()
+    {
+<span class="nc" id="L295">        return Collector.&lt;T, MutableSortedSet&lt;T&gt;, ImmutableSortedSet&lt;T&gt;&gt;of(</span>
+                SortedSets.mutable::empty,
+                MutableSortedSet::add,
+                MutableSortedSet::withAll,
+                MutableSortedSet::toImmutable,
+                Collector.Characteristics.UNORDERED);
+    }
+
+    /**
+     * &lt;p&gt;Returns the elements as a MutableSortedSet using the specified comparator.&lt;/p&gt;
+     * &lt;p&gt;Examples:&lt;/p&gt;
+     * {@code MutableSortedSet&lt;Integer&gt; set1 = Interval.oneTo(5).stream().collect(Collectors2.toSortedSet(Comparator.naturalOrder()));}&lt;br&gt;
+     * {@code MutableSortedSet&lt;Integer&gt; set2 = Interval.oneTo(5).reduceInPlace(Collectors2.toSortedSet(Comparator.naturalOrder()));}
+     * &lt;p&gt;
+     * Equivalent to using @{@link RichIterable#toSortedSet(Comparator)}.
+     * &lt;/p&gt;
+     * {@code MutableSortedSet&lt;Integer&gt; set = Interval.oneTo(5).toSortedSet(Comparator.naturalOrder());}
+     */
+    public static &lt;T&gt; Collector&lt;T, ?, MutableSortedSet&lt;T&gt;&gt; toSortedSet(Comparator&lt;? super T&gt; comparator)
+    {
+<span class="nc" id="L315">        return Collector.of(</span>
+<span class="nc" id="L316">                () -&gt; SortedSets.mutable.with(comparator),</span>
+                MutableSortedSet::add,
+                MutableSortedSet::withAll,
+                Collector.Characteristics.UNORDERED);
+    }
+
+    /**
+     * &lt;p&gt;Returns the elements as a MutableSortedSet using the specified function to compare each element.&lt;/p&gt;
+     * &lt;p&gt;Examples:&lt;/p&gt;
+     * {@code MutableSortedSet&lt;Integer&gt; set1 = Interval.oneTo(5).stream().collect(Collectors2.toSortedSetBy(Object::toString));}&lt;br&gt;
+     * {@code MutableSortedSet&lt;Integer&gt; set2 = Interval.oneTo(5).reduceInPlace(Collectors2.toSortedSetBy(Object::toString));}
+     * &lt;p&gt;
+     * Equivalent to using @{@link RichIterable#toSortedSetBy(Function)}.
+     * &lt;/p&gt;
+     * {@code MutableSortedSet&lt;Integer&gt; set = Interval.oneTo(5).toSortedSetBy(Object::toString);}
+     */
+    public static &lt;T, V extends Comparable&lt;? super V&gt;&gt; Collector&lt;T, ?, MutableSortedSet&lt;T&gt;&gt; toSortedSetBy(Function&lt;? super T, ? extends V&gt; function)
+    {
+<span class="nc" id="L334">        return Collectors2.toSortedSet(Comparators.byFunction(function));</span>
+    }
+
+    /**
+     * &lt;p&gt;Returns the elements as an ImmutableSortedSet using the specified comparator.&lt;/p&gt;
+     * &lt;p&gt;Examples:&lt;/p&gt;
+     * {@code ImmutableSortedSet&lt;Integer&gt; set1 = Interval.oneTo(5).stream().collect(Collectors2.toImmutableSortedSet(Comparator.naturalOrder()));}&lt;br&gt;
+     * {@code ImmutableSortedSet&lt;Integer&gt; set2 = Interval.oneTo(5).reduceInPlace(Collectors2.toImmutableSortedSet(Comparator.naturalOrder()));}
+     * &lt;p&gt;
+     * Equivalent to using @{@link RichIterable#toSortedSet(Comparator)} followed by: @{@link MutableSortedSet#toImmutable()}.
+     * &lt;/p&gt;
+     * {@code ImmutableSortedSet&lt;Integer&gt; set = Interval.oneTo(5).toSortedSet(Comparator.naturalOrder()).toImmutable();}
+     */
+    public static &lt;T&gt; Collector&lt;T, ?, ImmutableSortedSet&lt;T&gt;&gt; toImmutableSortedSet(Comparator&lt;? super T&gt; comparator)
+    {
+<span class="nc" id="L349">        return Collector.&lt;T, MutableSortedSet&lt;T&gt;, ImmutableSortedSet&lt;T&gt;&gt;of(</span>
+<span class="nc" id="L350">                () -&gt; SortedSets.mutable.with(comparator),</span>
+                MutableSortedSet::add,
+                MutableSortedSet::withAll,
+                MutableSortedSet::toImmutable,
+                Collector.Characteristics.UNORDERED);
+    }
+
+    /**
+     * &lt;p&gt;Returns the elements as a MutableBag.&lt;/p&gt;
+     * &lt;p&gt;Examples:&lt;/p&gt;
+     * {@code MutableBag&lt;Integer&gt; bag1 = Interval.oneTo(5).stream().collect(Collectors2.toBag());}&lt;br&gt;
+     * {@code MutableBag&lt;Integer&gt; bag2 = Interval.oneTo(5).reduceInPlace(Collectors2.toBag());}
+     * &lt;p&gt;
+     * Equivalent to using @{@link RichIterable#toBag()}}
+     * &lt;/p&gt;
+     * {@code MutableBag&lt;Integer&gt; bag = Interval.oneTo(5).toBag();}
+     */
+    public static &lt;T&gt; Collector&lt;T, ?, MutableBag&lt;T&gt;&gt; toBag()
+    {
+<span class="nc" id="L369">        return Collector.of(</span>
+                Bags.mutable::empty,
+                MutableBag::add,
+                MutableBag::withAll,
+                Collector.Characteristics.UNORDERED);
+    }
+
+    /**
+     * &lt;p&gt;Returns the elements as an ImmutableBag.&lt;/p&gt;
+     * &lt;p&gt;Examples:&lt;/p&gt;
+     * {@code ImmutableBag&lt;Integer&gt; bag1 = Interval.oneTo(5).stream().collect(Collectors2.toImmutableBag());}&lt;br&gt;
+     * {@code ImmutableBag&lt;Integer&gt; bag2 = Interval.oneTo(5).reduceInPlace(Collectors2.toImmutableBag());}
+     * &lt;p&gt;
+     * Equivalent to using @{@link RichIterable#toBag()} followed by: @{@link MutableBag#toImmutable()}.
+     * &lt;/p&gt;
+     * {@code ImmutableBag&lt;Integer&gt; bag = Interval.oneTo(5).toBag().toImmutable();}
+     */
+    public static &lt;T&gt; Collector&lt;T, ?, ImmutableBag&lt;T&gt;&gt; toImmutableBag()
+    {
+<span class="nc" id="L388">        return Collector.&lt;T, MutableBag&lt;T&gt;, ImmutableBag&lt;T&gt;&gt;of(</span>
+                Bags.mutable::empty,
+                MutableBag::add,
+                MutableBag::withAll,
+                MutableBag::toImmutable,
+                Collector.Characteristics.UNORDERED);
+    }
+
+    /**
+     * &lt;p&gt;Returns the elements as a MutableList that has been sorted.&lt;/p&gt;
+     * &lt;p&gt;Examples:&lt;/p&gt;
+     * {@code MutableList&lt;Integer&gt; list1 = Interval.oneTo(5).stream().collect(Collectors2.toSortedList());}&lt;br&gt;
+     * {@code MutableList&lt;Integer&gt; list2 = Interval.oneTo(5).reduceInPlace(Collectors2.toSortedList());}
+     * &lt;p&gt;
+     * Equivalent to using @{@link RichIterable#toSortedList()}}
+     * &lt;/p&gt;
+     * {@code MutableList&lt;Integer&gt; list = Interval.oneTo(5).toSortedList();}
+     */
+    public static &lt;T&gt; Collector&lt;T, ?, MutableList&lt;T&gt;&gt; toSortedList()
+    {
+<span class="nc" id="L408">        return Collector.&lt;T, MutableList&lt;T&gt;, MutableList&lt;T&gt;&gt;of(</span>
+                Lists.mutable::empty,
+                MutableList::add,
+                MutableList::withAll,
+                MutableList::sortThis,
+                EMPTY_CHARACTERISTICS);
+    }
+
+    /**
+     * &lt;p&gt;Returns the elements as an ImmutableList that has been sorted.&lt;/p&gt;
+     * &lt;p&gt;Examples:&lt;/p&gt;
+     * {@code ImmutableList&lt;Integer&gt; list1 = Interval.oneTo(5).stream().collect(Collectors2.toImmutableSortedList());}&lt;br&gt;
+     * {@code ImmutableList&lt;Integer&gt; list2 = Interval.oneTo(5).reduceInPlace(Collectors2.toImmutableSortedList());}
+     * &lt;p&gt;
+     * Equivalent to using @{@link RichIterable#toSortedList()} followed by: @{@link MutableList#toImmutable()}.
+     * &lt;/p&gt;
+     * {@code ImmutableList&lt;Integer&gt; list = Interval.oneTo(5).toSortedList().toImmutable();}
+     */
+    public static &lt;T&gt; Collector&lt;T, ?, ImmutableList&lt;T&gt;&gt; toImmutableSortedList()
+    {
+<span class="nc" id="L428">        return Collector.&lt;T, MutableList&lt;T&gt;, ImmutableList&lt;T&gt;&gt;of(</span>
+                Lists.mutable::empty,
+                MutableList::add,
+                MutableList::withAll,
+<span class="nc" id="L432">                list -&gt; list.sortThis().toImmutable(),</span>
+                EMPTY_CHARACTERISTICS);
+    }
+
+    /**
+     * &lt;p&gt;Returns the elements as a MutableList that has been sorted using the specified comparator.&lt;/p&gt;
+     * &lt;p&gt;Examples:&lt;/p&gt;
+     * {@code MutableList&lt;Integer&gt; list1 = Interval.oneTo(5).stream().collect(Collectors2.toSortedList(Comparators.naturalOrder()));}&lt;br&gt;
+     * {@code MutableList&lt;Integer&gt; list2 = Interval.oneTo(5).reduceInPlace(Collectors2.toSortedList(Comparators.naturalOrder()));}
+     * &lt;p&gt;
+     * Equivalent to using @{@link RichIterable#toSortedList(Comparator)}}
+     * &lt;/p&gt;
+     * {@code MutableList&lt;Integer&gt; list = Interval.oneTo(5).toSortedList(Comparators.naturalOrder());}
+     */
+    public static &lt;T&gt; Collector&lt;T, ?, MutableList&lt;T&gt;&gt; toSortedList(Comparator&lt;? super T&gt; comparator)
+    {
+<span class="nc" id="L448">        return Collector.&lt;T, MutableList&lt;T&gt;, MutableList&lt;T&gt;&gt;of(</span>
+                Lists.mutable::empty,
+                MutableList::add,
+                MutableList::withAll,
+<span class="nc" id="L452">                list -&gt; list.sortThis(comparator),</span>
+                EMPTY_CHARACTERISTICS);
+    }
+
+    /**
+     * &lt;p&gt;Returns the elements as a MutableList that has been sorted using the specified comparator.&lt;/p&gt;
+     * &lt;p&gt;Examples:&lt;/p&gt;
+     * {@code MutableList&lt;Integer&gt; list1 = Interval.oneTo(5).stream().collect(Collectors2.toSortedListBy(Object::toString));}&lt;br&gt;
+     * {@code MutableList&lt;Integer&gt; list2 = Interval.oneTo(5).reduceInPlace(Collectors2.toSortedListBy(Object::toString));}
+     * &lt;p&gt;
+     * Equivalent to using @{@link RichIterable#toSortedListBy(Function)}}
+     * &lt;/p&gt;
+     * {@code MutableList&lt;Integer&gt; list = Interval.oneTo(5).toSortedListBy(Object::toString);}
+     */
+    public static &lt;T, V extends Comparable&lt;? super V&gt;&gt; Collector&lt;T, ?, MutableList&lt;T&gt;&gt; toSortedListBy(Function&lt;? super T, ? extends V&gt; function)
+    {
+<span class="nc" id="L468">        return Collectors2.toSortedList(Comparators.byFunction(function));</span>
+    }
+
+    /**
+     * &lt;p&gt;Returns the elements as an ImmutableList that has been sorted using the specified comparator.&lt;/p&gt;
+     * &lt;p&gt;Examples:&lt;/p&gt;
+     * {@code ImmutableList&lt;Integer&gt; list1 = Interval.oneTo(5).stream().collect(Collectors2.toImmutableSortedList(Comparator.naturalOrder()));}&lt;br&gt;
+     * {@code ImmutableList&lt;Integer&gt; list2 = Interval.oneTo(5).reduceInPlace(Collectors2.toImmutableSortedList(Comparator.naturalOrder()));}
+     * &lt;p&gt;
+     * Equivalent to using @{@link RichIterable#toSortedList(Comparator)} followed by: @{@link MutableList#toImmutable()}.
+     * &lt;/p&gt;
+     * {@code ImmutableList&lt;Integer&gt; list = Interval.oneTo(5).toSortedList(Comparator.naturalOrder()).toImmutable();}
+     */
+    public static &lt;T&gt; Collector&lt;T, ?, ImmutableList&lt;T&gt;&gt; toImmutableSortedList(Comparator&lt;? super T&gt; comparator)
+    {
+<span class="nc" id="L483">        return Collector.&lt;T, MutableList&lt;T&gt;, ImmutableList&lt;T&gt;&gt;of(</span>
+                Lists.mutable::empty,
+                MutableList::add,
+                MutableList::withAll,
+<span class="nc" id="L487">                list -&gt; list.sortThis(comparator).toImmutable(),</span>
+                EMPTY_CHARACTERISTICS);
+    }
+
+    /**
+     * &lt;p&gt;Returns the elements as a MutableSortedBag.&lt;/p&gt;
+     * &lt;p&gt;Examples:&lt;/p&gt;
+     * {@code MutableSortedBag&lt;Integer&gt; bag1 = Interval.oneTo(5).stream().collect(Collectors2.toSortedBag());}&lt;br&gt;
+     * {@code MutableSortedBag&lt;Integer&gt; bag2 = Interval.oneTo(5).reduceInPlace(Collectors2.toSortedBag());}
+     * &lt;p&gt;
+     * Equivalent to using @{@link RichIterable#toSortedBag()}}
+     * &lt;/p&gt;
+     * {@code MutableSortedBag&lt;Integer&gt; bag = Interval.oneTo(5).toSortedBag();}
+     */
+    public static &lt;T&gt; Collector&lt;T, ?, MutableSortedBag&lt;T&gt;&gt; toSortedBag()
+    {
+<span class="nc" id="L503">        return Collector.of(</span>
+                SortedBags.mutable::empty,
+                MutableSortedBag::add,
+                MutableSortedBag::withAll,
+                Collector.Characteristics.UNORDERED);
+    }
+
+    /**
+     * &lt;p&gt;Returns the elements as an ImmutableSortedBag.&lt;/p&gt;
+     * &lt;p&gt;Examples:&lt;/p&gt;
+     * {@code ImmutableSortedBag&lt;Integer&gt; bag1 = Interval.oneTo(5).stream().collect(Collectors2.toImmutableSortedBag());}&lt;br&gt;
+     * {@code ImmutableSortedBag&lt;Integer&gt; bag2 = Interval.oneTo(5).reduceInPlace(Collectors2.toImmutableSortedBag());}
+     * &lt;p&gt;
+     * Equivalent to using @{@link RichIterable#toSortedBag()} followed by: @{@link MutableList#toImmutable()}.
+     * &lt;/p&gt;
+     * {@code ImmutableSortedBag&lt;Integer&gt; bag = Interval.oneTo(5).toSortedBag().toImmutable();}
+     */
+    public static &lt;T&gt; Collector&lt;T, ?, ImmutableSortedBag&lt;T&gt;&gt; toImmutableSortedBag()
+    {
+<span class="nc" id="L522">        return Collector.&lt;T, MutableSortedBag&lt;T&gt;, ImmutableSortedBag&lt;T&gt;&gt;of(</span>
+                SortedBags.mutable::empty,
+                MutableSortedBag::add,
+                MutableSortedBag::withAll,
+                MutableSortedBag::toImmutable,
+                Collector.Characteristics.UNORDERED);
+    }
+
+    /**
+     * &lt;p&gt;Returns the elements as a MutableSortedBag using the specified comparator.&lt;/p&gt;
+     * &lt;p&gt;Examples:&lt;/p&gt;
+     * {@code MutableSortedBag&lt;Integer&gt; bag1 = Interval.oneTo(5).stream().collect(Collectors2.toSortedBag(Comparators.naturalOrder()));}&lt;br&gt;
+     * {@code MutableSortedBag&lt;Integer&gt; bag2 = Interval.oneTo(5).reduceInPlace(Collectors2.toSortedBag(Comparators.naturalOrder()));}
+     * &lt;p&gt;
+     * Equivalent to using @{@link RichIterable#toSortedBag(Comparator)}
+     * &lt;/p&gt;
+     * {@code MutableSortedBag&lt;Integer&gt; bag = Interval.oneTo(5).toSortedBag(Comparators.naturalOrder());}
+     */
+    public static &lt;T&gt; Collector&lt;T, ?, MutableSortedBag&lt;T&gt;&gt; toSortedBag(Comparator&lt;? super T&gt; comparator)
+    {
+<span class="nc" id="L542">        return Collector.of(</span>
+<span class="nc" id="L543">                () -&gt; SortedBags.mutable.with(comparator),</span>
+                MutableSortedBag::add,
+                MutableSortedBag::withAll,
+                Collector.Characteristics.UNORDERED);
+    }
+
+    /**
+     * &lt;p&gt;Returns the elements as a MutableSortedBag using the specified function.&lt;/p&gt;
+     * &lt;p&gt;Examples:&lt;/p&gt;
+     * {@code MutableSortedBag&lt;Integer&gt; bag1 = Interval.oneTo(5).stream().collect(Collectors2.toSortedBagBy(Object::toString));}&lt;br&gt;
+     * {@code MutableSortedBag&lt;Integer&gt; bag2 = Interval.oneTo(5).reduceInPlace(Collectors2.toSortedBagBy(Object::toString));}
+     * &lt;p&gt;
+     * Equivalent to using @{@link RichIterable#toSortedBagBy(Function)}}
+     * &lt;/p&gt;
+     * {@code MutableSortedBag&lt;Integer&gt; bag = Interval.oneTo(5).toSortedBagBy(Object::toString);}
+     */
+    public static &lt;T, V extends Comparable&lt;? super V&gt;&gt; Collector&lt;T, ?, MutableSortedBag&lt;T&gt;&gt; toSortedBagBy(Function&lt;? super T, ? extends V&gt; function)
+    {
+<span class="nc" id="L561">        return Collectors2.toSortedBag(Comparators.byFunction(function));</span>
+    }
+
+    /**
+     * &lt;p&gt;Returns the elements as an ImmutableSortedBag using the specified comparator.&lt;/p&gt;
+     * &lt;p&gt;Examples:&lt;/p&gt;
+     * {@code ImmutableSortedBag&lt;Integer&gt; bag1 = Interval.oneTo(5).stream().collect(Collectors2.toImmutableSortedBag(Comparator.naturalOrder()));}&lt;br&gt;
+     * {@code ImmutableSortedBag&lt;Integer&gt; bag1 = Interval.oneTo(5).reduceInPlace(Collectors2.toImmutableSortedBag(Comparator.naturalOrder()));}
+     * &lt;p&gt;
+     * Equivalent to using @{@link RichIterable#toSortedBag(Comparator)} followed by: @{@link MutableBag#toImmutable()}.
+     * &lt;/p&gt;
+     * {@code ImmutableSortedBag&lt;Integer&gt; bag = Interval.oneTo(5).toSortedBag(Comparator.naturalOrder()).toImmutable();}
+     */
+    public static &lt;T&gt; Collector&lt;T, ?, ImmutableSortedBag&lt;T&gt;&gt; toImmutableSortedBag(Comparator&lt;? super T&gt; comparator)
+    {
+<span class="nc" id="L576">        return Collector.&lt;T, MutableSortedBag&lt;T&gt;, ImmutableSortedBag&lt;T&gt;&gt;of(</span>
+<span class="nc" id="L577">                () -&gt; SortedBags.mutable.with(comparator),</span>
+                MutableSortedBag::add,
+                MutableSortedBag::withAll,
+                MutableSortedBag::toImmutable,
+                Collector.Characteristics.UNORDERED);
+    }
+
+    /**
+     * &lt;p&gt;Returns the elements as a MutableStack.&lt;/p&gt;
+     * &lt;p&gt;Examples:&lt;/p&gt;
+     * {@code MutableStack&lt;Integer&gt; stack1 = Interval.oneTo(5).stream().collect(Collectors2.toStack());}&lt;br&gt;
+     * {@code MutableStack&lt;Integer&gt; stack2 = Interval.oneTo(5).reduceInPlace(Collectors2.toStack());}
+     * &lt;p&gt;
+     * Equivalent to using @{@link OrderedIterable#toStack()}}
+     * &lt;/p&gt;
+     * {@code MutableStack&lt;Integer&gt; stack = Interval.oneTo(5).toList().toStack();}
+     */
+    public static &lt;T&gt; Collector&lt;T, ?, MutableStack&lt;T&gt;&gt; toStack()
+    {
+<span class="nc" id="L596">        return Collector.&lt;T, MutableList&lt;T&gt;, MutableStack&lt;T&gt;&gt;of(</span>
+                Lists.mutable::empty,
+                MutableList::add,
+                MutableList::withAll,
+                Stacks.mutable::ofAll,
+                EMPTY_CHARACTERISTICS);
+    }
+
+    /**
+     * &lt;p&gt;Returns the elements as an ImmutableStack.&lt;/p&gt;
+     * &lt;p&gt;Examples:&lt;/p&gt;
+     * {@code ImmutableStack&lt;Integer&gt; stack1 = Interval.oneTo(5).stream().collect(Collectors2.toImmutableStack());}&lt;br&gt;
+     * {@code ImmutableStack&lt;Integer&gt; stack2 = Interval.oneTo(5).reduceInPlace(Collectors2.toImmutableStack());}
+     * &lt;p&gt;
+     * Equivalent to using @{@link OrderedIterable#toStack()} followed by: @{@link MutableStack#toImmutable()}}
+     * &lt;/p&gt;
+     * {@code ImmutableStack&lt;Integer&gt; stack = Interval.oneTo(5).toList().toStack().toImmutable();}
+     */
+    public static &lt;T&gt; Collector&lt;T, ?, ImmutableStack&lt;T&gt;&gt; toImmutableStack()
+    {
+<span class="nc" id="L616">        return Collector.&lt;T, MutableList&lt;T&gt;, ImmutableStack&lt;T&gt;&gt;of(</span>
+                Lists.mutable::empty,
+                MutableList::add,
+                MutableList::withAll,
+                Stacks.immutable::ofAll,
+                EMPTY_CHARACTERISTICS);
+    }
+
+    /**
+     * &lt;p&gt;Returns the elements as a MutableBiMap applying the keyFunction and valueFunction to each element.&lt;/p&gt;
+     * &lt;p&gt;Examples:&lt;/p&gt;
+     * {@code BiMap&lt;Integer, String&gt; biMap1 =
+     * Interval.oneTo(5).stream().collect(Collectors2.toBiMap(Functions.identity(), Object::toString));}&lt;br&gt;
+     * {@code BiMap&lt;Integer, String&gt; biMap1 =
+     * Interval.oneTo(5).reduceInPlace(Collectors2.toBiMap(Functions.identity(), Object::toString));}
+     */
+    public static &lt;T, K, V&gt; Collector&lt;T, ?, MutableBiMap&lt;K, V&gt;&gt; toBiMap(
+            Function&lt;? super T, ? extends K&gt; keyFunction,
+            Function&lt;? super T, ? extends V&gt; valueFunction)
+    {
+<span class="nc" id="L636">        return Collector.of(</span>
+                BiMaps.mutable::empty,
+<span class="nc" id="L638">                (mbm, each) -&gt; mbm.put(keyFunction.valueOf(each), valueFunction.valueOf(each)),</span>
+                (r1, r2) -&gt;
+                {
+<span class="nc" id="L641">                    r1.putAll(r2);</span>
+<span class="nc" id="L642">                    return r1;</span>
+                },
+                EMPTY_CHARACTERISTICS);
+    }
+
+    /**
+     * &lt;p&gt;Returns the elements as an ImmutableBiMap applying the keyFunction and valueFunction to each element.&lt;/p&gt;
+     * &lt;p&gt;Examples:&lt;/p&gt;
+     * {@code MutableBiMap&lt;Integer, String&gt; biMap1 =
+     * Interval.oneTo(5).stream().collect(Collectors2.toImmutableBiMap(Functions.identity(), Object::toString));}&lt;br&gt;
+     * {@code MutableBiMap&lt;Integer, String&gt; biMap2 =
+     * Interval.oneTo(5).reduceInPlace(Collectors2.toImmutableBiMap(Functions.identity(), Object::toString));}
+     */
+    public static &lt;T, K, V&gt; Collector&lt;T, ?, ImmutableBiMap&lt;K, V&gt;&gt; toImmutableBiMap(
+            Function&lt;? super T, ? extends K&gt; keyFunction,
+            Function&lt;? super T, ? extends V&gt; valueFunction)
+    {
+<span class="nc" id="L659">        return Collector.&lt;T, MutableBiMap&lt;K, V&gt;, ImmutableBiMap&lt;K, V&gt;&gt;of(</span>
+                BiMaps.mutable::empty,
+<span class="nc" id="L661">                (mbm, each) -&gt; mbm.put(keyFunction.valueOf(each), valueFunction.valueOf(each)),</span>
+                (r1, r2) -&gt;
+                {
+<span class="nc" id="L664">                    r1.putAll(r2);</span>
+<span class="nc" id="L665">                    return r1;</span>
+                },
+                MutableBiMap::toImmutable,
+                EMPTY_CHARACTERISTICS);
+    }
+
+    /**
+     * &lt;p&gt;Returns the elements as a MutableMap applying the keyFunction and valueFunction to each element.&lt;/p&gt;
+     * &lt;p&gt;Examples:&lt;/p&gt;
+     * {@code MutableMap&lt;Integer, String&gt; map1 =
+     * Interval.oneTo(5).stream().collect(Collectors2.toMap(Functions.identity(), Object::toString));}&lt;br&gt;
+     * {@code MutableMap&lt;Integer, String&gt; map2 =
+     * Interval.oneTo(5).reduceInPlace(Collectors2.toMap(Functions.identity(), Object::toString));}
+     * &lt;p&gt;
+     * Equivalent to using @{@link RichIterable#toMap(Function, Function)}
+     * &lt;/p&gt;
+     * {@code MutableMap&lt;Integer, String&gt; map = Interval.oneTo(5).toMap(Functions.identity(), Object::toString);}
+     */
+    public static &lt;T, K, V&gt; Collector&lt;T, ?, MutableMap&lt;K, V&gt;&gt; toMap(
+            Function&lt;? super T, ? extends K&gt; keyFunction,
+            Function&lt;? super T, ? extends V&gt; valueFunction)
+    {
+<span class="nc" id="L687">        return Collector.of(</span>
+                Maps.mutable::empty,
+<span class="nc" id="L689">                (map, each) -&gt; map.put(keyFunction.valueOf(each), valueFunction.valueOf(each)),</span>
+                (r1, r2) -&gt;
+                {
+<span class="nc" id="L692">                    r1.putAll(r2);</span>
+<span class="nc" id="L693">                    return r1;</span>
+                },
+                EMPTY_CHARACTERISTICS);
+    }
+
+    /**
+     * &lt;p&gt;Returns the elements as an ImmutableMap applying the keyFunction and valueFunction to each element.&lt;/p&gt;
+     * &lt;p&gt;Examples:&lt;/p&gt;
+     * {@code ImmutableMap&lt;Integer, String&gt; map1 =
+     * Interval.oneTo(5).stream().collect(Collectors2.toImmutableMap(Functions.identity(), Object::toString));}&lt;br&gt;
+     * {@code ImmutableMap&lt;Integer, String&gt; map2 =
+     * Interval.oneTo(5).reduceInPlace(Collectors2.toImmutableMap(Functions.identity(), Object::toString));}
+     * &lt;p&gt;
+     * Equivalent to using @{@link RichIterable#toMap(Function, Function)}
+     * &lt;/p&gt;
+     * {@code ImmutableMap&lt;Integer, String&gt; map = Interval.oneTo(5).toMap(Functions.identity(), Object::toString).toImmutable();}
+     */
+    public static &lt;T, K, V&gt; Collector&lt;T, ?, ImmutableMap&lt;K, V&gt;&gt; toImmutableMap(
+            Function&lt;? super T, ? extends K&gt; keyFunction,
+            Function&lt;? super T, ? extends V&gt; valueFunction)
+    {
+<span class="nc" id="L714">        return Collector.&lt;T, MutableMap&lt;K, V&gt;, ImmutableMap&lt;K, V&gt;&gt;of(</span>
+                Maps.mutable::empty,
+<span class="nc" id="L716">                (map, each) -&gt; map.put(keyFunction.valueOf(each), valueFunction.valueOf(each)),</span>
+                (r1, r2) -&gt;
+                {
+<span class="nc" id="L719">                    r1.putAll(r2);</span>
+<span class="nc" id="L720">                    return r1;</span>
+                },
+                MutableMap::toImmutable,
+                EMPTY_CHARACTERISTICS);
+    }
+
+    /**
+     * Returns the counts of all of the values returned by applying the specified function to each
+     * item of the Stream.
+     *
+     * @since 9.1
+     */
+    public static &lt;T, K&gt; Collector&lt;T, ?, MutableBag&lt;K&gt;&gt; countBy(Function&lt;? super T, ? extends K&gt; function)
+    {
+<span class="nc" id="L734">        return Collector.of(</span>
+                Bags.mutable::empty,
+<span class="nc" id="L736">                (bag, each) -&gt; bag.with(function.valueOf(each)),</span>
+                MutableBag::withAll,
+                EMPTY_CHARACTERISTICS);
+    }
+
+    /**
+     * &lt;p&gt;Same as {@link #countBy(Function)}, except the result of applying the specified function will return a
+     * collection of keys for each value.&lt;/p&gt;
+     *
+     * @since 9.2
+     */
+    public static &lt;T, K&gt; Collector&lt;T, ?, MutableBag&lt;K&gt;&gt; countByEach(Function&lt;? super T, ? extends Iterable&lt;K&gt;&gt; function)
+    {
+<span class="nc" id="L749">        return Collector.of(</span>
+                Bags.mutable::empty,
+<span class="nc" id="L751">                (bag, each) -&gt; bag.withAll(function.valueOf(each)),</span>
+                MutableBag::withAll,
+                EMPTY_CHARACTERISTICS);
+    }
+
+    /**
+     * &lt;p&gt;Returns the elements as an MutableMultimap grouping each element using the specified groupBy Function.&lt;/p&gt;
+     * &lt;p&gt;Examples:&lt;/p&gt;
+     * {@code MutableListMultimap&lt;String, Integer&gt; multimap1 =
+     * Interval.oneTo(5).stream().collect(Collectors2.groupBy(Object::toString, Multimaps.mutable.list::empty));}&lt;br&gt;
+     * {@code MutableListMultimap&lt;String, Integer&gt; multimap2 =
+     * Interval.oneTo(5).reduceInPlace(Collectors2.groupBy(Object::toString, Multimaps.mutable.list::empty));}
+     * &lt;p&gt;
+     * Equivalent to using @{@link RichIterable#groupBy(Function, MutableMultimap)}
+     * &lt;/p&gt;
+     * {@code MutableListMultimap&lt;String, Integer&gt; multimap = Interval.oneTo(5).groupBy(Object::toString, Multimaps.mutable.list.empty());}
+     */
+    public static &lt;T, K, R extends MutableMultimap&lt;K, T&gt;&gt; Collector&lt;T, ?, R&gt; groupBy(
+            Function&lt;? super T, ? extends K&gt; groupBy,
+            Supplier&lt;R&gt; supplier)
+    {
+<span class="nc" id="L772">        return Collector.of(</span>
+                supplier,
+<span class="nc" id="L774">                (map, each) -&gt; map.put(groupBy.valueOf(each), each),</span>
+                (r1, r2) -&gt;
+                {
+<span class="nc" id="L777">                    r1.putAll(r2);</span>
+<span class="nc" id="L778">                    return r1;</span>
+                },
+                EMPTY_CHARACTERISTICS);
+    }
+
+    /**
+     * &lt;p&gt;Same as {@link #groupBy(Function, Supplier)}, except the result of evaluating groupBy function will return a
+     * collection of keys for each value.&lt;/p&gt;
+     *
+     * &lt;p&gt;Equivalent to using @{@link RichIterable#groupByEach(Function, MutableMultimap)}&lt;/p&gt;
+     */
+    public static &lt;T, K, R extends MutableMultimap&lt;K, T&gt;&gt; Collector&lt;T, ?, R&gt; groupByEach(
+            Function&lt;? super T, ? extends Iterable&lt;K&gt;&gt; groupBy,
+            Supplier&lt;R&gt; supplier)
+    {
+<span class="nc" id="L793">        return Collector.of(</span>
+                supplier,
+<span class="nc" id="L795">                (map, each) -&gt; groupBy.valueOf(each).forEach(k -&gt; map.put(k, each)),</span>
+                (r1, r2) -&gt;
+                {
+<span class="nc" id="L798">                    r1.putAll(r2);</span>
+<span class="nc" id="L799">                    return r1;</span>
+                },
+                EMPTY_CHARACTERISTICS);
+    }
+
+    /**
+     * &lt;p&gt;Same as {@link #groupBy(Function, Supplier)}, except the result of evaluating groupBy function should return a
+     * unique key, or else an exception is thrown.&lt;/p&gt;
+     *
+     * &lt;p&gt;Equivalent to using @{@link RichIterable#groupByUniqueKey(Function, MutableMap)}&lt;/p&gt;
+     */
+    public static &lt;T, K, R extends MutableMap&lt;K, T&gt;&gt; Collector&lt;T, ?, R&gt; groupByUniqueKey(
+            Function&lt;? super T, ? extends K&gt; groupBy,
+            Supplier&lt;R&gt; supplier)
+    {
+<span class="nc" id="L814">        return Collector.of(</span>
+                supplier,
+                (map, each) -&gt;
+                {
+<span class="nc" id="L818">                    K key = groupBy.valueOf(each);</span>
+<span class="nc bnc" id="L819" title="All 2 branches missed.">                    if (map.put(key, each) != null)</span>
+                    {
+<span class="nc" id="L821">                        throw new IllegalStateException(&quot;Key &quot; + key + &quot; already exists in map!&quot;);</span>
+                    }
+<span class="nc" id="L823">                },</span>
+                (r1, r2) -&gt;
+                {
+<span class="nc" id="L826">                    r2.forEachKeyValue((key, value) -&gt;</span>
+                    {
+<span class="nc bnc" id="L828" title="All 2 branches missed.">                        if (r1.put(key, value) != null)</span>
+                        {
+<span class="nc" id="L830">                            throw new IllegalStateException(&quot;Key &quot; + key + &quot; already exists in map!&quot;);</span>
+                        }
+<span class="nc" id="L832">                    });</span>
+<span class="nc" id="L833">                    return r1;</span>
+                },
+                EMPTY_CHARACTERISTICS);
+    }
+
+    private static &lt;T, K, A extends MutableMultimap&lt;K, T&gt;, R extends ImmutableMultimap&lt;K, T&gt;&gt; Collector&lt;T, ?, R&gt; groupByImmutable(
+            Function&lt;? super T, ? extends K&gt; groupBy,
+            Supplier&lt;A&gt; supplier,
+            java.util.function.Function&lt;A, R&gt; finisher)
+    {
+<span class="nc" id="L843">        return Collector.of(</span>
+                supplier,
+<span class="nc" id="L845">                (map, each) -&gt; map.put(groupBy.valueOf(each), each),</span>
+                (r1, r2) -&gt;
+                {
+<span class="nc" id="L848">                    r1.putAll(r2);</span>
+<span class="nc" id="L849">                    return r1;</span>
+                },
+                finisher,
+                EMPTY_CHARACTERISTICS);
+    }
+
+    /**
+     * &lt;p&gt;Returns the elements as an MutableMultimap grouping each element using the specified groupBy Function and
+     * converting each element to the value returned by applying the specified Function valueFunction.&lt;/p&gt;
+     * &lt;p&gt;Examples:&lt;/p&gt;
+     * {@code MutableListMultimap&lt;String, String&gt; multimap1 =
+     * Interval.oneTo(5).stream().collect(Collectors2.groupByAndCollect(Object::toString, Object::toString, Multimaps.mutable.list::empty));}&lt;br&gt;
+     * {@code MutableListMultimap&lt;String, String&gt; multimap2 =
+     * Interval.oneTo(5).reduceInPlace(Collectors2.groupByAndCollect(Object::toString, Object::toString, Multimaps.mutable.list::empty));}
+     */
+    public static &lt;T, K, V, R extends MutableMultimap&lt;K, V&gt;&gt; Collector&lt;T, ?, R&gt; groupByAndCollect(
+            Function&lt;? super T, ? extends K&gt; groupBy,
+            Function&lt;? super T, ? extends V&gt; valueFunction,
+            Supplier&lt;R&gt; supplier)
+    {
+<span class="nc" id="L869">        return Collector.of(</span>
+                supplier,
+<span class="nc" id="L871">                (map, each) -&gt; map.put(groupBy.valueOf(each), valueFunction.valueOf(each)),</span>
+                (r1, r2) -&gt;
+                {
+<span class="nc" id="L874">                    r1.putAll(r2);</span>
+<span class="nc" id="L875">                    return r1;</span>
+                },
+                EMPTY_CHARACTERISTICS);
+    }
+
+    private static &lt;T, K, V, A extends MutableMultimap&lt;K, V&gt;, R extends ImmutableMultimap&lt;K, V&gt;&gt; Collector&lt;T, ?, R&gt; groupByAndCollectImmutable(
+            Function&lt;? super T, ? extends K&gt; groupBy,
+            Function&lt;? super T, ? extends V&gt; valueFunction,
+            Supplier&lt;A&gt; supplier,
+            java.util.function.Function&lt;A, R&gt; finisher)
+    {
+<span class="nc" id="L886">        return Collector.of(</span>
+                supplier,
+<span class="nc" id="L888">                (map, each) -&gt; map.put(groupBy.valueOf(each), valueFunction.valueOf(each)),</span>
+                (r1, r2) -&gt;
+                {
+<span class="nc" id="L891">                    r1.putAll(r2);</span>
+<span class="nc" id="L892">                    return r1;</span>
+                },
+                finisher,
+                EMPTY_CHARACTERISTICS);
+    }
+
+    /**
+     * Groups the elements using the {@code groupBy} function and all the elements that map to the same key are
+     * aggregated together using the {@code aggregator} function. The second parameter, the {@code zeroValueFactory}
+     * function, creates the initial value in each aggregation. Aggregate results are allowed to be immutable as they
+     * will be replaced in the map.
+     */
+    public static &lt;T, K, R extends MutableMapIterable&lt;K, T&gt;&gt; Collector&lt;T, ?, R&gt; aggregateBy(
+            Function&lt;? super T, ? extends K&gt; groupBy,
+            Function0&lt;? extends T&gt; zeroValueFactory,
+            Function2&lt;? super T, ? super T, ? extends T&gt; aggregator,
+            Supplier&lt;R&gt; supplier)
+    {
+<span class="nc" id="L910">        return Collector.of(</span>
+                supplier,
+                (map, each) -&gt;
+                {
+<span class="nc" id="L914">                    map.updateValueWith(groupBy.valueOf(each), zeroValueFactory, aggregator, each);</span>
+<span class="nc" id="L915">                },</span>
+                (r1, r2) -&gt;
+                {
+<span class="nc" id="L918">                    r2.forEachKeyValue((key, value) -&gt; r1.updateValueWith(key, zeroValueFactory, aggregator, value));</span>
+<span class="nc" id="L919">                    return r1;</span>
+                },
+                EMPTY_CHARACTERISTICS);
+    }
+
+    /**
+     * &lt;p&gt;Returns the elements as an MutableListMultimap grouping each element using the specified groupBy Function.&lt;/p&gt;
+     * &lt;p&gt;Examples:&lt;/p&gt;
+     * {@code MutableListMultimap&lt;String, Integer&gt; multimap1 =
+     * Interval.oneTo(5).stream().collect(Collectors2.toListMultimap(Object::toString));}&lt;br&gt;
+     * {@code MutableListMultimap&lt;String, Integer&gt; multimap2 =
+     * Interval.oneTo(5).reduceInPlace(Collectors2.toListMultimap(Object::toString));}
+     */
+    public static &lt;T, K&gt; Collector&lt;T, ?, MutableListMultimap&lt;K, T&gt;&gt; toListMultimap(
+            Function&lt;? super T, ? extends K&gt; groupBy)
+    {
+<span class="nc" id="L935">        return Collectors2.groupBy(groupBy, Multimaps.mutable.list::empty);</span>
+    }
+
+    /**
+     * &lt;p&gt;Returns the elements as an MutableListMultimap grouping each element using the specified groupBy Function and
+     * converting each element to the value returned by applying the specified Function valueFunction.&lt;/p&gt;
+     * &lt;p&gt;Examples:&lt;/p&gt;
+     * {@code MutableListMultimap&lt;String, String&gt; multimap1 =
+     * Interval.oneTo(5).stream().collect(Collectors2.toListMultimap(Object::toString, Object::toString));}&lt;br&gt;
+     * {@code MutableListMultimap&lt;String, String&gt; multimap2 =
+     * Interval.oneTo(5).reduceInPlace(Collectors2.toListMultimap(Object::toString, Object::toString));}
+     */
+    public static &lt;T, K, V&gt; Collector&lt;T, ?, MutableListMultimap&lt;K, V&gt;&gt; toListMultimap(
+            Function&lt;? super T, ? extends K&gt; groupBy,
+            Function&lt;? super T, ? extends V&gt; valueFunction)
+    {
+<span class="nc" id="L951">        return Collectors2.groupByAndCollect(groupBy, valueFunction, Multimaps.mutable.list::empty);</span>
+    }
+
+    /**
+     * &lt;p&gt;Returns the elements as an MutableSetMultimap grouping each element using the specified groupBy Function.&lt;/p&gt;
+     * &lt;p&gt;Examples:&lt;/p&gt;
+     * {@code MutableSetMultimap&lt;String, Integer&gt; multimap1 =
+     * Interval.oneTo(5).stream().collect(Collectors2.toSetMultimap(Object::toString));}&lt;br&gt;
+     * {@code MutableSetMultimap&lt;String, Integer&gt; multimap2 =
+     * Interval.oneTo(5).reduceInPlace(Collectors2.toSetMultimap(Object::toString));}
+     */
+    public static &lt;T, K&gt; Collector&lt;T, ?, MutableSetMultimap&lt;K, T&gt;&gt; toSetMultimap(
+            Function&lt;? super T, ? extends K&gt; groupBy)
+    {
+<span class="nc" id="L965">        return Collectors2.groupBy(groupBy, Multimaps.mutable.set::empty);</span>
+    }
+
+    /**
+     * &lt;p&gt;Returns the elements as an MutableSetMultimap grouping each element using the specified groupBy Function and
+     * converting each element to the value returned by applying the specified Function valueFunction.&lt;/p&gt;
+     * &lt;p&gt;Examples:&lt;/p&gt;
+     * {@code MutableSetMultimap&lt;String, String&gt; multimap1 =
+     * Interval.oneTo(5).stream().collect(Collectors2.toSetMultimap(Object::toString, Object::toString));}&lt;br&gt;
+     * {@code MutableSetMultimap&lt;String, String&gt; multimap2 =
+     * Interval.oneTo(5).reduceInPlace(Collectors2.toSetMultimap(Object::toString, Object::toString));}
+     */
+    public static &lt;T, K, V&gt; Collector&lt;T, ?, MutableSetMultimap&lt;K, V&gt;&gt; toSetMultimap(
+            Function&lt;? super T, ? extends K&gt; groupBy,
+            Function&lt;? super T, ? extends V&gt; valueFunction)
+    {
+<span class="nc" id="L981">        return Collectors2.groupByAndCollect(groupBy, valueFunction, Multimaps.mutable.set::empty);</span>
+    }
+
+    /**
+     * &lt;p&gt;Returns the elements as an MutableBagMultimap grouping each element using the specified groupBy Function.&lt;/p&gt;
+     * &lt;p&gt;Examples:&lt;/p&gt;
+     * {@code MutableBagMultimap&lt;String, Integer&gt; multimap1 =
+     * Interval.oneTo(5).stream().collect(Collectors2.toBagMultimap(Object::toString));}&lt;br&gt;
+     * {@code MutableBagMultimap&lt;String, Integer&gt; multimap2 =
+     * Interval.oneTo(5).reduceInPlace(Collectors2.toBagMultimap(Object::toString));}
+     */
+    public static &lt;T, K&gt; Collector&lt;T, ?, MutableBagMultimap&lt;K, T&gt;&gt; toBagMultimap(
+            Function&lt;? super T, ? extends K&gt; groupBy)
+    {
+<span class="nc" id="L995">        return Collectors2.groupBy(groupBy, Multimaps.mutable.bag::empty);</span>
+    }
+
+    /**
+     * &lt;p&gt;Returns the elements as an MutableBagMultimap grouping each element using the specified groupBy Function and
+     * converting each element to the value returned by applying the specified Function valueFunction.&lt;/p&gt;
+     * &lt;p&gt;Examples:&lt;/p&gt;
+     * {@code MutableBagMultimap&lt;String, String&gt; multimap1 =
+     * Interval.oneTo(5).stream().collect(Collectors2.toBagMultimap(Object::toString, Object::toString));}&lt;br&gt;
+     * {@code MutableBagMultimap&lt;String, String&gt; multimap2 =
+     * Interval.oneTo(5).reduceInPlace(Collectors2.toBagMultimap(Object::toString, Object::toString));}
+     */
+    public static &lt;T, K, V&gt; Collector&lt;T, ?, MutableBagMultimap&lt;K, V&gt;&gt; toBagMultimap(
+            Function&lt;? super T, ? extends K&gt; groupBy,
+            Function&lt;? super T, ? extends V&gt; valueFunction)
+    {
+<span class="nc" id="L1011">        return Collectors2.groupByAndCollect(groupBy, valueFunction, Multimaps.mutable.bag::empty);</span>
+    }
+
+    /**
+     * &lt;p&gt;Returns the elements as an ImmutableListMultimap grouping each element using the specified groupBy Function.&lt;/p&gt;
+     * &lt;p&gt;Examples:&lt;/p&gt;
+     * {@code ImmutableListMultimap&lt;String, Integer&gt; multimap1 =
+     * Interval.oneTo(5).stream().collect(Collectors2.toImmutableListMultimap(Object::toString));}&lt;br&gt;
+     * {@code ImmutableListMultimap&lt;String, Integer&gt; multimap2 =
+     * Interval.oneTo(5).reduceInPlace(Collectors2.toImmutableListMultimap(Object::toString));}
+     */
+    public static &lt;T, K&gt; Collector&lt;T, ?, ImmutableListMultimap&lt;K, T&gt;&gt; toImmutableListMultimap(
+            Function&lt;? super T, ? extends K&gt; groupBy)
+    {
+<span class="nc" id="L1025">        return Collectors2.groupByImmutable(groupBy, Multimaps.mutable.list::empty, MutableListMultimap::toImmutable);</span>
+    }
+
+    /**
+     * &lt;p&gt;Returns the elements as an ImmutableListMultimap grouping each element using the specified groupBy Function and
+     * converting each element to the value returned by applying the specified Function valueFunction.&lt;/p&gt;
+     * &lt;p&gt;Examples:&lt;/p&gt;
+     * {@code ImmutableListMultimap&lt;String, String&gt; multimap1 =
+     * Interval.oneTo(5).stream().collect(Collectors2.toImmutableListMultimap(Object::toString, Object::toString));}&lt;br&gt;
+     * {@code ImmutableListMultimap&lt;String, String&gt; multimap2 =
+     * Interval.oneTo(5).reduceInPlace(Collectors2.toImmutableListMultimap(Object::toString, Object::toString));}
+     */
+    public static &lt;T, K, V&gt; Collector&lt;T, ?, ImmutableListMultimap&lt;K, V&gt;&gt; toImmutableListMultimap(
+            Function&lt;? super T, ? extends K&gt; groupBy,
+            Function&lt;? super T, ? extends V&gt; valueFunction)
+    {
+<span class="nc" id="L1041">        return Collectors2.groupByAndCollectImmutable(groupBy, valueFunction, Multimaps.mutable.list::empty, MutableListMultimap::toImmutable);</span>
+    }
+
+    /**
+     * &lt;p&gt;Returns the elements as an ImmutableSetMultimap grouping each element using the specified groupBy Function.&lt;/p&gt;
+     * &lt;p&gt;Examples:&lt;/p&gt;
+     * {@code ImmutableSetMultimap&lt;String, Integer&gt; multimap1 =
+     * Interval.oneTo(5).stream().collect(Collectors2.toImmutableSetMultimap(Object::toString));}&lt;br&gt;
+     * {@code ImmutableSetMultimap&lt;String, Integer&gt; multimap2 =
+     * Interval.oneTo(5).reduceInPlace(Collectors2.toImmutableSetMultimap(Object::toString));}
+     */
+    public static &lt;T, K&gt; Collector&lt;T, ?, ImmutableSetMultimap&lt;K, T&gt;&gt; toImmutableSetMultimap(
+            Function&lt;? super T, ? extends K&gt; groupBy)
+    {
+<span class="nc" id="L1055">        return Collectors2.groupByImmutable(groupBy, Multimaps.mutable.set::empty, MutableSetMultimap::toImmutable);</span>
+    }
+
+    /**
+     * &lt;p&gt;Returns the elements as an ImmutableSetMultimap grouping each element using the specified groupBy Function and
+     * converting each element to the value returned by applying the specified Function valueFunction.&lt;/p&gt;
+     * &lt;p&gt;Examples:&lt;/p&gt;
+     * {@code ImmutableSetMultimap&lt;String, String&gt; multimap1 =
+     * Interval.oneTo(5).stream().collect(Collectors2.toImmutableSetMultimap(Object::toString, Object::toString));}&lt;br&gt;
+     * {@code ImmutableSetMultimap&lt;String, String&gt; multimap2 =
+     * Interval.oneTo(5).reduceInPlace(Collectors2.toImmutableSetMultimap(Object::toString, Object::toString));}
+     */
+    public static &lt;T, K, V&gt; Collector&lt;T, ?, ImmutableSetMultimap&lt;K, V&gt;&gt; toImmutableSetMultimap(
+            Function&lt;? super T, ? extends K&gt; groupBy,
+            Function&lt;? super T, ? extends V&gt; valueFunction)
+    {
+<span class="nc" id="L1071">        return Collectors2.groupByAndCollectImmutable(groupBy, valueFunction, Multimaps.mutable.set::empty, MutableSetMultimap::toImmutable);</span>
+    }
+
+    /**
+     * &lt;p&gt;Returns the elements as an ImmutableBagMultimap grouping each element using the specified groupBy Function.&lt;/p&gt;
+     * &lt;p&gt;Examples:&lt;/p&gt;
+     * {@code ImmutableBagMultimap&lt;String, Integer&gt; multimap1 =
+     * Interval.oneTo(5).stream().collect(Collectors2.toImmutableBagMultimap(Object::toString));}&lt;br&gt;
+     * {@code ImmutableBagMultimap&lt;String, Integer&gt; multimap2 =
+     * Interval.oneTo(5).reduceInPlace(Collectors2.toImmutableBagMultimap(Object::toString));}
+     */
+    public static &lt;T, K&gt; Collector&lt;T, ?, ImmutableBagMultimap&lt;K, T&gt;&gt; toImmutableBagMultimap(
+            Function&lt;? super T, ? extends K&gt; groupBy)
+    {
+<span class="nc" id="L1085">        return Collectors2.groupByImmutable(groupBy, Multimaps.mutable.bag::empty, MutableBagMultimap::toImmutable);</span>
+    }
+
+    /**
+     * &lt;p&gt;Returns the elements as an ImmutableBagMultimap grouping each element using the specified groupBy Function and
+     * converting each element to the value returned by applying the specified Function valueFunction.&lt;/p&gt;
+     * &lt;p&gt;Examples:&lt;/p&gt;
+     * {@code ImmutableBagMultimap&lt;String, String&gt; multimap1 =
+     * Interval.oneTo(5).stream().collect(Collectors2.toImmutableBagMultimap(Object::toString, Object::toString));}&lt;br&gt;
+     * {@code ImmutableBagMultimap&lt;String, String&gt; multimap2 =
+     * Interval.oneTo(5).reduceInPlace(Collectors2.toImmutableBagMultimap(Object::toString, Object::toString));}
+     */
+    public static &lt;T, K, V&gt; Collector&lt;T, ?, ImmutableBagMultimap&lt;K, V&gt;&gt; toImmutableBagMultimap(
+            Function&lt;? super T, ? extends K&gt; groupBy,
+            Function&lt;? super T, ? extends V&gt; valueFunction)
+    {
+<span class="nc" id="L1101">        return Collectors2.groupByAndCollectImmutable(groupBy, valueFunction, Multimaps.mutable.bag::empty, MutableBagMultimap::toImmutable);</span>
+    }
+
+    /**
+     * &lt;p&gt;Partitions elements in fixed size chunks.&lt;/p&gt;
+     * &lt;p&gt;Examples:&lt;/p&gt;
+     * {@code MutableList&lt;MutableList&lt;Integer&gt;&gt; chunks1 = Interval.oneTo(10).stream().collect(Collectors2.chunk(2));}&lt;br&gt;
+     * {@code MutableList&lt;MutableList&lt;Integer&gt;&gt; chunks2 = Interval.oneTo(10).reduceInPlace(Collectors2.chunk(2));}
+     * &lt;p&gt;
+     * Equivalent to using @{@link RichIterable#chunk(int)}
+     * &lt;/p&gt;
+     * {@code LazyIterable&lt;RichIterable&lt;Integer&gt;&gt; chunks = Interval.oneTo(10).chunk(2);}
+     */
+    public static &lt;T&gt; Collector&lt;T, ?, MutableList&lt;MutableList&lt;T&gt;&gt;&gt; chunk(int size)
+    {
+<span class="nc bnc" id="L1116" title="All 2 branches missed.">        if (size &lt;= 0)</span>
+        {
+<span class="nc" id="L1118">            throw new IllegalArgumentException(&quot;Size for groups must be positive but was: &quot; + size);</span>
+        }
+<span class="nc" id="L1120">        return Collector.of(</span>
+                Lists.mutable::empty,
+                (MutableList&lt;MutableList&lt;T&gt;&gt; batches, T each) -&gt;
+                {
+<span class="nc" id="L1124">                    MutableList&lt;T&gt; batch = batches.getLast();</span>
+<span class="nc bnc" id="L1125" title="All 4 branches missed.">                    if (batch == null || batch.size() == size)</span>
+                    {
+<span class="nc" id="L1127">                        batch = Lists.mutable.empty();</span>
+<span class="nc" id="L1128">                        batches.add(batch);</span>
+                    }
+<span class="nc" id="L1130">                    batch.add(each);</span>
+<span class="nc" id="L1131">                },</span>
+                MutableList::withAll,
+                EMPTY_CHARACTERISTICS);
+    }
+
+    /**
+     * &lt;p&gt;Returns a {@code MutableList} formed from this stream of elements and another {@code Iterable} by
+     * combining corresponding elements in pairs.&lt;/p&gt;
+     * &lt;p&gt;If one of the two {@code Iterable}s is longer than the other, its remaining elements are ignored.&lt;/p&gt;
+     * &lt;p&gt;Examples:&lt;/p&gt;
+     * {@code MutableList&lt;Pair&lt;Integer, Integer&gt;&gt; zipped1 = Interval.oneTo(10).stream().collect(Collectors2.zip(Interval.oneTo(10)));}&lt;br&gt;
+     * {@code MutableList&lt;Pair&lt;Integer, Integer&gt;&gt; zipped2 = Interval.oneTo(10).reduceInPlace(Collectors2.zip(Interval.oneTo(10)));}&lt;br&gt;
+     * &lt;p&gt;
+     * Equivalent to using @{@link RichIterable#zip(Iterable)}
+     * &lt;/p&gt;
+     * {@code LazyIterable&lt;Pair&lt;Integer, Integer&gt;&gt; zip = Interval.oneTo(10).zip(Interval.oneTo(10));}
+     */
+    public static &lt;T, S&gt; Collector&lt;T, ?, MutableList&lt;Pair&lt;T, S&gt;&gt;&gt; zip(Iterable&lt;S&gt; other)
+    {
+<span class="nc" id="L1150">        Iterator&lt;S&gt; iterator = other.iterator();</span>
+<span class="nc" id="L1151">        return Collector.of(</span>
+                Lists.mutable::empty,
+                (list, each) -&gt;
+                {
+<span class="nc bnc" id="L1155" title="All 2 branches missed.">                    if (iterator.hasNext())</span>
+                    {
+<span class="nc" id="L1157">                        list.add(Tuples.pair(each, iterator.next()));</span>
+                    }
+<span class="nc" id="L1159">                },</span>
+                (l, r) -&gt;
+                {
+<span class="nc" id="L1162">                    throw new UnsupportedOperationException(&quot;Zip not supported in parallel.&quot;);</span>
+                },
+                EMPTY_CHARACTERISTICS);
+    }
+
+    /**
+     * &lt;p&gt;Returns a {@code MutableList} of pairs formed from this stream of elements its indices.&lt;/p&gt;
+     * &lt;p&gt;Examples:&lt;/p&gt;
+     * {@code MutableList&lt;ObjectIntPair&lt;Integer&gt;&gt; zipWithIndex1 = Interval.oneTo(10).stream().collect(Collectors2.zipWithIndex());}&lt;br&gt;
+     * {@code MutableList&lt;ObjectIntPair&lt;Integer&gt;&gt; zipWithIndex2 = Interval.oneTo(10).reduceInPlace(Collectors2.zipWithIndex());}
+     * &lt;p&gt;
+     * Equivalent to using @{@link RichIterable#zipWithIndex()}
+     * &lt;/p&gt;
+     * {@code LazyIterable&lt;Pair&lt;Integer, Integer&gt;&gt; zipWithIndex = Interval.oneTo(10).zipWithIndex();}
+     */
+    public static &lt;T&gt; Collector&lt;T, ?, MutableList&lt;ObjectIntPair&lt;T&gt;&gt;&gt; zipWithIndex()
+    {
+<span class="nc" id="L1179">        AtomicInteger index = new AtomicInteger(0);</span>
+<span class="nc" id="L1180">        return Collector.of(</span>
+                Lists.mutable::empty,
+<span class="nc" id="L1182">                (list, each) -&gt; list.add(PrimitiveTuples.pair(each, index.getAndAdd(1))),</span>
+                (l, r) -&gt;
+                {
+<span class="nc" id="L1185">                    throw new UnsupportedOperationException(&quot;ZipWithIndex not supported in parallel.&quot;);</span>
+                },
+                EMPTY_CHARACTERISTICS);
+    }
+
+    /**
+     * &lt;p&gt;Groups and sums the values using the two specified functions.&lt;/p&gt;
+     * &lt;p&gt;Examples:&lt;/p&gt;
+     * {@code MutableObjectLongMap&lt;Integer&gt; sumBy1 =
+     * Interval.oneTo(10).stream().collect(Collectors2.sumByInt(each -&gt; Integer.valueOf(each % 2), Integer::intValue));}&lt;br&gt;
+     * {@code MutableObjectLongMap&lt;Integer&gt; sumBy2 =
+     * Interval.oneTo(10).reduceInPlace(Collectors2.sumByInt(each -&gt; Integer.valueOf(each % 2), Integer::intValue));}&lt;br&gt;
+     * &lt;p&gt;
+     * Equivalent to using @{@link RichIterable#sumByInt(Function, IntFunction)}
+     * &lt;/p&gt;
+     * {@code ObjectLongMap&lt;Integer&gt; sumBy =
+     * Interval.oneTo(10).sumByInt(each -&gt; Integer.valueOf(each % 2), Integer::intValue));}&lt;br&gt;
+     */
+    public static &lt;T, V&gt; Collector&lt;T, ?, MutableObjectLongMap&lt;V&gt;&gt; sumByInt(
+            Function&lt;? super T, ? extends V&gt; groupBy,
+            IntFunction&lt;? super T&gt; function)
+    {
+<span class="nc" id="L1207">        Function2&lt;MutableObjectLongMap&lt;V&gt;, T, MutableObjectLongMap&lt;V&gt;&gt; accumulator =</span>
+<span class="nc" id="L1208">                PrimitiveFunctions.sumByIntFunction(groupBy, function);</span>
+<span class="nc" id="L1209">        return Collector.of(</span>
+                ObjectLongHashMap::newMap,
+                accumulator::value,
+                (map1, map2) -&gt;
+                {
+<span class="nc" id="L1214">                    map2.forEachKeyValue(map1::addToValue);</span>
+<span class="nc" id="L1215">                    return map1;</span>
+                },
+                Collector.Characteristics.UNORDERED);
+    }
+
+    /**
+     * &lt;p&gt;Groups and sums the values using the two specified functions.&lt;/p&gt;
+     * &lt;p&gt;Examples:&lt;/p&gt;
+     * {@code MutableObjectLongMap&lt;Long&gt; sumBy1 =
+     * Interval.oneTo(10).stream().collect(Collectors2.sumByLong(each -&gt; Long.valueOf(each % 2), Integer::longValue));}&lt;br&gt;
+     * {@code MutableObjectLongMap&lt;Long&gt; sumBy2 =
+     * Interval.oneTo(10).reduceInPlace(Collectors2.sumByLong(each -&gt; Long.valueOf(each % 2), Integer::longValue));}&lt;br&gt;
+     * &lt;p&gt;
+     * Equivalent to using @{@link RichIterable#sumByLong(Function, LongFunction)}
+     * &lt;/p&gt;
+     * {@code ObjectLongMap&lt;Long&gt; sumBy =
+     * Interval.oneTo(10).sumByLong(each -&gt; Long.valueOf(each % 2), Integer::longValue));}&lt;br&gt;
+     */
+    public static &lt;T, V&gt; Collector&lt;T, ?, MutableObjectLongMap&lt;V&gt;&gt; sumByLong(
+            Function&lt;? super T, ? extends V&gt; groupBy,
+            LongFunction&lt;? super T&gt; function)
+    {
+<span class="nc" id="L1237">        Function2&lt;MutableObjectLongMap&lt;V&gt;, T, MutableObjectLongMap&lt;V&gt;&gt; accumulator =</span>
+<span class="nc" id="L1238">                PrimitiveFunctions.sumByLongFunction(groupBy, function);</span>
+<span class="nc" id="L1239">        return Collector.of(</span>
+                ObjectLongHashMap::newMap,
+                accumulator::value,
+                (map1, map2) -&gt;
+                {
+<span class="nc" id="L1244">                    map2.forEachKeyValue(map1::addToValue);</span>
+<span class="nc" id="L1245">                    return map1;</span>
+                },
+                Collector.Characteristics.UNORDERED);
+    }
+
+    /**
+     * &lt;p&gt;Groups and sums the values using the two specified functions.&lt;/p&gt;
+     * &lt;p&gt;Examples:&lt;/p&gt;
+     * {@code MutableObjectDoubleMap&lt;Integer&gt; sumBy1 =
+     * Interval.oneTo(10).stream().collect(Collectors2.sumByFloat(each -&gt; ((int)each % 2), Integer::floatValue));}&lt;br&gt;
+     * {@code MutableObjectDoubleMap&lt;Integer&gt; sumBy2 =
+     * Interval.oneTo(10).reduceInPlace(Collectors2.sumByFloat(each -&gt; ((int)each % 2), Integer::floatValue));}&lt;br&gt;
+     * &lt;p&gt;
+     * Equivalent to using @{@link RichIterable#sumByFloat(Function, FloatFunction)}
+     * &lt;/p&gt;
+     * {@code ObjectDoubleMap&lt;Integer&gt; sumBy =
+     * Interval.oneTo(10).sumByFloat(each -&gt; ((int)each % 2), Integer::floatValue));}&lt;br&gt;
+     */
+    public static &lt;T, V&gt; Collector&lt;T, ?, MutableObjectDoubleMap&lt;V&gt;&gt; sumByFloat(
+            Function&lt;? super T, ? extends V&gt; groupBy,
+            FloatFunction&lt;? super T&gt; function)
+    {
+<span class="nc" id="L1267">        Function2&lt;MutableObjectDoubleMap&lt;V&gt;, T, MutableObjectDoubleMap&lt;V&gt;&gt; accumulator =</span>
+<span class="nc" id="L1268">                PrimitiveFunctions.sumByFloatFunction(groupBy, function);</span>
+<span class="nc" id="L1269">        return Collector.of(</span>
+                ObjectDoubleHashMap::newMap,
+                accumulator::value,
+                (map1, map2) -&gt;
+                {
+<span class="nc" id="L1274">                    map2.forEachKeyValue(map1::addToValue);</span>
+<span class="nc" id="L1275">                    return map1;</span>
+                },
+                Collector.Characteristics.UNORDERED);
+    }
+
+    /**
+     * &lt;p&gt;Groups and sums the values using the two specified functions.&lt;/p&gt;
+     * &lt;p&gt;Examples:&lt;/p&gt;
+     * {@code MutableObjectDoubleMap&lt;Integer&gt; sumBy1 =
+     * Interval.oneTo(10).stream().collect(Collectors2.sumByDouble(each -&gt; ((int)each % 2), Integer::doubleValue));}&lt;br&gt;
+     * {@code MutableObjectDoubleMap&lt;Integer&gt; sumBy2 =
+     * Interval.oneTo(10).reduceInPlace(Collectors2.sumByDouble(each -&gt; ((int)each % 2), Integer::doubleValue));}&lt;br&gt;
+     * &lt;p&gt;
+     * Equivalent to using @{@link RichIterable#sumByDouble(Function, DoubleFunction)}
+     * &lt;/p&gt;
+     * {@code ObjectDoubleMap&lt;Integer&gt; sumBy =
+     * Interval.oneTo(10).sumByDouble(each -&gt; ((int)each % 2), Integer::doubleValue));}&lt;br&gt;
+     */
+    public static &lt;T, V&gt; Collector&lt;T, ?, MutableObjectDoubleMap&lt;V&gt;&gt; sumByDouble(
+            Function&lt;? super T, ? extends V&gt; groupBy,
+            DoubleFunction&lt;? super T&gt; function)
+    {
+<span class="nc" id="L1297">        Function2&lt;MutableObjectDoubleMap&lt;V&gt;, T, MutableObjectDoubleMap&lt;V&gt;&gt; accumulator =</span>
+<span class="nc" id="L1298">                PrimitiveFunctions.sumByDoubleFunction(groupBy, function);</span>
+<span class="nc" id="L1299">        return Collector.of(</span>
+                ObjectDoubleHashMap::newMap,
+                accumulator::value,
+                (map1, map2) -&gt;
+                {
+<span class="nc" id="L1304">                    map2.forEachKeyValue(map1::addToValue);</span>
+<span class="nc" id="L1305">                    return map1;</span>
+                },
+                Collector.Characteristics.UNORDERED);
+    }
+
+    /**
+     * &lt;p&gt;Groups and sums the values using the two specified functions.&lt;/p&gt;
+     * &lt;p&gt;Examples:&lt;/p&gt;
+     * {@code MutableMap&lt;Integer, BigDecimal&gt; sumBy1 =
+     * Interval.oneTo(10).stream().collect(Collectors2.sumByBigDecimal(each -&gt; (each.intValue() % 2), BigDecimal::new));}&lt;br&gt;
+     * {@code MutableMap&lt;Integer, BigDecimal&gt; sumBy2 =
+     * Interval.oneTo(10).reduceInPlace(Collectors2.sumByBigDecimal(each -&gt; (each.intValue() % 2), BigDecimal::new));}&lt;br&gt;
+     * &lt;p&gt;
+     * Equivalent to using @{@link Iterate#sumByBigDecimal(Iterable, Function, Function)}
+     * &lt;/p&gt;
+     * {@code MutableMap&lt;Integer, BigDecimal&gt; sumBy =
+     * Iterate.sumByBigDecimal(Interval.oneTo(10), each -&gt; (each.intValue() % 2), BigDecimal::new));}&lt;br&gt;
+     *
+     * @since 8.1
+     */
+    public static &lt;T, V&gt; Collector&lt;T, ?, MutableMap&lt;V, BigDecimal&gt;&gt; sumByBigDecimal(
+            Function&lt;? super T, ? extends V&gt; groupBy,
+            Function&lt;? super T, BigDecimal&gt; function)
+    {
+<span class="nc" id="L1329">        return Collector.of(</span>
+                Maps.mutable::empty,
+                (map, each) -&gt;
+                {
+<span class="nc" id="L1333">                    V key = groupBy.apply(each);</span>
+<span class="nc" id="L1334">                    BigDecimal oldValue = map.get(key);</span>
+<span class="nc" id="L1335">                    BigDecimal valueToAdd = function.valueOf(each);</span>
+<span class="nc bnc" id="L1336" title="All 2 branches missed.">                    map.put(key, oldValue == null ? valueToAdd : oldValue.add(valueToAdd));</span>
+<span class="nc" id="L1337">                },</span>
+                (map1, map2) -&gt;
+                {
+<span class="nc" id="L1340">                    map2.forEachKeyValue((key, value) -&gt;</span>
+                    {
+<span class="nc" id="L1342">                        BigDecimal oldValue = map1.get(key);</span>
+<span class="nc bnc" id="L1343" title="All 2 branches missed.">                        map1.put(key, oldValue == null ? value : oldValue.add(value));</span>
+<span class="nc" id="L1344">                    });</span>
+<span class="nc" id="L1345">                    return map1;</span>
+                },
+                Collector.Characteristics.UNORDERED);
+    }
+
+    /**
+     * &lt;p&gt;Groups and sums the values using the two specified functions.&lt;/p&gt;
+     * &lt;p&gt;Examples:&lt;/p&gt;
+     * {@code MutableMap&lt;Integer, BigInteger&gt; sumBy1 =
+     * Interval.oneTo(10).stream().collect(Collectors2.sumByBigInteger(each -&gt; (each.intValue() % 2), each -&gt; BigInteger.valueOf(each.longValue())));}&lt;br&gt;
+     * {@code MutableMap&lt;Integer, BigInteger&gt; sumBy2 =
+     * Interval.oneTo(10).reduceInPlace(Collectors2.sumByBigInteger(each -&gt; (each.intValue() % 2), each -&gt; BigInteger.valueOf(each.longValue())));}&lt;br&gt;
+     * &lt;p&gt;
+     * Equivalent to using @{@link Iterate#sumByBigInteger(Iterable, Function, Function)}
+     * &lt;/p&gt;
+     * {@code MutableMap&lt;Integer, BigInteger&gt; sumBy =
+     * Iterate.sumByBigInteger(Interval.oneTo(10), each -&gt; (each.intValue() % 2), each -&gt; BigInteger.valueOf(each.longValue())));}&lt;br&gt;
+     *
+     * @since 8.1
+     */
+    public static &lt;T, V&gt; Collector&lt;T, ?, MutableMap&lt;V, BigInteger&gt;&gt; sumByBigInteger(
+            Function&lt;? super T, ? extends V&gt; groupBy,
+            Function&lt;? super T, BigInteger&gt; function)
+    {
+<span class="nc" id="L1369">        return Collector.of(</span>
+                Maps.mutable::empty,
+                (map, each) -&gt;
+                {
+<span class="nc" id="L1373">                    V key = groupBy.apply(each);</span>
+<span class="nc" id="L1374">                    BigInteger oldValue = map.get(key);</span>
+<span class="nc" id="L1375">                    BigInteger valueToAdd = function.valueOf(each);</span>
+<span class="nc bnc" id="L1376" title="All 2 branches missed.">                    map.put(key, oldValue == null ? valueToAdd : oldValue.add(valueToAdd));</span>
+<span class="nc" id="L1377">                },</span>
+                (map1, map2) -&gt;
+                {
+<span class="nc" id="L1380">                    map2.forEachKeyValue((key, value) -&gt;</span>
+                    {
+<span class="nc" id="L1382">                        BigInteger oldValue = map1.get(key);</span>
+<span class="nc bnc" id="L1383" title="All 2 branches missed.">                        map1.put(key, oldValue == null ? value : oldValue.add(value));</span>
+<span class="nc" id="L1384">                    });</span>
+<span class="nc" id="L1385">                    return map1;</span>
+                },
+                Collector.Characteristics.UNORDERED);
+    }
+
+    /**
+     * &lt;p&gt;Returns all elements of the stream that return true when evaluating the predicate. This method is also
+     * commonly called filter. The new collection is created as the result of evaluating the provided Supplier.&lt;/p&gt;
+     * &lt;p&gt;Examples:&lt;/p&gt;
+     * {@code MutableList&lt;Integer&gt; evens1 =
+     * Interval.oneTo(10).stream().collect(Collectors2.select(e -&gt;  e % 2 == 0, Lists.mutable::empty));}&lt;br&gt;
+     * {@code MutableList&lt;Integer&gt; evens2 =
+     * Interval.oneTo(10).reduceInPlace(Collectors2.select(e -&gt;  e % 2 == 0, Lists.mutable::empty));}&lt;br&gt;
+     * &lt;p&gt;
+     * Equivalent to using @{@link RichIterable#select(Predicate, Collection)}
+     * &lt;/p&gt;
+     * {@code MutableList&lt;Integer&gt; evens = Interval.oneTo(10).select(e -&gt;  e % 2 == 0, Lists.mutable.empty());}
+     */
+    public static &lt;T, R extends Collection&lt;T&gt;&gt; Collector&lt;T, ?, R&gt; select(Predicate&lt;? super T&gt; predicate, Supplier&lt;R&gt; supplier)
+    {
+<span class="nc" id="L1405">        return Collector.of(</span>
+                supplier,
+                (collection, each) -&gt;
+                {
+<span class="nc bnc" id="L1409" title="All 2 branches missed.">                    if (predicate.accept(each))</span>
+                    {
+<span class="nc" id="L1411">                        collection.add(each);</span>
+                    }
+<span class="nc" id="L1413">                },</span>
+<span class="nc" id="L1414">                Collectors2.mergeCollections(),</span>
+                EMPTY_CHARACTERISTICS);
+    }
+
+    /**
+     * &lt;p&gt;Returns all elements of the stream that return true when evaluating the predicate with the parameter.
+     * The new collection is created as the result of evaluating the provided Supplier.&lt;/p&gt;
+     * &lt;p&gt;Examples:&lt;/p&gt;
+     * {@code MutableList&lt;Integer&gt; evens1 =
+     * Interval.oneTo(10).stream().collect(Collectors2.selectWith((e, p) -&gt;  e % p == 0, 2, Lists.mutable::empty));}&lt;br&gt;
+     * {@code MutableList&lt;Integer&gt; evens2 =
+     * Interval.oneTo(10).reduceInPlace(Collectors2.selectWith((e, p) -&gt;  e % p == 0, 2, Lists.mutable::empty));}&lt;br&gt;
+     * &lt;p&gt;
+     * Equivalent to using @{@link RichIterable#selectWith(Predicate2, Object, Collection)}
+     * &lt;/p&gt;
+     * {@code MutableList&lt;Integer&gt; evens = Interval.oneTo(10).selectWith((e, p) -&gt;  e % p == 0, 2, Lists.mutable.empty());}
+     */
+    public static &lt;T, P, R extends Collection&lt;T&gt;&gt; Collector&lt;T, ?, R&gt; selectWith(
+            Predicate2&lt;? super T, ? super P&gt; predicate,
+            P parameter,
+            Supplier&lt;R&gt; supplier)
+    {
+<span class="nc" id="L1436">        return Collector.of(</span>
+                supplier,
+                (collection, each) -&gt;
+                {
+<span class="nc bnc" id="L1440" title="All 2 branches missed.">                    if (predicate.accept(each, parameter))</span>
+                    {
+<span class="nc" id="L1442">                        collection.add(each);</span>
+                    }
+<span class="nc" id="L1444">                },</span>
+<span class="nc" id="L1445">                Collectors2.mergeCollections(),</span>
+                EMPTY_CHARACTERISTICS);
+    }
+
+    /**
+     * &lt;p&gt;Returns all elements of the stream that return false when evaluating the predicate. This method is also
+     * commonly called filterNot. The new collection is created as the result of evaluating the provided Supplier.&lt;/p&gt;
+     * &lt;p&gt;Examples:&lt;/p&gt;
+     * {@code MutableList&lt;Integer&gt; odds1 =
+     * Interval.oneTo(10).stream().collect(Collectors2.reject(e -&gt;  e % 2 == 0, Lists.mutable::empty));}&lt;br&gt;
+     * {@code MutableList&lt;Integer&gt; odds2 =
+     * Interval.oneTo(10).reduceInPlace(Collectors2.reject(e -&gt;  e % 2 == 0, Lists.mutable::empty));}&lt;br&gt;
+     * &lt;p&gt;
+     * Equivalent to using @{@link RichIterable#reject(Predicate, Collection)}
+     * &lt;/p&gt;
+     * {@code MutableList&lt;Integer&gt; odds = Interval.oneTo(10).reject(e -&gt;  e % 2 == 0, Lists.mutable.empty());}
+     */
+    public static &lt;T, R extends Collection&lt;T&gt;&gt; Collector&lt;T, ?, R&gt; reject(Predicate&lt;? super T&gt; predicate, Supplier&lt;R&gt; supplier)
+    {
+<span class="nc" id="L1464">        return Collector.of(</span>
+                supplier,
+                (collection, each) -&gt;
+                {
+<span class="nc bnc" id="L1468" title="All 2 branches missed.">                    if (!predicate.accept(each))</span>
+                    {
+<span class="nc" id="L1470">                        collection.add(each);</span>
+                    }
+<span class="nc" id="L1472">                },</span>
+<span class="nc" id="L1473">                Collectors2.mergeCollections(),</span>
+                EMPTY_CHARACTERISTICS);
+    }
+
+    /**
+     * &lt;p&gt;Returns all elements of the stream that return false when evaluating the predicate with the parameter.
+     * The new collection is created as the result of evaluating the provided Supplier.&lt;/p&gt;
+     * &lt;p&gt;Examples:&lt;/p&gt;
+     * {@code MutableList&lt;Integer&gt; odds1 =
+     * Interval.oneTo(10).stream().collect(Collectors2.rejectWith((e, p) -&gt;  e % p == 0, 2, Lists.mutable::empty));}&lt;br&gt;
+     * {@code MutableList&lt;Integer&gt; odds2 =
+     * Interval.oneTo(10).reduceInPlace(Collectors2.rejectWith((e, p) -&gt;  e % p == 0, 2, Lists.mutable::empty));}&lt;br&gt;
+     * &lt;p&gt;
+     * Equivalent to using @{@link RichIterable#rejectWith(Predicate2, Object, Collection)}
+     * &lt;/p&gt;
+     * {@code MutableList&lt;Integer&gt; odds = Interval.oneTo(10).rejectWith((e, p) -&gt;  e % p == 0, 2, Lists.mutable.empty());}
+     */
+    public static &lt;T, P, R extends Collection&lt;T&gt;&gt; Collector&lt;T, ?, R&gt; rejectWith(
+            Predicate2&lt;? super T, ? super P&gt; predicate,
+            P parameter,
+            Supplier&lt;R&gt; supplier)
+    {
+<span class="nc" id="L1495">        return Collector.of(</span>
+                supplier,
+                (collection, each) -&gt;
+                {
+<span class="nc bnc" id="L1499" title="All 2 branches missed.">                    if (!predicate.accept(each, parameter))</span>
+                    {
+<span class="nc" id="L1501">                        collection.add(each);</span>
+                    }
+<span class="nc" id="L1503">                },</span>
+<span class="nc" id="L1504">                Collectors2.mergeCollections(),</span>
+                EMPTY_CHARACTERISTICS);
+    }
+
+    /**
+     * &lt;p&gt;Returns all elements of the stream split into a PartitionMutableCollection after evaluating the predicate.
+     * The new PartitionMutableCollection is created as the result of evaluating the provided Supplier.&lt;/p&gt;
+     * &lt;p&gt;Examples:&lt;/p&gt;
+     * {@code PartitionMutableList&lt;Integer&gt; evensAndOdds1 =
+     * Interval.oneTo(10).stream().collect(Collectors2.partition(e -&gt; e % 2 == 0, PartitionFastList::new));}&lt;br&gt;
+     * {@code PartitionMutableList&lt;Integer&gt; evensAndOdds2 =
+     * Interval.oneTo(10).reduceInPlace(Collectors2.partition(e -&gt; e % 2 == 0, PartitionFastList::new));}&lt;br&gt;
+     * &lt;p&gt;
+     * Equivalent to using @{@link RichIterable#partition(Predicate)}
+     * &lt;/p&gt;
+     * {@code PartitionMutableList&lt;Integer&gt; evensAndOdds = Interval.oneTo(10).partition(e -&gt; e % 2 == 0);}
+     */
+    public static &lt;T, R extends PartitionMutableCollection&lt;T&gt;&gt; Collector&lt;T, ?, R&gt; partition(
+            Predicate&lt;? super T&gt; predicate,
+            Supplier&lt;R&gt; supplier)
+    {
+<span class="nc" id="L1525">        return Collector.of(</span>
+                supplier,
+                (partition, each) -&gt;
+                {
+<span class="nc bnc" id="L1529" title="All 2 branches missed.">                    MutableCollection&lt;T&gt; bucket = predicate.accept(each) ? partition.getSelected() : partition.getRejected();</span>
+<span class="nc" id="L1530">                    bucket.add(each);</span>
+<span class="nc" id="L1531">                },</span>
+<span class="nc" id="L1532">                Collectors2.mergePartitions(),</span>
+                EMPTY_CHARACTERISTICS);
+    }
+
+    /**
+     * &lt;p&gt;Returns all elements of the stream split into a PartitionMutableCollection after evaluating the predicate.
+     * The new PartitionMutableCollection is created as the result of evaluating the provided Supplier.&lt;/p&gt;
+     * &lt;p&gt;Examples:&lt;/p&gt;
+     * {@code PartitionMutableList&lt;Integer&gt; evensAndOdds1 =
+     * Interval.oneTo(10).stream().collect(Collectors2.partitionWith((e, p) -&gt; e % p == 0, 2, PartitionFastList::new));}&lt;br&gt;
+     * {@code PartitionMutableList&lt;Integer&gt; evensAndOdds2 =
+     * Interval.oneTo(10).reduceInPlace(Collectors2.partitionWith((e, p) -&gt; e % p == 0, 2, PartitionFastList::new));}&lt;br&gt;
+     * &lt;p&gt;
+     * Equivalent to using @{@link RichIterable#partitionWith(Predicate2, Object)}
+     * &lt;/p&gt;
+     * {@code PartitionMutableList&lt;Integer&gt; evensAndOdds = Interval.oneTo(10).partitionWith((e, p) -&gt; e % p == 0, 2);}
+     */
+    public static &lt;T, P, R extends PartitionMutableCollection&lt;T&gt;&gt; Collector&lt;T, ?, R&gt; partitionWith(
+            Predicate2&lt;? super T, ? super P&gt; predicate,
+            P parameter,
+            Supplier&lt;R&gt; supplier)
+    {
+<span class="nc" id="L1554">        return Collector.of(</span>
+                supplier,
+                (partition, each) -&gt;
+                {
+<span class="nc" id="L1558">                    MutableCollection&lt;T&gt; bucket =</span>
+<span class="nc bnc" id="L1559" title="All 2 branches missed.">                            predicate.accept(each, parameter) ? partition.getSelected() : partition.getRejected();</span>
+<span class="nc" id="L1560">                    bucket.add(each);</span>
+<span class="nc" id="L1561">                },</span>
+<span class="nc" id="L1562">                Collectors2.mergePartitions(),</span>
+                EMPTY_CHARACTERISTICS);
+    }
+
+    /**
+     * &lt;p&gt;Returns a new collection with the results of applying the specified function on each element of the source
+     * collection.  This method is also commonly called transform or map. The new collection is created as the result
+     * of evaluating the provided Supplier.&lt;/p&gt;
+     * &lt;p&gt;Examples:&lt;/p&gt;
+     * {@code MutableList&lt;String&gt; collect1 =
+     * Interval.oneTo(10).stream().collect(Collectors2.collect(Object::toString, Lists.mutable::empty));}&lt;br&gt;
+     * {@code MutableList&lt;String&gt; collect2 =
+     * Interval.oneTo(10).reduceInPlace(Collectors2.collect(Object::toString, Lists.mutable::empty));}&lt;br&gt;
+     * &lt;p&gt;
+     * Equivalent to using @{@link RichIterable#collect(Function, Collection)}
+     * &lt;/p&gt;
+     * {@code MutableList&lt;String&gt; collect = Interval.oneTo(10).collect(Object::toString, Lists.mutable.empty());}
+     */
+    public static &lt;T, V, R extends Collection&lt;V&gt;&gt; Collector&lt;T, ?, R&gt; collect(
+            Function&lt;? super T, ? extends V&gt; function, Supplier&lt;R&gt; supplier)
+    {
+<span class="nc" id="L1583">        return Collector.of(</span>
+                supplier,
+<span class="nc" id="L1585">                (collection, each) -&gt; collection.add(function.valueOf(each)),</span>
+<span class="nc" id="L1586">                Collectors2.mergeCollections(),</span>
+                EMPTY_CHARACTERISTICS);
+    }
+
+    /**
+     * The method {@code flatCollect} is a special case of {@link #collect(Function, Supplier)}. With {@code collect},
+     * when the {@link Function} returns a collection, the result is a collection of collections. {@code flatCollect} outputs
+     * a single &quot;flattened&quot; collection instead.  This method is commonly called flatMap.
+     * &lt;p&gt;Example:&lt;/p&gt;
+     * &lt;pre&gt;{@code
+     * List&lt;MutableList&lt;String&gt;&gt; lists =
+     *     Lists.mutable.with(
+     *         Lists.mutable.with(&quot;a&quot;, &quot;b&quot;),
+     *         Lists.mutable.with(&quot;c&quot;, &quot;d&quot;),
+     *         Lists.mutable.with(&quot;e&quot;));
+     *
+     * MutableList&lt;String&gt; flattened =
+     *     lists.stream().collect(Collectors2.flatCollect(l -&gt; l, Lists.mutable::empty));
+     *
+     * Assert.assertEquals(Lists.mutable.with(&quot;a&quot;, &quot;b&quot;, &quot;c&quot;, &quot;d&quot;, &quot;e&quot;), flattened);}&lt;/pre&gt;
+     */
+    public static &lt;T, V, R extends Collection&lt;V&gt;&gt; Collector&lt;T, ?, R&gt; flatCollect(
+            Function&lt;? super T, ? extends Iterable&lt;V&gt;&gt; function, Supplier&lt;R&gt; supplier)
+    {
+<span class="nc" id="L1610">        return Collector.of(</span>
+                supplier,
+<span class="nc" id="L1612">                (collection, each) -&gt; Iterate.addAllTo(function.valueOf(each), collection),</span>
+<span class="nc" id="L1613">                Collectors2.mergeCollections(),</span>
+                EMPTY_CHARACTERISTICS);
+    }
+
+    /**
+     * &lt;p&gt;Returns a new collection with the results of applying the specified function on each element of the source
+     * collection with the specified parameter. This method is also commonly called transform or map. The new collection
+     * is created as the result of evaluating the provided Supplier.&lt;/p&gt;
+     * &lt;p&gt;Examples:&lt;/p&gt;
+     * {@code MutableList&lt;Integer&gt; collect1 =
+     * Interval.oneTo(10).stream().collect(Collectors2.collectWith(Integer::sum, Integer.valueOf(10), Lists.mutable::empty));}&lt;br&gt;
+     * {@code MutableList&lt;Integer&gt; collect2 =
+     * Interval.oneTo(10).reduceInPlace(Collectors2.collectWith(Integer::sum, Integer.valueOf(10), Lists.mutable::empty));}&lt;br&gt;
+     * &lt;p&gt;
+     * Equivalent to using @{@link RichIterable#collectWith(Function2, Object, Collection)}
+     * &lt;/p&gt;
+     * {@code MutableList&lt;Integer&gt; collect = Interval.oneTo(10).collectWith(Integer::sum, Integer.valueOf(10), Lists.mutable.empty());}
+     */
+    public static &lt;T, P, V, R extends Collection&lt;V&gt;&gt; Collector&lt;T, ?, R&gt; collectWith(
+            Function2&lt;? super T, ? super P, ? extends V&gt; function,
+            P parameter,
+            Supplier&lt;R&gt; supplier)
+    {
+<span class="nc" id="L1636">        return Collector.of(</span>
+                supplier,
+<span class="nc" id="L1638">                (collection, each) -&gt; collection.add(function.value(each, parameter)),</span>
+<span class="nc" id="L1639">                Collectors2.mergeCollections(),</span>
+                EMPTY_CHARACTERISTICS);
+    }
+
+    /**
+     * &lt;p&gt;Returns a new MutableBooleanCollection with the results of applying the specified BooleanFunction on each element
+     * of the source. The new collection is created as the result of evaluating the provided Supplier.&lt;/p&gt;
+     * &lt;p&gt;Examples:&lt;/p&gt;
+     * {@code MutableBooleanList collect1 =
+     * Interval.oneTo(10).stream().collect(Collectors2.collectBoolean(each -&gt; each % 2 == 0, BooleanLists.mutable::empty));}&lt;br&gt;
+     * {@code MutableBooleanList collect2 =
+     * Interval.oneTo(10).reduceInPlace(Collectors2.collectBoolean(each -&gt; each % 2 == 0, BooleanLists.mutable::empty));}&lt;br&gt;
+     * &lt;p&gt;
+     * Equivalent to using @{@link RichIterable#collectBoolean(BooleanFunction, MutableBooleanCollection)}
+     * &lt;/p&gt;
+     * {@code MutableBooleanList collect =
+     * Interval.oneTo(10).collectBoolean(each -&gt; each % 2 == 0, BooleanLists.mutable.empty());}
+     */
+    public static &lt;T, R extends MutableBooleanCollection&gt; Collector&lt;T, ?, R&gt; collectBoolean(
+            BooleanFunction&lt;? super T&gt; function, Supplier&lt;R&gt; supplier)
+    {
+<span class="nc" id="L1660">        return Collector.of(</span>
+                supplier,
+<span class="nc" id="L1662">                (collection, each) -&gt; collection.add(function.booleanValueOf(each)),</span>
+                (collection1, collection2) -&gt;
+                {
+<span class="nc" id="L1665">                    collection1.addAll(collection2);</span>
+<span class="nc" id="L1666">                    return collection1;</span>
+                },
+                EMPTY_CHARACTERISTICS);
+    }
+
+    /**
+     * &lt;p&gt;Returns a new MutableByteCollection with the results of applying the specified ByteFunction on each element
+     * of the source. The new collection is created as the result of evaluating the provided Supplier.&lt;/p&gt;
+     * &lt;p&gt;Examples:&lt;/p&gt;
+     * {@code MutableByteList collect1 =
+     * Interval.oneTo(10).stream().collect(Collectors2.collectByte(each -&gt; (byte) (each % Byte.MAX_VALUE), ByteLists.mutable::empty));}&lt;br&gt;
+     * {@code MutableByteList collect2 =
+     * Interval.oneTo(10).reduceInPlace(Collectors2.collectByte(each -&gt; (byte) (each % Byte.MAX_VALUE), ByteLists.mutable::empty));}&lt;br&gt;
+     * &lt;p&gt;
+     * Equivalent to using @{@link RichIterable#collectByte(ByteFunction, MutableByteCollection)}
+     * &lt;/p&gt;
+     * {@code MutableByteList collect =
+     * Interval.oneTo(10).collectByte(each -&gt; (byte) (each % Byte.MAX_VALUE), ByteLists.mutable.empty());}
+     */
+    public static &lt;T, R extends MutableByteCollection&gt; Collector&lt;T, ?, R&gt; collectByte(
+            ByteFunction&lt;? super T&gt; function, Supplier&lt;R&gt; supplier)
+    {
+<span class="nc" id="L1688">        return Collector.of(</span>
+                supplier,
+<span class="nc" id="L1690">                (collection, each) -&gt; collection.add(function.byteValueOf(each)),</span>
+                (collection1, collection2) -&gt;
+                {
+<span class="nc" id="L1693">                    collection1.addAll(collection2);</span>
+<span class="nc" id="L1694">                    return collection1;</span>
+                },
+                EMPTY_CHARACTERISTICS);
+    }
+
+    /**
+     * &lt;p&gt;Returns a new MutableCharCollection with the results of applying the specified CharFunction on each element
+     * of the source. The new collection is created as the result of evaluating the provided Supplier.&lt;/p&gt;
+     * &lt;p&gt;Examples:&lt;/p&gt;
+     * {@code MutableCharList collect1 =
+     * Interval.oneTo(10).stream().collect(Collectors2.collectChar(each -&gt; (char) (each % Character.MAX_VALUE), CharLists.mutable::empty));}&lt;br&gt;
+     * {@code MutableCharList collect2 =
+     * Interval.oneTo(10).reduceInPlace(Collectors2.collectChar(each -&gt; (char) (each % Character.MAX_VALUE), CharLists.mutable::empty));}&lt;br&gt;
+     * &lt;p&gt;
+     * Equivalent to using @{@link RichIterable#collectChar(CharFunction, MutableCharCollection)}
+     * &lt;/p&gt;
+     * {@code MutableCharList collect =
+     * Interval.oneTo(10).collectChar(each -&gt; (char) (each % Character.MAX_VALUE), CharLists.mutable.empty());}
+     */
+    public static &lt;T, R extends MutableCharCollection&gt; Collector&lt;T, ?, R&gt; collectChar(
+            CharFunction&lt;? super T&gt; function, Supplier&lt;R&gt; supplier)
+    {
+<span class="nc" id="L1716">        return Collector.of(</span>
+                supplier,
+<span class="nc" id="L1718">                (collection, each) -&gt; collection.add(function.charValueOf(each)),</span>
+                (collection1, collection2) -&gt;
+                {
+<span class="nc" id="L1721">                    collection1.addAll(collection2);</span>
+<span class="nc" id="L1722">                    return collection1;</span>
+                },
+                EMPTY_CHARACTERISTICS);
+    }
+
+    /**
+     * &lt;p&gt;Returns a new MutableShortCollection with the results of applying the specified ShortFunction on each element
+     * of the source. The new collection is created as the result of evaluating the provided Supplier.&lt;/p&gt;
+     * &lt;p&gt;Examples:&lt;/p&gt;
+     * {@code MutableShortList collect1 =
+     * Interval.oneTo(10).stream().collect(Collectors2.collectShort(each -&gt; (short) (each % Short.MAX_VALUE), ShortLists.mutable::empty));}&lt;br&gt;
+     * {@code MutableShortList collect2 =
+     * Interval.oneTo(10).reduceInPlace(Collectors2.collectShort(each -&gt; (short) (each % Short.MAX_VALUE), ShortLists.mutable::empty));}&lt;br&gt;
+     * &lt;p&gt;
+     * Equivalent to using @{@link RichIterable#collectShort(ShortFunction, MutableShortCollection)}
+     * &lt;/p&gt;
+     * {@code MutableShortList collect =
+     * Interval.oneTo(10).collectShort(each -&gt; (short) (each % Short.MAX_VALUE), ShortLists.mutable.empty());}
+     */
+    public static &lt;T, R extends MutableShortCollection&gt; Collector&lt;T, ?, R&gt; collectShort(
+            ShortFunction&lt;? super T&gt; function, Supplier&lt;R&gt; supplier)
+    {
+<span class="nc" id="L1744">        return Collector.of(</span>
+                supplier,
+<span class="nc" id="L1746">                (collection, each) -&gt; collection.add(function.shortValueOf(each)),</span>
+                (collection1, collection2) -&gt;
+                {
+<span class="nc" id="L1749">                    collection1.addAll(collection2);</span>
+<span class="nc" id="L1750">                    return collection1;</span>
+                },
+                EMPTY_CHARACTERISTICS);
+    }
+
+    /**
+     * &lt;p&gt;Returns a new MutableIntCollection with the results of applying the specified IntFunction on each element
+     * of the source. The new collection is created as the result of evaluating the provided Supplier.&lt;/p&gt;
+     * &lt;p&gt;Examples:&lt;/p&gt;
+     * {@code MutableIntList collect1 =
+     * Interval.oneTo(10).stream().collect(Collectors2.collectInt(each -&gt; each, IntLists.mutable::empty));}&lt;br&gt;
+     * {@code MutableIntList collect2 =
+     * Interval.oneTo(10).reduceInPlace(Collectors2.collectInt(each -&gt; each, IntLists.mutable::empty));}&lt;br&gt;
+     * &lt;p&gt;
+     * Equivalent to using @{@link RichIterable#collectInt(IntFunction, MutableIntCollection)}
+     * &lt;/p&gt;
+     * {@code MutableIntList collect =
+     * Interval.oneTo(10).collectInt(each -&gt; each, IntLists.mutable.empty());}
+     */
+    public static &lt;T, R extends MutableIntCollection&gt; Collector&lt;T, ?, R&gt; collectInt(
+            IntFunction&lt;? super T&gt; function, Supplier&lt;R&gt; supplier)
+    {
+<span class="nc" id="L1772">        return Collector.of(</span>
+                supplier,
+<span class="nc" id="L1774">                (collection, each) -&gt; collection.add(function.intValueOf(each)),</span>
+                (collection1, collection2) -&gt;
+                {
+<span class="nc" id="L1777">                    collection1.addAll(collection2);</span>
+<span class="nc" id="L1778">                    return collection1;</span>
+                },
+                EMPTY_CHARACTERISTICS);
+    }
+
+    /**
+     * &lt;p&gt;Returns a new MutableFloatCollection with the results of applying the specified FloatFunction on each element
+     * of the source. The new collection is created as the result of evaluating the provided Supplier.&lt;/p&gt;
+     * &lt;p&gt;Examples:&lt;/p&gt;
+     * {@code MutableFloatList collect1 =
+     * Interval.oneTo(10).stream().collect(Collectors2.collectFloat(each -&gt; (float) each, FloatLists.mutable::empty));}&lt;br&gt;
+     * {@code MutableFloatList collect2 =
+     * Interval.oneTo(10).reduceInPlace(Collectors2.collectFloat(each -&gt; (float) each, FloatLists.mutable::empty));}&lt;br&gt;
+     * &lt;p&gt;
+     * Equivalent to using @{@link RichIterable#collectFloat(FloatFunction, MutableFloatCollection)}
+     * &lt;/p&gt;
+     * {@code MutableFloatList collect =
+     * Interval.oneTo(10).collectFloat(each -&gt; (float) each, FloatLists.mutable.empty());}
+     */
+    public static &lt;T, R extends MutableFloatCollection&gt; Collector&lt;T, ?, R&gt; collectFloat(
+            FloatFunction&lt;? super T&gt; function, Supplier&lt;R&gt; supplier)
+    {
+<span class="nc" id="L1800">        return Collector.of(</span>
+                supplier,
+<span class="nc" id="L1802">                (collection, each) -&gt; collection.add(function.floatValueOf(each)),</span>
+                (collection1, collection2) -&gt;
+                {
+<span class="nc" id="L1805">                    collection1.addAll(collection2);</span>
+<span class="nc" id="L1806">                    return collection1;</span>
+                },
+                EMPTY_CHARACTERISTICS);
+    }
+
+    /**
+     * &lt;p&gt;Returns a new MutableLongCollection with the results of applying the specified LongFunction on each element
+     * of the source. The new collection is created as the result of evaluating the provided Supplier.&lt;/p&gt;
+     * &lt;p&gt;Examples:&lt;/p&gt;
+     * {@code MutableLongList collect1 =
+     * Interval.oneTo(10).stream().collect(Collectors2.collectLong(each -&gt; (long) each, LongLists.mutable::empty));}&lt;br&gt;
+     * {@code MutableLongList collect2 =
+     * Interval.oneTo(10).reduceInPlace(Collectors2.collectLong(each -&gt; (long) each, LongLists.mutable::empty));}&lt;br&gt;
+     * &lt;p&gt;
+     * Equivalent to using @{@link RichIterable#collectLong(LongFunction, MutableLongCollection)}
+     * &lt;/p&gt;
+     * {@code MutableLongList collect =
+     * Interval.oneTo(10).collectLong(each -&gt; (long) each, LongLists.mutable.empty());}
+     */
+    public static &lt;T, R extends MutableLongCollection&gt; Collector&lt;T, ?, R&gt; collectLong(
+            LongFunction&lt;? super T&gt; function, Supplier&lt;R&gt; supplier)
+    {
+<span class="nc" id="L1828">        return Collector.of(</span>
+                supplier,
+<span class="nc" id="L1830">                (collection, each) -&gt; collection.add(function.longValueOf(each)),</span>
+                (collection1, collection2) -&gt;
+                {
+<span class="nc" id="L1833">                    collection1.addAll(collection2);</span>
+<span class="nc" id="L1834">                    return collection1;</span>
+                },
+                EMPTY_CHARACTERISTICS);
+    }
+
+    /**
+     * &lt;p&gt;Returns a new MutableDoubleCollection with the results of applying the specified DoubleFunction on each element
+     * of the source. The new collection is created as the result of evaluating the provided Supplier.&lt;/p&gt;
+     * &lt;p&gt;Examples:&lt;/p&gt;
+     * {@code MutableDoubleList collect1 =
+     * Interval.oneTo(10).stream().collect(Collectors2.collectDouble(each -&gt; (double) each, DoubleLists.mutable::empty));}&lt;br&gt;
+     * {@code MutableDoubleList collect2 =
+     * Interval.oneTo(10).reduceInPlace(Collectors2.collectDouble(each -&gt; (double) each, DoubleLists.mutable::empty));}&lt;br&gt;
+     * &lt;p&gt;
+     * Equivalent to using @{@link RichIterable#collectDouble(DoubleFunction, MutableDoubleCollection)}
+     * &lt;/p&gt;
+     * {@code MutableDoubleList collect =
+     * Interval.oneTo(10).collectDouble(each -&gt; (double) each, DoubleLists.mutable.empty());}
+     */
+    public static &lt;T, R extends MutableDoubleCollection&gt; Collector&lt;T, ?, R&gt; collectDouble(
+            DoubleFunction&lt;? super T&gt; function, Supplier&lt;R&gt; supplier)
+    {
+<span class="nc" id="L1856">        return Collector.of(</span>
+                supplier,
+<span class="nc" id="L1858">                (collection, each) -&gt; collection.add(function.doubleValueOf(each)),</span>
+                (collection1, collection2) -&gt;
+                {
+<span class="nc" id="L1861">                    collection1.addAll(collection2);</span>
+<span class="nc" id="L1862">                    return collection1;</span>
+                },
+                EMPTY_CHARACTERISTICS);
+    }
+
+    /**
+     * Returns a SummaryStatistics with results for int, long and double functions calculated for
+     * each element in the Stream or Collection this Collector is applied to.
+     *
+     * @since 8.1
+     */
+    public static &lt;T&gt; Collector&lt;T, ?, SummaryStatistics&lt;T&gt;&gt; summarizing(
+            ImmutableList&lt;IntFunction&lt;? super T&gt;&gt; intFunctions,
+            ImmutableList&lt;LongFunction&lt;? super T&gt;&gt; longFunctions,
+            ImmutableList&lt;DoubleFunction&lt;? super T&gt;&gt; doubleFunctions)
+    {
+<span class="nc" id="L1878">        SummaryStatistics&lt;T&gt; summaryStatistics = new SummaryStatistics&lt;&gt;();</span>
+<span class="nc" id="L1879">        intFunctions.forEachWithIndex((each, index) -&gt; summaryStatistics.addIntFunction(Integer.valueOf(index), each));</span>
+<span class="nc" id="L1880">        longFunctions.forEachWithIndex((each, index) -&gt; summaryStatistics.addLongFunction(Integer.valueOf(index), each));</span>
+<span class="nc" id="L1881">        doubleFunctions.forEachWithIndex((each, index) -&gt; summaryStatistics.addDoubleFunction(Integer.valueOf(index), each));</span>
+<span class="nc" id="L1882">        return summaryStatistics.toCollector();</span>
+    }
+
+    /**
+     * Returns a BigDecimalSummaryStatistics applying the specified function to each element of the stream or collection.
+     *
+     * @since 8.1
+     */
+    public static &lt;T&gt; Collector&lt;T, ?, BigDecimalSummaryStatistics&gt; summarizingBigDecimal(Function&lt;? super T, BigDecimal&gt; function)
+    {
+<span class="nc" id="L1892">        return Collector.of(</span>
+                BigDecimalSummaryStatistics::new,
+<span class="nc" id="L1894">                (stats, each) -&gt; stats.value(function.apply(each)),</span>
+                BigDecimalSummaryStatistics::merge,
+                Collector.Characteristics.UNORDERED);
+    }
+
+    /**
+     * Returns a BigIntegerSummaryStatistics applying the specified function to each element of the stream or collection.
+     *
+     * @since 8.1
+     */
+    public static &lt;T&gt; Collector&lt;T, ?, BigIntegerSummaryStatistics&gt; summarizingBigInteger(Function&lt;? super T, BigInteger&gt; function)
+    {
+<span class="nc" id="L1906">        return Collector.of(</span>
+                BigIntegerSummaryStatistics::new,
+<span class="nc" id="L1908">                (stats, each) -&gt; stats.value(function.apply(each)),</span>
+                BigIntegerSummaryStatistics::merge,
+                Collector.Characteristics.UNORDERED);
+    }
+
+    /**
+     * Returns a BigDecimal sum applying the specified function to each element of the stream or collection.
+     *
+     * @since 8.1
+     */
+    public static &lt;T&gt; Collector&lt;T, ?, BigDecimal&gt; summingBigDecimal(Function&lt;? super T, BigDecimal&gt; function)
+    {
+<span class="nc" id="L1920">        return Collectors.reducing(BigDecimal.ZERO, function, BigDecimal::add);</span>
+    }
+
+    /**
+     * Returns a BigInteger sum applying the specified function to each element of the stream or collection.
+     *
+     * @since 8.1
+     */
+    public static &lt;T&gt; Collector&lt;T, ?, BigInteger&gt; summingBigInteger(Function&lt;? super T, BigInteger&gt; function)
+    {
+<span class="nc" id="L1930">        return Collectors.reducing(BigInteger.ZERO, function, BigInteger::add);</span>
+    }
+
+    private static &lt;T, R extends Collection&lt;T&gt;&gt; BinaryOperator&lt;R&gt; mergeCollections()
+    {
+<span class="nc" id="L1935">        return (collection1, collection2) -&gt;</span>
+        {
+<span class="nc" id="L1937">            collection1.addAll(collection2);</span>
+<span class="nc" id="L1938">            return collection1;</span>
+        };
+    }
+
+    private static &lt;T, R extends PartitionMutableCollection&lt;T&gt;&gt; BinaryOperator&lt;R&gt; mergePartitions()
+    {
+<span class="nc" id="L1944">        return (partition1, partition2) -&gt;</span>
+        {
+<span class="nc" id="L1946">            partition1.getSelected().addAll(partition2.getSelected());</span>
+<span class="nc" id="L1947">            partition1.getRejected().addAll(partition2.getRejected());</span>
+<span class="nc" id="L1948">            return partition1;</span>
+        };
+    }
+}
+
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.0.201801022044</span></div></body></html>

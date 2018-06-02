@@ -1,0 +1,368 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>AbstractMutableMap.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Eclipse Collections Test Coverage Aggregation</a> &gt; <a href="../index.html" class="el_bundle">eclipse-collections</a> &gt; <a href="index.source.html" class="el_package">org.eclipse.collections.impl.map.mutable</a> &gt; <span class="el_source">AbstractMutableMap.java</span></div><h1>AbstractMutableMap.java</h1><pre class="source lang-java linenums">/*
+ * Copyright (c) 2016 Goldman Sachs.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * and Eclipse Distribution License v. 1.0 which accompany this distribution.
+ * The Eclipse Public License is available at http://www.eclipse.org/legal/epl-v10.html
+ * and the Eclipse Distribution License is available at
+ * http://www.eclipse.org/org/documents/edl-v10.php.
+ */
+
+package org.eclipse.collections.impl.map.mutable;
+
+import java.util.Collection;
+
+import org.eclipse.collections.api.bag.MutableBag;
+import org.eclipse.collections.api.bag.primitive.MutableBooleanBag;
+import org.eclipse.collections.api.bag.primitive.MutableByteBag;
+import org.eclipse.collections.api.bag.primitive.MutableCharBag;
+import org.eclipse.collections.api.bag.primitive.MutableDoubleBag;
+import org.eclipse.collections.api.bag.primitive.MutableFloatBag;
+import org.eclipse.collections.api.bag.primitive.MutableIntBag;
+import org.eclipse.collections.api.bag.primitive.MutableLongBag;
+import org.eclipse.collections.api.bag.primitive.MutableShortBag;
+import org.eclipse.collections.api.block.function.Function;
+import org.eclipse.collections.api.block.function.Function2;
+import org.eclipse.collections.api.block.function.primitive.BooleanFunction;
+import org.eclipse.collections.api.block.function.primitive.ByteFunction;
+import org.eclipse.collections.api.block.function.primitive.CharFunction;
+import org.eclipse.collections.api.block.function.primitive.DoubleFunction;
+import org.eclipse.collections.api.block.function.primitive.FloatFunction;
+import org.eclipse.collections.api.block.function.primitive.IntFunction;
+import org.eclipse.collections.api.block.function.primitive.LongFunction;
+import org.eclipse.collections.api.block.function.primitive.ShortFunction;
+import org.eclipse.collections.api.block.predicate.Predicate;
+import org.eclipse.collections.api.block.predicate.Predicate2;
+import org.eclipse.collections.api.block.procedure.Procedure;
+import org.eclipse.collections.api.map.ImmutableMap;
+import org.eclipse.collections.api.map.MutableMap;
+import org.eclipse.collections.api.multimap.bag.MutableBagMultimap;
+import org.eclipse.collections.api.multimap.set.MutableSetMultimap;
+import org.eclipse.collections.api.ordered.OrderedIterable;
+import org.eclipse.collections.api.partition.bag.PartitionMutableBag;
+import org.eclipse.collections.api.set.MutableSet;
+import org.eclipse.collections.api.tuple.Pair;
+import org.eclipse.collections.impl.bag.mutable.HashBag;
+import org.eclipse.collections.impl.bag.mutable.primitive.BooleanHashBag;
+import org.eclipse.collections.impl.bag.mutable.primitive.ByteHashBag;
+import org.eclipse.collections.impl.bag.mutable.primitive.CharHashBag;
+import org.eclipse.collections.impl.bag.mutable.primitive.DoubleHashBag;
+import org.eclipse.collections.impl.bag.mutable.primitive.FloatHashBag;
+import org.eclipse.collections.impl.bag.mutable.primitive.IntHashBag;
+import org.eclipse.collections.impl.bag.mutable.primitive.LongHashBag;
+import org.eclipse.collections.impl.bag.mutable.primitive.ShortHashBag;
+import org.eclipse.collections.impl.block.factory.Functions;
+import org.eclipse.collections.impl.block.factory.Predicates;
+import org.eclipse.collections.impl.block.procedure.PartitionPredicate2Procedure;
+import org.eclipse.collections.impl.block.procedure.PartitionProcedure;
+import org.eclipse.collections.impl.block.procedure.SelectInstancesOfProcedure;
+import org.eclipse.collections.impl.block.procedure.primitive.CollectBooleanProcedure;
+import org.eclipse.collections.impl.block.procedure.primitive.CollectByteProcedure;
+import org.eclipse.collections.impl.block.procedure.primitive.CollectCharProcedure;
+import org.eclipse.collections.impl.block.procedure.primitive.CollectDoubleProcedure;
+import org.eclipse.collections.impl.block.procedure.primitive.CollectFloatProcedure;
+import org.eclipse.collections.impl.block.procedure.primitive.CollectIntProcedure;
+import org.eclipse.collections.impl.block.procedure.primitive.CollectLongProcedure;
+import org.eclipse.collections.impl.block.procedure.primitive.CollectShortProcedure;
+import org.eclipse.collections.impl.factory.Maps;
+import org.eclipse.collections.impl.list.fixed.ArrayAdapter;
+import org.eclipse.collections.impl.multimap.bag.HashBagMultimap;
+import org.eclipse.collections.impl.partition.bag.PartitionHashBag;
+import org.eclipse.collections.impl.set.mutable.UnifiedSet;
+import org.eclipse.collections.impl.utility.MapIterate;
+
+<span class="nc" id="L74">public abstract class AbstractMutableMap&lt;K, V&gt; extends AbstractMutableMapIterable&lt;K, V&gt;</span>
+        implements MutableMap&lt;K, V&gt;
+{
+    @Override
+    @SuppressWarnings(&quot;AbstractMethodOverridesAbstractMethod&quot;)
+    public abstract MutableMap&lt;K, V&gt; clone();
+
+    /**
+     * Creates a new instance of the same type, using the given capacity and the default growth parameters.
+     */
+    public abstract &lt;K, V&gt; MutableMap&lt;K, V&gt; newEmpty(int capacity);
+
+    @Override
+    public MutableMap&lt;K, V&gt; asUnmodifiable()
+    {
+<span class="nc" id="L89">        return UnmodifiableMutableMap.of(this);</span>
+    }
+
+    @Override
+    public ImmutableMap&lt;K, V&gt; toImmutable()
+    {
+<span class="nc" id="L95">        return Maps.immutable.withAll(this);</span>
+    }
+
+    @Override
+    public MutableMap&lt;K, V&gt; asSynchronized()
+    {
+<span class="nc" id="L101">        return SynchronizedMutableMap.of(this);</span>
+    }
+
+    @Override
+    public MutableSetMultimap&lt;V, K&gt; flip()
+    {
+<span class="nc" id="L107">        return MapIterate.flip(this);</span>
+    }
+
+    @Override
+    public &lt;R&gt; MutableMap&lt;K, R&gt; collectValues(Function2&lt;? super K, ? super V, ? extends R&gt; function)
+    {
+<span class="nc" id="L113">        return MapIterate.collectValues(this, function, this.newEmpty(this.size()));</span>
+    }
+
+    @Override
+    public MutableMap&lt;K, V&gt; select(Predicate2&lt;? super K, ? super V&gt; predicate)
+    {
+<span class="nc" id="L119">        return MapIterate.selectMapOnEntry(this, predicate, this.newEmpty());</span>
+    }
+
+    @Override
+    public MutableMap&lt;K, V&gt; reject(Predicate2&lt;? super K, ? super V&gt; predicate)
+    {
+<span class="nc" id="L125">        return MapIterate.rejectMapOnEntry(this, predicate, this.newEmpty());</span>
+    }
+
+    @Override
+    public &lt;R&gt; MutableBag&lt;R&gt; collect(Function&lt;? super V, ? extends R&gt; function)
+    {
+<span class="nc" id="L131">        return this.collect(function, HashBag.newBag());</span>
+    }
+
+    @Override
+    public MutableBooleanBag collectBoolean(BooleanFunction&lt;? super V&gt; booleanFunction)
+    {
+<span class="nc" id="L137">        MutableBooleanBag result = new BooleanHashBag();</span>
+<span class="nc" id="L138">        this.forEach(new CollectBooleanProcedure&lt;&gt;(booleanFunction, result));</span>
+<span class="nc" id="L139">        return result;</span>
+    }
+
+    @Override
+    public MutableByteBag collectByte(ByteFunction&lt;? super V&gt; byteFunction)
+    {
+<span class="nc" id="L145">        MutableByteBag result = new ByteHashBag();</span>
+<span class="nc" id="L146">        this.forEach(new CollectByteProcedure&lt;&gt;(byteFunction, result));</span>
+<span class="nc" id="L147">        return result;</span>
+    }
+
+    @Override
+    public MutableCharBag collectChar(CharFunction&lt;? super V&gt; charFunction)
+    {
+<span class="nc" id="L153">        MutableCharBag result = new CharHashBag();</span>
+<span class="nc" id="L154">        this.forEach(new CollectCharProcedure&lt;&gt;(charFunction, result));</span>
+<span class="nc" id="L155">        return result;</span>
+    }
+
+    @Override
+    public MutableDoubleBag collectDouble(DoubleFunction&lt;? super V&gt; doubleFunction)
+    {
+<span class="nc" id="L161">        MutableDoubleBag result = new DoubleHashBag();</span>
+<span class="nc" id="L162">        this.forEach(new CollectDoubleProcedure&lt;&gt;(doubleFunction, result));</span>
+<span class="nc" id="L163">        return result;</span>
+    }
+
+    @Override
+    public MutableFloatBag collectFloat(FloatFunction&lt;? super V&gt; floatFunction)
+    {
+<span class="nc" id="L169">        MutableFloatBag result = new FloatHashBag();</span>
+<span class="nc" id="L170">        this.forEach(new CollectFloatProcedure&lt;&gt;(floatFunction, result));</span>
+<span class="nc" id="L171">        return result;</span>
+    }
+
+    @Override
+    public MutableIntBag collectInt(IntFunction&lt;? super V&gt; intFunction)
+    {
+<span class="nc" id="L177">        MutableIntBag result = new IntHashBag();</span>
+<span class="nc" id="L178">        this.forEach(new CollectIntProcedure&lt;&gt;(intFunction, result));</span>
+<span class="nc" id="L179">        return result;</span>
+    }
+
+    @Override
+    public MutableLongBag collectLong(LongFunction&lt;? super V&gt; longFunction)
+    {
+<span class="nc" id="L185">        MutableLongBag result = new LongHashBag();</span>
+<span class="nc" id="L186">        this.forEach(new CollectLongProcedure&lt;&gt;(longFunction, result));</span>
+<span class="nc" id="L187">        return result;</span>
+    }
+
+    @Override
+    public MutableShortBag collectShort(ShortFunction&lt;? super V&gt; shortFunction)
+    {
+<span class="nc" id="L193">        MutableShortBag result = new ShortHashBag();</span>
+<span class="nc" id="L194">        this.forEach(new CollectShortProcedure&lt;&gt;(shortFunction, result));</span>
+<span class="nc" id="L195">        return result;</span>
+    }
+
+    @Override
+    public &lt;P, VV&gt; MutableBag&lt;VV&gt; collectWith(Function2&lt;? super V, ? super P, ? extends VV&gt; function, P parameter)
+    {
+<span class="nc" id="L201">        return this.collect(Functions.bind(function, parameter));</span>
+    }
+
+    @Override
+    public &lt;R&gt; MutableBag&lt;R&gt; collectIf(Predicate&lt;? super V&gt; predicate, Function&lt;? super V, ? extends R&gt; function)
+    {
+<span class="nc" id="L207">        return this.collectIf(predicate, function, new HashBag&lt;&gt;());</span>
+    }
+
+    @Override
+    public &lt;R&gt; MutableBag&lt;R&gt; flatCollect(Function&lt;? super V, ? extends Iterable&lt;R&gt;&gt; function)
+    {
+<span class="nc" id="L213">        return this.flatCollect(function, new HashBag&lt;&gt;());</span>
+    }
+
+    @Override
+    public MutableBag&lt;V&gt; select(Predicate&lt;? super V&gt; predicate)
+    {
+<span class="nc" id="L219">        return this.select(predicate, new HashBag&lt;&gt;());</span>
+    }
+
+    @Override
+    public MutableMap&lt;K, V&gt; tap(Procedure&lt;? super V&gt; procedure)
+    {
+<span class="nc" id="L225">        this.forEach(procedure);</span>
+<span class="nc" id="L226">        return this;</span>
+    }
+
+    @Override
+    public &lt;P&gt; MutableBag&lt;V&gt; selectWith(Predicate2&lt;? super V, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc" id="L232">        return this.select(Predicates.bind(predicate, parameter));</span>
+    }
+
+    @Override
+    public MutableBag&lt;V&gt; reject(Predicate&lt;? super V&gt; predicate)
+    {
+<span class="nc" id="L238">        return this.reject(predicate, new HashBag&lt;&gt;());</span>
+    }
+
+    @Override
+    public &lt;P&gt; MutableBag&lt;V&gt; rejectWith(Predicate2&lt;? super V, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc" id="L244">        return this.reject(Predicates.bind(predicate, parameter));</span>
+    }
+
+    @Override
+    public PartitionMutableBag&lt;V&gt; partition(Predicate&lt;? super V&gt; predicate)
+    {
+<span class="nc" id="L250">        PartitionMutableBag&lt;V&gt; partitionMutableBag = new PartitionHashBag&lt;&gt;();</span>
+<span class="nc" id="L251">        this.forEach(new PartitionProcedure&lt;&gt;(predicate, partitionMutableBag));</span>
+<span class="nc" id="L252">        return partitionMutableBag;</span>
+    }
+
+    @Override
+    public &lt;P&gt; PartitionMutableBag&lt;V&gt; partitionWith(Predicate2&lt;? super V, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc" id="L258">        PartitionMutableBag&lt;V&gt; partitionMutableBag = new PartitionHashBag&lt;&gt;();</span>
+<span class="nc" id="L259">        this.forEach(new PartitionPredicate2Procedure&lt;&gt;(predicate, parameter, partitionMutableBag));</span>
+<span class="nc" id="L260">        return partitionMutableBag;</span>
+    }
+
+    @Override
+    public &lt;S&gt; MutableBag&lt;S&gt; selectInstancesOf(Class&lt;S&gt; clazz)
+    {
+<span class="nc" id="L266">        MutableBag&lt;S&gt; result = HashBag.newBag();</span>
+<span class="nc" id="L267">        this.forEach(new SelectInstancesOfProcedure&lt;&gt;(clazz, result));</span>
+<span class="nc" id="L268">        return result;</span>
+    }
+
+    /**
+     * @deprecated in 6.0. Use {@link OrderedIterable#zip(Iterable)} instead.
+     */
+    @Override
+    @Deprecated
+    public &lt;S&gt; MutableBag&lt;Pair&lt;V, S&gt;&gt; zip(Iterable&lt;S&gt; that)
+    {
+<span class="nc" id="L278">        return this.zip(that, new HashBag&lt;&gt;(this.size()));</span>
+    }
+
+    /**
+     * @deprecated in 6.0. Use {@link OrderedIterable#zipWithIndex()} instead.
+     */
+    @Override
+    @Deprecated
+    public MutableSet&lt;Pair&lt;V, Integer&gt;&gt; zipWithIndex()
+    {
+<span class="nc" id="L288">        return this.zipWithIndex(new UnifiedSet&lt;&gt;(this.size()));</span>
+    }
+
+    @Override
+    public MutableMap&lt;K, V&gt; withKeyValue(K key, V value)
+    {
+<span class="nc" id="L294">        this.put(key, value);</span>
+<span class="nc" id="L295">        return this;</span>
+    }
+
+    @Override
+    public MutableMap&lt;K, V&gt; withAllKeyValues(Iterable&lt;? extends Pair&lt;? extends K, ? extends V&gt;&gt; keyValues)
+    {
+<span class="nc bnc" id="L301" title="All 2 branches missed.">        for (Pair&lt;? extends K, ? extends V&gt; keyVal : keyValues)</span>
+        {
+<span class="nc" id="L303">            this.put(keyVal.getOne(), keyVal.getTwo());</span>
+<span class="nc" id="L304">        }</span>
+<span class="nc" id="L305">        return this;</span>
+    }
+
+    @Override
+    public MutableMap&lt;K, V&gt; withAllKeyValueArguments(Pair&lt;? extends K, ? extends V&gt;... keyValues)
+    {
+<span class="nc" id="L311">        return this.withAllKeyValues(ArrayAdapter.adapt(keyValues));</span>
+    }
+
+    @Override
+    public MutableMap&lt;K, V&gt; withoutKey(K key)
+    {
+<span class="nc" id="L317">        this.removeKey(key);</span>
+<span class="nc" id="L318">        return this;</span>
+    }
+
+    @Override
+    public MutableMap&lt;K, V&gt; withoutAllKeys(Iterable&lt;? extends K&gt; keys)
+    {
+<span class="nc bnc" id="L324" title="All 2 branches missed.">        for (K key : keys)</span>
+        {
+<span class="nc" id="L326">            this.removeKey(key);</span>
+<span class="nc" id="L327">        }</span>
+<span class="nc" id="L328">        return this;</span>
+    }
+
+    /**
+     * Trait-style class that is used to capture commonalities between ValuesCollection class implementations in order to
+     * avoid code duplication.
+     */
+<span class="nc" id="L335">    protected abstract static class ValuesCollectionCommon&lt;V&gt; implements Collection&lt;V&gt;</span>
+    {
+        @Override
+        public boolean add(V v)
+        {
+<span class="nc" id="L340">            throw new UnsupportedOperationException(&quot;Cannot call add() on &quot; + this.getClass().getSimpleName());</span>
+        }
+
+        @Override
+        public boolean addAll(Collection&lt;? extends V&gt; collection)
+        {
+<span class="nc" id="L346">            throw new UnsupportedOperationException(&quot;Cannot call addAll() on &quot; + this.getClass().getSimpleName());</span>
+        }
+    }
+
+    @Override
+    public &lt;VV&gt; MutableBagMultimap&lt;VV, V&gt; groupBy(Function&lt;? super V, ? extends VV&gt; function)
+    {
+<span class="nc" id="L353">        return this.groupBy(function, HashBagMultimap.newMultimap());</span>
+    }
+
+    @Override
+    public &lt;VV&gt; MutableBagMultimap&lt;VV, V&gt; groupByEach(Function&lt;? super V, ? extends Iterable&lt;VV&gt;&gt; function)
+    {
+<span class="nc" id="L359">        return this.groupByEach(function, HashBagMultimap.newMultimap());</span>
+    }
+
+    @Override
+    public &lt;VV&gt; MutableMap&lt;VV, V&gt; groupByUniqueKey(Function&lt;? super V, ? extends VV&gt; function)
+    {
+<span class="nc" id="L365">        return this.groupByUniqueKey(function, UnifiedMap.newMap(this.size()));</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.0.201801022044</span></div></body></html>

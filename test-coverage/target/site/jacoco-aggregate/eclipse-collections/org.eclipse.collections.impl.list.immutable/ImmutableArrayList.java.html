@@ -1,0 +1,629 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>ImmutableArrayList.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Eclipse Collections Test Coverage Aggregation</a> &gt; <a href="../index.html" class="el_bundle">eclipse-collections</a> &gt; <a href="index.source.html" class="el_package">org.eclipse.collections.impl.list.immutable</a> &gt; <span class="el_source">ImmutableArrayList.java</span></div><h1>ImmutableArrayList.java</h1><pre class="source lang-java linenums">/*
+ * Copyright (c) 2017 Goldman Sachs and others.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * and Eclipse Distribution License v. 1.0 which accompany this distribution.
+ * The Eclipse Public License is available at http://www.eclipse.org/legal/epl-v10.html
+ * and the Eclipse Distribution License is available at
+ * http://www.eclipse.org/org/documents/edl-v10.php.
+ */
+
+package org.eclipse.collections.impl.list.immutable;
+
+import java.io.Serializable;
+import java.lang.reflect.Array;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.DoubleSummaryStatistics;
+import java.util.IntSummaryStatistics;
+import java.util.Iterator;
+import java.util.List;
+import java.util.LongSummaryStatistics;
+import java.util.Optional;
+import java.util.RandomAccess;
+import java.util.Spliterator;
+import java.util.Spliterators;
+import java.util.function.BiConsumer;
+import java.util.function.BinaryOperator;
+import java.util.function.Supplier;
+import java.util.stream.Collector;
+
+import org.eclipse.collections.api.block.function.Function;
+import org.eclipse.collections.api.block.function.Function2;
+import org.eclipse.collections.api.block.function.primitive.DoubleFunction;
+import org.eclipse.collections.api.block.function.primitive.FloatFunction;
+import org.eclipse.collections.api.block.function.primitive.IntFunction;
+import org.eclipse.collections.api.block.function.primitive.LongFunction;
+import org.eclipse.collections.api.block.function.primitive.ObjectIntToObjectFunction;
+import org.eclipse.collections.api.block.predicate.Predicate;
+import org.eclipse.collections.api.block.predicate.Predicate2;
+import org.eclipse.collections.api.block.procedure.Procedure;
+import org.eclipse.collections.api.block.procedure.primitive.ObjectIntProcedure;
+import org.eclipse.collections.api.list.ImmutableList;
+import org.eclipse.collections.api.ordered.OrderedIterable;
+import org.eclipse.collections.api.partition.list.PartitionImmutableList;
+import org.eclipse.collections.impl.block.factory.Predicates;
+import org.eclipse.collections.impl.block.factory.Predicates2;
+import org.eclipse.collections.impl.list.mutable.FastList;
+import org.eclipse.collections.impl.parallel.BatchIterable;
+import org.eclipse.collections.impl.partition.list.PartitionImmutableListImpl;
+import org.eclipse.collections.impl.utility.Iterate;
+import org.eclipse.collections.impl.utility.ListIterate;
+import org.eclipse.collections.impl.utility.internal.InternalArrayIterate;
+import org.eclipse.collections.impl.utility.internal.RandomAccessListIterate;
+
+/**
+ * An ImmutableArrayList wraps a Java array but it cannot be modified after creation.
+ */
+final class ImmutableArrayList&lt;T&gt;
+        extends AbstractImmutableList&lt;T&gt;
+        implements Serializable, RandomAccess, BatchIterable&lt;T&gt;
+{
+    private static final long serialVersionUID = 1L;
+    private final T[] items;
+
+    private ImmutableArrayList(T[] newElements)
+<span class="nc" id="L66">    {</span>
+<span class="nc bnc" id="L67" title="All 2 branches missed.">        if (newElements == null)</span>
+        {
+<span class="nc" id="L69">            throw new IllegalArgumentException(&quot;items cannot be null&quot;);</span>
+        }
+<span class="nc" id="L71">        this.items = newElements;</span>
+<span class="nc" id="L72">    }</span>
+
+    public static &lt;E&gt; ImmutableArrayList&lt;E&gt; newList(Iterable&lt;? extends E&gt; iterable)
+    {
+<span class="nc" id="L76">        return new ImmutableArrayList&lt;&gt;((E[]) Iterate.toArray(iterable));</span>
+    }
+
+    public static &lt;E&gt; ImmutableArrayList&lt;E&gt; newListWith(E... elements)
+    {
+<span class="nc" id="L81">        return new ImmutableArrayList&lt;&gt;(elements.clone());</span>
+    }
+
+    @Override
+    public ImmutableList&lt;T&gt; newWith(T newItem)
+    {
+<span class="nc" id="L87">        int oldSize = this.size();</span>
+<span class="nc" id="L88">        T[] array = (T[]) new Object[oldSize + 1];</span>
+<span class="nc" id="L89">        this.toArray(array);</span>
+<span class="nc" id="L90">        array[oldSize] = newItem;</span>
+<span class="nc" id="L91">        return new ImmutableArrayList&lt;&gt;(array);</span>
+    }
+
+    @Override
+    public int hashCode()
+    {
+<span class="nc" id="L97">        return Arrays.hashCode(this.items);</span>
+    }
+
+    @Override
+    public boolean equals(Object that)
+    {
+<span class="nc bnc" id="L103" title="All 2 branches missed.">        if (that == this)</span>
+        {
+<span class="nc" id="L105">            return true;</span>
+        }
+<span class="nc bnc" id="L107" title="All 2 branches missed.">        if (!(that instanceof List))</span>
+        {
+<span class="nc" id="L109">            return false;</span>
+        }
+<span class="nc bnc" id="L111" title="All 2 branches missed.">        if (that instanceof ImmutableArrayList)</span>
+        {
+<span class="nc" id="L113">            return this.immutableArrayListEquals((ImmutableArrayList&lt;?&gt;) that);</span>
+        }
+<span class="nc" id="L115">        return InternalArrayIterate.arrayEqualsList(this.items, this.items.length, (List&lt;?&gt;) that);</span>
+    }
+
+    public boolean immutableArrayListEquals(ImmutableArrayList&lt;?&gt; otherList)
+    {
+<span class="nc" id="L120">        return Arrays.equals(this.items, otherList.items);</span>
+    }
+
+    @Override
+    public boolean notEmpty()
+    {
+<span class="nc bnc" id="L126" title="All 2 branches missed.">        return this.items.length &gt; 0;</span>
+    }
+
+    @Override
+    public T getFirst()
+    {
+<span class="nc bnc" id="L132" title="All 2 branches missed.">        return this.isEmpty() ? null : this.items[0];</span>
+    }
+
+    @Override
+    public T getLast()
+    {
+<span class="nc bnc" id="L138" title="All 2 branches missed.">        return this.isEmpty() ? null : this.items[this.items.length - 1];</span>
+    }
+
+    @Override
+    public void each(Procedure&lt;? super T&gt; procedure)
+    {
+<span class="nc bnc" id="L144" title="All 2 branches missed.">        for (T each : this.items)</span>
+        {
+<span class="nc" id="L146">            procedure.value(each);</span>
+        }
+<span class="nc" id="L148">    }</span>
+
+    @Override
+    public void forEachWithIndex(ObjectIntProcedure&lt;? super T&gt; objectIntProcedure)
+    {
+<span class="nc" id="L153">        InternalArrayIterate.forEachWithIndex(this.items, this.items.length, objectIntProcedure);</span>
+<span class="nc" id="L154">    }</span>
+
+    @Override
+    public void batchForEach(Procedure&lt;? super T&gt; procedure, int sectionIndex, int sectionCount)
+    {
+<span class="nc" id="L159">        InternalArrayIterate.batchForEach(procedure, this.items, this.items.length, sectionIndex, sectionCount);</span>
+<span class="nc" id="L160">    }</span>
+
+    @Override
+    public int getBatchCount(int batchSize)
+    {
+<span class="nc" id="L165">        return Math.max(1, this.size() / batchSize);</span>
+    }
+
+    @Override
+    public void forEachWithIndex(int from, int to, ObjectIntProcedure&lt;? super T&gt; objectIntProcedure)
+    {
+<span class="nc" id="L171">        ListIterate.rangeCheck(from, to, this.items.length);</span>
+<span class="nc" id="L172">        InternalArrayIterate.forEachWithIndexWithoutChecks(this.items, from, to, objectIntProcedure);</span>
+<span class="nc" id="L173">    }</span>
+
+    @Override
+    public ImmutableList&lt;T&gt; select(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L178">        return InternalArrayIterate.select(this.items, this.items.length, predicate, FastList.newList()).toImmutable();</span>
+    }
+
+    @Override
+    public &lt;P&gt; ImmutableList&lt;T&gt; selectWith(Predicate2&lt;? super T, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc" id="L184">        return InternalArrayIterate.selectWith(this.items, this.items.length, predicate, parameter, FastList.newList()).toImmutable();</span>
+    }
+
+    @Override
+    public &lt;P, R extends Collection&lt;T&gt;&gt; R selectWith(
+            Predicate2&lt;? super T, ? super P&gt; predicate,
+            P parameter,
+            R target)
+    {
+<span class="nc" id="L193">        return InternalArrayIterate.selectWith(this.items, this.items.length, predicate, parameter, target);</span>
+    }
+
+    @Override
+    public ImmutableList&lt;T&gt; reject(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L199">        return InternalArrayIterate.reject(this.items, this.items.length, predicate, FastList.newList()).toImmutable();</span>
+    }
+
+    @Override
+    public &lt;P&gt; ImmutableList&lt;T&gt; rejectWith(Predicate2&lt;? super T, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc" id="L205">        return InternalArrayIterate.rejectWith(this.items, this.items.length, predicate, parameter, FastList.newList()).toImmutable();</span>
+    }
+
+    @Override
+    public &lt;P, R extends Collection&lt;T&gt;&gt; R rejectWith(
+            Predicate2&lt;? super T, ? super P&gt; predicate,
+            P parameter,
+            R target)
+    {
+<span class="nc" id="L214">        return InternalArrayIterate.rejectWith(this.items, this.items.length, predicate, parameter, target);</span>
+    }
+
+    @Override
+    public PartitionImmutableList&lt;T&gt; partition(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L220">        return InternalArrayIterate.partition(this.items, this.items.length, predicate).toImmutable();</span>
+    }
+
+    @Override
+    public &lt;P&gt; PartitionImmutableList&lt;T&gt; partitionWith(Predicate2&lt;? super T, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc" id="L226">        return InternalArrayIterate.partitionWith(this.items, this.items.length, predicate, parameter).toImmutable();</span>
+    }
+
+    @Override
+    public &lt;S&gt; ImmutableList&lt;S&gt; selectInstancesOf(Class&lt;S&gt; clazz)
+    {
+<span class="nc" id="L232">        return InternalArrayIterate.selectInstancesOf(this.items, this.items.length, clazz).toImmutable();</span>
+    }
+
+    @Override
+    public &lt;V&gt; ImmutableList&lt;V&gt; collect(Function&lt;? super T, ? extends V&gt; function)
+    {
+<span class="nc" id="L238">        return InternalArrayIterate.collect(this.items, this.items.length, function, FastList.&lt;V&gt;newList(this.items.length)).toImmutable();</span>
+    }
+
+    @Override
+    public &lt;P, V&gt; ImmutableList&lt;V&gt; collectWith(Function2&lt;? super T, ? super P, ? extends V&gt; function, P parameter)
+    {
+<span class="nc" id="L244">        return InternalArrayIterate.collectWith(this.items, this.items.length, function, parameter, FastList.&lt;V&gt;newList(this.items.length)).toImmutable();</span>
+    }
+
+    /**
+     * @since 9.1.
+     */
+    @Override
+    public &lt;V&gt; ImmutableList&lt;V&gt; collectWithIndex(ObjectIntToObjectFunction&lt;? super T, ? extends V&gt; function)
+    {
+<span class="nc" id="L253">        return this.collectWithIndex(function, FastList.&lt;V&gt;newList(this.items.length)).toImmutable();</span>
+    }
+
+    /**
+     * @since 9.1.
+     */
+    @Override
+    public &lt;V, R extends Collection&lt;V&gt;&gt; R collectWithIndex(ObjectIntToObjectFunction&lt;? super T, ? extends V&gt; function, R target)
+    {
+<span class="nc" id="L262">        return InternalArrayIterate.collectWithIndex(this.items, this.items.length, function, target);</span>
+    }
+
+    @Override
+    public &lt;V&gt; ImmutableList&lt;V&gt; collectIf(
+            Predicate&lt;? super T&gt; predicate,
+            Function&lt;? super T, ? extends V&gt; function)
+    {
+<span class="nc" id="L270">        return InternalArrayIterate.collectIf(this.items, this.items.length, predicate, function, FastList.&lt;V&gt;newList(this.items.length)).toImmutable();</span>
+    }
+
+    @Override
+    public &lt;P, V, R extends Collection&lt;V&gt;&gt; R collectWith(
+            Function2&lt;? super T, ? super P, ? extends V&gt; function,
+            P parameter,
+            R target)
+    {
+<span class="nc" id="L279">        return InternalArrayIterate.collectWith(this.items, this.items.length, function, parameter, target);</span>
+    }
+
+    @Override
+    public &lt;V&gt; ImmutableList&lt;V&gt; flatCollect(Function&lt;? super T, ? extends Iterable&lt;V&gt;&gt; function)
+    {
+<span class="nc" id="L285">        return InternalArrayIterate.flatCollect(this.items, this.items.length, function, FastList.newList(this.items.length)).toImmutable();</span>
+    }
+
+    @Override
+    public &lt;V, R extends Collection&lt;V&gt;&gt; R flatCollect(Function&lt;? super T, ? extends Iterable&lt;V&gt;&gt; function, R target)
+    {
+<span class="nc" id="L291">        return InternalArrayIterate.flatCollect(this.items, this.items.length, function, target);</span>
+    }
+
+    @Override
+    public T detect(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L297">        return InternalArrayIterate.detect(this.items, this.items.length, predicate);</span>
+    }
+
+    @Override
+    public &lt;P&gt; T detectWith(Predicate2&lt;? super T, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc" id="L303">        return InternalArrayIterate.detectWith(this.items, this.items.length, predicate, parameter);</span>
+    }
+
+    @Override
+    public Optional&lt;T&gt; detectOptional(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L309">        return InternalArrayIterate.detectOptional(this.items, this.items.length, predicate);</span>
+    }
+
+    @Override
+    public &lt;P&gt; Optional&lt;T&gt; detectWithOptional(Predicate2&lt;? super T, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc" id="L315">        return InternalArrayIterate.detectWithOptional(this.items, this.items.length, predicate, parameter);</span>
+    }
+
+    public int count(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L320">        return InternalArrayIterate.count(this.items, this.items.length, predicate);</span>
+    }
+
+    @Override
+    public &lt;S&gt; boolean corresponds(OrderedIterable&lt;S&gt; other, Predicate2&lt;? super T, ? super S&gt; predicate)
+    {
+<span class="nc" id="L326">        return InternalArrayIterate.corresponds(this.items, this.items.length, other, predicate);</span>
+    }
+
+    @Override
+    public boolean anySatisfy(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L332">        return InternalArrayIterate.anySatisfy(this.items, this.items.length, predicate);</span>
+    }
+
+    @Override
+    public boolean allSatisfy(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L338">        return InternalArrayIterate.allSatisfy(this.items, this.items.length, predicate);</span>
+    }
+
+    @Override
+    public boolean noneSatisfy(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L344">        return InternalArrayIterate.noneSatisfy(this.items, this.items.length, predicate);</span>
+    }
+
+    /**
+     * @since 8.0
+     */
+    @Override
+    public IntSummaryStatistics summarizeInt(IntFunction&lt;? super T&gt; function)
+    {
+<span class="nc" id="L353">        return InternalArrayIterate.summarizeInt(this.items, this.items.length, function);</span>
+    }
+
+    /**
+     * @since 8.0
+     */
+    @Override
+    public DoubleSummaryStatistics summarizeFloat(FloatFunction&lt;? super T&gt; function)
+    {
+<span class="nc" id="L362">        return InternalArrayIterate.summarizeFloat(this.items, this.items.length, function);</span>
+    }
+
+    /**
+     * @since 8.0
+     */
+    @Override
+    public LongSummaryStatistics summarizeLong(LongFunction&lt;? super T&gt; function)
+    {
+<span class="nc" id="L371">        return InternalArrayIterate.summarizeLong(this.items, this.items.length, function);</span>
+    }
+
+    /**
+     * @since 8.0
+     */
+    @Override
+    public DoubleSummaryStatistics summarizeDouble(DoubleFunction&lt;? super T&gt; function)
+    {
+<span class="nc" id="L380">        return InternalArrayIterate.summarizeDouble(this.items, this.items.length, function);</span>
+    }
+
+    /**
+     * @since 8.0
+     */
+    @Override
+    public Optional&lt;T&gt; reduce(BinaryOperator&lt;T&gt; accumulator)
+    {
+<span class="nc" id="L389">        return InternalArrayIterate.reduce(this.items, this.items.length, accumulator);</span>
+    }
+
+    /**
+     * @since 8.0
+     */
+    @Override
+    public &lt;R, A&gt; R reduceInPlace(Collector&lt;? super T, A, R&gt; collector)
+    {
+<span class="nc" id="L398">        return InternalArrayIterate.reduceInPlace(this.items, this.items.length, collector);</span>
+    }
+
+    /**
+     * @since 8.0
+     */
+    @Override
+    public &lt;R&gt; R reduceInPlace(Supplier&lt;R&gt; supplier, BiConsumer&lt;R, ? super T&gt; accumulator)
+    {
+<span class="nc" id="L407">        return InternalArrayIterate.reduceInPlace(this.items, this.items.length, supplier, accumulator);</span>
+    }
+
+    @Override
+    public long sumOfInt(IntFunction&lt;? super T&gt; function)
+    {
+<span class="nc" id="L413">        return InternalArrayIterate.sumOfInt(this.items, this.items.length, function);</span>
+    }
+
+    @Override
+    public long sumOfLong(LongFunction&lt;? super T&gt; function)
+    {
+<span class="nc" id="L419">        return InternalArrayIterate.sumOfLong(this.items, this.items.length, function);</span>
+    }
+
+    @Override
+    public double sumOfFloat(FloatFunction&lt;? super T&gt; function)
+    {
+<span class="nc" id="L425">        return InternalArrayIterate.sumOfFloat(this.items, this.items.length, function);</span>
+    }
+
+    @Override
+    public double sumOfDouble(DoubleFunction&lt;? super T&gt; function)
+    {
+<span class="nc" id="L431">        return InternalArrayIterate.sumOfDouble(this.items, this.items.length, function);</span>
+    }
+
+    @Override
+    public &lt;IV&gt; IV injectInto(IV injectedValue, Function2&lt;? super IV, ? super T, ? extends IV&gt; function)
+    {
+<span class="nc" id="L437">        IV result = injectedValue;</span>
+<span class="nc bnc" id="L438" title="All 2 branches missed.">        for (T each : this.items)</span>
+        {
+<span class="nc" id="L440">            result = function.value(result, each);</span>
+        }
+<span class="nc" id="L442">        return result;</span>
+    }
+
+    @Override
+    public int size()
+    {
+<span class="nc" id="L448">        return this.items.length;</span>
+    }
+
+    @Override
+    public boolean isEmpty()
+    {
+<span class="nc bnc" id="L454" title="All 2 branches missed.">        return this.items.length == 0;</span>
+    }
+
+    @Override
+    public boolean contains(Object o)
+    {
+<span class="nc" id="L460">        return InternalArrayIterate.anySatisfyWith(this.items, this.items.length, Predicates2.equal(), o);</span>
+    }
+
+    @Override
+    public Iterator&lt;T&gt; iterator()
+    {
+<span class="nc" id="L466">        return Arrays.asList(this.items).iterator();</span>
+    }
+
+    @Override
+    public Object[] toArray()
+    {
+<span class="nc" id="L472">        return this.items.clone();</span>
+    }
+
+    @Override
+    public &lt;E&gt; E[] toArray(E[] a)
+    {
+<span class="nc" id="L478">        int size = this.size();</span>
+<span class="nc bnc" id="L479" title="All 2 branches missed.">        if (a.length &lt; size)</span>
+        {
+<span class="nc" id="L481">            a = (E[]) Array.newInstance(a.getClass().getComponentType(), size);</span>
+        }
+<span class="nc" id="L483">        System.arraycopy(this.items, 0, a, 0, size);</span>
+<span class="nc bnc" id="L484" title="All 2 branches missed.">        if (a.length &gt; size)</span>
+        {
+<span class="nc" id="L486">            a[size] = null;</span>
+        }
+<span class="nc" id="L488">        return a;</span>
+    }
+
+    @Override
+    public void appendString(Appendable appendable, String start, String separator, String end)
+    {
+<span class="nc" id="L494">        InternalArrayIterate.appendString(this, this.items, this.items.length, appendable, start, separator, end);</span>
+<span class="nc" id="L495">    }</span>
+
+    @Override
+    public String toString()
+    {
+<span class="nc" id="L500">        StringBuilder buf = new StringBuilder();</span>
+<span class="nc" id="L501">        buf.append('[');</span>
+
+<span class="nc" id="L503">        int localSize = this.items.length;</span>
+<span class="nc" id="L504">        T[] localItems = this.items;</span>
+<span class="nc bnc" id="L505" title="All 2 branches missed.">        for (int i = 0; i &lt; localSize; i++)</span>
+        {
+<span class="nc" id="L507">            T item = localItems[i];</span>
+<span class="nc bnc" id="L508" title="All 2 branches missed.">            if (i &gt; 0)</span>
+            {
+<span class="nc" id="L510">                buf.append(&quot;, &quot;);</span>
+            }
+<span class="nc bnc" id="L512" title="All 2 branches missed.">            buf.append(item == this ? &quot;(this ImmutableArrayList)&quot; : String.valueOf(item));</span>
+        }
+
+<span class="nc" id="L515">        buf.append(']');</span>
+<span class="nc" id="L516">        return buf.toString();</span>
+    }
+
+    @Override
+    public boolean containsAll(Collection&lt;?&gt; collection)
+    {
+<span class="nc" id="L522">        return Iterate.allSatisfy(collection, Predicates.in(this.items));</span>
+    }
+
+    @Override
+    public T get(int index)
+    {
+<span class="nc" id="L528">        return this.items[index];</span>
+    }
+
+    @Override
+    public int indexOf(Object item)
+    {
+<span class="nc" id="L534">        return InternalArrayIterate.indexOf(this.items, this.items.length, item);</span>
+    }
+
+    @Override
+    public int lastIndexOf(Object item)
+    {
+<span class="nc" id="L540">        return InternalArrayIterate.lastIndexOf(this.items, this.items.length, item);</span>
+    }
+
+    @Override
+    public &lt;V extends Comparable&lt;? super V&gt;&gt; T minBy(Function&lt;? super T, ? extends V&gt; function)
+    {
+<span class="nc" id="L546">        return InternalArrayIterate.minBy(this.items, this.items.length, function);</span>
+    }
+
+    @Override
+    public &lt;V extends Comparable&lt;? super V&gt;&gt; T maxBy(Function&lt;? super T, ? extends V&gt; function)
+    {
+<span class="nc" id="L552">        return InternalArrayIterate.maxBy(this.items, this.items.length, function);</span>
+    }
+
+    @Override
+    public ImmutableList&lt;T&gt; take(int count)
+    {
+<span class="nc bnc" id="L558" title="All 2 branches missed.">        if (count &gt;= this.size())</span>
+        {
+<span class="nc" id="L560">            return this;</span>
+        }
+<span class="nc" id="L562">        return RandomAccessListIterate.take(this, count).toImmutable();</span>
+    }
+
+    @Override
+    public ImmutableList&lt;T&gt; takeWhile(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L568">        int endIndex = this.detectNotIndex(predicate);</span>
+<span class="nc" id="L569">        T[] result = (T[]) new Object[endIndex];</span>
+<span class="nc" id="L570">        System.arraycopy(this.items, 0, result, 0, endIndex);</span>
+<span class="nc" id="L571">        return new ImmutableArrayList&lt;&gt;(result);</span>
+    }
+
+    @Override
+    public ImmutableList&lt;T&gt; drop(int count)
+    {
+<span class="nc bnc" id="L577" title="All 2 branches missed.">        if (count == 0)</span>
+        {
+<span class="nc" id="L579">            return this;</span>
+        }
+<span class="nc" id="L581">        return RandomAccessListIterate.drop(this, count).toImmutable();</span>
+    }
+
+    @Override
+    public ImmutableList&lt;T&gt; dropWhile(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L587">        int startIndex = this.detectNotIndex(predicate);</span>
+<span class="nc" id="L588">        int resultSize = this.size() - startIndex;</span>
+<span class="nc" id="L589">        T[] result = (T[]) new Object[resultSize];</span>
+<span class="nc" id="L590">        System.arraycopy(this.items, startIndex, result, 0, resultSize);</span>
+<span class="nc" id="L591">        return new ImmutableArrayList&lt;&gt;(result);</span>
+    }
+
+    @Override
+    public PartitionImmutableList&lt;T&gt; partitionWhile(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L597">        int partitionIndex = this.detectNotIndex(predicate);</span>
+<span class="nc" id="L598">        int rejectedSize = this.size() - partitionIndex;</span>
+<span class="nc" id="L599">        T[] selectedArray = (T[]) new Object[partitionIndex];</span>
+<span class="nc" id="L600">        T[] rejectedArray = (T[]) new Object[rejectedSize];</span>
+<span class="nc" id="L601">        System.arraycopy(this.items, 0, selectedArray, 0, partitionIndex);</span>
+<span class="nc" id="L602">        System.arraycopy(this.items, partitionIndex, rejectedArray, 0, rejectedSize);</span>
+<span class="nc" id="L603">        ImmutableArrayList&lt;T&gt; selected = new ImmutableArrayList&lt;&gt;(selectedArray);</span>
+<span class="nc" id="L604">        ImmutableArrayList&lt;T&gt; rejected = new ImmutableArrayList&lt;&gt;(rejectedArray);</span>
+<span class="nc" id="L605">        return new PartitionImmutableListImpl&lt;&gt;(selected, rejected);</span>
+    }
+
+    private int detectNotIndex(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc bnc" id="L610" title="All 2 branches missed.">        for (int index = 0; index &lt; this.size(); index++)</span>
+        {
+<span class="nc bnc" id="L612" title="All 2 branches missed.">            if (!predicate.accept(this.items[index]))</span>
+            {
+<span class="nc" id="L614">                return index;</span>
+            }
+        }
+<span class="nc" id="L617">        return this.size();</span>
+    }
+
+    /**
+     * @since 9.0
+     */
+    @Override
+    public Spliterator&lt;T&gt; spliterator()
+    {
+<span class="nc" id="L626">        return Spliterators.spliterator(this.items, 0, this.items.length, Spliterator.ORDERED);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.0.201801022044</span></div></body></html>

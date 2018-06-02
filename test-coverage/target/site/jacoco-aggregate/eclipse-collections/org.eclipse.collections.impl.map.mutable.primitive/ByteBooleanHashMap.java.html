@@ -1,0 +1,1938 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>ByteBooleanHashMap.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Eclipse Collections Test Coverage Aggregation</a> &gt; <a href="../index.html" class="el_bundle">eclipse-collections</a> &gt; <a href="index.source.html" class="el_package">org.eclipse.collections.impl.map.mutable.primitive</a> &gt; <span class="el_source">ByteBooleanHashMap.java</span></div><h1>ByteBooleanHashMap.java</h1><pre class="source lang-java linenums">/*
+ * Copyright (c) 2018 Goldman Sachs and others.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * and Eclipse Distribution License v. 1.0 which accompany this distribution.
+ * The Eclipse Public License is available at http://www.eclipse.org/legal/epl-v10.html
+ * and the Eclipse Distribution License is available at
+ * http://www.eclipse.org/org/documents/edl-v10.php.
+ */
+
+package org.eclipse.collections.impl.map.mutable.primitive;
+
+import java.io.Externalizable;
+import java.io.IOException;
+import java.io.ObjectInput;
+import java.io.ObjectOutput;
+import java.util.Arrays;
+import java.util.BitSet;
+import java.util.Iterator;
+import java.util.NoSuchElementException;
+
+import org.eclipse.collections.api.BooleanIterable;
+import org.eclipse.collections.api.ByteIterable;
+import org.eclipse.collections.api.LazyByteIterable;
+import org.eclipse.collections.api.RichIterable;
+import org.eclipse.collections.api.bag.primitive.MutableByteBag;
+import org.eclipse.collections.api.block.function.primitive.BooleanFunction;
+import org.eclipse.collections.api.block.function.primitive.BooleanFunction0;
+import org.eclipse.collections.api.block.function.primitive.BooleanToBooleanFunction;
+import org.eclipse.collections.api.block.function.primitive.ByteToBooleanFunction;
+import org.eclipse.collections.api.block.function.primitive.ObjectByteToObjectFunction;
+import org.eclipse.collections.api.block.predicate.primitive.ByteBooleanPredicate;
+import org.eclipse.collections.api.block.predicate.primitive.BytePredicate;
+import org.eclipse.collections.api.block.procedure.Procedure;
+import org.eclipse.collections.api.block.procedure.Procedure2;
+import org.eclipse.collections.api.block.procedure.primitive.ByteBooleanProcedure;
+import org.eclipse.collections.api.block.procedure.primitive.ByteProcedure;
+import org.eclipse.collections.api.block.procedure.primitive.ObjectIntProcedure;
+import org.eclipse.collections.api.collection.primitive.MutableBooleanCollection;
+import org.eclipse.collections.api.iterator.ByteIterator;
+import org.eclipse.collections.api.iterator.MutableBooleanIterator;
+import org.eclipse.collections.api.iterator.MutableByteIterator;
+import org.eclipse.collections.api.list.primitive.MutableByteList;
+import org.eclipse.collections.api.map.primitive.ByteBooleanMap;
+import org.eclipse.collections.api.map.primitive.ImmutableByteBooleanMap;
+import org.eclipse.collections.api.map.primitive.MutableByteBooleanMap;
+import org.eclipse.collections.api.set.primitive.BooleanSet;
+import org.eclipse.collections.api.set.primitive.ByteSet;
+import org.eclipse.collections.api.set.primitive.MutableByteSet;
+import org.eclipse.collections.api.tuple.primitive.ByteBooleanPair;
+import org.eclipse.collections.impl.bag.mutable.primitive.ByteHashBag;
+import org.eclipse.collections.impl.factory.primitive.ByteBooleanMaps;
+import org.eclipse.collections.impl.iterator.UnmodifiableByteIterator;
+import org.eclipse.collections.impl.lazy.AbstractLazyIterable;
+import org.eclipse.collections.impl.lazy.primitive.AbstractLazyByteIterable;
+import org.eclipse.collections.impl.list.mutable.primitive.ByteArrayList;
+import org.eclipse.collections.impl.set.mutable.primitive.ByteHashSet;
+import org.eclipse.collections.impl.tuple.primitive.PrimitiveTuples;
+
+/**
+ * This file was automatically generated from template file primitiveBooleanHashMap.stg.
+ *
+ * @since 3.0.
+ */
+public class ByteBooleanHashMap extends AbstractMutableBooleanValuesMap implements MutableByteBooleanMap, MutableByteKeysMap, Externalizable
+{
+    static final boolean EMPTY_VALUE = false;
+    private static final long serialVersionUID = 1L;
+    private static final byte EMPTY_KEY = (byte) 0;
+    private static final byte REMOVED_KEY = (byte) 1;
+
+    /**
+     * @deprecated in 5.1.0.
+     */
+    @Deprecated
+    private static final float DEFAULT_LOAD_FACTOR = 0.5f;
+    private static final int OCCUPIED_DATA_RATIO = 2;
+    private static final int OCCUPIED_SENTINEL_RATIO = 4;
+    private static final int DEFAULT_INITIAL_CAPACITY = 8;
+    private static final int CACHE_LINE_SIZE = 64;
+    private static final int KEY_SIZE = 1;
+    private static final int INITIAL_LINEAR_PROBE = CACHE_LINE_SIZE / KEY_SIZE / 2; /* half a cache line */
+
+    private byte[] keys;
+    private BitSet values;
+
+    private int occupiedWithData;
+    private int occupiedWithSentinels;
+    private SentinelValues sentinelValues;
+
+    public ByteBooleanHashMap()
+<span class="nc" id="L92">    {</span>
+<span class="nc" id="L93">        this.allocateTable(DEFAULT_INITIAL_CAPACITY &lt;&lt; 1);</span>
+<span class="nc" id="L94">    }</span>
+
+    public ByteBooleanHashMap(int initialCapacity)
+<span class="nc" id="L97">    {</span>
+<span class="nc bnc" id="L98" title="All 2 branches missed.">        if (initialCapacity &lt; 0)</span>
+        {
+<span class="nc" id="L100">            throw new IllegalArgumentException(&quot;initial capacity cannot be less than 0&quot;);</span>
+        }
+<span class="nc" id="L102">        int capacity = this.smallestPowerOfTwoGreaterThan(this.fastCeil(initialCapacity * OCCUPIED_DATA_RATIO));</span>
+<span class="nc" id="L103">        this.allocateTable(capacity);</span>
+<span class="nc" id="L104">    }</span>
+
+    public ByteBooleanHashMap(ByteBooleanMap map)
+    {
+<span class="nc" id="L108">        this(Math.max(map.size(), DEFAULT_INITIAL_CAPACITY));</span>
+<span class="nc" id="L109">        this.putAll(map);</span>
+<span class="nc" id="L110">    }</span>
+
+    /**
+     * @deprecated in 5.1.0.
+     */
+    @Deprecated
+    public ByteBooleanHashMap(int initialCapacity, float loadFactor)
+    {
+<span class="nc" id="L118">        this(initialCapacity);</span>
+<span class="nc" id="L119">    }</span>
+
+    @Override
+    protected int getOccupiedWithData()
+    {
+<span class="nc" id="L124">        return this.occupiedWithData;</span>
+    }
+
+    @Override
+    protected SentinelValues getSentinelValues()
+    {
+<span class="nc" id="L130">        return this.sentinelValues;</span>
+    }
+
+    @Override
+    protected void setSentinelValuesNull()
+    {
+<span class="nc" id="L136">        this.sentinelValues = null;</span>
+<span class="nc" id="L137">    }</span>
+
+    @Override
+    protected boolean getEmptyValue()
+    {
+<span class="nc" id="L142">        return EMPTY_VALUE;</span>
+    }
+
+    @Override
+    protected int getTableSize()
+    {
+<span class="nc" id="L148">        return this.keys.length;</span>
+    }
+
+    @Override
+    protected boolean getValueAtIndex(int index)
+    {
+<span class="nc" id="L154">        return this.values.get(index);</span>
+    }
+
+    @Override
+    protected boolean isNonSentinelAtIndex(int index)
+    {
+<span class="nc bnc" id="L160" title="All 4 branches missed.">        return !isEmptyKey(this.keys[index]) &amp;&amp; !isRemovedKey(this.keys[index]);</span>
+    }
+
+    private int smallestPowerOfTwoGreaterThan(int n)
+    {
+<span class="nc bnc" id="L165" title="All 2 branches missed.">        return n &gt; 1 ? Integer.highestOneBit(n - 1) &lt;&lt; 1 : 1;</span>
+    }
+
+    @Override
+    public MutableByteBooleanMap asUnmodifiable()
+    {
+<span class="nc" id="L171">        return new UnmodifiableByteBooleanMap(this);</span>
+    }
+
+    @Override
+    public MutableByteBooleanMap asSynchronized()
+    {
+<span class="nc" id="L177">        return new SynchronizedByteBooleanMap(this);</span>
+    }
+
+    @Override
+    public ImmutableByteBooleanMap toImmutable()
+    {
+<span class="nc" id="L183">        return ByteBooleanMaps.immutable.withAll(this);</span>
+    }
+
+    public static ByteBooleanHashMap newWithKeysValues(byte key1, boolean value1)
+    {
+<span class="nc" id="L188">        return new ByteBooleanHashMap(1).withKeyValue(key1, value1);</span>
+    }
+
+    public static ByteBooleanHashMap newWithKeysValues(byte key1, boolean value1, byte key2, boolean value2)
+    {
+<span class="nc" id="L193">        return new ByteBooleanHashMap(2).withKeysValues(key1, value1, key2, value2);</span>
+    }
+
+    public static ByteBooleanHashMap newWithKeysValues(byte key1, boolean value1, byte key2, boolean value2, byte key3, boolean value3)
+    {
+<span class="nc" id="L198">        return new ByteBooleanHashMap(3).withKeysValues(key1, value1, key2, value2, key3, value3);</span>
+    }
+
+    public static ByteBooleanHashMap newWithKeysValues(byte key1, boolean value1, byte key2, boolean value2, byte key3, boolean value3, byte key4, boolean value4)
+    {
+<span class="nc" id="L203">        return new ByteBooleanHashMap(4).withKeysValues(key1, value1, key2, value2, key3, value3, key4, value4);</span>
+    }
+
+    @Override
+    public ByteBooleanHashMap withKeyValue(byte key1, boolean value1)
+    {
+<span class="nc" id="L209">        this.put(key1, value1);</span>
+<span class="nc" id="L210">        return this;</span>
+    }
+
+    public ByteBooleanHashMap withKeysValues(byte key1, boolean value1, byte key2, boolean value2)
+    {
+<span class="nc" id="L215">        this.put(key1, value1);</span>
+<span class="nc" id="L216">        this.put(key2, value2);</span>
+<span class="nc" id="L217">        return this;</span>
+    }
+
+    public ByteBooleanHashMap withKeysValues(byte key1, boolean value1, byte key2, boolean value2, byte key3, boolean value3)
+    {
+<span class="nc" id="L222">        this.put(key1, value1);</span>
+<span class="nc" id="L223">        this.put(key2, value2);</span>
+<span class="nc" id="L224">        this.put(key3, value3);</span>
+<span class="nc" id="L225">        return this;</span>
+    }
+
+    public ByteBooleanHashMap withKeysValues(byte key1, boolean value1, byte key2, boolean value2, byte key3, boolean value3, byte key4, boolean value4)
+    {
+<span class="nc" id="L230">        this.put(key1, value1);</span>
+<span class="nc" id="L231">        this.put(key2, value2);</span>
+<span class="nc" id="L232">        this.put(key3, value3);</span>
+<span class="nc" id="L233">        this.put(key4, value4);</span>
+<span class="nc" id="L234">        return this;</span>
+    }
+
+    @Override
+    public ByteBooleanHashMap withoutKey(byte key)
+    {
+<span class="nc" id="L240">        this.removeKey(key);</span>
+<span class="nc" id="L241">        return this;</span>
+    }
+
+    @Override
+    public ByteBooleanHashMap withoutAllKeys(ByteIterable keys)
+    {
+<span class="nc" id="L247">        keys.forEach(this::removeKey);</span>
+<span class="nc" id="L248">        return this;</span>
+    }
+
+    private int fastCeil(float v)
+    {
+<span class="nc" id="L253">        int possibleResult = (int) v;</span>
+<span class="nc bnc" id="L254" title="All 2 branches missed.">        if (v - possibleResult &gt; 0.0F)</span>
+        {
+<span class="nc" id="L256">            possibleResult++;</span>
+        }
+<span class="nc" id="L258">        return possibleResult;</span>
+    }
+
+    private static boolean isEmptyKey(byte key)
+    {
+<span class="nc bnc" id="L263" title="All 2 branches missed.">        return key == EMPTY_KEY;</span>
+    }
+
+    private static boolean isRemovedKey(byte key)
+    {
+<span class="nc bnc" id="L268" title="All 2 branches missed.">        return key == REMOVED_KEY;</span>
+    }
+
+    private static boolean isNonSentinel(byte key)
+    {
+<span class="nc bnc" id="L273" title="All 4 branches missed.">        return !isEmptyKey(key) &amp;&amp; !isRemovedKey(key);</span>
+    }
+
+    private void allocateTable(int sizeToAllocate)
+    {
+<span class="nc" id="L278">        this.keys = new byte[sizeToAllocate];</span>
+<span class="nc" id="L279">        this.values = new BitSet(sizeToAllocate);</span>
+<span class="nc" id="L280">    }</span>
+
+    /**
+     * Rehashes every element in the set into a new backing table of the smallest possible size and eliminating removed sentinels.
+     */
+    public void compact()
+    {
+<span class="nc" id="L287">        this.rehash(this.smallestPowerOfTwoGreaterThan(this.size()));</span>
+<span class="nc" id="L288">    }</span>
+
+    private void rehash()
+    {
+<span class="nc" id="L292">        this.rehash(this.keys.length);</span>
+<span class="nc" id="L293">    }</span>
+
+    private void rehashAndGrow()
+    {
+<span class="nc" id="L297">        this.rehash(this.keys.length &lt;&lt; 1);</span>
+<span class="nc" id="L298">    }</span>
+
+    private void rehash(int newCapacity)
+    {
+<span class="nc" id="L302">        int oldLength = this.keys.length;</span>
+<span class="nc" id="L303">        byte[] old = this.keys;</span>
+<span class="nc" id="L304">        BitSet oldValues = this.values;</span>
+<span class="nc" id="L305">        this.allocateTable(newCapacity);</span>
+<span class="nc" id="L306">        this.occupiedWithData = 0;</span>
+<span class="nc" id="L307">        this.occupiedWithSentinels = 0;</span>
+
+<span class="nc bnc" id="L309" title="All 2 branches missed.">        for (int i = 0; i &lt; oldLength; i++)</span>
+        {
+<span class="nc bnc" id="L311" title="All 2 branches missed.">            if (isNonSentinel(old[i]))</span>
+            {
+<span class="nc" id="L313">                this.put(old[i], oldValues.get(i));</span>
+            }
+        }
+<span class="nc" id="L316">    }</span>
+
+    // exposed for testing
+    int probe(byte element)
+    {
+<span class="nc" id="L321">        int index = this.spreadAndMask(element);</span>
+<span class="nc" id="L322">        byte keyAtIndex = this.keys[index];</span>
+
+<span class="nc bnc" id="L324" title="All 4 branches missed.">        if (keyAtIndex == element || keyAtIndex == EMPTY_KEY)</span>
+        {
+<span class="nc" id="L326">            return index;</span>
+        }
+
+<span class="nc bnc" id="L329" title="All 2 branches missed.">        int removedIndex = keyAtIndex == REMOVED_KEY ? index : -1;</span>
+<span class="nc" id="L330">        int nextIndex = index;</span>
+<span class="nc" id="L331">        int probe = 17;</span>
+
+        // loop until an empty slot is reached
+        while (true)
+        {
+            // Probe algorithm: 17*n*(n+1)/2 where n = number of collisions
+<span class="nc" id="L337">            nextIndex += probe;</span>
+<span class="nc" id="L338">            probe += 17;</span>
+<span class="nc" id="L339">            nextIndex &amp;= this.keys.length - 1;</span>
+
+<span class="nc bnc" id="L341" title="All 2 branches missed.">            if (this.keys[nextIndex] == element)</span>
+            {
+<span class="nc" id="L343">                return nextIndex;</span>
+            }
+<span class="nc bnc" id="L345" title="All 2 branches missed.">            if (this.keys[nextIndex] == REMOVED_KEY)</span>
+            {
+<span class="nc bnc" id="L347" title="All 2 branches missed.">                if (removedIndex == -1)</span>
+                {
+<span class="nc" id="L349">                    removedIndex = nextIndex;</span>
+                }
+            }
+<span class="nc bnc" id="L352" title="All 2 branches missed.">            else if (this.keys[nextIndex] == EMPTY_KEY)</span>
+            {
+<span class="nc bnc" id="L354" title="All 2 branches missed.">                return removedIndex == -1 ? nextIndex : removedIndex;</span>
+            }
+        }
+    }
+
+    // exposed for testing
+    int spreadAndMask(byte element)
+    {
+        // No spreading necessary for 8-bit types
+<span class="nc" id="L363">        return this.mask(element);</span>
+    }
+
+    private int mask(int spread)
+    {
+<span class="nc" id="L368">        return spread &amp; (this.keys.length - 1);</span>
+    }
+
+    @Override
+    public void clear()
+    {
+<span class="nc" id="L374">        this.sentinelValues = null;</span>
+<span class="nc" id="L375">        this.occupiedWithData = 0;</span>
+<span class="nc" id="L376">        this.occupiedWithSentinels = 0;</span>
+<span class="nc" id="L377">        Arrays.fill(this.keys, EMPTY_KEY);</span>
+<span class="nc" id="L378">        this.values.clear();</span>
+<span class="nc" id="L379">    }</span>
+
+    @Override
+    public void put(byte key, boolean value)
+    {
+<span class="nc bnc" id="L384" title="All 2 branches missed.">        if (isEmptyKey(key))</span>
+        {
+<span class="nc bnc" id="L386" title="All 2 branches missed.">            if (this.getSentinelValues() == null)</span>
+            {
+<span class="nc" id="L388">                this.sentinelValues = new SentinelValues();</span>
+            }
+<span class="nc" id="L390">            this.getSentinelValues().containsZeroKey = true;</span>
+<span class="nc" id="L391">            this.getSentinelValues().zeroValue = value;</span>
+<span class="nc" id="L392">            return;</span>
+        }
+
+<span class="nc bnc" id="L395" title="All 2 branches missed.">        if (isRemovedKey(key))</span>
+        {
+<span class="nc bnc" id="L397" title="All 2 branches missed.">            if (this.sentinelValues == null)</span>
+            {
+<span class="nc" id="L399">                this.sentinelValues = new SentinelValues();</span>
+            }
+<span class="nc" id="L401">            this.getSentinelValues().containsOneKey = true;</span>
+<span class="nc" id="L402">            this.getSentinelValues().oneValue = value;</span>
+<span class="nc" id="L403">            return;</span>
+        }
+
+<span class="nc" id="L406">        int index = this.probe(key);</span>
+
+<span class="nc bnc" id="L408" title="All 2 branches missed.">        if (this.keys[index] == key)</span>
+        {
+            // key already present in map
+<span class="nc" id="L411">            this.values.set(index, value);</span>
+<span class="nc" id="L412">            return;</span>
+        }
+
+<span class="nc" id="L415">        this.addKeyValueAtIndex(key, value, index);</span>
+<span class="nc" id="L416">    }</span>
+
+    @Override
+    public void putAll(ByteBooleanMap map)
+    {
+<span class="nc" id="L421">        map.forEachKeyValue(this::put);</span>
+<span class="nc" id="L422">    }</span>
+
+    @Override
+    public boolean containsKey(byte key)
+    {
+<span class="nc bnc" id="L427" title="All 2 branches missed.">        if (isEmptyKey(key))</span>
+        {
+<span class="nc bnc" id="L429" title="All 4 branches missed.">            return this.getSentinelValues() != null &amp;&amp; this.getSentinelValues().containsZeroKey;</span>
+        }
+<span class="nc bnc" id="L431" title="All 2 branches missed.">        if (isRemovedKey(key))</span>
+        {
+<span class="nc bnc" id="L433" title="All 4 branches missed.">            return this.getSentinelValues() != null &amp;&amp; this.getSentinelValues().containsOneKey;</span>
+        }
+<span class="nc bnc" id="L435" title="All 2 branches missed.">        return this.keys[this.probe(key)] == key;</span>
+    }
+
+    @Override
+    public boolean containsValue(boolean value)
+    {
+<span class="nc bnc" id="L441" title="All 4 branches missed.">        if (this.getSentinelValues() != null &amp;&amp; this.getSentinelValues().containsValue(value))</span>
+        {
+<span class="nc" id="L443">            return true;</span>
+        }
+<span class="nc bnc" id="L445" title="All 2 branches missed.">        for (int i = 0; i &lt; this.keys.length; i++)</span>
+        {
+<span class="nc bnc" id="L447" title="All 4 branches missed.">            if (isNonSentinel(this.keys[i]) &amp;&amp; this.getValueAtIndex(i) == value)</span>
+            {
+<span class="nc" id="L449">                return true;</span>
+            }
+        }
+<span class="nc" id="L452">        return false;</span>
+    }
+
+    @Override
+    public boolean get(byte key)
+    {
+<span class="nc" id="L458">        return this.getIfAbsent(key, this.getEmptyValue());</span>
+    }
+
+    @Override
+    public boolean getIfAbsent(byte key, boolean ifAbsent)
+    {
+<span class="nc bnc" id="L464" title="All 2 branches missed.">        if (isEmptyKey(key))</span>
+        {
+<span class="nc bnc" id="L466" title="All 4 branches missed.">            if (this.sentinelValues == null || !this.getSentinelValues().containsZeroKey)</span>
+            {
+<span class="nc" id="L468">                return ifAbsent;</span>
+            }
+<span class="nc" id="L470">            return this.getSentinelValues().zeroValue;</span>
+        }
+<span class="nc bnc" id="L472" title="All 2 branches missed.">        if (isRemovedKey(key))</span>
+        {
+<span class="nc bnc" id="L474" title="All 4 branches missed.">            if (this.sentinelValues == null || !this.getSentinelValues().containsOneKey)</span>
+            {
+<span class="nc" id="L476">                return ifAbsent;</span>
+            }
+<span class="nc" id="L478">            return this.getSentinelValues().oneValue;</span>
+        }
+<span class="nc" id="L480">        int index = this.probe(key);</span>
+<span class="nc bnc" id="L481" title="All 2 branches missed.">        if (this.isNonSentinelAtIndex(index))</span>
+        {
+<span class="nc" id="L483">            return this.values.get(index);</span>
+        }
+<span class="nc" id="L485">        return ifAbsent;</span>
+    }
+
+    @Override
+    public boolean getOrThrow(byte key)
+    {
+<span class="nc bnc" id="L491" title="All 2 branches missed.">        if (isEmptyKey(key))</span>
+        {
+<span class="nc bnc" id="L493" title="All 4 branches missed.">            if (this.sentinelValues == null || !this.getSentinelValues().containsZeroKey)</span>
+            {
+<span class="nc" id="L495">                throw new IllegalStateException(&quot;Key &quot; + key + &quot; not present.&quot;);</span>
+            }
+<span class="nc" id="L497">            return this.getSentinelValues().zeroValue;</span>
+        }
+<span class="nc bnc" id="L499" title="All 2 branches missed.">        if (isRemovedKey(key))</span>
+        {
+<span class="nc bnc" id="L501" title="All 4 branches missed.">            if (this.sentinelValues == null || !this.getSentinelValues().containsOneKey)</span>
+            {
+<span class="nc" id="L503">                throw new IllegalStateException(&quot;Key &quot; + key + &quot; not present.&quot;);</span>
+            }
+<span class="nc" id="L505">            return this.getSentinelValues().oneValue;</span>
+        }
+<span class="nc" id="L507">        int index = this.probe(key);</span>
+<span class="nc bnc" id="L508" title="All 2 branches missed.">        if (this.isNonSentinelAtIndex(index))</span>
+        {
+<span class="nc" id="L510">            return this.values.get(index);</span>
+        }
+<span class="nc" id="L512">        throw new IllegalStateException(&quot;Key &quot; + key + &quot; not present.&quot;);</span>
+    }
+
+    @Override
+    public boolean getIfAbsentPut(byte key, boolean value)
+    {
+<span class="nc bnc" id="L518" title="All 2 branches missed.">        if (isEmptyKey(key))</span>
+        {
+<span class="nc bnc" id="L520" title="All 2 branches missed.">            if (this.sentinelValues == null)</span>
+            {
+<span class="nc" id="L522">                this.sentinelValues = new SentinelValues();</span>
+<span class="nc" id="L523">                this.addEmptyKeyValue(value);</span>
+<span class="nc" id="L524">                return value;</span>
+            }
+<span class="nc bnc" id="L526" title="All 2 branches missed.">            if (this.getSentinelValues().containsZeroKey)</span>
+            {
+<span class="nc" id="L528">                return this.getSentinelValues().zeroValue;</span>
+            }
+<span class="nc" id="L530">            this.addEmptyKeyValue(value);</span>
+<span class="nc" id="L531">            return value;</span>
+        }
+<span class="nc bnc" id="L533" title="All 2 branches missed.">        if (isRemovedKey(key))</span>
+        {
+<span class="nc bnc" id="L535" title="All 2 branches missed.">            if (this.sentinelValues == null)</span>
+            {
+<span class="nc" id="L537">                this.sentinelValues = new SentinelValues();</span>
+<span class="nc" id="L538">                this.addRemovedKeyValue(value);</span>
+<span class="nc" id="L539">                return value;</span>
+            }
+<span class="nc bnc" id="L541" title="All 2 branches missed.">            if (this.getSentinelValues().containsOneKey)</span>
+            {
+<span class="nc" id="L543">                return this.getSentinelValues().oneValue;</span>
+            }
+<span class="nc" id="L545">            this.addRemovedKeyValue(value);</span>
+<span class="nc" id="L546">            return value;</span>
+        }
+<span class="nc" id="L548">        int index = this.probe(key);</span>
+<span class="nc bnc" id="L549" title="All 2 branches missed.">        if (this.keys[index] == key)</span>
+        {
+<span class="nc" id="L551">            return this.values.get(index);</span>
+        }
+<span class="nc" id="L553">        this.addKeyValueAtIndex(key, value, index);</span>
+<span class="nc" id="L554">        return value;</span>
+    }
+
+    @Override
+    public boolean getIfAbsentPut(byte key, BooleanFunction0 function)
+    {
+<span class="nc bnc" id="L560" title="All 2 branches missed.">        if (isEmptyKey(key))</span>
+        {
+<span class="nc bnc" id="L562" title="All 2 branches missed.">            if (this.sentinelValues == null)</span>
+            {
+<span class="nc" id="L564">                boolean value = function.value();</span>
+<span class="nc" id="L565">                this.sentinelValues = new SentinelValues();</span>
+<span class="nc" id="L566">                this.addEmptyKeyValue(value);</span>
+<span class="nc" id="L567">                return value;</span>
+            }
+<span class="nc bnc" id="L569" title="All 2 branches missed.">            if (this.getSentinelValues().containsZeroKey)</span>
+            {
+<span class="nc" id="L571">                return this.getSentinelValues().zeroValue;</span>
+            }
+<span class="nc" id="L573">            boolean value = function.value();</span>
+<span class="nc" id="L574">            this.addEmptyKeyValue(value);</span>
+<span class="nc" id="L575">            return value;</span>
+        }
+<span class="nc bnc" id="L577" title="All 2 branches missed.">        if (isRemovedKey(key))</span>
+        {
+<span class="nc bnc" id="L579" title="All 2 branches missed.">            if (this.sentinelValues == null)</span>
+            {
+<span class="nc" id="L581">                boolean value = function.value();</span>
+<span class="nc" id="L582">                this.sentinelValues = new SentinelValues();</span>
+<span class="nc" id="L583">                this.addRemovedKeyValue(value);</span>
+<span class="nc" id="L584">                return value;</span>
+            }
+<span class="nc bnc" id="L586" title="All 2 branches missed.">            if (this.getSentinelValues().containsOneKey)</span>
+            {
+<span class="nc" id="L588">                return this.getSentinelValues().oneValue;</span>
+            }
+<span class="nc" id="L590">            boolean value = function.value();</span>
+<span class="nc" id="L591">            this.addRemovedKeyValue(value);</span>
+<span class="nc" id="L592">            return value;</span>
+        }
+<span class="nc" id="L594">        int index = this.probe(key);</span>
+<span class="nc bnc" id="L595" title="All 2 branches missed.">        if (this.keys[index] == key)</span>
+        {
+<span class="nc" id="L597">            return this.values.get(index);</span>
+        }
+<span class="nc" id="L599">        boolean value = function.value();</span>
+<span class="nc" id="L600">        this.addKeyValueAtIndex(key, value, index);</span>
+<span class="nc" id="L601">        return value;</span>
+    }
+
+    @Override
+    public &lt;P&gt; boolean getIfAbsentPutWith(byte key, BooleanFunction&lt;? super P&gt; function, P parameter)
+    {
+<span class="nc bnc" id="L607" title="All 2 branches missed.">        if (isEmptyKey(key))</span>
+        {
+<span class="nc bnc" id="L609" title="All 2 branches missed.">            if (this.sentinelValues == null)</span>
+            {
+<span class="nc" id="L611">                boolean value = function.booleanValueOf(parameter);</span>
+<span class="nc" id="L612">                this.sentinelValues = new SentinelValues();</span>
+<span class="nc" id="L613">                this.addEmptyKeyValue(value);</span>
+<span class="nc" id="L614">                return value;</span>
+            }
+<span class="nc bnc" id="L616" title="All 2 branches missed.">            if (this.getSentinelValues().containsZeroKey)</span>
+            {
+<span class="nc" id="L618">                return this.getSentinelValues().zeroValue;</span>
+            }
+<span class="nc" id="L620">            boolean value = function.booleanValueOf(parameter);</span>
+<span class="nc" id="L621">            this.addEmptyKeyValue(value);</span>
+<span class="nc" id="L622">            return value;</span>
+        }
+<span class="nc bnc" id="L624" title="All 2 branches missed.">        if (isRemovedKey(key))</span>
+        {
+<span class="nc bnc" id="L626" title="All 2 branches missed.">            if (this.sentinelValues == null)</span>
+            {
+<span class="nc" id="L628">                boolean value = function.booleanValueOf(parameter);</span>
+<span class="nc" id="L629">                this.sentinelValues = new SentinelValues();</span>
+<span class="nc" id="L630">                this.addRemovedKeyValue(value);</span>
+<span class="nc" id="L631">                return value;</span>
+            }
+<span class="nc bnc" id="L633" title="All 2 branches missed.">            if (this.getSentinelValues().containsOneKey)</span>
+            {
+<span class="nc" id="L635">                return this.getSentinelValues().oneValue;</span>
+            }
+<span class="nc" id="L637">            boolean value = function.booleanValueOf(parameter);</span>
+<span class="nc" id="L638">            this.addRemovedKeyValue(value);</span>
+<span class="nc" id="L639">            return value;</span>
+        }
+<span class="nc" id="L641">        int index = this.probe(key);</span>
+<span class="nc bnc" id="L642" title="All 2 branches missed.">        if (this.keys[index] == key)</span>
+        {
+<span class="nc" id="L644">            return this.values.get(index);</span>
+        }
+<span class="nc" id="L646">        boolean value = function.booleanValueOf(parameter);</span>
+<span class="nc" id="L647">        this.addKeyValueAtIndex(key, value, index);</span>
+<span class="nc" id="L648">        return value;</span>
+    }
+
+    @Override
+    public boolean getIfAbsentPutWithKey(byte key, ByteToBooleanFunction function)
+    {
+<span class="nc bnc" id="L654" title="All 2 branches missed.">        if (isEmptyKey(key))</span>
+        {
+<span class="nc bnc" id="L656" title="All 2 branches missed.">            if (this.sentinelValues == null)</span>
+            {
+<span class="nc" id="L658">                boolean value = function.valueOf(key);</span>
+<span class="nc" id="L659">                this.sentinelValues = new SentinelValues();</span>
+<span class="nc" id="L660">                this.addEmptyKeyValue(value);</span>
+<span class="nc" id="L661">                return value;</span>
+            }
+<span class="nc bnc" id="L663" title="All 2 branches missed.">            if (this.getSentinelValues().containsZeroKey)</span>
+            {
+<span class="nc" id="L665">                return this.getSentinelValues().zeroValue;</span>
+            }
+<span class="nc" id="L667">            boolean value = function.valueOf(key);</span>
+<span class="nc" id="L668">            this.addEmptyKeyValue(value);</span>
+<span class="nc" id="L669">            return value;</span>
+        }
+<span class="nc bnc" id="L671" title="All 2 branches missed.">        if (isRemovedKey(key))</span>
+        {
+<span class="nc bnc" id="L673" title="All 2 branches missed.">            if (this.sentinelValues == null)</span>
+            {
+<span class="nc" id="L675">                boolean value = function.valueOf(key);</span>
+<span class="nc" id="L676">                this.sentinelValues = new SentinelValues();</span>
+<span class="nc" id="L677">                this.addRemovedKeyValue(value);</span>
+<span class="nc" id="L678">                return value;</span>
+            }
+<span class="nc bnc" id="L680" title="All 2 branches missed.">            if (this.getSentinelValues().containsOneKey)</span>
+            {
+<span class="nc" id="L682">                return this.getSentinelValues().oneValue;</span>
+            }
+<span class="nc" id="L684">            boolean value = function.valueOf(key);</span>
+<span class="nc" id="L685">            this.addRemovedKeyValue(value);</span>
+<span class="nc" id="L686">            return value;</span>
+        }
+<span class="nc" id="L688">        int index = this.probe(key);</span>
+<span class="nc bnc" id="L689" title="All 2 branches missed.">        if (this.keys[index] == key)</span>
+        {
+<span class="nc" id="L691">            return this.values.get(index);</span>
+        }
+<span class="nc" id="L693">        boolean value = function.valueOf(key);</span>
+<span class="nc" id="L694">        this.addKeyValueAtIndex(key, value, index);</span>
+<span class="nc" id="L695">        return value;</span>
+    }
+
+    @Override
+    public boolean updateValue(byte key, boolean initialValueIfAbsent, BooleanToBooleanFunction function)
+    {
+<span class="nc bnc" id="L701" title="All 2 branches missed.">        if (isEmptyKey(key))</span>
+        {
+<span class="nc bnc" id="L703" title="All 2 branches missed.">            if (this.sentinelValues == null)</span>
+            {
+<span class="nc" id="L705">                this.sentinelValues = new SentinelValues();</span>
+<span class="nc" id="L706">                this.addEmptyKeyValue(function.valueOf(initialValueIfAbsent));</span>
+            }
+<span class="nc bnc" id="L708" title="All 2 branches missed.">            else if (this.getSentinelValues().containsZeroKey)</span>
+            {
+<span class="nc" id="L710">                this.getSentinelValues().zeroValue = function.valueOf(this.getSentinelValues().zeroValue);</span>
+            }
+            else
+            {
+<span class="nc" id="L714">                this.addEmptyKeyValue(function.valueOf(initialValueIfAbsent));</span>
+            }
+<span class="nc" id="L716">            return this.getSentinelValues().zeroValue;</span>
+        }
+<span class="nc bnc" id="L718" title="All 2 branches missed.">        if (isRemovedKey(key))</span>
+        {
+<span class="nc bnc" id="L720" title="All 2 branches missed.">            if (this.sentinelValues == null)</span>
+            {
+<span class="nc" id="L722">                this.sentinelValues = new SentinelValues();</span>
+<span class="nc" id="L723">                this.addRemovedKeyValue(function.valueOf(initialValueIfAbsent));</span>
+            }
+<span class="nc bnc" id="L725" title="All 2 branches missed.">            else if (this.getSentinelValues().containsOneKey)</span>
+            {
+<span class="nc" id="L727">                this.getSentinelValues().oneValue = function.valueOf(this.getSentinelValues().oneValue);</span>
+            }
+            else
+            {
+<span class="nc" id="L731">                this.addRemovedKeyValue(function.valueOf(initialValueIfAbsent));</span>
+            }
+<span class="nc" id="L733">            return this.getSentinelValues().oneValue;</span>
+        }
+<span class="nc" id="L735">        int index = this.probe(key);</span>
+<span class="nc bnc" id="L736" title="All 2 branches missed.">        if (this.keys[index] == key)</span>
+        {
+<span class="nc" id="L738">            this.values.set(index, function.valueOf(this.values.get(index)));</span>
+<span class="nc" id="L739">            return this.values.get(index);</span>
+        }
+<span class="nc" id="L741">        boolean value = function.valueOf(initialValueIfAbsent);</span>
+<span class="nc" id="L742">        this.addKeyValueAtIndex(key, value, index);</span>
+<span class="nc" id="L743">        return value;</span>
+    }
+
+    private void addKeyValueAtIndex(byte key, boolean value, int index)
+    {
+<span class="nc bnc" id="L748" title="All 2 branches missed.">        if (this.keys[index] == REMOVED_KEY)</span>
+        {
+<span class="nc" id="L750">            this.occupiedWithSentinels--;</span>
+        }
+<span class="nc" id="L752">        this.keys[index] = key;</span>
+<span class="nc" id="L753">        this.values.set(index, value);</span>
+<span class="nc" id="L754">        this.occupiedWithData++;</span>
+<span class="nc bnc" id="L755" title="All 2 branches missed.">        if (this.occupiedWithData &gt; this.maxOccupiedWithData())</span>
+        {
+<span class="nc" id="L757">            this.rehashAndGrow();</span>
+        }
+<span class="nc" id="L759">    }</span>
+
+    @Override
+    public void removeKey(byte key)
+    {
+<span class="nc bnc" id="L764" title="All 2 branches missed.">        if (isEmptyKey(key))</span>
+        {
+<span class="nc bnc" id="L766" title="All 4 branches missed.">            if (this.sentinelValues == null || !this.getSentinelValues().containsZeroKey)</span>
+            {
+<span class="nc" id="L768">                return;</span>
+            }
+<span class="nc" id="L770">            this.removeEmptyKey();</span>
+<span class="nc" id="L771">            return;</span>
+        }
+<span class="nc bnc" id="L773" title="All 2 branches missed.">        if (isRemovedKey(key))</span>
+        {
+<span class="nc bnc" id="L775" title="All 4 branches missed.">            if (this.sentinelValues == null || !this.getSentinelValues().containsOneKey)</span>
+            {
+<span class="nc" id="L777">                return;</span>
+            }
+<span class="nc" id="L779">            this.removeRemovedKey();</span>
+<span class="nc" id="L780">            return;</span>
+        }
+<span class="nc" id="L782">        int index = this.probe(key);</span>
+<span class="nc bnc" id="L783" title="All 2 branches missed.">        if (this.keys[index] == key)</span>
+        {
+<span class="nc" id="L785">            this.keys[index] = REMOVED_KEY;</span>
+<span class="nc" id="L786">            this.values.set(index, this.getEmptyValue());</span>
+<span class="nc" id="L787">            this.occupiedWithData--;</span>
+<span class="nc" id="L788">            this.occupiedWithSentinels++;</span>
+<span class="nc bnc" id="L789" title="All 2 branches missed.">            if (this.occupiedWithSentinels &gt; this.maxOccupiedWithSentinels())</span>
+            {
+<span class="nc" id="L791">                this.rehash();</span>
+            }
+        }
+<span class="nc" id="L794">    }</span>
+
+    @Override
+    public void remove(byte key)
+    {
+<span class="nc" id="L799">        this.removeKey(key);</span>
+<span class="nc" id="L800">    }</span>
+
+    @Override
+    public boolean removeKeyIfAbsent(byte key, boolean value)
+    {
+<span class="nc bnc" id="L805" title="All 2 branches missed.">        if (isEmptyKey(key))</span>
+        {
+<span class="nc bnc" id="L807" title="All 4 branches missed.">            if (this.sentinelValues == null || !this.getSentinelValues().containsZeroKey)</span>
+            {
+<span class="nc" id="L809">                return value;</span>
+            }
+<span class="nc" id="L811">            boolean oldValue = this.getSentinelValues().zeroValue;</span>
+<span class="nc" id="L812">            this.removeEmptyKey();</span>
+<span class="nc" id="L813">            return oldValue;</span>
+        }
+<span class="nc bnc" id="L815" title="All 2 branches missed.">        if (isRemovedKey(key))</span>
+        {
+<span class="nc bnc" id="L817" title="All 4 branches missed.">            if (this.sentinelValues == null || !this.getSentinelValues().containsOneKey)</span>
+            {
+<span class="nc" id="L819">                return value;</span>
+            }
+<span class="nc" id="L821">            boolean oldValue = this.getSentinelValues().oneValue;</span>
+<span class="nc" id="L822">            this.removeRemovedKey();</span>
+<span class="nc" id="L823">            return oldValue;</span>
+        }
+<span class="nc" id="L825">        int index = this.probe(key);</span>
+<span class="nc bnc" id="L826" title="All 2 branches missed.">        if (this.keys[index] == key)</span>
+        {
+<span class="nc" id="L828">            this.keys[index] = REMOVED_KEY;</span>
+<span class="nc" id="L829">            boolean oldValue = this.values.get(index);</span>
+<span class="nc" id="L830">            this.values.set(index, this.getEmptyValue());</span>
+<span class="nc" id="L831">            this.occupiedWithData--;</span>
+<span class="nc" id="L832">            this.occupiedWithSentinels++;</span>
+<span class="nc bnc" id="L833" title="All 2 branches missed.">            if (this.occupiedWithSentinels &gt; this.maxOccupiedWithSentinels())</span>
+            {
+<span class="nc" id="L835">                this.rehash();</span>
+            }
+
+<span class="nc" id="L838">            return oldValue;</span>
+        }
+<span class="nc" id="L840">        return value;</span>
+    }
+
+    @Override
+    public boolean equals(Object obj)
+    {
+<span class="nc bnc" id="L846" title="All 2 branches missed.">        if (this == obj)</span>
+        {
+<span class="nc" id="L848">            return true;</span>
+        }
+
+<span class="nc bnc" id="L851" title="All 2 branches missed.">        if (!(obj instanceof ByteBooleanMap))</span>
+        {
+<span class="nc" id="L853">            return false;</span>
+        }
+
+<span class="nc" id="L856">        ByteBooleanMap other = (ByteBooleanMap) obj;</span>
+
+<span class="nc bnc" id="L858" title="All 2 branches missed.">        if (this.size() != other.size())</span>
+        {
+<span class="nc" id="L860">            return false;</span>
+        }
+
+<span class="nc bnc" id="L863" title="All 2 branches missed.">        if (this.sentinelValues == null)</span>
+        {
+<span class="nc bnc" id="L865" title="All 4 branches missed.">            if (other.containsKey(EMPTY_KEY) || other.containsKey(REMOVED_KEY))</span>
+            {
+<span class="nc" id="L867">                return false;</span>
+            }
+        }
+        else
+        {
+<span class="nc bnc" id="L872" title="All 6 branches missed.">            if (this.getSentinelValues().containsZeroKey &amp;&amp; (!other.containsKey(EMPTY_KEY) || this.getSentinelValues().zeroValue != other.getOrThrow(EMPTY_KEY)))</span>
+            {
+<span class="nc" id="L874">                return false;</span>
+            }
+
+<span class="nc bnc" id="L877" title="All 6 branches missed.">            if (this.getSentinelValues().containsOneKey &amp;&amp; (!other.containsKey(REMOVED_KEY) || this.getSentinelValues().oneValue != other.getOrThrow(REMOVED_KEY)))</span>
+            {
+<span class="nc" id="L879">                return false;</span>
+            }
+        }
+
+<span class="nc bnc" id="L883" title="All 2 branches missed.">        for (int i = 0; i &lt; this.keys.length; i++)</span>
+        {
+<span class="nc bnc" id="L885" title="All 6 branches missed.">            if (this.isNonSentinelAtIndex(i) &amp;&amp; (!other.containsKey(this.keys[i]) || this.getValueAtIndex(i) != other.getOrThrow(this.keys[i])))</span>
+            {
+<span class="nc" id="L887">                return false;</span>
+            }
+        }
+<span class="nc" id="L890">        return true;</span>
+    }
+
+    @Override
+    public int hashCode()
+    {
+<span class="nc" id="L896">        int result = 0;</span>
+
+<span class="nc bnc" id="L898" title="All 2 branches missed.">        if (this.sentinelValues != null)</span>
+        {
+<span class="nc bnc" id="L900" title="All 2 branches missed.">            if (this.getSentinelValues().containsZeroKey)</span>
+            {
+<span class="nc bnc" id="L902" title="All 2 branches missed.">                result += (int) EMPTY_KEY ^ (this.getSentinelValues().zeroValue ? 1231 : 1237);</span>
+            }
+<span class="nc bnc" id="L904" title="All 2 branches missed.">            if (this.getSentinelValues().containsOneKey)</span>
+            {
+<span class="nc bnc" id="L906" title="All 2 branches missed.">                result += (int) REMOVED_KEY ^ (this.getSentinelValues().oneValue ? 1231 : 1237);</span>
+            }
+        }
+<span class="nc bnc" id="L909" title="All 2 branches missed.">        for (int i = 0; i &lt; this.keys.length; i++)</span>
+        {
+<span class="nc bnc" id="L911" title="All 2 branches missed.">            if (isNonSentinel(this.keys[i]))</span>
+            {
+<span class="nc bnc" id="L913" title="All 2 branches missed.">                result += (int) this.keys[i] ^ (this.getValueAtIndex(i) ? 1231 : 1237);</span>
+            }
+        }
+
+<span class="nc" id="L917">        return result;</span>
+    }
+
+    @Override
+    public String toString()
+    {
+<span class="nc" id="L923">        StringBuilder appendable = new StringBuilder();</span>
+
+<span class="nc" id="L925">        appendable.append(&quot;{&quot;);</span>
+
+<span class="nc" id="L927">        boolean first = true;</span>
+
+<span class="nc bnc" id="L929" title="All 2 branches missed.">        if (this.sentinelValues != null)</span>
+        {
+<span class="nc bnc" id="L931" title="All 2 branches missed.">            if (this.getSentinelValues().containsZeroKey)</span>
+            {
+<span class="nc" id="L933">                appendable.append(EMPTY_KEY).append(&quot;=&quot;).append(this.getSentinelValues().zeroValue);</span>
+<span class="nc" id="L934">                first = false;</span>
+            }
+<span class="nc bnc" id="L936" title="All 2 branches missed.">            if (this.getSentinelValues().containsOneKey)</span>
+            {
+<span class="nc bnc" id="L938" title="All 2 branches missed.">                if (!first)</span>
+                {
+<span class="nc" id="L940">                    appendable.append(&quot;, &quot;);</span>
+                }
+<span class="nc" id="L942">                appendable.append(REMOVED_KEY).append(&quot;=&quot;).append(this.getSentinelValues().oneValue);</span>
+<span class="nc" id="L943">                first = false;</span>
+            }
+        }
+<span class="nc bnc" id="L946" title="All 2 branches missed.">        for (int i = 0; i &lt; this.keys.length; i++)</span>
+        {
+<span class="nc bnc" id="L948" title="All 2 branches missed.">            if (this.isNonSentinelAtIndex(i))</span>
+            {
+<span class="nc bnc" id="L950" title="All 2 branches missed.">                if (!first)</span>
+                {
+<span class="nc" id="L952">                    appendable.append(&quot;, &quot;);</span>
+                }
+<span class="nc" id="L954">                appendable.append(this.keys[i]).append(&quot;=&quot;).append(this.getValueAtIndex(i));</span>
+<span class="nc" id="L955">                first = false;</span>
+            }
+        }
+<span class="nc" id="L958">        appendable.append(&quot;}&quot;);</span>
+
+<span class="nc" id="L960">        return appendable.toString();</span>
+    }
+
+    @Override
+    public MutableBooleanIterator booleanIterator()
+    {
+<span class="nc" id="L966">        return new InternalBooleanIterator();</span>
+    }
+
+    @Override
+    public void forEachKey(ByteProcedure procedure)
+    {
+<span class="nc bnc" id="L972" title="All 2 branches missed.">        if (this.sentinelValues != null)</span>
+        {
+<span class="nc bnc" id="L974" title="All 2 branches missed.">            if (this.getSentinelValues().containsZeroKey)</span>
+            {
+<span class="nc" id="L976">                procedure.value(EMPTY_KEY);</span>
+            }
+<span class="nc bnc" id="L978" title="All 2 branches missed.">            if (this.getSentinelValues().containsOneKey)</span>
+            {
+<span class="nc" id="L980">                procedure.value(REMOVED_KEY);</span>
+            }
+        }
+<span class="nc bnc" id="L983" title="All 2 branches missed.">        for (byte key : this.keys)</span>
+        {
+<span class="nc bnc" id="L985" title="All 2 branches missed.">            if (isNonSentinel(key))</span>
+            {
+<span class="nc" id="L987">                procedure.value(key);</span>
+            }
+        }
+<span class="nc" id="L990">    }</span>
+
+    @Override
+    public void forEachKeyValue(ByteBooleanProcedure procedure)
+    {
+<span class="nc bnc" id="L995" title="All 2 branches missed.">        if (this.sentinelValues != null)</span>
+        {
+<span class="nc bnc" id="L997" title="All 2 branches missed.">            if (this.getSentinelValues().containsZeroKey)</span>
+            {
+<span class="nc" id="L999">                procedure.value(EMPTY_KEY, this.getSentinelValues().zeroValue);</span>
+            }
+<span class="nc bnc" id="L1001" title="All 2 branches missed.">            if (this.getSentinelValues().containsOneKey)</span>
+            {
+<span class="nc" id="L1003">                procedure.value(REMOVED_KEY, this.getSentinelValues().oneValue);</span>
+            }
+        }
+<span class="nc bnc" id="L1006" title="All 2 branches missed.">        for (int i = 0; i &lt; this.keys.length; i++)</span>
+        {
+<span class="nc bnc" id="L1008" title="All 2 branches missed.">            if (isNonSentinel(this.keys[i]))</span>
+            {
+<span class="nc" id="L1010">                procedure.value(this.keys[i], this.getValueAtIndex(i));</span>
+            }
+        }
+<span class="nc" id="L1013">    }</span>
+
+    @Override
+    public ByteBooleanHashMap select(ByteBooleanPredicate predicate)
+    {
+<span class="nc" id="L1018">        ByteBooleanHashMap result = new ByteBooleanHashMap();</span>
+
+<span class="nc bnc" id="L1020" title="All 2 branches missed.">        if (this.sentinelValues != null)</span>
+        {
+<span class="nc bnc" id="L1022" title="All 4 branches missed.">            if (this.getSentinelValues().containsZeroKey &amp;&amp; predicate.accept(EMPTY_KEY, this.getSentinelValues().zeroValue))</span>
+            {
+<span class="nc" id="L1024">                result.put(EMPTY_KEY, this.getSentinelValues().zeroValue);</span>
+            }
+<span class="nc bnc" id="L1026" title="All 4 branches missed.">            if (this.getSentinelValues().containsOneKey &amp;&amp; predicate.accept(REMOVED_KEY, this.getSentinelValues().oneValue))</span>
+            {
+<span class="nc" id="L1028">                result.put(REMOVED_KEY, this.getSentinelValues().oneValue);</span>
+            }
+        }
+<span class="nc bnc" id="L1031" title="All 2 branches missed.">        for (int i = 0; i &lt; this.keys.length; i++)</span>
+        {
+<span class="nc bnc" id="L1033" title="All 4 branches missed.">            if (isNonSentinel(this.keys[i]) &amp;&amp; predicate.accept(this.keys[i], this.getValueAtIndex(i)))</span>
+            {
+<span class="nc" id="L1035">                result.put(this.keys[i], this.getValueAtIndex(i));</span>
+            }
+        }
+
+<span class="nc" id="L1039">        return result;</span>
+    }
+
+    @Override
+    public ByteBooleanHashMap reject(ByteBooleanPredicate predicate)
+    {
+<span class="nc" id="L1045">        ByteBooleanHashMap result = new ByteBooleanHashMap();</span>
+
+<span class="nc bnc" id="L1047" title="All 2 branches missed.">        if (this.sentinelValues != null)</span>
+        {
+<span class="nc bnc" id="L1049" title="All 4 branches missed.">            if (this.getSentinelValues().containsZeroKey &amp;&amp; !predicate.accept(EMPTY_KEY, this.getSentinelValues().zeroValue))</span>
+            {
+<span class="nc" id="L1051">                result.put(EMPTY_KEY, this.getSentinelValues().zeroValue);</span>
+            }
+<span class="nc bnc" id="L1053" title="All 4 branches missed.">            if (this.getSentinelValues().containsOneKey &amp;&amp; !predicate.accept(REMOVED_KEY, this.getSentinelValues().oneValue))</span>
+            {
+<span class="nc" id="L1055">                result.put(REMOVED_KEY, this.getSentinelValues().oneValue);</span>
+            }
+        }
+<span class="nc bnc" id="L1058" title="All 2 branches missed.">        for (int i = 0; i &lt; this.keys.length; i++)</span>
+        {
+<span class="nc bnc" id="L1060" title="All 4 branches missed.">            if (isNonSentinel(this.keys[i]) &amp;&amp; !predicate.accept(this.keys[i], this.getValueAtIndex(i)))</span>
+            {
+<span class="nc" id="L1062">                result.put(this.keys[i], this.getValueAtIndex(i));</span>
+            }
+        }
+<span class="nc" id="L1065">        return result;</span>
+    }
+
+    @Override
+    public LazyByteIterable keysView()
+    {
+<span class="nc" id="L1071">        return new KeysView();</span>
+    }
+
+    @Override
+    public RichIterable&lt;ByteBooleanPair&gt; keyValuesView()
+    {
+<span class="nc" id="L1077">        return new KeyValuesView();</span>
+    }
+
+    @Override
+    public void writeExternal(ObjectOutput out) throws IOException
+    {
+<span class="nc" id="L1083">        out.writeInt(this.size());</span>
+        /**
+         * @deprecated in 5.1.0.
+         */
+<span class="nc" id="L1087">        out.writeFloat(DEFAULT_LOAD_FACTOR);</span>
+<span class="nc bnc" id="L1088" title="All 2 branches missed.">        if (this.sentinelValues != null)</span>
+        {
+<span class="nc bnc" id="L1090" title="All 2 branches missed.">            if (this.getSentinelValues().containsZeroKey)</span>
+            {
+<span class="nc" id="L1092">                out.writeByte(EMPTY_KEY);</span>
+<span class="nc" id="L1093">                out.writeBoolean(this.getSentinelValues().zeroValue);</span>
+            }
+<span class="nc bnc" id="L1095" title="All 2 branches missed.">            if (this.getSentinelValues().containsOneKey)</span>
+            {
+<span class="nc" id="L1097">                out.writeByte(REMOVED_KEY);</span>
+<span class="nc" id="L1098">                out.writeBoolean(this.getSentinelValues().oneValue);</span>
+            }
+        }
+<span class="nc bnc" id="L1101" title="All 2 branches missed.">        for (int i = 0; i &lt; this.keys.length; i++)</span>
+        {
+<span class="nc bnc" id="L1103" title="All 2 branches missed.">            if (isNonSentinel(this.keys[i]))</span>
+            {
+<span class="nc" id="L1105">                out.writeByte(this.keys[i]);</span>
+<span class="nc" id="L1106">                out.writeBoolean(this.getValueAtIndex(i));</span>
+            }
+        }
+<span class="nc" id="L1109">    }</span>
+
+    @Override
+    public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException
+    {
+<span class="nc" id="L1114">        int size = in.readInt();</span>
+        /**
+         * @deprecated in 5.1.0.
+         */
+<span class="nc" id="L1118">        in.readFloat();</span>
+<span class="nc bnc" id="L1119" title="All 2 branches missed.">        for (int i = 0; i &lt; size; i++)</span>
+        {
+<span class="nc" id="L1121">            this.put(in.readByte(), in.readBoolean());</span>
+        }
+<span class="nc" id="L1123">    }</span>
+
+    private int maxOccupiedWithData()
+    {
+<span class="nc" id="L1127">        int capacity = this.keys.length;</span>
+        // need at least one free slot for open addressing
+<span class="nc" id="L1129">        return Math.min(capacity - 1, capacity / OCCUPIED_DATA_RATIO);</span>
+    }
+
+    private int maxOccupiedWithSentinels()
+    {
+<span class="nc" id="L1134">        return this.keys.length / OCCUPIED_SENTINEL_RATIO;</span>
+    }
+
+<span class="nc" id="L1137">    private class InternalBooleanIterator implements MutableBooleanIterator</span>
+    {
+        private int count;
+        private int position;
+        private byte lastKey;
+        private boolean handledZero;
+        private boolean handledOne;
+        private boolean canRemove;
+
+        @Override
+        public boolean hasNext()
+        {
+<span class="nc bnc" id="L1149" title="All 2 branches missed.">            return this.count &lt; ByteBooleanHashMap.this.size();</span>
+        }
+
+        @Override
+        public boolean next()
+        {
+<span class="nc bnc" id="L1155" title="All 2 branches missed.">            if (!this.hasNext())</span>
+            {
+<span class="nc" id="L1157">                throw new NoSuchElementException(&quot;next() called, but the iterator is exhausted&quot;);</span>
+            }
+<span class="nc" id="L1159">            this.count++;</span>
+<span class="nc" id="L1160">            this.canRemove = true;</span>
+
+<span class="nc bnc" id="L1162" title="All 2 branches missed.">            if (!this.handledZero)</span>
+            {
+<span class="nc" id="L1164">                this.handledZero = true;</span>
+<span class="nc bnc" id="L1165" title="All 2 branches missed.">                if (ByteBooleanHashMap.this.containsKey(EMPTY_KEY))</span>
+                {
+<span class="nc" id="L1167">                    this.lastKey = EMPTY_KEY;</span>
+<span class="nc" id="L1168">                    return ByteBooleanHashMap.this.getSentinelValues().zeroValue;</span>
+                }
+            }
+<span class="nc bnc" id="L1171" title="All 2 branches missed.">            if (!this.handledOne)</span>
+            {
+<span class="nc" id="L1173">                this.handledOne = true;</span>
+<span class="nc bnc" id="L1174" title="All 2 branches missed.">                if (ByteBooleanHashMap.this.containsKey(REMOVED_KEY))</span>
+                {
+<span class="nc" id="L1176">                    this.lastKey = REMOVED_KEY;</span>
+<span class="nc" id="L1177">                    return ByteBooleanHashMap.this.getSentinelValues().oneValue;</span>
+                }
+            }
+
+<span class="nc" id="L1181">            byte[] keys = ByteBooleanHashMap.this.keys;</span>
+<span class="nc bnc" id="L1182" title="All 2 branches missed.">            while (!isNonSentinel(keys[this.position]))</span>
+            {
+<span class="nc" id="L1184">                this.position++;</span>
+            }
+<span class="nc" id="L1186">            this.lastKey = keys[this.position];</span>
+<span class="nc" id="L1187">            boolean result = ByteBooleanHashMap.this.values.get(this.position);</span>
+<span class="nc" id="L1188">            this.position++;</span>
+<span class="nc" id="L1189">            return result;</span>
+        }
+
+        @Override
+        public void remove()
+        {
+<span class="nc bnc" id="L1195" title="All 2 branches missed.">            if (!this.canRemove)</span>
+            {
+<span class="nc" id="L1197">                throw new IllegalStateException();</span>
+            }
+<span class="nc" id="L1199">            ByteBooleanHashMap.this.removeKey(this.lastKey);</span>
+<span class="nc" id="L1200">            this.count--;</span>
+<span class="nc" id="L1201">            this.canRemove = false;</span>
+<span class="nc" id="L1202">        }</span>
+    }
+
+<span class="nc" id="L1205">    private class KeysView extends AbstractLazyByteIterable</span>
+    {
+        @Override
+        public boolean isEmpty()
+        {
+<span class="nc" id="L1210">            return ByteBooleanHashMap.this.isEmpty();</span>
+        }
+
+        @Override
+        public boolean notEmpty()
+        {
+<span class="nc" id="L1216">            return ByteBooleanHashMap.this.notEmpty();</span>
+        }
+
+        @Override
+        public int size()
+        {
+<span class="nc" id="L1222">            return ByteBooleanHashMap.this.size();</span>
+        }
+
+        @Override
+        public boolean contains(byte key)
+        {
+<span class="nc" id="L1228">            return ByteBooleanHashMap.this.containsKey(key);</span>
+        }
+
+        @Override
+        public boolean containsAll(byte... keys)
+        {
+<span class="nc bnc" id="L1234" title="All 2 branches missed.">            for (byte key : keys)</span>
+            {
+<span class="nc bnc" id="L1236" title="All 2 branches missed.">                if (!ByteBooleanHashMap.this.containsKey(key))</span>
+                {
+<span class="nc" id="L1238">                    return false;</span>
+                }
+            }
+<span class="nc" id="L1241">            return true;</span>
+        }
+
+        @Override
+        public boolean containsAll(ByteIterable source)
+        {
+<span class="nc" id="L1247">            return source.allSatisfy(ByteBooleanHashMap.this::containsKey);</span>
+        }
+
+        @Override
+        public ByteIterator byteIterator()
+        {
+<span class="nc" id="L1253">            return new UnmodifiableByteIterator(new KeySetIterator());</span>
+        }
+
+        /**
+         * @since 7.0.
+         */
+        @Override
+        public void each(ByteProcedure procedure)
+        {
+<span class="nc" id="L1262">            ByteBooleanHashMap.this.forEachKey(procedure);</span>
+<span class="nc" id="L1263">        }</span>
+
+        @Override
+        public void appendString(Appendable appendable, String start, String separator, String end)
+        {
+            try
+            {
+<span class="nc" id="L1270">                appendable.append(start);</span>
+<span class="nc" id="L1271">                boolean first = true;</span>
+<span class="nc bnc" id="L1272" title="All 2 branches missed.">                if (ByteBooleanHashMap.this.sentinelValues != null)</span>
+                {
+<span class="nc bnc" id="L1274" title="All 2 branches missed.">                    if (ByteBooleanHashMap.this.getSentinelValues().containsZeroKey)</span>
+                    {
+<span class="nc" id="L1276">                        appendable.append(String.valueOf(EMPTY_KEY));</span>
+<span class="nc" id="L1277">                        first = false;</span>
+                    }
+<span class="nc bnc" id="L1279" title="All 2 branches missed.">                    if (ByteBooleanHashMap.this.getSentinelValues().containsOneKey)</span>
+                    {
+<span class="nc bnc" id="L1281" title="All 2 branches missed.">                        if (!first)</span>
+                        {
+<span class="nc" id="L1283">                            appendable.append(separator);</span>
+                        }
+<span class="nc" id="L1285">                        appendable.append(String.valueOf(REMOVED_KEY));</span>
+<span class="nc" id="L1286">                        first = false;</span>
+                    }
+                }
+<span class="nc bnc" id="L1289" title="All 2 branches missed.">                for (byte key : ByteBooleanHashMap.this.keys)</span>
+                {
+<span class="nc bnc" id="L1291" title="All 2 branches missed.">                    if (isNonSentinel(key))</span>
+                    {
+<span class="nc bnc" id="L1293" title="All 2 branches missed.">                        if (!first)</span>
+                        {
+<span class="nc" id="L1295">                            appendable.append(separator);</span>
+                        }
+<span class="nc" id="L1297">                        appendable.append(String.valueOf(key));</span>
+<span class="nc" id="L1298">                        first = false;</span>
+                    }
+                }
+<span class="nc" id="L1301">                appendable.append(end);</span>
+            }
+<span class="nc" id="L1303">            catch (IOException e)</span>
+            {
+<span class="nc" id="L1305">                throw new RuntimeException(e);</span>
+<span class="nc" id="L1306">            }</span>
+<span class="nc" id="L1307">        }</span>
+
+        @Override
+        public int count(BytePredicate predicate)
+        {
+<span class="nc" id="L1312">            int count = 0;</span>
+<span class="nc bnc" id="L1313" title="All 2 branches missed.">            if (ByteBooleanHashMap.this.sentinelValues != null)</span>
+            {
+<span class="nc bnc" id="L1315" title="All 4 branches missed.">                if (ByteBooleanHashMap.this.getSentinelValues().containsZeroKey &amp;&amp; predicate.accept(EMPTY_KEY))</span>
+                {
+<span class="nc" id="L1317">                    count++;</span>
+                }
+<span class="nc bnc" id="L1319" title="All 4 branches missed.">                if (ByteBooleanHashMap.this.getSentinelValues().containsOneKey &amp;&amp; predicate.accept(REMOVED_KEY))</span>
+                {
+<span class="nc" id="L1321">                    count++;</span>
+                }
+            }
+<span class="nc bnc" id="L1324" title="All 2 branches missed.">            for (byte key : ByteBooleanHashMap.this.keys)</span>
+            {
+<span class="nc bnc" id="L1326" title="All 4 branches missed.">                if (isNonSentinel(key) &amp;&amp; predicate.accept(key))</span>
+                {
+<span class="nc" id="L1328">                    count++;</span>
+                }
+            }
+<span class="nc" id="L1331">            return count;</span>
+        }
+
+        @Override
+        public boolean anySatisfy(BytePredicate predicate)
+        {
+<span class="nc bnc" id="L1337" title="All 2 branches missed.">            if (ByteBooleanHashMap.this.sentinelValues != null)</span>
+            {
+<span class="nc bnc" id="L1339" title="All 4 branches missed.">                if (ByteBooleanHashMap.this.getSentinelValues().containsZeroKey &amp;&amp; predicate.accept(EMPTY_KEY))</span>
+                {
+<span class="nc" id="L1341">                    return true;</span>
+                }
+<span class="nc bnc" id="L1343" title="All 4 branches missed.">                if (ByteBooleanHashMap.this.getSentinelValues().containsOneKey &amp;&amp; predicate.accept(REMOVED_KEY))</span>
+                {
+<span class="nc" id="L1345">                    return true;</span>
+                }
+            }
+<span class="nc bnc" id="L1348" title="All 2 branches missed.">            for (byte key : ByteBooleanHashMap.this.keys)</span>
+            {
+<span class="nc bnc" id="L1350" title="All 4 branches missed.">                if (isNonSentinel(key) &amp;&amp; predicate.accept(key))</span>
+                {
+<span class="nc" id="L1352">                    return true;</span>
+                }
+            }
+<span class="nc" id="L1355">            return false;</span>
+        }
+
+        @Override
+        public boolean allSatisfy(BytePredicate predicate)
+        {
+<span class="nc bnc" id="L1361" title="All 2 branches missed.">            if (ByteBooleanHashMap.this.sentinelValues != null)</span>
+            {
+<span class="nc bnc" id="L1363" title="All 4 branches missed.">                if (ByteBooleanHashMap.this.getSentinelValues().containsZeroKey &amp;&amp; !predicate.accept(EMPTY_KEY))</span>
+                {
+<span class="nc" id="L1365">                    return false;</span>
+                }
+<span class="nc bnc" id="L1367" title="All 4 branches missed.">                if (ByteBooleanHashMap.this.getSentinelValues().containsOneKey &amp;&amp; !predicate.accept(REMOVED_KEY))</span>
+                {
+<span class="nc" id="L1369">                    return false;</span>
+                }
+            }
+<span class="nc bnc" id="L1372" title="All 2 branches missed.">            for (byte key : ByteBooleanHashMap.this.keys)</span>
+            {
+<span class="nc bnc" id="L1374" title="All 4 branches missed.">                if (isNonSentinel(key) &amp;&amp; !predicate.accept(key))</span>
+                {
+<span class="nc" id="L1376">                    return false;</span>
+                }
+            }
+<span class="nc" id="L1379">            return true;</span>
+        }
+
+        @Override
+        public boolean noneSatisfy(BytePredicate predicate)
+        {
+<span class="nc bnc" id="L1385" title="All 2 branches missed.">            return !this.anySatisfy(predicate);</span>
+        }
+
+        @Override
+        public byte detectIfNone(BytePredicate predicate, byte value)
+        {
+<span class="nc bnc" id="L1391" title="All 2 branches missed.">            if (ByteBooleanHashMap.this.sentinelValues != null)</span>
+            {
+<span class="nc bnc" id="L1393" title="All 4 branches missed.">                if (ByteBooleanHashMap.this.getSentinelValues().containsZeroKey &amp;&amp; predicate.accept(EMPTY_KEY))</span>
+                {
+<span class="nc" id="L1395">                    return EMPTY_KEY;</span>
+                }
+<span class="nc bnc" id="L1397" title="All 4 branches missed.">                if (ByteBooleanHashMap.this.getSentinelValues().containsOneKey &amp;&amp; predicate.accept(REMOVED_KEY))</span>
+                {
+<span class="nc" id="L1399">                    return REMOVED_KEY;</span>
+                }
+            }
+<span class="nc bnc" id="L1402" title="All 2 branches missed.">            for (byte key : ByteBooleanHashMap.this.keys)</span>
+            {
+<span class="nc bnc" id="L1404" title="All 4 branches missed.">                if (isNonSentinel(key) &amp;&amp; predicate.accept(key))</span>
+                {
+<span class="nc" id="L1406">                    return key;</span>
+                }
+            }
+<span class="nc" id="L1409">            return value;</span>
+        }
+
+        @Override
+        public long sum()
+        {
+<span class="nc" id="L1415">            long result = 0L;</span>
+
+<span class="nc bnc" id="L1417" title="All 2 branches missed.">            if (ByteBooleanHashMap.this.sentinelValues != null)</span>
+            {
+<span class="nc bnc" id="L1419" title="All 2 branches missed.">                if (ByteBooleanHashMap.this.getSentinelValues().containsZeroKey)</span>
+                {
+<span class="nc" id="L1421">                    result += EMPTY_KEY;</span>
+                }
+<span class="nc bnc" id="L1423" title="All 2 branches missed.">                if (ByteBooleanHashMap.this.getSentinelValues().containsOneKey)</span>
+                {
+<span class="nc" id="L1425">                    result += REMOVED_KEY;</span>
+                }
+            }
+<span class="nc bnc" id="L1428" title="All 2 branches missed.">            for (byte key : ByteBooleanHashMap.this.keys)</span>
+            {
+<span class="nc bnc" id="L1430" title="All 2 branches missed.">                if (isNonSentinel(key))</span>
+                {
+<span class="nc" id="L1432">                    result += key;</span>
+                }
+            }
+
+<span class="nc" id="L1436">            return result;</span>
+        }
+
+        @Override
+        public byte max()
+        {
+<span class="nc bnc" id="L1442" title="All 2 branches missed.">            if (this.isEmpty())</span>
+            {
+<span class="nc" id="L1444">                throw new NoSuchElementException();</span>
+            }
+<span class="nc" id="L1446">            ByteIterator iterator = this.byteIterator();</span>
+<span class="nc" id="L1447">            byte max = iterator.next();</span>
+<span class="nc bnc" id="L1448" title="All 2 branches missed.">            while (iterator.hasNext())</span>
+            {
+<span class="nc" id="L1450">                byte value = iterator.next();</span>
+<span class="nc bnc" id="L1451" title="All 2 branches missed.">                if (max &lt; value)</span>
+                {
+<span class="nc" id="L1453">                    max = value;</span>
+                }
+<span class="nc" id="L1455">            }</span>
+<span class="nc" id="L1456">            return max;</span>
+        }
+
+        @Override
+        public byte min()
+        {
+<span class="nc bnc" id="L1462" title="All 2 branches missed.">            if (this.isEmpty())</span>
+            {
+<span class="nc" id="L1464">                throw new NoSuchElementException();</span>
+            }
+<span class="nc" id="L1466">            ByteIterator iterator = this.byteIterator();</span>
+<span class="nc" id="L1467">            byte min = iterator.next();</span>
+<span class="nc bnc" id="L1468" title="All 2 branches missed.">            while (iterator.hasNext())</span>
+            {
+<span class="nc" id="L1470">                byte value = iterator.next();</span>
+<span class="nc bnc" id="L1471" title="All 2 branches missed.">                if (value &lt; min)</span>
+                {
+<span class="nc" id="L1473">                    min = value;</span>
+                }
+<span class="nc" id="L1475">            }</span>
+<span class="nc" id="L1476">            return min;</span>
+        }
+
+        @Override
+        public byte[] toSortedArray()
+        {
+<span class="nc" id="L1482">            byte[] array = this.toArray();</span>
+<span class="nc" id="L1483">            Arrays.sort(array);</span>
+<span class="nc" id="L1484">            return array;</span>
+        }
+
+        @Override
+        public byte[] toArray()
+        {
+<span class="nc" id="L1490">            int size = ByteBooleanHashMap.this.size();</span>
+<span class="nc" id="L1491">            final byte[] result = new byte[size];</span>
+<span class="nc" id="L1492">            ByteBooleanHashMap.this.forEachKey(new ByteProcedure()</span>
+<span class="nc" id="L1493">            {</span>
+                private int index;
+
+                @Override
+                public void value(byte each)
+                {
+<span class="nc" id="L1499">                    result[this.index] = each;</span>
+<span class="nc" id="L1500">                    this.index++;</span>
+<span class="nc" id="L1501">                }</span>
+            });
+<span class="nc" id="L1503">            return result;</span>
+        }
+
+        @Override
+        public &lt;T&gt; T injectInto(T injectedValue, ObjectByteToObjectFunction&lt;? super T, ? extends T&gt; function)
+        {
+<span class="nc" id="L1509">            T result = injectedValue;</span>
+<span class="nc bnc" id="L1510" title="All 2 branches missed.">            if (ByteBooleanHashMap.this.sentinelValues != null)</span>
+            {
+<span class="nc bnc" id="L1512" title="All 2 branches missed.">                if (ByteBooleanHashMap.this.getSentinelValues().containsZeroKey)</span>
+                {
+<span class="nc" id="L1514">                    result = function.valueOf(result, EMPTY_KEY);</span>
+                }
+<span class="nc bnc" id="L1516" title="All 2 branches missed.">                if (ByteBooleanHashMap.this.getSentinelValues().containsOneKey)</span>
+                {
+<span class="nc" id="L1518">                    result = function.valueOf(result, REMOVED_KEY);</span>
+                }
+            }
+<span class="nc bnc" id="L1521" title="All 2 branches missed.">            for (int i = 0; i &lt; ByteBooleanHashMap.this.keys.length; i++)</span>
+            {
+<span class="nc bnc" id="L1523" title="All 2 branches missed.">                if (isNonSentinel(ByteBooleanHashMap.this.keys[i]))</span>
+                {
+<span class="nc" id="L1525">                    result = function.valueOf(result, ByteBooleanHashMap.this.keys[i]);</span>
+                }
+            }
+<span class="nc" id="L1528">            return result;</span>
+        }
+
+        @Override
+        public MutableByteList toList()
+        {
+<span class="nc" id="L1534">            return ByteArrayList.newList(this);</span>
+        }
+
+        @Override
+        public MutableByteSet toSet()
+        {
+<span class="nc" id="L1540">            return ByteHashSet.newSet(this);</span>
+        }
+
+        @Override
+        public MutableByteBag toBag()
+        {
+<span class="nc" id="L1546">            return ByteHashBag.newBag(this);</span>
+        }
+    }
+
+    @Override
+    public MutableByteSet keySet()
+    {
+<span class="nc" id="L1553">        return new KeySet();</span>
+    }
+
+<span class="nc" id="L1556">    private class KeySet extends AbstractMutableByteKeySet</span>
+    {
+        @Override
+        protected byte getKeyAtIndex(int index)
+        {
+<span class="nc" id="L1561">            return ByteBooleanHashMap.this.keys[index];</span>
+        }
+
+        @Override
+        protected int getTableSize()
+        {
+<span class="nc" id="L1567">            return ByteBooleanHashMap.this.keys.length;</span>
+        }
+
+        @Override
+        protected MutableByteKeysMap getOuter()
+        {
+<span class="nc" id="L1573">            return ByteBooleanHashMap.this;</span>
+        }
+
+        @Override
+        protected SentinelValues getSentinelValues()
+        {
+<span class="nc" id="L1579">            return ByteBooleanHashMap.this.sentinelValues;</span>
+        }
+
+        @Override
+        public MutableByteIterator byteIterator()
+        {
+<span class="nc" id="L1585">            return new KeySetIterator();</span>
+        }
+
+        @Override
+        public boolean retainAll(ByteIterable source)
+        {
+<span class="nc" id="L1591">            int oldSize = ByteBooleanHashMap.this.size();</span>
+<span class="nc bnc" id="L1592" title="All 2 branches missed.">            final ByteSet sourceSet = source instanceof ByteSet ? (ByteSet) source : source.toSet();</span>
+<span class="nc" id="L1593">            ByteBooleanHashMap retained = ByteBooleanHashMap.this.select((byte key, boolean value) -&gt; sourceSet.contains(key));</span>
+<span class="nc bnc" id="L1594" title="All 2 branches missed.">            if (retained.size() != oldSize)</span>
+            {
+<span class="nc" id="L1596">                ByteBooleanHashMap.this.keys = retained.keys;</span>
+<span class="nc" id="L1597">                ByteBooleanHashMap.this.values = retained.values;</span>
+<span class="nc" id="L1598">                ByteBooleanHashMap.this.occupiedWithData = retained.occupiedWithData;</span>
+<span class="nc" id="L1599">                ByteBooleanHashMap.this.occupiedWithSentinels = retained.occupiedWithSentinels;</span>
+<span class="nc" id="L1600">                ByteBooleanHashMap.this.sentinelValues = retained.sentinelValues;</span>
+<span class="nc" id="L1601">                return true;</span>
+            }
+<span class="nc" id="L1603">            return false;</span>
+        }
+
+        @Override
+        public boolean retainAll(byte... source)
+        {
+<span class="nc" id="L1609">            return this.retainAll(ByteHashSet.newSetWith(source));</span>
+        }
+
+@Override
+        public ByteSet freeze()
+        {
+<span class="nc" id="L1615">            throw new UnsupportedOperationException(this.getClass().getSimpleName() + &quot;.freeze() not implemented yet&quot;);</span>
+        }
+
+        /**
+         * @since 9.2.
+         */
+        @Override
+        public MutableByteSet newEmpty()
+        {
+<span class="nc" id="L1624">            return new ByteHashSet();</span>
+        }
+    }
+
+    @Override
+    public MutableBooleanCollection values()
+    {
+<span class="nc" id="L1631">        return new ValuesCollection();</span>
+    }
+
+<span class="nc" id="L1634">    private class ValuesCollection extends AbstractBooleanValuesCollection</span>
+    {
+        @Override
+        public void appendString(Appendable appendable, String start, String separator, String end)
+        {
+            try
+            {
+<span class="nc" id="L1641">                appendable.append(start);</span>
+
+<span class="nc" id="L1643">                boolean first = true;</span>
+
+<span class="nc bnc" id="L1645" title="All 2 branches missed.">                if (ByteBooleanHashMap.this.sentinelValues != null)</span>
+                {
+<span class="nc bnc" id="L1647" title="All 2 branches missed.">                    if (ByteBooleanHashMap.this.getSentinelValues().containsZeroKey)</span>
+                    {
+<span class="nc" id="L1649">                        appendable.append(String.valueOf(ByteBooleanHashMap.this.getSentinelValues().zeroValue));</span>
+<span class="nc" id="L1650">                        first = false;</span>
+                    }
+<span class="nc bnc" id="L1652" title="All 2 branches missed.">                    if (ByteBooleanHashMap.this.getSentinelValues().containsOneKey)</span>
+                    {
+<span class="nc bnc" id="L1654" title="All 2 branches missed.">                        if (!first)</span>
+                        {
+<span class="nc" id="L1656">                            appendable.append(separator);</span>
+                        }
+<span class="nc" id="L1658">                        appendable.append(String.valueOf(ByteBooleanHashMap.this.getSentinelValues().oneValue));</span>
+<span class="nc" id="L1659">                        first = false;</span>
+                    }
+                }
+<span class="nc bnc" id="L1662" title="All 2 branches missed.">                for (int i = 0; i &lt; ByteBooleanHashMap.this.keys.length; i++)</span>
+                {
+<span class="nc bnc" id="L1664" title="All 2 branches missed.">                    if (ByteBooleanHashMap.this.isNonSentinelAtIndex(i))</span>
+                    {
+<span class="nc bnc" id="L1666" title="All 2 branches missed.">                        if (!first)</span>
+                        {
+<span class="nc" id="L1668">                            appendable.append(separator);</span>
+                        }
+<span class="nc" id="L1670">                        appendable.append(String.valueOf(ByteBooleanHashMap.this.getValueAtIndex(i)));</span>
+<span class="nc" id="L1671">                        first = false;</span>
+                    }
+                }
+<span class="nc" id="L1674">                appendable.append(end);</span>
+            }
+<span class="nc" id="L1676">            catch (IOException e)</span>
+            {
+<span class="nc" id="L1678">                throw new RuntimeException(e);</span>
+<span class="nc" id="L1679">            }</span>
+<span class="nc" id="L1680">        }</span>
+
+        @Override
+        public MutableBooleanIterator booleanIterator()
+        {
+<span class="nc" id="L1685">            return ByteBooleanHashMap.this.booleanIterator();</span>
+        }
+
+        @Override
+        public boolean remove(boolean item)
+        {
+<span class="nc" id="L1691">            int oldSize = ByteBooleanHashMap.this.size();</span>
+
+<span class="nc bnc" id="L1693" title="All 2 branches missed.">            if (ByteBooleanHashMap.this.sentinelValues != null)</span>
+            {
+<span class="nc bnc" id="L1695" title="All 4 branches missed.">                if (ByteBooleanHashMap.this.getSentinelValues().containsZeroKey &amp;&amp; item == ByteBooleanHashMap.this.getSentinelValues().zeroValue)</span>
+                {
+<span class="nc" id="L1697">                    ByteBooleanHashMap.this.removeKey(EMPTY_KEY);</span>
+                }
+<span class="nc bnc" id="L1699" title="All 4 branches missed.">                if (ByteBooleanHashMap.this.getSentinelValues().containsOneKey &amp;&amp; item == ByteBooleanHashMap.this.getSentinelValues().oneValue)</span>
+                {
+<span class="nc" id="L1701">                    ByteBooleanHashMap.this.removeKey(REMOVED_KEY);</span>
+                }
+            }
+<span class="nc bnc" id="L1704" title="All 2 branches missed.">            for (int i = 0; i &lt; ByteBooleanHashMap.this.keys.length; i++)</span>
+            {
+<span class="nc bnc" id="L1706" title="All 4 branches missed.">                if (isNonSentinel(ByteBooleanHashMap.this.keys[i]) &amp;&amp; item == ByteBooleanHashMap.this.getValueAtIndex(i))</span>
+                {
+<span class="nc" id="L1708">                    ByteBooleanHashMap.this.removeKey(ByteBooleanHashMap.this.keys[i]);</span>
+                }
+            }
+<span class="nc bnc" id="L1711" title="All 2 branches missed.">            return oldSize != ByteBooleanHashMap.this.size();</span>
+        }
+
+        @Override
+        public boolean retainAll(BooleanIterable source)
+        {
+<span class="nc" id="L1717">            int oldSize = ByteBooleanHashMap.this.size();</span>
+<span class="nc bnc" id="L1718" title="All 2 branches missed.">            final BooleanSet sourceSet = source instanceof BooleanSet ? (BooleanSet) source : source.toSet();</span>
+<span class="nc" id="L1719">            ByteBooleanHashMap retained = ByteBooleanHashMap.this.select((byte key, boolean value) -&gt; sourceSet.contains(value));</span>
+<span class="nc bnc" id="L1720" title="All 2 branches missed.">            if (retained.size() != oldSize)</span>
+            {
+<span class="nc" id="L1722">                ByteBooleanHashMap.this.keys = retained.keys;</span>
+<span class="nc" id="L1723">                ByteBooleanHashMap.this.values = retained.values;</span>
+<span class="nc" id="L1724">                ByteBooleanHashMap.this.occupiedWithData = retained.occupiedWithData;</span>
+<span class="nc" id="L1725">                ByteBooleanHashMap.this.occupiedWithSentinels = retained.occupiedWithSentinels;</span>
+<span class="nc" id="L1726">                ByteBooleanHashMap.this.sentinelValues = retained.sentinelValues;</span>
+<span class="nc" id="L1727">                return true;</span>
+            }
+<span class="nc" id="L1729">            return false;</span>
+        }
+    }
+
+<span class="nc" id="L1733">    private class KeySetIterator implements MutableByteIterator</span>
+    {
+        private int count;
+        private int position;
+        private byte lastKey;
+        private boolean handledZero;
+        private boolean handledOne;
+<span class="nc" id="L1740">        private boolean removed = true;</span>
+
+        @Override
+        public boolean hasNext()
+        {
+<span class="nc bnc" id="L1745" title="All 2 branches missed.">            return this.count &lt; ByteBooleanHashMap.this.size();</span>
+        }
+
+        @Override
+        public byte next()
+        {
+<span class="nc bnc" id="L1751" title="All 2 branches missed.">            if (!this.hasNext())</span>
+            {
+<span class="nc" id="L1753">                throw new NoSuchElementException(&quot;next() called, but the iterator is exhausted&quot;);</span>
+            }
+<span class="nc" id="L1755">            this.count++;</span>
+<span class="nc" id="L1756">            this.removed = false;</span>
+
+<span class="nc bnc" id="L1758" title="All 2 branches missed.">            if (!this.handledZero)</span>
+            {
+<span class="nc" id="L1760">                this.handledZero = true;</span>
+<span class="nc bnc" id="L1761" title="All 2 branches missed.">                if (ByteBooleanHashMap.this.containsKey(EMPTY_KEY))</span>
+                {
+<span class="nc" id="L1763">                    this.lastKey = EMPTY_KEY;</span>
+<span class="nc" id="L1764">                    return this.lastKey;</span>
+                }
+            }
+<span class="nc bnc" id="L1767" title="All 2 branches missed.">            if (!this.handledOne)</span>
+            {
+<span class="nc" id="L1769">                this.handledOne = true;</span>
+<span class="nc bnc" id="L1770" title="All 2 branches missed.">                if (ByteBooleanHashMap.this.containsKey(REMOVED_KEY))</span>
+                {
+<span class="nc" id="L1772">                    this.lastKey = REMOVED_KEY;</span>
+<span class="nc" id="L1773">                    return this.lastKey;</span>
+                }
+            }
+
+<span class="nc" id="L1777">            byte[] keys = ByteBooleanHashMap.this.keys;</span>
+<span class="nc bnc" id="L1778" title="All 2 branches missed.">            while (!isNonSentinel(keys[this.position]))</span>
+            {
+<span class="nc" id="L1780">                this.position++;</span>
+            }
+<span class="nc" id="L1782">            this.lastKey = keys[this.position];</span>
+<span class="nc" id="L1783">            this.position++;</span>
+<span class="nc" id="L1784">            return this.lastKey;</span>
+        }
+
+        @Override
+        public void remove()
+        {
+<span class="nc bnc" id="L1790" title="All 2 branches missed.">            if (this.removed)</span>
+            {
+<span class="nc" id="L1792">                throw new IllegalStateException();</span>
+            }
+<span class="nc" id="L1794">            ByteBooleanHashMap.this.removeKey(this.lastKey);</span>
+<span class="nc" id="L1795">            this.count--;</span>
+<span class="nc" id="L1796">            this.removed = true;</span>
+<span class="nc" id="L1797">        }</span>
+    }
+
+<span class="nc" id="L1800">    private class KeyValuesView extends AbstractLazyIterable&lt;ByteBooleanPair&gt;</span>
+    {
+        @Override
+        public void each(Procedure&lt;? super ByteBooleanPair&gt; procedure)
+        {
+<span class="nc bnc" id="L1805" title="All 2 branches missed.">            if (ByteBooleanHashMap.this.sentinelValues != null)</span>
+            {
+<span class="nc bnc" id="L1807" title="All 2 branches missed.">                if (ByteBooleanHashMap.this.getSentinelValues().containsZeroKey)</span>
+                {
+<span class="nc" id="L1809">                    procedure.value(PrimitiveTuples.pair(EMPTY_KEY, ByteBooleanHashMap.this.getSentinelValues().zeroValue));</span>
+                }
+<span class="nc bnc" id="L1811" title="All 2 branches missed.">                if (ByteBooleanHashMap.this.getSentinelValues().containsOneKey)</span>
+                {
+<span class="nc" id="L1813">                    procedure.value(PrimitiveTuples.pair(REMOVED_KEY, ByteBooleanHashMap.this.getSentinelValues().oneValue));</span>
+                }
+            }
+<span class="nc bnc" id="L1816" title="All 2 branches missed.">            for (int i = 0; i &lt; ByteBooleanHashMap.this.keys.length; i++)</span>
+            {
+<span class="nc bnc" id="L1818" title="All 2 branches missed.">                if (isNonSentinel(ByteBooleanHashMap.this.keys[i]))</span>
+                {
+<span class="nc" id="L1820">                    procedure.value(PrimitiveTuples.pair(ByteBooleanHashMap.this.keys[i], ByteBooleanHashMap.this.getValueAtIndex(i)));</span>
+                }
+            }
+<span class="nc" id="L1823">        }</span>
+
+        @Override
+        public void forEachWithIndex(ObjectIntProcedure&lt;? super ByteBooleanPair&gt; objectIntProcedure)
+        {
+<span class="nc" id="L1828">            int index = 0;</span>
+<span class="nc bnc" id="L1829" title="All 2 branches missed.">            if (ByteBooleanHashMap.this.sentinelValues != null)</span>
+            {
+<span class="nc bnc" id="L1831" title="All 2 branches missed.">                if (ByteBooleanHashMap.this.getSentinelValues().containsZeroKey)</span>
+                {
+<span class="nc" id="L1833">                    objectIntProcedure.value(PrimitiveTuples.pair(EMPTY_KEY, ByteBooleanHashMap.this.getSentinelValues().zeroValue), index);</span>
+<span class="nc" id="L1834">                    index++;</span>
+                }
+<span class="nc bnc" id="L1836" title="All 2 branches missed.">                if (ByteBooleanHashMap.this.getSentinelValues().containsOneKey)</span>
+                {
+<span class="nc" id="L1838">                    objectIntProcedure.value(PrimitiveTuples.pair(REMOVED_KEY, ByteBooleanHashMap.this.getSentinelValues().oneValue), index);</span>
+<span class="nc" id="L1839">                    index++;</span>
+                }
+            }
+<span class="nc bnc" id="L1842" title="All 2 branches missed.">            for (int i = 0; i &lt; ByteBooleanHashMap.this.keys.length; i++)</span>
+            {
+<span class="nc bnc" id="L1844" title="All 2 branches missed.">                if (isNonSentinel(ByteBooleanHashMap.this.keys[i]))</span>
+                {
+<span class="nc" id="L1846">                    objectIntProcedure.value(PrimitiveTuples.pair(ByteBooleanHashMap.this.keys[i], ByteBooleanHashMap.this.getValueAtIndex(i)), index);</span>
+<span class="nc" id="L1847">                    index++;</span>
+                }
+            }
+<span class="nc" id="L1850">        }</span>
+
+        @Override
+        public &lt;P&gt; void forEachWith(Procedure2&lt;? super ByteBooleanPair, ? super P&gt; procedure, P parameter)
+        {
+<span class="nc bnc" id="L1855" title="All 2 branches missed.">            if (ByteBooleanHashMap.this.sentinelValues != null)</span>
+            {
+<span class="nc bnc" id="L1857" title="All 2 branches missed.">                if (ByteBooleanHashMap.this.getSentinelValues().containsZeroKey)</span>
+                {
+<span class="nc" id="L1859">                    procedure.value(PrimitiveTuples.pair(EMPTY_KEY, ByteBooleanHashMap.this.getSentinelValues().zeroValue), parameter);</span>
+                }
+<span class="nc bnc" id="L1861" title="All 2 branches missed.">                if (ByteBooleanHashMap.this.getSentinelValues().containsOneKey)</span>
+                {
+<span class="nc" id="L1863">                    procedure.value(PrimitiveTuples.pair(REMOVED_KEY, ByteBooleanHashMap.this.getSentinelValues().oneValue), parameter);</span>
+                }
+            }
+<span class="nc bnc" id="L1866" title="All 2 branches missed.">            for (int i = 0; i &lt; ByteBooleanHashMap.this.keys.length; i++)</span>
+            {
+<span class="nc bnc" id="L1868" title="All 2 branches missed.">                if (isNonSentinel(ByteBooleanHashMap.this.keys[i]))</span>
+                {
+<span class="nc" id="L1870">                    procedure.value(PrimitiveTuples.pair(ByteBooleanHashMap.this.keys[i], ByteBooleanHashMap.this.getValueAtIndex(i)), parameter);</span>
+                }
+            }
+<span class="nc" id="L1873">        }</span>
+
+        @Override
+        public Iterator&lt;ByteBooleanPair&gt; iterator()
+        {
+<span class="nc" id="L1878">            return new InternalKeyValuesIterator();</span>
+        }
+
+<span class="nc" id="L1881">        public class InternalKeyValuesIterator implements Iterator&lt;ByteBooleanPair&gt;</span>
+        {
+            private int count;
+            private int position;
+            private boolean handledZero;
+            private boolean handledOne;
+
+            @Override
+            public ByteBooleanPair next()
+            {
+<span class="nc bnc" id="L1891" title="All 2 branches missed.">                if (!this.hasNext())</span>
+                {
+<span class="nc" id="L1893">                    throw new NoSuchElementException(&quot;next() called, but the iterator is exhausted&quot;);</span>
+                }
+<span class="nc" id="L1895">                this.count++;</span>
+
+<span class="nc bnc" id="L1897" title="All 2 branches missed.">                if (!this.handledZero)</span>
+                {
+<span class="nc" id="L1899">                    this.handledZero = true;</span>
+<span class="nc bnc" id="L1900" title="All 2 branches missed.">                    if (ByteBooleanHashMap.this.containsKey(EMPTY_KEY))</span>
+                    {
+<span class="nc" id="L1902">                        return PrimitiveTuples.pair(EMPTY_KEY, ByteBooleanHashMap.this.getSentinelValues().zeroValue);</span>
+                    }
+                }
+<span class="nc bnc" id="L1905" title="All 2 branches missed.">                if (!this.handledOne)</span>
+                {
+<span class="nc" id="L1907">                    this.handledOne = true;</span>
+<span class="nc bnc" id="L1908" title="All 2 branches missed.">                    if (ByteBooleanHashMap.this.containsKey(REMOVED_KEY))</span>
+                    {
+<span class="nc" id="L1910">                        return PrimitiveTuples.pair(REMOVED_KEY, ByteBooleanHashMap.this.getSentinelValues().oneValue);</span>
+                    }
+                }
+
+<span class="nc" id="L1914">                byte[] keys = ByteBooleanHashMap.this.keys;</span>
+<span class="nc bnc" id="L1915" title="All 2 branches missed.">                while (!isNonSentinel(keys[this.position]))</span>
+                {
+<span class="nc" id="L1917">                    this.position++;</span>
+                }
+<span class="nc" id="L1919">                ByteBooleanPair result = PrimitiveTuples.pair(keys[this.position], ByteBooleanHashMap.this.values.get(this.position));</span>
+<span class="nc" id="L1920">                this.position++;</span>
+<span class="nc" id="L1921">                return result;</span>
+            }
+
+            @Override
+            public void remove()
+            {
+<span class="nc" id="L1927">                throw new UnsupportedOperationException(&quot;Cannot call remove() on &quot; + this.getClass().getSimpleName());</span>
+            }
+
+            @Override
+            public boolean hasNext()
+            {
+<span class="nc bnc" id="L1933" title="All 2 branches missed.">                return this.count != ByteBooleanHashMap.this.size();</span>
+            }
+        }
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.0.201801022044</span></div></body></html>

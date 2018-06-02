@@ -1,0 +1,270 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>Procedures.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Eclipse Collections Test Coverage Aggregation</a> &gt; <a href="../index.html" class="el_bundle">eclipse-collections</a> &gt; <a href="index.source.html" class="el_package">org.eclipse.collections.impl.block.factory</a> &gt; <span class="el_source">Procedures.java</span></div><h1>Procedures.java</h1><pre class="source lang-java linenums">/*
+ * Copyright (c) 2016 Goldman Sachs.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * and Eclipse Distribution License v. 1.0 which accompany this distribution.
+ * The Eclipse Public License is available at http://www.eclipse.org/legal/epl-v10.html
+ * and the Eclipse Distribution License is available at
+ * http://www.eclipse.org/org/documents/edl-v10.php.
+ */
+
+package org.eclipse.collections.impl.block.factory;
+
+import java.io.IOException;
+import java.io.PrintStream;
+
+import org.eclipse.collections.api.block.function.Function2;
+import org.eclipse.collections.api.block.predicate.Predicate;
+import org.eclipse.collections.api.block.procedure.Procedure;
+import org.eclipse.collections.api.block.procedure.Procedure2;
+import org.eclipse.collections.api.block.procedure.primitive.ObjectIntProcedure;
+import org.eclipse.collections.impl.block.procedure.CaseProcedure;
+import org.eclipse.collections.impl.block.procedure.IfProcedure;
+import org.eclipse.collections.impl.block.procedure.checked.CheckedProcedure;
+import org.eclipse.collections.impl.block.procedure.checked.ThrowingProcedure;
+
+/**
+ * Factory class for commonly used procedures.
+ */
+public final class Procedures
+{
+    private Procedures()
+<span class="nc" id="L32">    {</span>
+<span class="nc" id="L33">        throw new AssertionError(&quot;Suppress default constructor for noninstantiability&quot;);</span>
+    }
+
+    /**
+     * Allows a Java 8 lambda and method to be used in a forEach method without requiring a cast.
+     */
+    public static &lt;T&gt; Procedure&lt;T&gt; cast(Procedure&lt;T&gt; procedure)
+    {
+<span class="nc" id="L41">        return procedure;</span>
+    }
+
+    public static &lt;T&gt; Procedure&lt;T&gt; println(PrintStream stream)
+    {
+<span class="nc" id="L46">        return new PrintlnProcedure&lt;&gt;(stream);</span>
+    }
+
+    public static &lt;T&gt; Procedure&lt;T&gt; append(Appendable appendable)
+    {
+<span class="nc" id="L51">        return new AppendProcedure&lt;&gt;(appendable);</span>
+    }
+
+    /**
+     * Allows a lambda or anonymous inner class that needs to throw a checked exception to be safely wrapped as a
+     * Procedure that will throw a RuntimeException, wrapping the checked exception that is the cause.
+     */
+    public static &lt;T&gt; Procedure&lt;T&gt; throwing(ThrowingProcedure&lt;T&gt; throwingProcedure)
+    {
+<span class="nc" id="L60">        return new ThrowingProcedureAdapter&lt;&gt;(throwingProcedure);</span>
+    }
+
+    /**
+     * Allows a lambda or anonymous inner class that needs to throw a checked exception to be safely wrapped as a
+     * Procedure that will throw a user specified RuntimeException based on the provided function. The function
+     * is passed the current element and the checked exception that was thrown as context arguments.
+     */
+    public static &lt;T&gt; Procedure&lt;T&gt; throwing(
+            ThrowingProcedure&lt;T&gt; throwingProcedure,
+            Function2&lt;T, ? super Throwable, ? extends RuntimeException&gt; rethrow)
+    {
+<span class="nc" id="L72">        return each -&gt;</span>
+        {
+            try
+            {
+<span class="nc" id="L76">                throwingProcedure.safeValue(each);</span>
+            }
+<span class="nc" id="L78">            catch (RuntimeException e)</span>
+            {
+<span class="nc" id="L80">                throw e;</span>
+            }
+<span class="nc" id="L82">            catch (Throwable t)</span>
+            {
+<span class="nc" id="L84">                throw rethrow.value(each, t);</span>
+<span class="nc" id="L85">            }</span>
+<span class="nc" id="L86">        };</span>
+    }
+
+    /**
+     * @deprecated since 1.2 - Inlineable
+     */
+    @Deprecated
+    public static &lt;T&gt; Procedure&lt;T&gt; fromProcedureWithInt(ObjectIntProcedure&lt;? super T&gt; objectIntProcedure)
+    {
+<span class="nc" id="L95">        return Procedures.fromObjectIntProcedure(objectIntProcedure);</span>
+    }
+
+    public static &lt;T&gt; Procedure&lt;T&gt; fromObjectIntProcedure(ObjectIntProcedure&lt;? super T&gt; objectIntProcedure)
+    {
+<span class="nc" id="L100">        return new ObjectIntProcedureAdapter&lt;&gt;(objectIntProcedure);</span>
+    }
+
+    public static &lt;T&gt; Procedure&lt;T&gt; ifTrue(Predicate&lt;? super T&gt; predicate, Procedure&lt;? super T&gt; block)
+    {
+<span class="nc" id="L105">        return new IfProcedure&lt;&gt;(predicate, block);</span>
+    }
+
+    public static &lt;T&gt; Procedure&lt;T&gt; ifElse(
+            Predicate&lt;? super T&gt; predicate,
+            Procedure&lt;? super T&gt; trueProcedure,
+            Procedure&lt;? super T&gt; falseProcedure)
+    {
+<span class="nc" id="L113">        return new IfProcedure&lt;&gt;(predicate, trueProcedure, falseProcedure);</span>
+    }
+
+    public static &lt;T&gt; CaseProcedure&lt;T&gt; caseDefault(Procedure&lt;? super T&gt; defaultProcedure)
+    {
+<span class="nc" id="L118">        return new CaseProcedure&lt;&gt;(defaultProcedure);</span>
+    }
+
+    public static &lt;T&gt; CaseProcedure&lt;T&gt; caseDefault(
+            Procedure&lt;? super T&gt; defaultProcedure,
+            Predicate&lt;? super T&gt; predicate,
+            Procedure&lt;? super T&gt; procedure)
+    {
+<span class="nc" id="L126">        return Procedures.&lt;T&gt;caseDefault(defaultProcedure).addCase(predicate, procedure);</span>
+    }
+
+    public static &lt;T&gt; Procedure&lt;T&gt; synchronizedEach(Procedure&lt;T&gt; procedure)
+    {
+<span class="nc" id="L131">        return new Procedures.SynchronizedProcedure&lt;&gt;(procedure);</span>
+    }
+
+    public static &lt;T, P&gt; Procedure&lt;T&gt; bind(Procedure2&lt;? super T, ? super P&gt; procedure, P parameter)
+    {
+<span class="nc" id="L136">        return new BindProcedure&lt;&gt;(procedure, parameter);</span>
+    }
+
+    private static final class PrintlnProcedure&lt;T&gt; implements Procedure&lt;T&gt;
+    {
+        private static final long serialVersionUID = 1L;
+
+        private final PrintStream stream;
+
+        private PrintlnProcedure(PrintStream stream)
+<span class="nc" id="L146">        {</span>
+<span class="nc" id="L147">            this.stream = stream;</span>
+<span class="nc" id="L148">        }</span>
+
+        @Override
+        public void value(T each)
+        {
+<span class="nc" id="L153">            this.stream.println(each);</span>
+<span class="nc" id="L154">        }</span>
+    }
+
+    private static final class AppendProcedure&lt;T&gt; implements Procedure&lt;T&gt;
+    {
+        private static final long serialVersionUID = 1L;
+
+        private final Appendable appendable;
+
+        private AppendProcedure(Appendable appendable)
+<span class="nc" id="L164">        {</span>
+<span class="nc" id="L165">            this.appendable = appendable;</span>
+<span class="nc" id="L166">        }</span>
+
+        @Override
+        public void value(T each)
+        {
+            try
+            {
+<span class="nc" id="L173">                this.appendable.append(String.valueOf(each));</span>
+            }
+<span class="nc" id="L175">            catch (IOException e)</span>
+            {
+<span class="nc" id="L177">                throw new RuntimeException(e);</span>
+<span class="nc" id="L178">            }</span>
+<span class="nc" id="L179">        }</span>
+
+        @Override
+        public String toString()
+        {
+<span class="nc" id="L184">            return this.appendable.toString();</span>
+        }
+    }
+
+    private static final class ObjectIntProcedureAdapter&lt;T&gt; implements Procedure&lt;T&gt;
+    {
+        private static final long serialVersionUID = 2L;
+        private int count;
+        private final ObjectIntProcedure&lt;? super T&gt; objectIntProcedure;
+
+        private ObjectIntProcedureAdapter(ObjectIntProcedure&lt;? super T&gt; objectIntProcedure)
+<span class="nc" id="L195">        {</span>
+<span class="nc" id="L196">            this.objectIntProcedure = objectIntProcedure;</span>
+<span class="nc" id="L197">        }</span>
+
+        @Override
+        public void value(T each)
+        {
+<span class="nc" id="L202">            this.objectIntProcedure.value(each, this.count);</span>
+<span class="nc" id="L203">            this.count++;</span>
+<span class="nc" id="L204">        }</span>
+    }
+
+    public static final class SynchronizedProcedure&lt;T&gt; implements Procedure&lt;T&gt;
+    {
+        private static final long serialVersionUID = 1L;
+        private final Procedure&lt;T&gt; procedure;
+
+        private SynchronizedProcedure(Procedure&lt;T&gt; procedure)
+<span class="nc" id="L213">        {</span>
+<span class="nc" id="L214">            this.procedure = procedure;</span>
+<span class="nc" id="L215">        }</span>
+
+        @Override
+        public void value(T each)
+        {
+<span class="nc bnc" id="L220" title="All 2 branches missed.">            if (each == null)</span>
+            {
+<span class="nc" id="L222">                this.procedure.value(null);</span>
+            }
+            else
+            {
+<span class="nc" id="L226">                synchronized (each)</span>
+                {
+<span class="nc" id="L228">                    this.procedure.value(each);</span>
+<span class="nc" id="L229">                }</span>
+            }
+<span class="nc" id="L231">        }</span>
+    }
+
+    private static final class BindProcedure&lt;T, P&gt; implements Procedure&lt;T&gt;
+    {
+        private static final long serialVersionUID = 1L;
+        private final Procedure2&lt;? super T, ? super P&gt; procedure;
+        private final P parameter;
+
+        private BindProcedure(Procedure2&lt;? super T, ? super P&gt; procedure, P parameter)
+<span class="nc" id="L241">        {</span>
+<span class="nc" id="L242">            this.procedure = procedure;</span>
+<span class="nc" id="L243">            this.parameter = parameter;</span>
+<span class="nc" id="L244">        }</span>
+
+        @Override
+        public void value(T each)
+        {
+<span class="nc" id="L249">            this.procedure.value(each, this.parameter);</span>
+<span class="nc" id="L250">        }</span>
+    }
+
+    private static final class ThrowingProcedureAdapter&lt;T&gt; extends CheckedProcedure&lt;T&gt;
+    {
+        private static final long serialVersionUID = 1L;
+        private final ThrowingProcedure&lt;T&gt; throwingProcedure;
+
+        private ThrowingProcedureAdapter(ThrowingProcedure&lt;T&gt; throwingProcedure)
+<span class="nc" id="L259">        {</span>
+<span class="nc" id="L260">            this.throwingProcedure = throwingProcedure;</span>
+<span class="nc" id="L261">        }</span>
+
+        @Override
+        public void safeValue(T object) throws Exception
+        {
+<span class="nc" id="L266">            this.throwingProcedure.safeValue(object);</span>
+<span class="nc" id="L267">        }</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.0.201801022044</span></div></body></html>

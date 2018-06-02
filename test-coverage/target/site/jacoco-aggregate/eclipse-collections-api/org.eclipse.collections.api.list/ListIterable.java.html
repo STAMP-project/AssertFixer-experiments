@@ -1,0 +1,313 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>ListIterable.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Eclipse Collections Test Coverage Aggregation</a> &gt; <a href="../index.html" class="el_bundle">eclipse-collections-api</a> &gt; <a href="index.source.html" class="el_package">org.eclipse.collections.api.list</a> &gt; <span class="el_source">ListIterable.java</span></div><h1>ListIterable.java</h1><pre class="source lang-java linenums">/*
+ * Copyright (c) 2017 Goldman Sachs and others.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * and Eclipse Distribution License v. 1.0 which accompany this distribution.
+ * The Eclipse Public License is available at http://www.eclipse.org/legal/epl-v10.html
+ * and the Eclipse Distribution License is available at
+ * http://www.eclipse.org/org/documents/edl-v10.php.
+ */
+
+package org.eclipse.collections.api.list;
+
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
+import java.util.ListIterator;
+import java.util.concurrent.ExecutorService;
+
+import org.eclipse.collections.api.annotation.Beta;
+import org.eclipse.collections.api.block.HashingStrategy;
+import org.eclipse.collections.api.block.function.Function;
+import org.eclipse.collections.api.block.function.Function2;
+import org.eclipse.collections.api.block.function.primitive.BooleanFunction;
+import org.eclipse.collections.api.block.function.primitive.ByteFunction;
+import org.eclipse.collections.api.block.function.primitive.CharFunction;
+import org.eclipse.collections.api.block.function.primitive.DoubleFunction;
+import org.eclipse.collections.api.block.function.primitive.FloatFunction;
+import org.eclipse.collections.api.block.function.primitive.IntFunction;
+import org.eclipse.collections.api.block.function.primitive.LongFunction;
+import org.eclipse.collections.api.block.function.primitive.ObjectIntToObjectFunction;
+import org.eclipse.collections.api.block.function.primitive.ShortFunction;
+import org.eclipse.collections.api.block.predicate.Predicate;
+import org.eclipse.collections.api.block.predicate.Predicate2;
+import org.eclipse.collections.api.block.procedure.Procedure;
+import org.eclipse.collections.api.list.primitive.BooleanList;
+import org.eclipse.collections.api.list.primitive.ByteList;
+import org.eclipse.collections.api.list.primitive.CharList;
+import org.eclipse.collections.api.list.primitive.DoubleList;
+import org.eclipse.collections.api.list.primitive.FloatList;
+import org.eclipse.collections.api.list.primitive.IntList;
+import org.eclipse.collections.api.list.primitive.LongList;
+import org.eclipse.collections.api.list.primitive.ShortList;
+import org.eclipse.collections.api.multimap.list.ListMultimap;
+import org.eclipse.collections.api.ordered.ReversibleIterable;
+import org.eclipse.collections.api.partition.list.PartitionList;
+import org.eclipse.collections.api.stack.MutableStack;
+import org.eclipse.collections.api.tuple.Pair;
+
+/**
+ * An iterable whose items are ordered and may be accessed directly by index.  A reverseForEach
+ * internal iterator is available iterating over the indexed iterable in reverse, starting from
+ * the end and going to the beginning.  Additionally, internal iterators are available for batching
+ * style iteration which is useful for parallel processing.
+ */
+public interface ListIterable&lt;T&gt;
+        extends ReversibleIterable&lt;T&gt;
+{
+    /**
+     * Returns the item at the specified position in this list iterable.
+     */
+    T get(int index);
+
+    /**
+     * Returns the index of the last occurrence of the specified item
+     * in this list, or -1 if this list does not contain the item.
+     */
+    int lastIndexOf(Object o);
+
+    /**
+     * Returns the item at index 0 of the container.  If the container is empty, null is returned.  If null
+     * is a valid item of the container, then a developer will need to check to see if the container is
+     * empty first.
+     */
+    @Override
+    T getFirst();
+
+    /**
+     * Returns the item at index (size() - 1) of the container.  If the container is empty, null is returned.  If null
+     * is a valid item of the container, then a developer will need to check to see if the container is
+     * empty first.
+     */
+    @Override
+    T getLast();
+
+    /**
+     * @see List#listIterator()
+     * @since 1.0.
+     */
+    ListIterator&lt;T&gt; listIterator();
+
+    /**
+     * @see List#listIterator(int)
+     * @since 1.0.
+     */
+    ListIterator&lt;T&gt; listIterator(int index);
+
+    /**
+     * Converts the list to a mutable MutableStack implementation.
+     *
+     * @since 2.0
+     */
+    @Override
+    MutableStack&lt;T&gt; toStack();
+
+    /**
+     * Converts the ListIterable to an immutable implementation. Returns this for immutable lists.
+     *
+     * @since 5.0
+     */
+    ImmutableList&lt;T&gt; toImmutable();
+
+    @Override
+    ListIterable&lt;T&gt; tap(Procedure&lt;? super T&gt; procedure);
+
+    @Override
+    ListIterable&lt;T&gt; select(Predicate&lt;? super T&gt; predicate);
+
+    @Override
+    &lt;P&gt; ListIterable&lt;T&gt; selectWith(Predicate2&lt;? super T, ? super P&gt; predicate, P parameter);
+
+    @Override
+    ListIterable&lt;T&gt; reject(Predicate&lt;? super T&gt; predicate);
+
+    @Override
+    &lt;P&gt; ListIterable&lt;T&gt; rejectWith(Predicate2&lt;? super T, ? super P&gt; predicate, P parameter);
+
+    @Override
+    PartitionList&lt;T&gt; partition(Predicate&lt;? super T&gt; predicate);
+
+    @Override
+    &lt;P&gt; PartitionList&lt;T&gt; partitionWith(Predicate2&lt;? super T, ? super P&gt; predicate, P parameter);
+
+    @Override
+    &lt;S&gt; ListIterable&lt;S&gt; selectInstancesOf(Class&lt;S&gt; clazz);
+
+    @Override
+    &lt;V&gt; ListIterable&lt;V&gt; collect(Function&lt;? super T, ? extends V&gt; function);
+
+    /**
+     * @since 9.1.
+     */
+    @Override
+    default &lt;V&gt; ListIterable&lt;V&gt; collectWithIndex(ObjectIntToObjectFunction&lt;? super T, ? extends V&gt; function)
+    {
+<span class="nc" id="L145">        int[] index = {0};</span>
+<span class="nc" id="L146">        return this.collect(each -&gt; function.valueOf(each, index[0]++));</span>
+    }
+
+    @Override
+    BooleanList collectBoolean(BooleanFunction&lt;? super T&gt; booleanFunction);
+
+    @Override
+    ByteList collectByte(ByteFunction&lt;? super T&gt; byteFunction);
+
+    @Override
+    CharList collectChar(CharFunction&lt;? super T&gt; charFunction);
+
+    @Override
+    DoubleList collectDouble(DoubleFunction&lt;? super T&gt; doubleFunction);
+
+    @Override
+    FloatList collectFloat(FloatFunction&lt;? super T&gt; floatFunction);
+
+    @Override
+    IntList collectInt(IntFunction&lt;? super T&gt; intFunction);
+
+    @Override
+    LongList collectLong(LongFunction&lt;? super T&gt; longFunction);
+
+    @Override
+    ShortList collectShort(ShortFunction&lt;? super T&gt; shortFunction);
+
+    @Override
+    &lt;P, V&gt; ListIterable&lt;V&gt; collectWith(Function2&lt;? super T, ? super P, ? extends V&gt; function, P parameter);
+
+    @Override
+    &lt;V&gt; ListIterable&lt;V&gt; collectIf(Predicate&lt;? super T&gt; predicate, Function&lt;? super T, ? extends V&gt; function);
+
+    @Override
+    &lt;V&gt; ListIterable&lt;V&gt; flatCollect(Function&lt;? super T, ? extends Iterable&lt;V&gt;&gt; function);
+
+    /**
+     * @since 9.2
+     */
+    @Override
+    default &lt;P, V&gt; ListIterable&lt;V&gt; flatCollectWith(Function2&lt;? super T, ? super P, ? extends Iterable&lt;V&gt;&gt; function, P parameter)
+    {
+<span class="nc" id="L188">        return this.flatCollect(each -&gt; function.apply(each, parameter));</span>
+    }
+
+    @Override
+    &lt;V&gt; ListMultimap&lt;V, T&gt; groupBy(Function&lt;? super T, ? extends V&gt; function);
+
+    @Override
+    &lt;V&gt; ListMultimap&lt;V, T&gt; groupByEach(Function&lt;? super T, ? extends Iterable&lt;V&gt;&gt; function);
+
+    /**
+     * Returns a new {@code ListIterable} containing the distinct elements in this list.
+     * &lt;p&gt;
+     * Conceptually similar to {@link #toSet()}.{@link #toList()} but retains the original order. If an element appears
+     * multiple times in this list, the first one will be copied into the result.
+     *
+     * @return {@code ListIterable} of distinct elements
+     * @since 3.0
+     */
+    @Override
+    ListIterable&lt;T&gt; distinct();
+
+    /**
+     * Returns a new {@code ListIterable} containing the distinct elements in this list. Takes a HashingStrategy.
+     *
+     * @return {@code ListIterable} of distinct elements
+     * @since 7.0
+     */
+    ListIterable&lt;T&gt; distinct(HashingStrategy&lt;? super T&gt; hashingStrategy);
+
+    /**
+     * Returns a new {@code ListIterable} containing the distinct elements in this list.
+     * The specified function will be used to create a HashingStrategy to unique the elements.
+     *
+     * @see ListIterable#distinct(HashingStrategy)
+     * @since 9.0
+     */
+    &lt;V&gt; ListIterable&lt;T&gt; distinctBy(Function&lt;? super T, ? extends V&gt; function);
+
+    @Override
+    &lt;S&gt; ListIterable&lt;Pair&lt;T, S&gt;&gt; zip(Iterable&lt;S&gt; that);
+
+    @Override
+    ListIterable&lt;Pair&lt;T, Integer&gt;&gt; zipWithIndex();
+
+    @Override
+    ListIterable&lt;T&gt; take(int count);
+
+    /**
+     * Returns the initial elements that satisfy the Predicate. Short circuits at the first element which does not
+     * satisfy the Predicate.
+     *
+     * @since 3.0
+     */
+    @Override
+    ListIterable&lt;T&gt; takeWhile(Predicate&lt;? super T&gt; predicate);
+
+    @Override
+    ListIterable&lt;T&gt; drop(int count);
+
+    /**
+     * Returns the final elements that do not satisfy the Predicate. Short circuits at the first element which does
+     * satisfy the Predicate.
+     *
+     * @since 3.0
+     */
+    @Override
+    ListIterable&lt;T&gt; dropWhile(Predicate&lt;? super T&gt; predicate);
+
+    /**
+     * Returns a Partition of the initial elements that satisfy the Predicate and the remaining elements. Short circuits at the first element which does
+     * satisfy the Predicate.
+     *
+     * @since 3.0
+     */
+    @Override
+    PartitionList&lt;T&gt; partitionWhile(Predicate&lt;? super T&gt; predicate);
+
+    @Override
+    ListIterable&lt;T&gt; toReversed();
+
+    /**
+     * Returns a parallel iterable of this ListIterable.
+     *
+     * @since 6.0
+     */
+    @Beta
+    ParallelListIterable&lt;T&gt; asParallel(ExecutorService executorService, int batchSize);
+
+    /**
+     * Searches for the specified object using the binary search algorithm. The list must be sorted into ascending
+     * order according to the specified comparator.
+     *
+     * @see Collections#binarySearch(List, Object, Comparator)
+     */
+    int binarySearch(T key, Comparator&lt;? super T&gt; comparator);
+
+    /**
+     * Searches for the specified object using the binary search algorithm. The elements in this list must implement
+     * Comparable and the list must be sorted into ascending order.
+     *
+     * @see Collections#binarySearch(List, Object)
+     */
+    default int binarySearch(T key)
+    {
+<span class="nc" id="L292">        return Collections.binarySearch((List&lt;? extends Comparable&lt;? super T&gt;&gt;) this, key);</span>
+    }
+
+    /**
+     * Follows the same general contract as {@link List#equals(Object)}.
+     */
+    @Override
+    boolean equals(Object o);
+
+    /**
+     * Follows the same general contract as {@link List#hashCode()}.
+     */
+    @Override
+    int hashCode();
+
+    /**
+     * @see List#subList(int, int)
+     * @since 6.0
+     */
+    ListIterable&lt;T&gt; subList(int fromIndex, int toIndex);
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.0.201801022044</span></div></body></html>

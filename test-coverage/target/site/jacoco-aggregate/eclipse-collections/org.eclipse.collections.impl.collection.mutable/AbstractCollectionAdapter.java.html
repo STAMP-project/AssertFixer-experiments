@@ -1,0 +1,971 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>AbstractCollectionAdapter.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Eclipse Collections Test Coverage Aggregation</a> &gt; <a href="../index.html" class="el_bundle">eclipse-collections</a> &gt; <a href="index.source.html" class="el_package">org.eclipse.collections.impl.collection.mutable</a> &gt; <span class="el_source">AbstractCollectionAdapter.java</span></div><h1>AbstractCollectionAdapter.java</h1><pre class="source lang-java linenums">/*
+ * Copyright (c) 2018 Goldman Sachs and others.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * and Eclipse Distribution License v. 1.0 which accompany this distribution.
+ * The Eclipse Public License is available at http://www.eclipse.org/legal/epl-v10.html
+ * and the Eclipse Distribution License is available at
+ * http://www.eclipse.org/org/documents/edl-v10.php.
+ */
+
+package org.eclipse.collections.impl.collection.mutable;
+
+import java.util.Collection;
+import java.util.Comparator;
+import java.util.Iterator;
+import java.util.Optional;
+
+import org.eclipse.collections.api.LazyIterable;
+import org.eclipse.collections.api.RichIterable;
+import org.eclipse.collections.api.bag.MutableBag;
+import org.eclipse.collections.api.bag.sorted.MutableSortedBag;
+import org.eclipse.collections.api.block.SerializableComparator;
+import org.eclipse.collections.api.block.function.Function;
+import org.eclipse.collections.api.block.function.Function0;
+import org.eclipse.collections.api.block.function.Function2;
+import org.eclipse.collections.api.block.function.Function3;
+import org.eclipse.collections.api.block.function.primitive.BooleanFunction;
+import org.eclipse.collections.api.block.function.primitive.ByteFunction;
+import org.eclipse.collections.api.block.function.primitive.CharFunction;
+import org.eclipse.collections.api.block.function.primitive.DoubleFunction;
+import org.eclipse.collections.api.block.function.primitive.DoubleObjectToDoubleFunction;
+import org.eclipse.collections.api.block.function.primitive.FloatFunction;
+import org.eclipse.collections.api.block.function.primitive.FloatObjectToFloatFunction;
+import org.eclipse.collections.api.block.function.primitive.IntFunction;
+import org.eclipse.collections.api.block.function.primitive.IntObjectToIntFunction;
+import org.eclipse.collections.api.block.function.primitive.LongFunction;
+import org.eclipse.collections.api.block.function.primitive.LongObjectToLongFunction;
+import org.eclipse.collections.api.block.function.primitive.ShortFunction;
+import org.eclipse.collections.api.block.predicate.Predicate;
+import org.eclipse.collections.api.block.predicate.Predicate2;
+import org.eclipse.collections.api.block.procedure.Procedure;
+import org.eclipse.collections.api.block.procedure.Procedure2;
+import org.eclipse.collections.api.block.procedure.primitive.ObjectIntProcedure;
+import org.eclipse.collections.api.collection.MutableCollection;
+import org.eclipse.collections.api.collection.primitive.MutableBooleanCollection;
+import org.eclipse.collections.api.collection.primitive.MutableByteCollection;
+import org.eclipse.collections.api.collection.primitive.MutableCharCollection;
+import org.eclipse.collections.api.collection.primitive.MutableDoubleCollection;
+import org.eclipse.collections.api.collection.primitive.MutableFloatCollection;
+import org.eclipse.collections.api.collection.primitive.MutableIntCollection;
+import org.eclipse.collections.api.collection.primitive.MutableLongCollection;
+import org.eclipse.collections.api.collection.primitive.MutableShortCollection;
+import org.eclipse.collections.api.list.MutableList;
+import org.eclipse.collections.api.map.MutableMap;
+import org.eclipse.collections.api.map.primitive.MutableObjectDoubleMap;
+import org.eclipse.collections.api.map.primitive.MutableObjectLongMap;
+import org.eclipse.collections.api.map.sorted.MutableSortedMap;
+import org.eclipse.collections.api.multimap.MutableMultimap;
+import org.eclipse.collections.api.partition.PartitionMutableCollection;
+import org.eclipse.collections.api.set.MutableSet;
+import org.eclipse.collections.api.set.sorted.MutableSortedSet;
+import org.eclipse.collections.api.tuple.Pair;
+import org.eclipse.collections.api.tuple.Twin;
+import org.eclipse.collections.impl.bag.mutable.HashBag;
+import org.eclipse.collections.impl.bag.sorted.mutable.TreeBag;
+import org.eclipse.collections.impl.block.factory.Comparators;
+import org.eclipse.collections.impl.block.factory.Predicates2;
+import org.eclipse.collections.impl.block.factory.PrimitiveFunctions;
+import org.eclipse.collections.impl.block.procedure.MutatingAggregationProcedure;
+import org.eclipse.collections.impl.block.procedure.NonMutatingAggregationProcedure;
+import org.eclipse.collections.impl.factory.Lists;
+import org.eclipse.collections.impl.map.mutable.UnifiedMap;
+import org.eclipse.collections.impl.map.mutable.primitive.ObjectDoubleHashMap;
+import org.eclipse.collections.impl.map.mutable.primitive.ObjectLongHashMap;
+import org.eclipse.collections.impl.map.sorted.mutable.TreeSortedMap;
+import org.eclipse.collections.impl.set.mutable.UnifiedSet;
+import org.eclipse.collections.impl.set.sorted.mutable.TreeSortedSet;
+import org.eclipse.collections.impl.utility.ArrayIterate;
+import org.eclipse.collections.impl.utility.Iterate;
+import org.eclipse.collections.impl.utility.LazyIterate;
+import org.eclipse.collections.impl.utility.internal.IterableIterate;
+import org.eclipse.collections.impl.utility.internal.MutableCollectionIterate;
+
+<span class="nc" id="L84">public abstract class AbstractCollectionAdapter&lt;T&gt;</span>
+        implements MutableCollection&lt;T&gt;
+{
+    protected abstract Collection&lt;T&gt; getDelegate();
+
+    protected &lt;E&gt; MutableCollection&lt;E&gt; wrap(Collection&lt;E&gt; collection)
+    {
+<span class="nc" id="L91">        return CollectionAdapter.adapt(collection);</span>
+    }
+
+    @Override
+    public boolean notEmpty()
+    {
+<span class="nc bnc" id="L97" title="All 2 branches missed.">        return !this.getDelegate().isEmpty();</span>
+    }
+
+    @Override
+    public T getFirst()
+    {
+<span class="nc" id="L103">        return Iterate.getFirst(this.getDelegate());</span>
+    }
+
+    @Override
+    public T getLast()
+    {
+<span class="nc" id="L109">        return Iterate.getLast(this.getDelegate());</span>
+    }
+
+    @Override
+    public T getOnly()
+    {
+<span class="nc" id="L115">        Iterator&lt;T&gt; iterator = this.getDelegate().iterator();</span>
+
+<span class="nc bnc" id="L117" title="All 2 branches missed.">        if (!iterator.hasNext())</span>
+        {
+<span class="nc" id="L119">            throw new IllegalStateException(&quot;Size must be 1 but was 0&quot;);</span>
+        }
+
+<span class="nc" id="L122">        T result = iterator.next();</span>
+<span class="nc bnc" id="L123" title="All 2 branches missed.">        if (iterator.hasNext())</span>
+        {
+<span class="nc" id="L125">            throw new IllegalStateException(&quot;Size must be 1 but was greater than 1&quot;);</span>
+        }
+
+<span class="nc" id="L128">        return result;</span>
+    }
+
+    @Override
+    public MutableCollection&lt;T&gt; tap(Procedure&lt;? super T&gt; procedure)
+    {
+<span class="nc" id="L134">        this.forEach(procedure);</span>
+<span class="nc" id="L135">        return this;</span>
+    }
+
+    @Override
+    public void forEach(Procedure&lt;? super T&gt; procedure)
+    {
+<span class="nc" id="L141">        this.each(procedure);</span>
+<span class="nc" id="L142">    }</span>
+
+    @Override
+    public void each(Procedure&lt;? super T&gt; procedure)
+    {
+<span class="nc" id="L147">        Iterate.forEach(this.getDelegate(), procedure);</span>
+<span class="nc" id="L148">    }</span>
+
+    @Override
+    public void forEachWithIndex(ObjectIntProcedure&lt;? super T&gt; objectIntProcedure)
+    {
+<span class="nc" id="L153">        Iterate.forEachWithIndex(this.getDelegate(), objectIntProcedure);</span>
+<span class="nc" id="L154">    }</span>
+
+    @Override
+    public boolean removeIf(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L159">        return Iterate.removeIf(this.getDelegate(), predicate);</span>
+    }
+
+    @Override
+    public &lt;P&gt; boolean removeIfWith(Predicate2&lt;? super T, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc" id="L165">        return Iterate.removeIfWith(this.getDelegate(), predicate, parameter);</span>
+    }
+
+    @Override
+    public T detect(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L171">        return Iterate.detect(this.getDelegate(), predicate);</span>
+    }
+
+    @Override
+    public &lt;P&gt; T detectWith(Predicate2&lt;? super T, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc" id="L177">        return Iterate.detectWith(this.getDelegate(), predicate, parameter);</span>
+    }
+
+    @Override
+    public Optional&lt;T&gt; detectOptional(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L183">        return Iterate.detectOptional(this.getDelegate(), predicate);</span>
+    }
+
+    @Override
+    public &lt;P&gt; Optional&lt;T&gt; detectWithOptional(Predicate2&lt;? super T, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc" id="L189">        return Iterate.detectWithOptional(this.getDelegate(), predicate, parameter);</span>
+    }
+
+    @Override
+    public T detectIfNone(Predicate&lt;? super T&gt; predicate, Function0&lt;? extends T&gt; function)
+    {
+<span class="nc" id="L195">        T result = this.detect(predicate);</span>
+<span class="nc bnc" id="L196" title="All 2 branches missed.">        return result == null ? function.value() : result;</span>
+    }
+
+    @Override
+    public &lt;P&gt; T detectWithIfNone(
+            Predicate2&lt;? super T, ? super P&gt; predicate,
+            P parameter,
+            Function0&lt;? extends T&gt; function)
+    {
+<span class="nc" id="L205">        T result = this.detectWith(predicate, parameter);</span>
+<span class="nc bnc" id="L206" title="All 2 branches missed.">        return result == null ? function.value() : result;</span>
+    }
+
+    @Override
+    public T min(Comparator&lt;? super T&gt; comparator)
+    {
+<span class="nc" id="L212">        return Iterate.min(this, comparator);</span>
+    }
+
+    @Override
+    public T max(Comparator&lt;? super T&gt; comparator)
+    {
+<span class="nc" id="L218">        return Iterate.max(this, comparator);</span>
+    }
+
+    @Override
+    public T min()
+    {
+<span class="nc" id="L224">        return Iterate.min(this);</span>
+    }
+
+    @Override
+    public T max()
+    {
+<span class="nc" id="L230">        return Iterate.max(this);</span>
+    }
+
+    @Override
+    public &lt;V extends Comparable&lt;? super V&gt;&gt; T minBy(Function&lt;? super T, ? extends V&gt; function)
+    {
+<span class="nc" id="L236">        return IterableIterate.minBy(this, function);</span>
+    }
+
+    @Override
+    public &lt;V extends Comparable&lt;? super V&gt;&gt; T maxBy(Function&lt;? super T, ? extends V&gt; function)
+    {
+<span class="nc" id="L242">        return IterableIterate.maxBy(this, function);</span>
+    }
+
+    @Override
+    public int count(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L248">        return Iterate.count(this.getDelegate(), predicate);</span>
+    }
+
+    @Override
+    public boolean anySatisfy(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L254">        return Iterate.anySatisfy(this.getDelegate(), predicate);</span>
+    }
+
+    @Override
+    public boolean allSatisfy(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L260">        return Iterate.allSatisfy(this.getDelegate(), predicate);</span>
+    }
+
+    @Override
+    public boolean noneSatisfy(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L266">        return Iterate.noneSatisfy(this.getDelegate(), predicate);</span>
+    }
+
+    @Override
+    public &lt;IV&gt; IV injectInto(IV injectedValue, Function2&lt;? super IV, ? super T, ? extends IV&gt; function)
+    {
+<span class="nc" id="L272">        return Iterate.injectInto(injectedValue, this.getDelegate(), function);</span>
+    }
+
+    @Override
+    public int injectInto(int injectedValue, IntObjectToIntFunction&lt;? super T&gt; function)
+    {
+<span class="nc" id="L278">        return Iterate.injectInto(injectedValue, this.getDelegate(), function);</span>
+    }
+
+    @Override
+    public long injectInto(long injectedValue, LongObjectToLongFunction&lt;? super T&gt; function)
+    {
+<span class="nc" id="L284">        return Iterate.injectInto(injectedValue, this.getDelegate(), function);</span>
+    }
+
+    @Override
+    public double injectInto(double injectedValue, DoubleObjectToDoubleFunction&lt;? super T&gt; function)
+    {
+<span class="nc" id="L290">        return Iterate.injectInto(injectedValue, this.getDelegate(), function);</span>
+    }
+
+    @Override
+    public float injectInto(float injectedValue, FloatObjectToFloatFunction&lt;? super T&gt; function)
+    {
+<span class="nc" id="L296">        return Iterate.injectInto(injectedValue, this.getDelegate(), function);</span>
+    }
+
+    @Override
+    public long sumOfInt(IntFunction&lt;? super T&gt; function)
+    {
+<span class="nc" id="L302">        return Iterate.sumOfInt(this.getDelegate(), function);</span>
+    }
+
+    @Override
+    public double sumOfFloat(FloatFunction&lt;? super T&gt; function)
+    {
+<span class="nc" id="L308">        return Iterate.sumOfFloat(this.getDelegate(), function);</span>
+    }
+
+    @Override
+    public long sumOfLong(LongFunction&lt;? super T&gt; function)
+    {
+<span class="nc" id="L314">        return Iterate.sumOfLong(this.getDelegate(), function);</span>
+    }
+
+    @Override
+    public double sumOfDouble(DoubleFunction&lt;? super T&gt; function)
+    {
+<span class="nc" id="L320">        return Iterate.sumOfDouble(this.getDelegate(), function);</span>
+    }
+
+    @Override
+    public &lt;V&gt; MutableObjectLongMap&lt;V&gt; sumByInt(Function&lt;? super T, ? extends V&gt; groupBy, IntFunction&lt;? super T&gt; function)
+    {
+<span class="nc" id="L326">        ObjectLongHashMap&lt;V&gt; result = ObjectLongHashMap.newMap();</span>
+<span class="nc" id="L327">        return this.injectInto(result, PrimitiveFunctions.sumByIntFunction(groupBy, function));</span>
+    }
+
+    @Override
+    public &lt;V&gt; MutableObjectDoubleMap&lt;V&gt; sumByFloat(Function&lt;? super T, ? extends V&gt; groupBy, FloatFunction&lt;? super T&gt; function)
+    {
+<span class="nc" id="L333">        ObjectDoubleHashMap&lt;V&gt; result = ObjectDoubleHashMap.newMap();</span>
+<span class="nc" id="L334">        return this.injectInto(result, PrimitiveFunctions.sumByFloatFunction(groupBy, function));</span>
+    }
+
+    @Override
+    public &lt;V&gt; MutableObjectLongMap&lt;V&gt; sumByLong(Function&lt;? super T, ? extends V&gt; groupBy, LongFunction&lt;? super T&gt; function)
+    {
+<span class="nc" id="L340">        ObjectLongHashMap&lt;V&gt; result = ObjectLongHashMap.newMap();</span>
+<span class="nc" id="L341">        return this.injectInto(result, PrimitiveFunctions.sumByLongFunction(groupBy, function));</span>
+    }
+
+    @Override
+    public &lt;V&gt; MutableObjectDoubleMap&lt;V&gt; sumByDouble(Function&lt;? super T, ? extends V&gt; groupBy, DoubleFunction&lt;? super T&gt; function)
+    {
+<span class="nc" id="L347">        ObjectDoubleHashMap&lt;V&gt; result = ObjectDoubleHashMap.newMap();</span>
+<span class="nc" id="L348">        return this.injectInto(result, PrimitiveFunctions.sumByDoubleFunction(groupBy, function));</span>
+    }
+
+    @Override
+    public MutableCollection&lt;T&gt; select(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L354">        return this.wrap(Iterate.select(this.getDelegate(), predicate));</span>
+    }
+
+    @Override
+    public &lt;R extends Collection&lt;T&gt;&gt; R select(Predicate&lt;? super T&gt; predicate, R target)
+    {
+<span class="nc" id="L360">        return Iterate.select(this.getDelegate(), predicate, target);</span>
+    }
+
+    @Override
+    public MutableCollection&lt;T&gt; reject(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L366">        return this.wrap(Iterate.reject(this.getDelegate(), predicate));</span>
+    }
+
+    @Override
+    public &lt;R extends Collection&lt;T&gt;&gt; R reject(Predicate&lt;? super T&gt; predicate, R target)
+    {
+<span class="nc" id="L372">        return Iterate.reject(this.getDelegate(), predicate, target);</span>
+    }
+
+    @Override
+    public &lt;S&gt; MutableCollection&lt;S&gt; selectInstancesOf(Class&lt;S&gt; clazz)
+    {
+<span class="nc" id="L378">        return this.wrap(Iterate.selectInstancesOf(this.getDelegate(), clazz));</span>
+    }
+
+    @Override
+    public &lt;V&gt; MutableCollection&lt;V&gt; collect(Function&lt;? super T, ? extends V&gt; function)
+    {
+<span class="nc" id="L384">        return this.wrap(Iterate.collect(this.getDelegate(), function));</span>
+    }
+
+    @Override
+    public MutableBooleanCollection collectBoolean(BooleanFunction&lt;? super T&gt; booleanFunction)
+    {
+<span class="nc" id="L390">        return Iterate.collectBoolean(this.getDelegate(), booleanFunction);</span>
+    }
+
+    @Override
+    public &lt;R extends MutableBooleanCollection&gt; R collectBoolean(BooleanFunction&lt;? super T&gt; booleanFunction, R target)
+    {
+<span class="nc" id="L396">        return Iterate.collectBoolean(this.getDelegate(), booleanFunction, target);</span>
+    }
+
+    @Override
+    public MutableByteCollection collectByte(ByteFunction&lt;? super T&gt; byteFunction)
+    {
+<span class="nc" id="L402">        return Iterate.collectByte(this.getDelegate(), byteFunction);</span>
+    }
+
+    @Override
+    public &lt;R extends MutableByteCollection&gt; R collectByte(ByteFunction&lt;? super T&gt; byteFunction, R target)
+    {
+<span class="nc" id="L408">        return Iterate.collectByte(this.getDelegate(), byteFunction, target);</span>
+    }
+
+    @Override
+    public MutableCharCollection collectChar(CharFunction&lt;? super T&gt; charFunction)
+    {
+<span class="nc" id="L414">        return Iterate.collectChar(this.getDelegate(), charFunction);</span>
+    }
+
+    @Override
+    public &lt;R extends MutableCharCollection&gt; R collectChar(CharFunction&lt;? super T&gt; charFunction, R target)
+    {
+<span class="nc" id="L420">        return Iterate.collectChar(this.getDelegate(), charFunction, target);</span>
+    }
+
+    @Override
+    public MutableDoubleCollection collectDouble(DoubleFunction&lt;? super T&gt; doubleFunction)
+    {
+<span class="nc" id="L426">        return Iterate.collectDouble(this.getDelegate(), doubleFunction);</span>
+    }
+
+    @Override
+    public &lt;R extends MutableDoubleCollection&gt; R collectDouble(DoubleFunction&lt;? super T&gt; doubleFunction, R target)
+    {
+<span class="nc" id="L432">        return Iterate.collectDouble(this.getDelegate(), doubleFunction, target);</span>
+    }
+
+    @Override
+    public MutableFloatCollection collectFloat(FloatFunction&lt;? super T&gt; floatFunction)
+    {
+<span class="nc" id="L438">        return Iterate.collectFloat(this.getDelegate(), floatFunction);</span>
+    }
+
+    @Override
+    public &lt;R extends MutableFloatCollection&gt; R collectFloat(FloatFunction&lt;? super T&gt; floatFunction, R target)
+    {
+<span class="nc" id="L444">        return Iterate.collectFloat(this.getDelegate(), floatFunction, target);</span>
+    }
+
+    @Override
+    public MutableIntCollection collectInt(IntFunction&lt;? super T&gt; intFunction)
+    {
+<span class="nc" id="L450">        return Iterate.collectInt(this.getDelegate(), intFunction);</span>
+    }
+
+    @Override
+    public &lt;R extends MutableIntCollection&gt; R collectInt(IntFunction&lt;? super T&gt; intFunction, R target)
+    {
+<span class="nc" id="L456">        return Iterate.collectInt(this.getDelegate(), intFunction, target);</span>
+    }
+
+    @Override
+    public MutableLongCollection collectLong(LongFunction&lt;? super T&gt; longFunction)
+    {
+<span class="nc" id="L462">        return Iterate.collectLong(this.getDelegate(), longFunction);</span>
+    }
+
+    @Override
+    public &lt;R extends MutableLongCollection&gt; R collectLong(LongFunction&lt;? super T&gt; longFunction, R target)
+    {
+<span class="nc" id="L468">        return Iterate.collectLong(this.getDelegate(), longFunction, target);</span>
+    }
+
+    @Override
+    public MutableShortCollection collectShort(ShortFunction&lt;? super T&gt; shortFunction)
+    {
+<span class="nc" id="L474">        return Iterate.collectShort(this.getDelegate(), shortFunction);</span>
+    }
+
+    @Override
+    public &lt;R extends MutableShortCollection&gt; R collectShort(ShortFunction&lt;? super T&gt; shortFunction, R target)
+    {
+<span class="nc" id="L480">        return Iterate.collectShort(this.getDelegate(), shortFunction, target);</span>
+    }
+
+    @Override
+    public &lt;V, R extends Collection&lt;V&gt;&gt; R collect(Function&lt;? super T, ? extends V&gt; function, R target)
+    {
+<span class="nc" id="L486">        return Iterate.collect(this.getDelegate(), function, target);</span>
+    }
+
+    @Override
+    public &lt;V&gt; MutableCollection&lt;V&gt; flatCollect(Function&lt;? super T, ? extends Iterable&lt;V&gt;&gt; function)
+    {
+<span class="nc" id="L492">        return this.wrap(Iterate.flatCollect(this.getDelegate(), function));</span>
+    }
+
+    @Override
+    public &lt;V, R extends Collection&lt;V&gt;&gt; R flatCollect(
+            Function&lt;? super T, ? extends Iterable&lt;V&gt;&gt; function,
+            R target)
+    {
+<span class="nc" id="L500">        return Iterate.flatCollect(this.getDelegate(), function, target);</span>
+    }
+
+    @Override
+    public &lt;V&gt; MutableCollection&lt;V&gt; collectIf(
+            Predicate&lt;? super T&gt; predicate,
+            Function&lt;? super T, ? extends V&gt; function)
+    {
+<span class="nc" id="L508">        return this.wrap(Iterate.collectIf(this.getDelegate(), predicate, function));</span>
+    }
+
+    @Override
+    public &lt;V, R extends Collection&lt;V&gt;&gt; R collectIf(
+            Predicate&lt;? super T&gt; predicate,
+            Function&lt;? super T, ? extends V&gt; function,
+            R target)
+    {
+<span class="nc" id="L517">        return Iterate.collectIf(this.getDelegate(), predicate, function, target);</span>
+    }
+
+    @Override
+    public &lt;P&gt; Twin&lt;MutableList&lt;T&gt;&gt; selectAndRejectWith(
+            Predicate2&lt;? super T, ? super P&gt; predicate,
+            P parameter)
+    {
+<span class="nc" id="L525">        return Iterate.selectAndRejectWith(this.getDelegate(), predicate, parameter);</span>
+    }
+
+    @Override
+    public PartitionMutableCollection&lt;T&gt; partition(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L531">        return (PartitionMutableCollection&lt;T&gt;) Iterate.partition(this.getDelegate(), predicate);</span>
+    }
+
+    @Override
+    public &lt;P&gt; PartitionMutableCollection&lt;T&gt; partitionWith(Predicate2&lt;? super T, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc" id="L537">        return (PartitionMutableCollection&lt;T&gt;) Iterate.partitionWith(this.getDelegate(), predicate, parameter);</span>
+    }
+
+    @Override
+    public int size()
+    {
+<span class="nc" id="L543">        return this.getDelegate().size();</span>
+    }
+
+    @Override
+    public boolean isEmpty()
+    {
+<span class="nc" id="L549">        return this.getDelegate().isEmpty();</span>
+    }
+
+    @Override
+    public boolean contains(Object o)
+    {
+<span class="nc" id="L555">        return this.getDelegate().contains(o);</span>
+    }
+
+    @Override
+    public Iterator&lt;T&gt; iterator()
+    {
+<span class="nc" id="L561">        return this.getDelegate().iterator();</span>
+    }
+
+    @Override
+    public Object[] toArray()
+    {
+<span class="nc" id="L567">        return this.getDelegate().toArray();</span>
+    }
+
+    @Override
+    public &lt;E&gt; E[] toArray(E[] a)
+    {
+<span class="nc" id="L573">        return this.getDelegate().toArray(a);</span>
+    }
+
+    @Override
+    public boolean add(T o)
+    {
+<span class="nc" id="L579">        return this.getDelegate().add(o);</span>
+    }
+
+    @Override
+    public boolean remove(Object o)
+    {
+<span class="nc" id="L585">        return this.getDelegate().remove(o);</span>
+    }
+
+    @Override
+    public boolean containsAll(Collection&lt;?&gt; collection)
+    {
+<span class="nc" id="L591">        return this.getDelegate().containsAll(collection);</span>
+    }
+
+    @Override
+    public boolean containsAllIterable(Iterable&lt;?&gt; source)
+    {
+<span class="nc" id="L597">        return Iterate.allSatisfyWith(source, Predicates2.in(), this.getDelegate());</span>
+    }
+
+    @Override
+    public boolean containsAllArguments(Object... elements)
+    {
+<span class="nc" id="L603">        return ArrayIterate.allSatisfyWith(elements, Predicates2.in(), this.getDelegate());</span>
+    }
+
+    @Override
+    public boolean addAll(Collection&lt;? extends T&gt; collection)
+    {
+<span class="nc" id="L609">        boolean result = false;</span>
+<span class="nc bnc" id="L610" title="All 2 branches missed.">        for (T each : collection)</span>
+        {
+<span class="nc" id="L612">            result |= this.add(each);</span>
+<span class="nc" id="L613">        }</span>
+<span class="nc" id="L614">        return result;</span>
+    }
+
+    @Override
+    public boolean addAllIterable(Iterable&lt;? extends T&gt; iterable)
+    {
+<span class="nc" id="L620">        return Iterate.addAllIterable(iterable, this);</span>
+    }
+
+    @Override
+    public boolean removeAll(Collection&lt;?&gt; collection)
+    {
+<span class="nc" id="L626">        int currentSize = this.size();</span>
+<span class="nc" id="L627">        this.removeIfWith(Predicates2.in(), collection);</span>
+<span class="nc bnc" id="L628" title="All 2 branches missed.">        return currentSize != this.size();</span>
+    }
+
+    @Override
+    public boolean removeAllIterable(Iterable&lt;?&gt; iterable)
+    {
+<span class="nc" id="L634">        return this.removeAll(CollectionAdapter.wrapSet(iterable));</span>
+    }
+
+    @Override
+    public boolean retainAll(Collection&lt;?&gt; collection)
+    {
+<span class="nc" id="L640">        int currentSize = this.size();</span>
+<span class="nc" id="L641">        this.removeIfWith(Predicates2.notIn(), collection);</span>
+<span class="nc bnc" id="L642" title="All 2 branches missed.">        return currentSize != this.size();</span>
+    }
+
+    @Override
+    public boolean retainAllIterable(Iterable&lt;?&gt; iterable)
+    {
+<span class="nc" id="L648">        return this.retainAll(CollectionAdapter.wrapSet(iterable));</span>
+    }
+
+    @Override
+    public void clear()
+    {
+<span class="nc" id="L654">        this.getDelegate().clear();</span>
+<span class="nc" id="L655">    }</span>
+
+    @Override
+    public &lt;P&gt; void forEachWith(Procedure2&lt;? super T, ? super P&gt; procedure, P parameter)
+    {
+<span class="nc" id="L660">        Iterate.forEachWith(this.getDelegate(), procedure, parameter);</span>
+<span class="nc" id="L661">    }</span>
+
+    @Override
+    public &lt;P&gt; MutableCollection&lt;T&gt; selectWith(
+            Predicate2&lt;? super T, ? super P&gt; predicate,
+            P parameter)
+    {
+<span class="nc" id="L668">        return this.wrap(Iterate.selectWith(this.getDelegate(), predicate, parameter));</span>
+    }
+
+    @Override
+    public &lt;P, R extends Collection&lt;T&gt;&gt; R selectWith(
+            Predicate2&lt;? super T, ? super P&gt; predicate,
+            P parameter,
+            R targetCollection)
+    {
+<span class="nc" id="L677">        return Iterate.selectWith(this.getDelegate(), predicate, parameter, targetCollection);</span>
+    }
+
+    @Override
+    public &lt;P&gt; MutableCollection&lt;T&gt; rejectWith(
+            Predicate2&lt;? super T, ? super P&gt; predicate,
+            P parameter)
+    {
+<span class="nc" id="L685">        return this.wrap(Iterate.rejectWith(this.getDelegate(), predicate, parameter));</span>
+    }
+
+    @Override
+    public &lt;P, R extends Collection&lt;T&gt;&gt; R rejectWith(
+            Predicate2&lt;? super T, ? super P&gt; predicate,
+            P parameter,
+            R targetCollection)
+    {
+<span class="nc" id="L694">        return Iterate.rejectWith(this.getDelegate(), predicate, parameter, targetCollection);</span>
+    }
+
+    @Override
+    public &lt;P, V&gt; MutableCollection&lt;V&gt; collectWith(
+            Function2&lt;? super T, ? super P, ? extends V&gt; function,
+            P parameter)
+    {
+<span class="nc" id="L702">        return this.wrap(Iterate.collectWith(this.getDelegate(), function, parameter));</span>
+    }
+
+    @Override
+    public &lt;P, A, R extends Collection&lt;A&gt;&gt; R collectWith(
+            Function2&lt;? super T, ? super P, ? extends A&gt; function,
+            P parameter,
+            R targetCollection)
+    {
+<span class="nc" id="L711">        return Iterate.collectWith(this.getDelegate(), function, parameter, targetCollection);</span>
+    }
+
+    @Override
+    public &lt;IV, P&gt; IV injectIntoWith(
+            IV injectValue,
+            Function3&lt;? super IV, ? super T, ? super P, ? extends IV&gt; function,
+            P parameter)
+    {
+<span class="nc" id="L720">        return Iterate.injectIntoWith(injectValue, this.getDelegate(), function, parameter);</span>
+    }
+
+    @Override
+    public &lt;R extends Collection&lt;T&gt;&gt; R into(R target)
+    {
+<span class="nc" id="L726">        return Iterate.addAllTo(this.getDelegate(), target);</span>
+    }
+
+    @Override
+    public MutableList&lt;T&gt; toList()
+    {
+<span class="nc" id="L732">        return Lists.mutable.withAll(this.getDelegate());</span>
+    }
+
+    @Override
+    public MutableList&lt;T&gt; toSortedList(Comparator&lt;? super T&gt; comparator)
+    {
+<span class="nc" id="L738">        return this.toList().sortThis(comparator);</span>
+    }
+
+    @Override
+    public &lt;V extends Comparable&lt;? super V&gt;&gt; MutableList&lt;T&gt; toSortedListBy(Function&lt;? super T, ? extends V&gt; function)
+    {
+<span class="nc" id="L744">        return this.toSortedList(Comparators.byFunction(function));</span>
+    }
+
+    @Override
+    public MutableSortedSet&lt;T&gt; toSortedSet()
+    {
+<span class="nc" id="L750">        return TreeSortedSet.newSet(null, this);</span>
+    }
+
+    @Override
+    public MutableSortedSet&lt;T&gt; toSortedSet(Comparator&lt;? super T&gt; comparator)
+    {
+<span class="nc" id="L756">        return TreeSortedSet.newSet(comparator, this);</span>
+    }
+
+    @Override
+    public &lt;V extends Comparable&lt;? super V&gt;&gt; MutableSortedSet&lt;T&gt; toSortedSetBy(
+            Function&lt;? super T, ? extends V&gt; function)
+    {
+<span class="nc" id="L763">        return this.toSortedSet(Comparators.byFunction(function));</span>
+    }
+
+    @Override
+    public MutableSet&lt;T&gt; toSet()
+    {
+<span class="nc" id="L769">        return UnifiedSet.newSet(this.getDelegate());</span>
+    }
+
+    @Override
+    public MutableBag&lt;T&gt; toBag()
+    {
+<span class="nc" id="L775">        return HashBag.newBag(this.getDelegate());</span>
+    }
+
+    @Override
+    public MutableSortedBag&lt;T&gt; toSortedBag()
+    {
+<span class="nc" id="L781">        return TreeBag.newBag(this.getDelegate());</span>
+    }
+
+    @Override
+    public MutableSortedBag&lt;T&gt; toSortedBag(Comparator&lt;? super T&gt; comparator)
+    {
+<span class="nc" id="L787">        return TreeBag.newBag(comparator, this.getDelegate());</span>
+    }
+
+    @Override
+    public &lt;V extends Comparable&lt;? super V&gt;&gt; MutableSortedBag&lt;T&gt; toSortedBagBy(Function&lt;? super T, ? extends V&gt; function)
+    {
+<span class="nc" id="L793">        return this.toSortedBag(Comparators.byFunction(function));</span>
+    }
+
+    @Override
+    public &lt;K, V&gt; MutableMap&lt;K, V&gt; toMap(
+            Function&lt;? super T, ? extends K&gt; keyFunction,
+            Function&lt;? super T, ? extends V&gt; valueFunction)
+    {
+<span class="nc" id="L801">        UnifiedMap&lt;K, V&gt; map = UnifiedMap.newMap(this.size());</span>
+<span class="nc" id="L802">        map.collectKeysAndValues(this.getDelegate(), keyFunction, valueFunction);</span>
+<span class="nc" id="L803">        return map;</span>
+    }
+
+    @Override
+    public &lt;K, V&gt; MutableSortedMap&lt;K, V&gt; toSortedMap(
+            Function&lt;? super T, ? extends K&gt; keyFunction,
+            Function&lt;? super T, ? extends V&gt; valueFunction)
+    {
+<span class="nc" id="L811">        return TreeSortedMap.&lt;K, V&gt;newMap().collectKeysAndValues(this.getDelegate(), keyFunction, valueFunction);</span>
+    }
+
+    @Override
+    public &lt;K, V&gt; MutableSortedMap&lt;K, V&gt; toSortedMap(
+            Comparator&lt;? super K&gt; comparator,
+            Function&lt;? super T, ? extends K&gt; keyFunction,
+            Function&lt;? super T, ? extends V&gt; valueFunction)
+    {
+<span class="nc" id="L820">        return TreeSortedMap.&lt;K, V&gt;newMap(comparator).collectKeysAndValues(this.getDelegate(), keyFunction, valueFunction);</span>
+    }
+
+    @Override
+    public &lt;KK extends Comparable&lt;? super KK&gt;, K, V&gt; MutableSortedMap&lt;K, V&gt; toSortedMapBy(
+            Function&lt;? super K, KK&gt; sortBy,
+            Function&lt;? super T, ? extends K&gt; keyFunction,
+            Function&lt;? super T, ? extends V&gt; valueFunction)
+    {
+<span class="nc" id="L829">        SerializableComparator&lt;K&gt; comparator = Comparators.byFunction(sortBy);</span>
+<span class="nc" id="L830">        return TreeSortedMap.&lt;K, V&gt;newMap(comparator).collectKeysAndValues(this.getDelegate(), keyFunction, valueFunction);</span>
+    }
+
+    @Override
+    public LazyIterable&lt;T&gt; asLazy()
+    {
+<span class="nc" id="L836">        return LazyIterate.adapt(this);</span>
+    }
+
+    @Override
+    public &lt;P&gt; int countWith(Predicate2&lt;? super T, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc" id="L842">        return Iterate.countWith(this.getDelegate(), predicate, parameter);</span>
+    }
+
+    @Override
+    public &lt;P&gt; boolean anySatisfyWith(Predicate2&lt;? super T, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc" id="L848">        return Iterate.anySatisfyWith(this.getDelegate(), predicate, parameter);</span>
+    }
+
+    @Override
+    public &lt;P&gt; boolean allSatisfyWith(Predicate2&lt;? super T, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc" id="L854">        return Iterate.allSatisfyWith(this.getDelegate(), predicate, parameter);</span>
+    }
+
+    @Override
+    public &lt;P&gt; boolean noneSatisfyWith(Predicate2&lt;? super T, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc" id="L860">        return Iterate.noneSatisfyWith(this.getDelegate(), predicate, parameter);</span>
+    }
+
+    @Override
+    public String toString()
+    {
+<span class="nc" id="L866">        return this.makeString(&quot;[&quot;, &quot;, &quot;, &quot;]&quot;);</span>
+    }
+
+    @Override
+    public void appendString(Appendable appendable, String start, String separator, String end)
+    {
+<span class="nc" id="L872">        IterableIterate.appendString(this, appendable, start, separator, end);</span>
+<span class="nc" id="L873">    }</span>
+
+    @Override
+    public &lt;V&gt; MutableMultimap&lt;V, T&gt; groupBy(
+            Function&lt;? super T, ? extends V&gt; function)
+    {
+<span class="nc" id="L879">        return Iterate.groupBy(this.getDelegate(), function);</span>
+    }
+
+    @Override
+    public &lt;V, R extends MutableMultimap&lt;V, T&gt;&gt; R groupBy(
+            Function&lt;? super T, ? extends V&gt; function,
+            R target)
+    {
+<span class="nc" id="L887">        return Iterate.groupBy(this.getDelegate(), function, target);</span>
+    }
+
+    @Override
+    public &lt;V&gt; MutableMultimap&lt;V, T&gt; groupByEach(
+            Function&lt;? super T, ? extends Iterable&lt;V&gt;&gt; function)
+    {
+<span class="nc" id="L894">        return Iterate.groupByEach(this.getDelegate(), function);</span>
+    }
+
+    @Override
+    public &lt;V, R extends MutableMultimap&lt;V, T&gt;&gt; R groupByEach(
+            Function&lt;? super T, ? extends Iterable&lt;V&gt;&gt; function,
+            R target)
+    {
+<span class="nc" id="L902">        return Iterate.groupByEach(this.getDelegate(), function, target);</span>
+    }
+
+    @Override
+    public &lt;V&gt; MutableMap&lt;V, T&gt; groupByUniqueKey(Function&lt;? super T, ? extends V&gt; function)
+    {
+<span class="nc" id="L908">        return Iterate.groupByUniqueKey(this.getDelegate(), function);</span>
+    }
+
+    @Override
+    public &lt;V, R extends MutableMap&lt;V, T&gt;&gt; R groupByUniqueKey(
+            Function&lt;? super T, ? extends V&gt; function,
+            R target)
+    {
+<span class="nc" id="L916">        return Iterate.groupByUniqueKey(this.getDelegate(), function, target);</span>
+    }
+
+    @Override
+    public &lt;S&gt; MutableCollection&lt;Pair&lt;T, S&gt;&gt; zip(Iterable&lt;S&gt; that)
+    {
+<span class="nc" id="L922">        return this.wrap(Iterate.zip(this.getDelegate(), that));</span>
+    }
+
+    @Override
+    public &lt;S, R extends Collection&lt;Pair&lt;T, S&gt;&gt;&gt; R zip(Iterable&lt;S&gt; that, R target)
+    {
+<span class="nc" id="L928">        return Iterate.zip(this.getDelegate(), that, target);</span>
+    }
+
+    @Override
+    public MutableCollection&lt;Pair&lt;T, Integer&gt;&gt; zipWithIndex()
+    {
+<span class="nc" id="L934">        return this.wrap(Iterate.zipWithIndex(this.getDelegate()));</span>
+    }
+
+    @Override
+    public &lt;R extends Collection&lt;Pair&lt;T, Integer&gt;&gt;&gt; R zipWithIndex(R target)
+    {
+<span class="nc" id="L940">        return Iterate.zipWithIndex(this.getDelegate(), target);</span>
+    }
+
+    @Override
+    public RichIterable&lt;RichIterable&lt;T&gt;&gt; chunk(int size)
+    {
+<span class="nc" id="L946">        return MutableCollectionIterate.chunk(this, size);</span>
+    }
+
+    @Override
+    public &lt;K, V&gt; MutableMap&lt;K, V&gt; aggregateInPlaceBy(
+            Function&lt;? super T, ? extends K&gt; groupBy,
+            Function0&lt;? extends V&gt; zeroValueFactory,
+            Procedure2&lt;? super V, ? super T&gt; mutatingAggregator)
+    {
+<span class="nc" id="L955">        MutableMap&lt;K, V&gt; map = UnifiedMap.newMap();</span>
+<span class="nc" id="L956">        this.forEach(new MutatingAggregationProcedure&lt;&gt;(map, groupBy, zeroValueFactory, mutatingAggregator));</span>
+<span class="nc" id="L957">        return map;</span>
+    }
+
+    @Override
+    public &lt;K, V&gt; MutableMap&lt;K, V&gt; aggregateBy(
+            Function&lt;? super T, ? extends K&gt; groupBy,
+            Function0&lt;? extends V&gt; zeroValueFactory,
+            Function2&lt;? super V, ? super T, ? extends V&gt; nonMutatingAggregator)
+    {
+<span class="nc" id="L966">        MutableMap&lt;K, V&gt; map = UnifiedMap.newMap();</span>
+<span class="nc" id="L967">        this.forEach(new NonMutatingAggregationProcedure&lt;&gt;(map, groupBy, zeroValueFactory, nonMutatingAggregator));</span>
+<span class="nc" id="L968">        return map;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.0.201801022044</span></div></body></html>

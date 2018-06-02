@@ -1,0 +1,368 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>SynchronizedBiMap.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Eclipse Collections Test Coverage Aggregation</a> &gt; <a href="../index.html" class="el_bundle">eclipse-collections</a> &gt; <a href="index.source.html" class="el_package">org.eclipse.collections.impl.bimap.mutable</a> &gt; <span class="el_source">SynchronizedBiMap.java</span></div><h1>SynchronizedBiMap.java</h1><pre class="source lang-java linenums">/*
+ * Copyright (c) 2017 Bhavana Hindupur and others.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * and Eclipse Distribution License v. 1.0 which accompany this distribution.
+ * The Eclipse Public License is available at http://www.eclipse.org/legal/epl-v10.html
+ * and the Eclipse Distribution License is available at
+ * http://www.eclipse.org/org/documents/edl-v10.php.
+ */
+
+package org.eclipse.collections.impl.bimap.mutable;
+
+import java.io.Serializable;
+import java.util.Collection;
+import java.util.Set;
+
+import org.eclipse.collections.api.RichIterable;
+import org.eclipse.collections.api.bimap.ImmutableBiMap;
+import org.eclipse.collections.api.bimap.MutableBiMap;
+import org.eclipse.collections.api.block.function.Function;
+import org.eclipse.collections.api.block.function.Function2;
+import org.eclipse.collections.api.block.predicate.Predicate;
+import org.eclipse.collections.api.block.predicate.Predicate2;
+import org.eclipse.collections.api.block.procedure.Procedure;
+import org.eclipse.collections.api.multimap.set.MutableSetMultimap;
+import org.eclipse.collections.api.ordered.OrderedIterable;
+import org.eclipse.collections.api.partition.set.PartitionMutableSet;
+import org.eclipse.collections.api.set.MutableSet;
+import org.eclipse.collections.api.tuple.Pair;
+import org.eclipse.collections.impl.collection.mutable.SynchronizedMutableCollection;
+import org.eclipse.collections.impl.list.fixed.ArrayAdapter;
+import org.eclipse.collections.impl.map.AbstractSynchronizedMapIterable;
+import org.eclipse.collections.impl.map.mutable.SynchronizedBiMapSerializationProxy;
+import org.eclipse.collections.impl.set.mutable.SynchronizedMutableSet;
+import org.eclipse.collections.impl.utility.LazyIterate;
+
+public class SynchronizedBiMap&lt;K, V&gt; extends AbstractSynchronizedMapIterable&lt;K, V&gt; implements MutableBiMap&lt;K, V&gt;, Serializable
+{
+    private static final long serialVersionUID = 1L;
+
+    protected SynchronizedBiMap(MutableBiMap&lt;K, V&gt; delegate)
+    {
+<span class="nc" id="L43">        super(delegate);</span>
+<span class="nc" id="L44">    }</span>
+
+    protected SynchronizedBiMap(MutableBiMap&lt;K, V&gt; delegate, Object lock)
+    {
+<span class="nc" id="L48">        super(delegate, lock);</span>
+<span class="nc" id="L49">    }</span>
+
+    /**
+     * This method will take a MutableBiMap and wrap it directly in a SynchronizedBiMap.
+     */
+    public static &lt;K, V&gt; SynchronizedBiMap&lt;K, V&gt; of(MutableBiMap&lt;K, V&gt; map)
+    {
+<span class="nc bnc" id="L56" title="All 2 branches missed.">        if (map == null)</span>
+        {
+<span class="nc" id="L58">            throw new IllegalArgumentException(&quot;cannot create a SynchronizedBiMap for null&quot;);</span>
+        }
+<span class="nc" id="L60">        return new SynchronizedBiMap&lt;&gt;(map);</span>
+    }
+
+    @Override
+    protected MutableBiMap&lt;K, V&gt; getDelegate()
+    {
+<span class="nc" id="L66">        return (MutableBiMap&lt;K, V&gt;) super.getDelegate();</span>
+    }
+
+    @Override
+    public V forcePut(K key, V value)
+    {
+<span class="nc" id="L72">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L74">            return this.getDelegate().forcePut(key, value);</span>
+        }
+    }
+
+    @Override
+    public MutableBiMap&lt;K, V&gt; asSynchronized()
+    {
+<span class="nc" id="L81">        return this;</span>
+    }
+
+    @Override
+    public MutableBiMap&lt;K, V&gt; asUnmodifiable()
+    {
+<span class="nc" id="L87">        throw new UnsupportedOperationException(this.getClass().getSimpleName() + &quot;.asUnmodifiable() not implemented yet&quot;);</span>
+    }
+
+    @Override
+    public MutableBiMap&lt;K, V&gt; clone()
+    {
+<span class="nc" id="L93">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L95">            return SynchronizedBiMap.of(this.getDelegate().clone());</span>
+        }
+    }
+
+    @Override
+    public MutableBiMap&lt;K, V&gt; tap(Procedure&lt;? super V&gt; procedure)
+    {
+<span class="nc" id="L102">        return (MutableBiMap&lt;K, V&gt;) super.tap(procedure);</span>
+    }
+
+    @Override
+    public &lt;K2, V2&gt; MutableBiMap&lt;K2, V2&gt; collect(Function2&lt;? super K, ? super V, Pair&lt;K2, V2&gt;&gt; function)
+    {
+<span class="nc" id="L108">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L110">            return this.getDelegate().collect(function);</span>
+        }
+    }
+
+    @Override
+    public &lt;R&gt; MutableBiMap&lt;K, R&gt; collectValues(Function2&lt;? super K, ? super V, ? extends R&gt; function)
+    {
+<span class="nc" id="L117">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L119">            return this.getDelegate().collectValues(function);</span>
+        }
+    }
+
+    @Override
+    public MutableSet&lt;V&gt; select(Predicate&lt;? super V&gt; predicate)
+    {
+<span class="nc" id="L126">        return (MutableSet&lt;V&gt;) super.select(predicate);</span>
+    }
+
+    @Override
+    public MutableBiMap&lt;K, V&gt; select(Predicate2&lt;? super K, ? super V&gt; predicate)
+    {
+<span class="nc" id="L132">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L134">            return this.getDelegate().select(predicate);</span>
+        }
+    }
+
+    @Override
+    public &lt;P&gt; MutableSet&lt;V&gt; selectWith(Predicate2&lt;? super V, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc" id="L141">        return (MutableSet&lt;V&gt;) super.selectWith(predicate, parameter);</span>
+    }
+
+    @Override
+    public &lt;S&gt; MutableSet&lt;S&gt; selectInstancesOf(Class&lt;S&gt; clazz)
+    {
+<span class="nc" id="L147">        return (MutableSet&lt;S&gt;) super.selectInstancesOf(clazz);</span>
+    }
+
+    @Override
+    public MutableSet&lt;V&gt; reject(Predicate&lt;? super V&gt; predicate)
+    {
+<span class="nc" id="L153">        return (MutableSet&lt;V&gt;) super.reject(predicate);</span>
+    }
+
+    @Override
+    public MutableBiMap&lt;K, V&gt; reject(Predicate2&lt;? super K, ? super V&gt; predicate)
+    {
+<span class="nc" id="L159">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L161">            return this.getDelegate().reject(predicate);</span>
+        }
+    }
+
+    @Override
+    public &lt;P&gt; MutableSet&lt;V&gt; rejectWith(Predicate2&lt;? super V, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc" id="L168">        return (MutableSet&lt;V&gt;) super.rejectWith(predicate, parameter);</span>
+    }
+
+    @Override
+    public PartitionMutableSet&lt;V&gt; partition(Predicate&lt;? super V&gt; predicate)
+    {
+<span class="nc" id="L174">        return (PartitionMutableSet&lt;V&gt;) super.partition(predicate);</span>
+    }
+
+    @Override
+    public &lt;P&gt; PartitionMutableSet&lt;V&gt; partitionWith(Predicate2&lt;? super V, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc" id="L180">        return (PartitionMutableSet&lt;V&gt;) super.partitionWith(predicate, parameter);</span>
+    }
+
+    @Override
+    public &lt;V1&gt; MutableSetMultimap&lt;V1, V&gt; groupBy(Function&lt;? super V, ? extends V1&gt; function)
+    {
+<span class="nc" id="L186">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L188">            return this.getDelegate().groupBy(function);</span>
+        }
+    }
+
+    @Override
+    public &lt;V1&gt; MutableSetMultimap&lt;V1, V&gt; groupByEach(Function&lt;? super V, ? extends Iterable&lt;V1&gt;&gt; function)
+    {
+<span class="nc" id="L195">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L197">            return this.getDelegate().groupByEach(function);</span>
+        }
+    }
+
+    @Override
+    public MutableSetMultimap&lt;V, K&gt; flip()
+    {
+<span class="nc" id="L204">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L206">            return this.getDelegate().flip();</span>
+        }
+    }
+
+    @Override
+    public MutableBiMap&lt;K, V&gt; newEmpty()
+    {
+<span class="nc" id="L213">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L215">            return this.getDelegate().newEmpty();</span>
+        }
+    }
+
+    @Override
+    public MutableBiMap&lt;V, K&gt; inverse()
+    {
+<span class="nc" id="L222">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L224">            return new SynchronizedBiMap&lt;&gt;(this.getDelegate().inverse(), this.lock);</span>
+        }
+    }
+
+    @Override
+    public MutableBiMap&lt;V, K&gt; flipUniqueValues()
+    {
+<span class="nc" id="L231">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L233">            return this.getDelegate().flipUniqueValues();</span>
+        }
+    }
+
+    @Override
+    public RichIterable&lt;K&gt; keysView()
+    {
+<span class="nc" id="L240">        return LazyIterate.adapt(this.keySet());</span>
+    }
+
+    @Override
+    public RichIterable&lt;V&gt; valuesView()
+    {
+<span class="nc" id="L246">        return LazyIterate.adapt(this.values());</span>
+    }
+
+    @Override
+    public ImmutableBiMap&lt;K, V&gt; toImmutable()
+    {
+<span class="nc" id="L252">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L254">            return this.getDelegate().toImmutable();</span>
+        }
+    }
+
+    /**
+     * @deprecated in 8.0. Use {@link OrderedIterable#zipWithIndex()} instead.
+     */
+    @Override
+    @Deprecated
+    public MutableSet&lt;Pair&lt;V, Integer&gt;&gt; zipWithIndex()
+    {
+<span class="nc" id="L265">        return (MutableSet&lt;Pair&lt;V, Integer&gt;&gt;) super.zipWithIndex();</span>
+    }
+
+    @Override
+    public &lt;VV&gt; MutableBiMap&lt;VV, V&gt; groupByUniqueKey(Function&lt;? super V, ? extends VV&gt; function)
+    {
+<span class="nc" id="L271">        return (MutableBiMap&lt;VV, V&gt;) super.groupByUniqueKey(function);</span>
+    }
+
+    /**
+     * @deprecated in 8.0. Use {@link OrderedIterable#zip(Iterable)} instead.
+     */
+    @Override
+    @Deprecated
+    public &lt;S&gt; MutableSet&lt;Pair&lt;V, S&gt;&gt; zip(Iterable&lt;S&gt; that)
+    {
+<span class="nc" id="L281">        return (MutableSet&lt;Pair&lt;V, S&gt;&gt;) super.zip(that);</span>
+    }
+
+    @Override
+    public MutableBiMap&lt;K, V&gt; withKeyValue(K key, V value)
+    {
+<span class="nc" id="L287">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L289">            this.getDelegate().put(key, value);</span>
+<span class="nc" id="L290">            return this;</span>
+        }
+    }
+
+    @Override
+    public MutableBiMap&lt;K, V&gt; withAllKeyValues(Iterable&lt;? extends Pair&lt;? extends K, ? extends V&gt;&gt; keyValues)
+    {
+<span class="nc" id="L297">        synchronized (this.lock)</span>
+        {
+<span class="nc bnc" id="L299" title="All 2 branches missed.">            for (Pair&lt;? extends K, ? extends V&gt; keyValue : keyValues)</span>
+            {
+<span class="nc" id="L301">                this.getDelegate().put(keyValue.getOne(), keyValue.getTwo());</span>
+<span class="nc" id="L302">            }</span>
+<span class="nc" id="L303">            return this;</span>
+        }
+    }
+
+    @Override
+    public MutableBiMap&lt;K, V&gt; withAllKeyValueArguments(Pair&lt;? extends K, ? extends V&gt;... keyValuePairs)
+    {
+<span class="nc" id="L310">        return this.withAllKeyValues(ArrayAdapter.adapt(keyValuePairs));</span>
+    }
+
+    @Override
+    public MutableBiMap&lt;K, V&gt; withoutKey(K key)
+    {
+<span class="nc" id="L316">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L318">            this.getDelegate().remove(key);</span>
+<span class="nc" id="L319">            return this;</span>
+        }
+    }
+
+    @Override
+    public MutableBiMap&lt;K, V&gt; withoutAllKeys(Iterable&lt;? extends K&gt; keys)
+    {
+<span class="nc" id="L326">        synchronized (this.lock)</span>
+        {
+<span class="nc bnc" id="L328" title="All 2 branches missed.">            for (K key : keys)</span>
+            {
+<span class="nc" id="L330">                this.getDelegate().removeKey(key);</span>
+<span class="nc" id="L331">            }</span>
+<span class="nc" id="L332">            return this;</span>
+        }
+    }
+
+    @Override
+    public Set&lt;K&gt; keySet()
+    {
+<span class="nc" id="L339">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L341">            return SynchronizedMutableSet.of(this.getDelegate().keySet(), this.lock);</span>
+        }
+    }
+
+    @Override
+    public Collection&lt;V&gt; values()
+    {
+<span class="nc" id="L348">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L350">            return SynchronizedMutableCollection.of(this.getDelegate().values(), this.lock);</span>
+        }
+    }
+
+    @Override
+    public Set&lt;Entry&lt;K, V&gt;&gt; entrySet()
+    {
+<span class="nc" id="L357">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L359">            return SynchronizedMutableSet.of(this.getDelegate().entrySet(), this.lock);</span>
+        }
+    }
+
+    protected Object writeReplace()
+    {
+<span class="nc" id="L365">        return new SynchronizedBiMapSerializationProxy&lt;&gt;(this.getDelegate());</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.0.201801022044</span></div></body></html>

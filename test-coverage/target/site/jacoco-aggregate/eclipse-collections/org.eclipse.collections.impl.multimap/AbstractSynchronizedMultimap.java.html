@@ -1,0 +1,400 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>AbstractSynchronizedMultimap.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Eclipse Collections Test Coverage Aggregation</a> &gt; <a href="../index.html" class="el_bundle">eclipse-collections</a> &gt; <a href="index.source.html" class="el_package">org.eclipse.collections.impl.multimap</a> &gt; <span class="el_source">AbstractSynchronizedMultimap.java</span></div><h1>AbstractSynchronizedMultimap.java</h1><pre class="source lang-java linenums">/*
+ * Copyright (c) 2016 Shotaro Sano.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * and Eclipse Distribution License v. 1.0 which accompany this distribution.
+ * The Eclipse Public License is available at http://www.eclipse.org/legal/epl-v10.html
+ * and the Eclipse Distribution License is available at
+ * http://www.eclipse.org/org/documents/edl-v10.php.
+ */
+
+package org.eclipse.collections.impl.multimap;
+
+import java.util.Collection;
+import java.util.Set;
+
+import org.eclipse.collections.api.RichIterable;
+import org.eclipse.collections.api.bag.Bag;
+import org.eclipse.collections.api.block.function.Function;
+import org.eclipse.collections.api.block.function.Function0;
+import org.eclipse.collections.api.block.function.Function2;
+import org.eclipse.collections.api.block.predicate.Predicate2;
+import org.eclipse.collections.api.block.procedure.Procedure;
+import org.eclipse.collections.api.block.procedure.Procedure2;
+import org.eclipse.collections.api.map.MutableMap;
+import org.eclipse.collections.api.multimap.Multimap;
+import org.eclipse.collections.api.multimap.MutableMultimap;
+import org.eclipse.collections.api.set.SetIterable;
+import org.eclipse.collections.api.tuple.Pair;
+import org.eclipse.collections.impl.bag.mutable.SynchronizedBag;
+import org.eclipse.collections.impl.map.mutable.SynchronizedMutableMap;
+import org.eclipse.collections.impl.set.mutable.SynchronizedMutableSet;
+import org.eclipse.collections.impl.utility.LazyIterate;
+
+public abstract class AbstractSynchronizedMultimap&lt;K, V&gt; implements MutableMultimap&lt;K, V&gt;
+{
+    protected final MutableMultimap&lt;K, V&gt; delegate;
+    private final Object lock;
+
+    protected AbstractSynchronizedMultimap(MutableMultimap&lt;K, V&gt; multimap, Object newLock)
+<span class="nc" id="L40">    {</span>
+<span class="nc bnc" id="L41" title="All 2 branches missed.">        if (multimap == null)</span>
+        {
+<span class="nc" id="L43">            throw new IllegalArgumentException(&quot;Cannot create a AbstractSynchronizedMultimap on a null multimap&quot;);</span>
+        }
+
+<span class="nc" id="L46">        this.delegate = multimap;</span>
+<span class="nc bnc" id="L47" title="All 2 branches missed.">        this.lock = newLock == null ? this : newLock;</span>
+<span class="nc" id="L48">    }</span>
+
+    protected AbstractSynchronizedMultimap(MutableMultimap&lt;K, V&gt; multimap)
+    {
+<span class="nc" id="L52">        this(multimap, null);</span>
+<span class="nc" id="L53">    }</span>
+
+    protected MutableMultimap&lt;K, V&gt; getDelegate()
+    {
+<span class="nc" id="L57">        return this.delegate;</span>
+    }
+
+    protected Object getLock()
+    {
+<span class="nc" id="L62">        return this.lock;</span>
+    }
+
+    protected Object writeReplace()
+    {
+<span class="nc" id="L67">        return new SynchronizedMultimapSerializationProxy&lt;&gt;(this.getDelegate());</span>
+    }
+
+    @Override
+    public boolean equals(Object obj)
+    {
+<span class="nc" id="L73">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L75">            return this.delegate.equals(obj);</span>
+        }
+    }
+
+    @Override
+    public int hashCode()
+    {
+<span class="nc" id="L82">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L84">            return this.delegate.hashCode();</span>
+        }
+    }
+
+    @Override
+    public String toString()
+    {
+<span class="nc" id="L91">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L93">            return this.delegate.toString();</span>
+        }
+    }
+
+    @Override
+    public boolean put(K key, V value)
+    {
+<span class="nc" id="L100">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L102">            return this.getDelegate().put(key, value);</span>
+        }
+    }
+
+    @Override
+    public boolean add(Pair&lt;K, V&gt; keyValuePair)
+    {
+<span class="nc" id="L109">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L111">            return this.getDelegate().add(keyValuePair);</span>
+        }
+    }
+
+    @Override
+    public boolean remove(Object key, Object value)
+    {
+<span class="nc" id="L118">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L120">            return this.getDelegate().remove(key, value);</span>
+        }
+    }
+
+    @Override
+    public boolean putAllPairs(Pair&lt;K, V&gt;... pairs)
+    {
+<span class="nc" id="L127">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L129">            return this.getDelegate().putAllPairs(pairs);</span>
+        }
+    }
+
+    @Override
+    public boolean putAllPairs(Iterable&lt;Pair&lt;K, V&gt;&gt; pairs)
+    {
+<span class="nc" id="L136">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L138">            return this.getDelegate().putAllPairs(pairs);</span>
+        }
+    }
+
+    @Override
+    public boolean putAll(K key, Iterable&lt;? extends V&gt; values)
+    {
+<span class="nc" id="L145">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L147">            return this.getDelegate().putAll(key, values);</span>
+        }
+    }
+
+    @Override
+    public &lt;KK extends K, VV extends V&gt; boolean putAll(Multimap&lt;KK, VV&gt; multimap)
+    {
+<span class="nc" id="L154">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L156">            return this.getDelegate().putAll(multimap);</span>
+        }
+    }
+
+    @Override
+    public void clear()
+    {
+<span class="nc" id="L163">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L165">            this.getDelegate().clear();</span>
+<span class="nc" id="L166">        }</span>
+<span class="nc" id="L167">    }</span>
+
+    @Override
+    public boolean isEmpty()
+    {
+<span class="nc" id="L172">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L174">            return this.delegate.isEmpty();</span>
+        }
+    }
+
+    @Override
+    public boolean notEmpty()
+    {
+<span class="nc" id="L181">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L183">            return this.delegate.notEmpty();</span>
+        }
+    }
+
+    @Override
+    public void forEachValue(Procedure&lt;? super V&gt; procedure)
+    {
+<span class="nc" id="L190">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L192">            this.delegate.forEachValue(procedure);</span>
+<span class="nc" id="L193">        }</span>
+<span class="nc" id="L194">    }</span>
+
+    @Override
+    public void forEachKey(Procedure&lt;? super K&gt; procedure)
+    {
+<span class="nc" id="L199">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L201">            this.delegate.forEachKey(procedure);</span>
+<span class="nc" id="L202">        }</span>
+<span class="nc" id="L203">    }</span>
+
+    @Override
+    public void forEachKeyValue(Procedure2&lt;? super K, ? super V&gt; procedure)
+    {
+<span class="nc" id="L208">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L210">            this.delegate.forEachKeyValue(procedure);</span>
+<span class="nc" id="L211">        }</span>
+<span class="nc" id="L212">    }</span>
+
+    @Override
+    public void forEachKeyMultiValues(Procedure2&lt;? super K, ? super Iterable&lt;V&gt;&gt; procedure)
+    {
+<span class="nc" id="L217">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L219">            this.delegate.forEachKeyMultiValues(procedure);</span>
+<span class="nc" id="L220">        }</span>
+<span class="nc" id="L221">    }</span>
+
+    @Override
+    public int size()
+    {
+<span class="nc" id="L226">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L228">            return this.delegate.size();</span>
+        }
+    }
+
+    @Override
+    public int sizeDistinct()
+    {
+<span class="nc" id="L235">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L237">            return this.delegate.sizeDistinct();</span>
+        }
+    }
+
+    @Override
+    public boolean containsKey(Object key)
+    {
+<span class="nc" id="L244">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L246">            return this.delegate.containsKey(key);</span>
+        }
+    }
+
+    @Override
+    public boolean containsValue(Object value)
+    {
+<span class="nc" id="L253">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L255">            return this.delegate.containsValue(value);</span>
+        }
+    }
+
+    @Override
+    public boolean containsKeyAndValue(Object key, Object value)
+    {
+<span class="nc" id="L262">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L264">            return this.delegate.containsKeyAndValue(key, value);</span>
+        }
+    }
+
+    @Override
+    public RichIterable&lt;K&gt; keysView()
+    {
+<span class="nc" id="L271">        return LazyIterate.adapt(this.keySet());</span>
+    }
+
+    @Override
+    public SetIterable&lt;K&gt; keySet()
+    {
+<span class="nc" id="L277">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L279">            return SynchronizedMutableSet.of((Set&lt;K&gt;) this.getDelegate().keySet(), this.lock);</span>
+        }
+    }
+
+    @Override
+    public Bag&lt;K&gt; keyBag()
+    {
+<span class="nc" id="L286">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L288">            return SynchronizedBag.of(this.getDelegate().keyBag().toBag(), this.lock);</span>
+        }
+    }
+
+    @Override
+    public RichIterable&lt;RichIterable&lt;V&gt;&gt; multiValuesView()
+    {
+<span class="nc" id="L295">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L297">            return LazyIterate.adapt(this.getDelegate().multiValuesView());</span>
+        }
+    }
+
+    @Override
+    public RichIterable&lt;V&gt; valuesView()
+    {
+<span class="nc" id="L304">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L306">            return LazyIterate.adapt(this.getDelegate().valuesView());</span>
+        }
+    }
+
+    @Override
+    public RichIterable&lt;Pair&lt;K, RichIterable&lt;V&gt;&gt;&gt; keyMultiValuePairsView()
+    {
+<span class="nc" id="L313">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L315">            return LazyIterate.adapt(this.getDelegate().keyMultiValuePairsView());</span>
+        }
+    }
+
+    @Override
+    public RichIterable&lt;Pair&lt;K, V&gt;&gt; keyValuePairsView()
+    {
+<span class="nc" id="L322">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L324">            return LazyIterate.adapt(this.getDelegate().keyValuePairsView());</span>
+        }
+    }
+
+    @Override
+    public MutableMap&lt;K, RichIterable&lt;V&gt;&gt; toMap()
+    {
+<span class="nc" id="L331">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L333">            return SynchronizedMutableMap.of(this.getDelegate().toMap(), this.lock);</span>
+        }
+    }
+
+    @Override
+    public &lt;R extends Collection&lt;V&gt;&gt; MutableMap&lt;K, R&gt; toMap(Function0&lt;R&gt; collectionFactory)
+    {
+<span class="nc" id="L340">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L342">            return SynchronizedMutableMap.of(this.getDelegate().toMap(collectionFactory), this.lock);</span>
+        }
+    }
+
+    @Override
+    public &lt;R extends MutableMultimap&lt;K, V&gt;&gt; R selectKeysValues(Predicate2&lt;? super K, ? super V&gt; predicate, R target)
+    {
+<span class="nc" id="L349">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L351">            return this.getDelegate().selectKeysValues(predicate, target);</span>
+        }
+    }
+
+    @Override
+    public &lt;R extends MutableMultimap&lt;K, V&gt;&gt; R rejectKeysValues(Predicate2&lt;? super K, ? super V&gt; predicate, R target)
+    {
+<span class="nc" id="L358">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L360">            return this.getDelegate().rejectKeysValues(predicate, target);</span>
+        }
+    }
+
+    @Override
+    public &lt;R extends MutableMultimap&lt;K, V&gt;&gt; R selectKeysMultiValues(Predicate2&lt;? super K, ? super Iterable&lt;V&gt;&gt; predicate, R target)
+    {
+<span class="nc" id="L367">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L369">            return this.getDelegate().selectKeysMultiValues(predicate, target);</span>
+        }
+    }
+
+    @Override
+    public &lt;R extends MutableMultimap&lt;K, V&gt;&gt; R rejectKeysMultiValues(Predicate2&lt;? super K, ? super Iterable&lt;V&gt;&gt; predicate, R target)
+    {
+<span class="nc" id="L376">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L378">            return this.getDelegate().rejectKeysMultiValues(predicate, target);</span>
+        }
+    }
+
+    @Override
+    public &lt;K2, V2, R extends MutableMultimap&lt;K2, V2&gt;&gt; R collectKeysValues(Function2&lt;? super K, ? super V, Pair&lt;K2, V2&gt;&gt; function, R target)
+    {
+<span class="nc" id="L385">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L387">            return this.getDelegate().collectKeysValues(function, target);</span>
+        }
+    }
+
+    @Override
+    public &lt;V2, R extends MutableMultimap&lt;K, V2&gt;&gt; R collectValues(Function&lt;? super V, ? extends V2&gt; function, R target)
+    {
+<span class="nc" id="L394">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L396">            return this.getDelegate().collectValues(function, target);</span>
+        }
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.0.201801022044</span></div></body></html>

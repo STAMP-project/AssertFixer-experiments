@@ -1,0 +1,448 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>Comparators.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Eclipse Collections Test Coverage Aggregation</a> &gt; <a href="../index.html" class="el_bundle">eclipse-collections</a> &gt; <a href="index.source.html" class="el_package">org.eclipse.collections.impl.block.factory</a> &gt; <span class="el_source">Comparators.java</span></div><h1>Comparators.java</h1><pre class="source lang-java linenums">/*
+ * Copyright (c) 2016 Goldman Sachs.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * and Eclipse Distribution License v. 1.0 which accompany this distribution.
+ * The Eclipse Public License is available at http://www.eclipse.org/legal/epl-v10.html
+ * and the Eclipse Distribution License is available at
+ * http://www.eclipse.org/org/documents/edl-v10.php.
+ */
+
+package org.eclipse.collections.impl.block.factory;
+
+import java.util.Collection;
+import java.util.Comparator;
+
+import org.eclipse.collections.api.block.SerializableComparator;
+import org.eclipse.collections.api.block.function.Function;
+import org.eclipse.collections.api.block.function.primitive.BooleanFunction;
+import org.eclipse.collections.api.block.function.primitive.ByteFunction;
+import org.eclipse.collections.api.block.function.primitive.CharFunction;
+import org.eclipse.collections.api.block.function.primitive.DoubleFunction;
+import org.eclipse.collections.api.block.function.primitive.FloatFunction;
+import org.eclipse.collections.api.block.function.primitive.IntFunction;
+import org.eclipse.collections.api.block.function.primitive.LongFunction;
+import org.eclipse.collections.api.block.function.primitive.ShortFunction;
+import org.eclipse.collections.api.set.sorted.SortedSetIterable;
+import org.eclipse.collections.api.tuple.Pair;
+import org.eclipse.collections.impl.block.comparator.FunctionComparator;
+
+public final class Comparators
+{
+<span class="nc" id="L32">    private static final SerializableComparator&lt;?&gt; NATURAL_ORDER_COMPARATOR = new NaturalOrderComparator();</span>
+<span class="nc" id="L33">    private static final SerializableComparator&lt;?&gt; REVERSE_NATURAL_ORDER_COMPARATOR = new ReverseComparator(NATURAL_ORDER_COMPARATOR);</span>
+<span class="nc" id="L34">    private static final SerializableComparator&lt;?&gt; POWER_SET_COMPARATOR = new PowerSetComparator();</span>
+<span class="nc" id="L35">    private static final SerializableComparator&lt;Collection&lt;?&gt;&gt; ASCENDING_COLLECTION_SIZE_COMPARATOR = new AscendingCollectionSizeComparator();</span>
+<span class="nc" id="L36">    private static final SerializableComparator&lt;Collection&lt;?&gt;&gt; DESCENDING_COLLECTION_SIZE_COMPARATOR = new DescendingCollectionSizeComparator();</span>
+
+    private Comparators()
+<span class="nc" id="L39">    {</span>
+<span class="nc" id="L40">        throw new AssertionError(&quot;Suppress default constructor for noninstantiability&quot;);</span>
+    }
+
+    /**
+     * Uses the natural compareTo methods of the objects which will throw if there are any nulls.
+     */
+    public static &lt;T&gt; SerializableComparator&lt;T&gt; naturalOrder()
+    {
+<span class="nc" id="L48">        return (SerializableComparator&lt;T&gt;) NATURAL_ORDER_COMPARATOR;</span>
+    }
+
+    /**
+     * Uses the natural compareTo methods of the objects which will throw if there are any nulls.
+     */
+    public static &lt;T&gt; SerializableComparator&lt;T&gt; reverseNaturalOrder()
+    {
+<span class="nc" id="L56">        return (SerializableComparator&lt;T&gt;) REVERSE_NATURAL_ORDER_COMPARATOR;</span>
+    }
+
+    /**
+     * @param comparator original comparator whose order will be reversed
+     * @return A comparator that reverses the order of any other Serializable Comparator.
+     */
+    public static &lt;T&gt; SerializableComparator&lt;T&gt; reverse(Comparator&lt;T&gt; comparator)
+    {
+<span class="nc bnc" id="L65" title="All 2 branches missed.">        if (comparator == null)</span>
+        {
+<span class="nc" id="L67">            throw new NullPointerException();</span>
+        }
+<span class="nc" id="L69">        return new ReverseComparator&lt;&gt;(comparator);</span>
+    }
+
+    public static &lt;T&gt; SerializableComparator&lt;T&gt; safeNullsLow(Comparator&lt;T&gt; notNullSafeComparator)
+    {
+<span class="nc" id="L74">        return new SafeNullsLowComparator&lt;&gt;(notNullSafeComparator);</span>
+    }
+
+    public static &lt;T&gt; SerializableComparator&lt;T&gt; safeNullsHigh(Comparator&lt;T&gt; notNullSafeComparator)
+    {
+<span class="nc" id="L79">        return new SafeNullsHighComparator&lt;&gt;(notNullSafeComparator);</span>
+    }
+
+    public static &lt;T&gt; SerializableComparator&lt;T&gt; chain(Comparator&lt;T&gt;... comparators)
+    {
+<span class="nc bnc" id="L84" title="All 2 branches missed.">        if (comparators.length == 0)</span>
+        {
+<span class="nc" id="L86">            throw new IllegalArgumentException(&quot;Nothing to chain&quot;);</span>
+        }
+
+<span class="nc" id="L89">        return new ChainedComparator&lt;&gt;(comparators);</span>
+    }
+
+    public static &lt;T, V extends Comparable&lt;? super V&gt;&gt; SerializableComparator&lt;T&gt; fromFunctions(
+            Function&lt;? super T, ? extends V&gt; one)
+    {
+<span class="nc" id="L95">        return Comparators.byFunction(one);</span>
+    }
+
+    public static &lt;T, V1 extends Comparable&lt;? super V1&gt;, V2 extends Comparable&lt;? super V2&gt;&gt; SerializableComparator&lt;T&gt; fromFunctions(
+            Function&lt;? super T, ? extends V1&gt; one,
+            Function&lt;? super T, ? extends V2&gt; two)
+    {
+<span class="nc" id="L102">        return Comparators.chain(</span>
+<span class="nc" id="L103">                Comparators.byFunction(one),</span>
+<span class="nc" id="L104">                Comparators.byFunction(two));</span>
+    }
+
+    public static &lt;T, V1 extends Comparable&lt;? super V1&gt;, V2 extends Comparable&lt;? super V2&gt;, V3 extends Comparable&lt;? super V3&gt;&gt; SerializableComparator&lt;T&gt; fromFunctions(
+            Function&lt;? super T, ? extends V1&gt; one,
+            Function&lt;? super T, ? extends V2&gt; two,
+            Function&lt;? super T, ? extends V3&gt; three)
+    {
+<span class="nc" id="L112">        return Comparators.chain(</span>
+<span class="nc" id="L113">                Comparators.byFunction(one),</span>
+<span class="nc" id="L114">                Comparators.byFunction(two),</span>
+<span class="nc" id="L115">                Comparators.byFunction(three));</span>
+    }
+
+    public static &lt;T&gt; SerializableComparator&lt;SortedSetIterable&lt;T&gt;&gt; powerSet()
+    {
+<span class="nc" id="L120">        return (SerializableComparator&lt;SortedSetIterable&lt;T&gt;&gt;) POWER_SET_COMPARATOR;</span>
+    }
+
+    public static SerializableComparator&lt;Collection&lt;?&gt;&gt; ascendingCollectionSizeComparator()
+    {
+<span class="nc" id="L125">        return ASCENDING_COLLECTION_SIZE_COMPARATOR;</span>
+    }
+
+    public static SerializableComparator&lt;Collection&lt;?&gt;&gt; descendingCollectionSizeComparator()
+    {
+<span class="nc" id="L130">        return DESCENDING_COLLECTION_SIZE_COMPARATOR;</span>
+    }
+
+    /**
+     * Creates a comparator for pairs by using an existing comparator that only compares the first element of the pair
+     *
+     * @param comparator original comparator that compares the first element of the pair
+     * @return A comparator that compares pairs only by their first element
+     */
+    public static &lt;T&gt; SerializableComparator&lt;Pair&lt;T, ?&gt;&gt; byFirstOfPair(Comparator&lt;? super T&gt; comparator)
+    {
+<span class="nc" id="L141">        return new ByFirstOfPairComparator&lt;&gt;(comparator);</span>
+    }
+
+    /**
+     * Creates a comparator for pairs by using an existing comparator that only compares the second element of the pair
+     *
+     * @param comparator original comparator that compares the second element of the pair
+     * @return A comparator that compares pairs only by their second element
+     */
+    public static &lt;T&gt; SerializableComparator&lt;Pair&lt;?, T&gt;&gt; bySecondOfPair(Comparator&lt;? super T&gt; comparator)
+    {
+<span class="nc" id="L152">        return new BySecondOfPairComparator&lt;&gt;(comparator);</span>
+    }
+
+    private static final class NaturalOrderComparator&lt;T extends Comparable&lt;T&gt;&gt; implements SerializableComparator&lt;T&gt;
+    {
+        private static final long serialVersionUID = 1L;
+
+        @Override
+        public int compare(T o1, T o2)
+        {
+<span class="nc bnc" id="L162" title="All 4 branches missed.">            if (o1 == null || o2 == null)</span>
+            {
+<span class="nc" id="L164">                throw new NullPointerException();</span>
+            }
+<span class="nc" id="L166">            return o1.compareTo(o2);</span>
+        }
+    }
+
+    private static final class ReverseComparator&lt;T&gt; implements SerializableComparator&lt;T&gt;
+    {
+        private static final long serialVersionUID = 1L;
+
+        private final Comparator&lt;T&gt; comparator;
+
+        private ReverseComparator(Comparator&lt;T&gt; comparator)
+<span class="nc" id="L177">        {</span>
+<span class="nc" id="L178">            this.comparator = comparator;</span>
+<span class="nc" id="L179">        }</span>
+
+        @Override
+        public int compare(T o1, T o2)
+        {
+<span class="nc" id="L184">            return this.comparator.compare(o2, o1);</span>
+        }
+    }
+
+    private static final class SafeNullsLowComparator&lt;T&gt;
+            implements SerializableComparator&lt;T&gt;
+    {
+        private static final long serialVersionUID = 1L;
+        private final Comparator&lt;T&gt; notNullSafeComparator;
+
+        private SafeNullsLowComparator(Comparator&lt;T&gt; newNotNullSafeComparator)
+<span class="nc" id="L195">        {</span>
+<span class="nc" id="L196">            this.notNullSafeComparator = newNotNullSafeComparator;</span>
+<span class="nc" id="L197">        }</span>
+
+        @Override
+        public int compare(T value1, T value2)
+        {
+<span class="nc bnc" id="L202" title="All 4 branches missed.">            if (value1 != null &amp;&amp; value2 != null)</span>
+            {
+<span class="nc" id="L204">                return this.notNullSafeComparator.compare(value1, value2);</span>
+            }
+
+<span class="nc bnc" id="L207" title="All 4 branches missed.">            if (value1 == null &amp;&amp; value2 == null)</span>
+            {
+<span class="nc" id="L209">                return 0;</span>
+            }
+
+<span class="nc bnc" id="L212" title="All 2 branches missed.">            return value1 == null ? -1 : 1;</span>
+        }
+    }
+
+    private static final class SafeNullsHighComparator&lt;T&gt;
+            implements SerializableComparator&lt;T&gt;
+    {
+        private static final long serialVersionUID = 1L;
+        private final Comparator&lt;T&gt; notNullSafeComparator;
+
+        private SafeNullsHighComparator(Comparator&lt;T&gt; newNotNullSafeComparator)
+<span class="nc" id="L223">        {</span>
+<span class="nc" id="L224">            this.notNullSafeComparator = newNotNullSafeComparator;</span>
+<span class="nc" id="L225">        }</span>
+
+        @Override
+        public int compare(T value1, T value2)
+        {
+<span class="nc bnc" id="L230" title="All 4 branches missed.">            if (value1 != null &amp;&amp; value2 != null)</span>
+            {
+<span class="nc" id="L232">                return this.notNullSafeComparator.compare(value1, value2);</span>
+            }
+
+<span class="nc bnc" id="L235" title="All 4 branches missed.">            if (value1 == null &amp;&amp; value2 == null)</span>
+            {
+<span class="nc" id="L237">                return 0;</span>
+            }
+
+<span class="nc bnc" id="L240" title="All 2 branches missed.">            return value1 == null ? 1 : -1;</span>
+        }
+    }
+
+    private static final class ChainedComparator&lt;T&gt;
+            implements SerializableComparator&lt;T&gt;
+    {
+        private static final long serialVersionUID = 1L;
+        private final Comparator&lt;T&gt;[] comparators;
+
+        private ChainedComparator(Comparator&lt;T&gt;[] comparators)
+<span class="nc" id="L251">        {</span>
+<span class="nc" id="L252">            this.comparators = comparators;</span>
+<span class="nc" id="L253">        }</span>
+
+        @Override
+        public int compare(T value1, T value2)
+        {
+<span class="nc bnc" id="L258" title="All 2 branches missed.">            for (Comparator&lt;T&gt; comparator : this.comparators)</span>
+            {
+<span class="nc" id="L260">                int result = comparator.compare(value1, value2);</span>
+<span class="nc bnc" id="L261" title="All 2 branches missed.">                if (result != 0)</span>
+                {
+<span class="nc" id="L263">                    return result;</span>
+                }
+            }
+<span class="nc" id="L266">            return 0;</span>
+        }
+    }
+
+    private static final class PowerSetComparator&lt;T&gt; implements SerializableComparator&lt;SortedSetIterable&lt;T&gt;&gt;
+    {
+        private static final long serialVersionUID = 1L;
+
+        @Override
+        public int compare(SortedSetIterable&lt;T&gt; setA, SortedSetIterable&lt;T&gt; setB)
+        {
+<span class="nc" id="L277">            int compareTo = Integer.compare(setA.size(), setB.size());</span>
+<span class="nc bnc" id="L278" title="All 2 branches missed.">            if (compareTo == 0)</span>
+            {
+<span class="nc" id="L280">                return setA.compareTo(setB);</span>
+            }
+<span class="nc" id="L282">            return compareTo;</span>
+        }
+    }
+
+    private static final class AscendingCollectionSizeComparator implements SerializableComparator&lt;Collection&lt;?&gt;&gt;
+    {
+        private static final long serialVersionUID = 1L;
+
+        @Override
+        public int compare(Collection&lt;?&gt; c1, Collection&lt;?&gt; c2)
+        {
+<span class="nc" id="L293">            return c1.size() - c2.size();</span>
+        }
+    }
+
+    private static final class DescendingCollectionSizeComparator implements SerializableComparator&lt;Collection&lt;?&gt;&gt;
+    {
+        private static final long serialVersionUID = 1L;
+
+        @Override
+        public int compare(Collection&lt;?&gt; c1, Collection&lt;?&gt; c2)
+        {
+<span class="nc" id="L304">            return c2.size() - c1.size();</span>
+        }
+    }
+
+    public static &lt;T, V extends Comparable&lt;? super V&gt;&gt; SerializableComparator&lt;T&gt; byFunction(Function&lt;? super T, ? extends V&gt; function)
+    {
+<span class="nc bnc" id="L310" title="All 2 branches missed.">        if (function instanceof BooleanFunction)</span>
+        {
+<span class="nc" id="L312">            return Functions.toBooleanComparator((BooleanFunction&lt;T&gt;) function);</span>
+        }
+<span class="nc bnc" id="L314" title="All 2 branches missed.">        if (function instanceof ByteFunction)</span>
+        {
+<span class="nc" id="L316">            return Functions.toByteComparator((ByteFunction&lt;T&gt;) function);</span>
+        }
+<span class="nc bnc" id="L318" title="All 2 branches missed.">        if (function instanceof CharFunction)</span>
+        {
+<span class="nc" id="L320">            return Functions.toCharComparator((CharFunction&lt;T&gt;) function);</span>
+        }
+<span class="nc bnc" id="L322" title="All 2 branches missed.">        if (function instanceof DoubleFunction)</span>
+        {
+<span class="nc" id="L324">            return Functions.toDoubleComparator((DoubleFunction&lt;T&gt;) function);</span>
+        }
+<span class="nc bnc" id="L326" title="All 2 branches missed.">        if (function instanceof FloatFunction)</span>
+        {
+<span class="nc" id="L328">            return Functions.toFloatComparator((FloatFunction&lt;T&gt;) function);</span>
+        }
+<span class="nc bnc" id="L330" title="All 2 branches missed.">        if (function instanceof IntFunction)</span>
+        {
+<span class="nc" id="L332">            return Functions.toIntComparator((IntFunction&lt;T&gt;) function);</span>
+        }
+<span class="nc bnc" id="L334" title="All 2 branches missed.">        if (function instanceof LongFunction)</span>
+        {
+<span class="nc" id="L336">            return Functions.toLongComparator((LongFunction&lt;T&gt;) function);</span>
+        }
+<span class="nc bnc" id="L338" title="All 2 branches missed.">        if (function instanceof ShortFunction)</span>
+        {
+<span class="nc" id="L340">            return Functions.toShortComparator((ShortFunction&lt;T&gt;) function);</span>
+        }
+<span class="nc" id="L342">        return Comparators.byFunction(function, naturalOrder());</span>
+    }
+
+    public static &lt;T&gt; SerializableComparator&lt;T&gt; byBooleanFunction(BooleanFunction&lt;T&gt; function)
+    {
+<span class="nc" id="L347">        return Functions.toBooleanComparator(function);</span>
+    }
+
+    public static &lt;T&gt; SerializableComparator&lt;T&gt; byByteFunction(ByteFunction&lt;T&gt; function)
+    {
+<span class="nc" id="L352">        return Functions.toByteComparator(function);</span>
+    }
+
+    public static &lt;T&gt; SerializableComparator&lt;T&gt; byCharFunction(CharFunction&lt;T&gt; function)
+    {
+<span class="nc" id="L357">        return Functions.toCharComparator(function);</span>
+    }
+
+    public static &lt;T&gt; SerializableComparator&lt;T&gt; byDoubleFunction(DoubleFunction&lt;T&gt; function)
+    {
+<span class="nc" id="L362">        return Functions.toDoubleComparator(function);</span>
+    }
+
+    public static &lt;T&gt; SerializableComparator&lt;T&gt; byFloatFunction(FloatFunction&lt;T&gt; function)
+    {
+<span class="nc" id="L367">        return Functions.toFloatComparator(function);</span>
+    }
+
+    public static &lt;T&gt; SerializableComparator&lt;T&gt; byIntFunction(IntFunction&lt;T&gt; function)
+    {
+<span class="nc" id="L372">        return Functions.toIntComparator(function);</span>
+    }
+
+    public static &lt;T&gt; SerializableComparator&lt;T&gt; byLongFunction(LongFunction&lt;T&gt; function)
+    {
+<span class="nc" id="L377">        return Functions.toLongComparator(function);</span>
+    }
+
+    public static &lt;T&gt; SerializableComparator&lt;T&gt; byShortFunction(ShortFunction&lt;T&gt; function)
+    {
+<span class="nc" id="L382">        return Functions.toShortComparator(function);</span>
+    }
+
+    public static &lt;T, V&gt; SerializableComparator&lt;T&gt; byFunction(
+            Function&lt;? super T, ? extends V&gt; function,
+            Comparator&lt;V&gt; comparator)
+    {
+<span class="nc" id="L389">        return new FunctionComparator&lt;&gt;(function, comparator);</span>
+    }
+
+    public static boolean nullSafeEquals(Object value1, Object value2)
+    {
+<span class="nc bnc" id="L394" title="All 4 branches missed.">        return value1 == null ? value2 == null : value1.equals(value2);</span>
+    }
+
+    public static &lt;T extends Comparable&lt;T&gt;&gt; int nullSafeCompare(T value1, T value2)
+    {
+<span class="nc bnc" id="L399" title="All 4 branches missed.">        if (value1 != null &amp;&amp; value2 != null)</span>
+        {
+<span class="nc" id="L401">            return value1.compareTo(value2);</span>
+        }
+
+<span class="nc bnc" id="L404" title="All 4 branches missed.">        if (value1 == null &amp;&amp; value2 == null)</span>
+        {
+<span class="nc" id="L406">            return 0;</span>
+        }
+
+<span class="nc bnc" id="L409" title="All 2 branches missed.">        return value1 == null ? -1 : 1;</span>
+    }
+
+    private static final class ByFirstOfPairComparator&lt;T&gt; implements SerializableComparator&lt;Pair&lt;T, ?&gt;&gt;
+    {
+        private static final long serialVersionUID = 1L;
+
+        private final Comparator&lt;? super T&gt; comparator;
+
+        private ByFirstOfPairComparator(Comparator&lt;? super T&gt; comparator)
+<span class="nc" id="L419">        {</span>
+<span class="nc" id="L420">            this.comparator = comparator;</span>
+<span class="nc" id="L421">        }</span>
+
+        @Override
+        public int compare(Pair&lt;T, ?&gt; p1, Pair&lt;T, ?&gt; p2)
+        {
+<span class="nc" id="L426">            return this.comparator.compare(p1.getOne(), p2.getOne());</span>
+        }
+    }
+
+    private static final class BySecondOfPairComparator&lt;T&gt; implements SerializableComparator&lt;Pair&lt;?, T&gt;&gt;
+    {
+        private static final long serialVersionUID = 1L;
+
+        private final Comparator&lt;? super T&gt; comparator;
+
+        private BySecondOfPairComparator(Comparator&lt;? super T&gt; comparator)
+<span class="nc" id="L437">        {</span>
+<span class="nc" id="L438">            this.comparator = comparator;</span>
+<span class="nc" id="L439">        }</span>
+
+        @Override
+        public int compare(Pair&lt;?, T&gt; p1, Pair&lt;?, T&gt; p2)
+        {
+<span class="nc" id="L444">            return this.comparator.compare(p1.getTwo(), p2.getTwo());</span>
+        }
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.0.201801022044</span></div></body></html>

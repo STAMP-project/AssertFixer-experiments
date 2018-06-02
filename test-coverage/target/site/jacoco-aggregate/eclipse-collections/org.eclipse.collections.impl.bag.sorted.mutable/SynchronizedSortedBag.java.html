@@ -1,0 +1,729 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>SynchronizedSortedBag.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Eclipse Collections Test Coverage Aggregation</a> &gt; <a href="../index.html" class="el_bundle">eclipse-collections</a> &gt; <a href="index.source.html" class="el_package">org.eclipse.collections.impl.bag.sorted.mutable</a> &gt; <span class="el_source">SynchronizedSortedBag.java</span></div><h1>SynchronizedSortedBag.java</h1><pre class="source lang-java linenums">/*
+ * Copyright (c) 2017 Goldman Sachs and others.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * and Eclipse Distribution License v. 1.0 which accompany this distribution.
+ * The Eclipse Public License is available at http://www.eclipse.org/legal/epl-v10.html
+ * and the Eclipse Distribution License is available at
+ * http://www.eclipse.org/org/documents/edl-v10.php.
+ */
+
+package org.eclipse.collections.impl.bag.sorted.mutable;
+
+import java.io.Serializable;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.Optional;
+import java.util.concurrent.ExecutorService;
+
+import org.eclipse.collections.api.LazyIterable;
+import org.eclipse.collections.api.bag.ParallelBag;
+import org.eclipse.collections.api.bag.sorted.ImmutableSortedBag;
+import org.eclipse.collections.api.bag.sorted.MutableSortedBag;
+import org.eclipse.collections.api.bag.sorted.SortedBag;
+import org.eclipse.collections.api.block.function.Function;
+import org.eclipse.collections.api.block.function.Function2;
+import org.eclipse.collections.api.block.function.primitive.BooleanFunction;
+import org.eclipse.collections.api.block.function.primitive.ByteFunction;
+import org.eclipse.collections.api.block.function.primitive.CharFunction;
+import org.eclipse.collections.api.block.function.primitive.DoubleFunction;
+import org.eclipse.collections.api.block.function.primitive.FloatFunction;
+import org.eclipse.collections.api.block.function.primitive.IntFunction;
+import org.eclipse.collections.api.block.function.primitive.LongFunction;
+import org.eclipse.collections.api.block.function.primitive.ObjectIntToObjectFunction;
+import org.eclipse.collections.api.block.function.primitive.ShortFunction;
+import org.eclipse.collections.api.block.predicate.Predicate;
+import org.eclipse.collections.api.block.predicate.Predicate2;
+import org.eclipse.collections.api.block.predicate.primitive.IntPredicate;
+import org.eclipse.collections.api.block.procedure.Procedure;
+import org.eclipse.collections.api.block.procedure.primitive.ObjectIntProcedure;
+import org.eclipse.collections.api.list.MutableList;
+import org.eclipse.collections.api.list.primitive.MutableBooleanList;
+import org.eclipse.collections.api.list.primitive.MutableByteList;
+import org.eclipse.collections.api.list.primitive.MutableCharList;
+import org.eclipse.collections.api.list.primitive.MutableDoubleList;
+import org.eclipse.collections.api.list.primitive.MutableFloatList;
+import org.eclipse.collections.api.list.primitive.MutableIntList;
+import org.eclipse.collections.api.list.primitive.MutableLongList;
+import org.eclipse.collections.api.list.primitive.MutableShortList;
+import org.eclipse.collections.api.map.sorted.MutableSortedMap;
+import org.eclipse.collections.api.multimap.sortedbag.MutableSortedBagMultimap;
+import org.eclipse.collections.api.ordered.OrderedIterable;
+import org.eclipse.collections.api.partition.bag.sorted.PartitionMutableSortedBag;
+import org.eclipse.collections.api.set.sorted.MutableSortedSet;
+import org.eclipse.collections.api.stack.MutableStack;
+import org.eclipse.collections.api.tuple.Pair;
+import org.eclipse.collections.api.tuple.primitive.ObjectIntPair;
+import org.eclipse.collections.impl.collection.mutable.AbstractSynchronizedMutableCollection;
+import org.eclipse.collections.impl.collection.mutable.SynchronizedCollectionSerializationProxy;
+import org.eclipse.collections.impl.stack.mutable.ArrayStack;
+
+/**
+ * A synchronized view of a {@link MutableSortedBag}. It is imperative that the user manually synchronize on the collection when iterating over it using the
+ * standard JDK iterator or JDK 5 for loop, as per {@link Collections#synchronizedCollection(Collection)}.
+ *
+ * @see MutableSortedBag#asSynchronized()
+ */
+public class SynchronizedSortedBag&lt;T&gt;
+        extends AbstractSynchronizedMutableCollection&lt;T&gt;
+        implements MutableSortedBag&lt;T&gt;, Serializable
+{
+    private static final long serialVersionUID = 2L;
+
+    SynchronizedSortedBag(MutableSortedBag&lt;T&gt; bag)
+    {
+<span class="nc" id="L76">        super(bag);</span>
+<span class="nc" id="L77">    }</span>
+
+    SynchronizedSortedBag(MutableSortedBag&lt;T&gt; bag, Object newLock)
+    {
+<span class="nc" id="L81">        super(bag, newLock);</span>
+<span class="nc" id="L82">    }</span>
+
+    public static &lt;E&gt; SynchronizedSortedBag&lt;E&gt; of(MutableSortedBag&lt;E&gt; bag)
+    {
+<span class="nc" id="L86">        return new SynchronizedSortedBag&lt;&gt;(bag);</span>
+    }
+
+    public static &lt;E&gt; MutableSortedBag&lt;E&gt; of(MutableSortedBag&lt;E&gt; bag, Object lock)
+    {
+<span class="nc" id="L91">        return new SynchronizedSortedBag&lt;&gt;(bag, lock);</span>
+    }
+
+    @Override
+    protected MutableSortedBag&lt;T&gt; getDelegate()
+    {
+<span class="nc" id="L97">        return (MutableSortedBag&lt;T&gt;) super.getDelegate();</span>
+    }
+
+    @Override
+    public MutableSortedBag&lt;T&gt; with(T element)
+    {
+<span class="nc" id="L103">        this.add(element);</span>
+<span class="nc" id="L104">        return this;</span>
+    }
+
+    @Override
+    public MutableSortedBag&lt;T&gt; without(T element)
+    {
+<span class="nc" id="L110">        this.remove(element);</span>
+<span class="nc" id="L111">        return this;</span>
+    }
+
+    @Override
+    public MutableSortedBag&lt;T&gt; withAll(Iterable&lt;? extends T&gt; elements)
+    {
+<span class="nc" id="L117">        this.addAllIterable(elements);</span>
+<span class="nc" id="L118">        return this;</span>
+    }
+
+    @Override
+    public MutableSortedBag&lt;T&gt; withoutAll(Iterable&lt;? extends T&gt; elements)
+    {
+<span class="nc" id="L124">        this.removeAllIterable(elements);</span>
+<span class="nc" id="L125">        return this;</span>
+    }
+
+    @Override
+    public MutableSortedBag&lt;T&gt; newEmpty()
+    {
+<span class="nc" id="L131">        synchronized (this.getLock())</span>
+        {
+<span class="nc" id="L133">            return this.getDelegate().newEmpty().asSynchronized();</span>
+        }
+    }
+
+    @Override
+    public MutableSortedBag&lt;T&gt; clone()
+    {
+<span class="nc" id="L140">        synchronized (this.getLock())</span>
+        {
+<span class="nc" id="L142">            return SynchronizedSortedBag.of(this.getDelegate().clone());</span>
+        }
+    }
+
+    @Override
+    public Comparator&lt;? super T&gt; comparator()
+    {
+<span class="nc" id="L149">        synchronized (this.getLock())</span>
+        {
+<span class="nc" id="L151">            return this.getDelegate().comparator();</span>
+        }
+    }
+
+    @Override
+    public int compareTo(SortedBag&lt;T&gt; o)
+    {
+<span class="nc" id="L158">        synchronized (this.getLock())</span>
+        {
+<span class="nc" id="L160">            return this.getDelegate().compareTo(o);</span>
+        }
+    }
+
+    protected Object writeReplace()
+    {
+<span class="nc" id="L166">        return new SynchronizedCollectionSerializationProxy&lt;&gt;(this.getDelegate());</span>
+    }
+
+    @Override
+    public int addOccurrences(T item, int occurrences)
+    {
+<span class="nc" id="L172">        synchronized (this.getLock())</span>
+        {
+<span class="nc" id="L174">            return this.getDelegate().addOccurrences(item, occurrences);</span>
+        }
+    }
+
+    @Override
+    public boolean removeOccurrences(Object item, int occurrences)
+    {
+<span class="nc" id="L181">        synchronized (this.getLock())</span>
+        {
+<span class="nc" id="L183">            return this.getDelegate().removeOccurrences(item, occurrences);</span>
+        }
+    }
+
+    @Override
+    public boolean setOccurrences(T item, int occurrences)
+    {
+<span class="nc" id="L190">        synchronized (this.getLock())</span>
+        {
+<span class="nc" id="L192">            return this.getDelegate().setOccurrences(item, occurrences);</span>
+        }
+    }
+
+    @Override
+    public MutableList&lt;ObjectIntPair&lt;T&gt;&gt; topOccurrences(int count)
+    {
+<span class="nc" id="L199">        synchronized (this.getLock())</span>
+        {
+<span class="nc" id="L201">            return this.getDelegate().topOccurrences(count);</span>
+        }
+    }
+
+    @Override
+    public MutableSortedBag&lt;T&gt; selectByOccurrences(IntPredicate predicate)
+    {
+<span class="nc" id="L208">        synchronized (this.getLock())</span>
+        {
+<span class="nc" id="L210">            return this.getDelegate().selectByOccurrences(predicate);</span>
+        }
+    }
+
+    @Override
+    public MutableList&lt;ObjectIntPair&lt;T&gt;&gt; bottomOccurrences(int count)
+    {
+<span class="nc" id="L217">        synchronized (this.getLock())</span>
+        {
+<span class="nc" id="L219">            return this.getDelegate().bottomOccurrences(count);</span>
+        }
+    }
+
+    @Override
+    public MutableSortedMap&lt;T, Integer&gt; toMapOfItemToCount()
+    {
+<span class="nc" id="L226">        synchronized (this.getLock())</span>
+        {
+<span class="nc" id="L228">            return this.getDelegate().toMapOfItemToCount();</span>
+        }
+    }
+
+    @Override
+    public void forEachWithOccurrences(ObjectIntProcedure&lt;? super T&gt; procedure)
+    {
+<span class="nc" id="L235">        synchronized (this.getLock())</span>
+        {
+<span class="nc" id="L237">            this.getDelegate().forEachWithOccurrences(procedure);</span>
+<span class="nc" id="L238">        }</span>
+<span class="nc" id="L239">    }</span>
+
+    /**
+     * @since 9.1.
+     */
+    @Override
+    public &lt;V, R extends Collection&lt;V&gt;&gt; R collectWithOccurrences(ObjectIntToObjectFunction&lt;? super T, ? extends V&gt; function, R target)
+    {
+<span class="nc" id="L247">        synchronized (this.getLock())</span>
+        {
+<span class="nc" id="L249">            return this.getDelegate().collectWithOccurrences(function, target);</span>
+        }
+    }
+
+    @Override
+    public int occurrencesOf(Object item)
+    {
+<span class="nc" id="L256">        synchronized (this.getLock())</span>
+        {
+<span class="nc" id="L258">            return this.getDelegate().occurrencesOf(item);</span>
+        }
+    }
+
+    @Override
+    public int sizeDistinct()
+    {
+<span class="nc" id="L265">        synchronized (this.getLock())</span>
+        {
+<span class="nc" id="L267">            return this.getDelegate().sizeDistinct();</span>
+        }
+    }
+
+    @Override
+    public String toStringOfItemToCount()
+    {
+<span class="nc" id="L274">        synchronized (this.getLock())</span>
+        {
+<span class="nc" id="L276">            return this.getDelegate().toStringOfItemToCount();</span>
+        }
+    }
+
+    @Override
+    public int indexOf(Object object)
+    {
+<span class="nc" id="L283">        synchronized (this.getLock())</span>
+        {
+<span class="nc" id="L285">            return this.getDelegate().indexOf(object);</span>
+        }
+    }
+
+    @Override
+    public MutableStack&lt;T&gt; toStack()
+    {
+<span class="nc" id="L292">        synchronized (this.getLock())</span>
+        {
+<span class="nc" id="L294">            return ArrayStack.newStack(this);</span>
+        }
+    }
+
+    @Override
+    public PartitionMutableSortedBag&lt;T&gt; partitionWhile(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L301">        synchronized (this.getLock())</span>
+        {
+<span class="nc" id="L303">            return this.getDelegate().partitionWhile(predicate);</span>
+        }
+    }
+
+    @Override
+    public MutableSortedSet&lt;T&gt; distinct()
+    {
+<span class="nc" id="L310">        synchronized (this.getLock())</span>
+        {
+<span class="nc" id="L312">            return this.getDelegate().distinct();</span>
+        }
+    }
+
+    @Override
+    public MutableSortedBag&lt;T&gt; takeWhile(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L319">        synchronized (this.getLock())</span>
+        {
+<span class="nc" id="L321">            return this.getDelegate().takeWhile(predicate);</span>
+        }
+    }
+
+    @Override
+    public MutableSortedBag&lt;T&gt; dropWhile(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L328">        synchronized (this.getLock())</span>
+        {
+<span class="nc" id="L330">            return this.getDelegate().dropWhile(predicate);</span>
+        }
+    }
+
+    @Override
+    public &lt;S&gt; boolean corresponds(OrderedIterable&lt;S&gt; other, Predicate2&lt;? super T, ? super S&gt; predicate)
+    {
+<span class="nc" id="L337">        synchronized (this.getLock())</span>
+        {
+<span class="nc" id="L339">            return this.getDelegate().corresponds(other, predicate);</span>
+        }
+    }
+
+    @Override
+    public void forEach(int startIndex, int endIndex, Procedure&lt;? super T&gt; procedure)
+    {
+<span class="nc" id="L346">        synchronized (this.getLock())</span>
+        {
+<span class="nc" id="L348">            this.getDelegate().forEach(startIndex, endIndex, procedure);</span>
+<span class="nc" id="L349">        }</span>
+<span class="nc" id="L350">    }</span>
+
+    @Override
+    public void forEachWithIndex(int fromIndex, int toIndex, ObjectIntProcedure&lt;? super T&gt; objectIntProcedure)
+    {
+<span class="nc" id="L355">        synchronized (this.getLock())</span>
+        {
+<span class="nc" id="L357">            this.getDelegate().forEachWithIndex(fromIndex, toIndex, objectIntProcedure);</span>
+<span class="nc" id="L358">        }</span>
+<span class="nc" id="L359">    }</span>
+
+    @Override
+    public int detectIndex(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L364">        synchronized (this.getLock())</span>
+        {
+<span class="nc" id="L366">            return this.getDelegate().detectIndex(predicate);</span>
+        }
+    }
+
+    @Override
+    public MutableSortedBag&lt;T&gt; tap(Procedure&lt;? super T&gt; procedure)
+    {
+<span class="nc" id="L373">        synchronized (this.getLock())</span>
+        {
+<span class="nc" id="L375">            this.forEach(procedure);</span>
+<span class="nc" id="L376">            return this;</span>
+        }
+    }
+
+    @Override
+    public MutableSortedBag&lt;T&gt; select(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L383">        synchronized (this.getLock())</span>
+        {
+<span class="nc" id="L385">            return this.getDelegate().select(predicate);</span>
+        }
+    }
+
+    @Override
+    public &lt;P&gt; MutableSortedBag&lt;T&gt; selectWith(Predicate2&lt;? super T, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc" id="L392">        synchronized (this.getLock())</span>
+        {
+<span class="nc" id="L394">            return this.getDelegate().selectWith(predicate, parameter);</span>
+        }
+    }
+
+    @Override
+    public MutableSortedBag&lt;T&gt; reject(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L401">        synchronized (this.getLock())</span>
+        {
+<span class="nc" id="L403">            return this.getDelegate().reject(predicate);</span>
+        }
+    }
+
+    @Override
+    public &lt;P&gt; MutableSortedBag&lt;T&gt; rejectWith(Predicate2&lt;? super T, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc" id="L410">        synchronized (this.getLock())</span>
+        {
+<span class="nc" id="L412">            return this.getDelegate().rejectWith(predicate, parameter);</span>
+        }
+    }
+
+    @Override
+    public PartitionMutableSortedBag&lt;T&gt; partition(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L419">        synchronized (this.getLock())</span>
+        {
+<span class="nc" id="L421">            return this.getDelegate().partition(predicate);</span>
+        }
+    }
+
+    @Override
+    public &lt;P&gt; PartitionMutableSortedBag&lt;T&gt; partitionWith(Predicate2&lt;? super T, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc" id="L428">        synchronized (this.getLock())</span>
+        {
+<span class="nc" id="L430">            return this.getDelegate().partitionWith(predicate, parameter);</span>
+        }
+    }
+
+    @Override
+    public MutableBooleanList collectBoolean(BooleanFunction&lt;? super T&gt; booleanFunction)
+    {
+<span class="nc" id="L437">        synchronized (this.getLock())</span>
+        {
+<span class="nc" id="L439">            return this.getDelegate().collectBoolean(booleanFunction);</span>
+        }
+    }
+
+    @Override
+    public MutableByteList collectByte(ByteFunction&lt;? super T&gt; byteFunction)
+    {
+<span class="nc" id="L446">        synchronized (this.getLock())</span>
+        {
+<span class="nc" id="L448">            return this.getDelegate().collectByte(byteFunction);</span>
+        }
+    }
+
+    @Override
+    public MutableCharList collectChar(CharFunction&lt;? super T&gt; charFunction)
+    {
+<span class="nc" id="L455">        synchronized (this.getLock())</span>
+        {
+<span class="nc" id="L457">            return this.getDelegate().collectChar(charFunction);</span>
+        }
+    }
+
+    @Override
+    public MutableDoubleList collectDouble(DoubleFunction&lt;? super T&gt; doubleFunction)
+    {
+<span class="nc" id="L464">        synchronized (this.getLock())</span>
+        {
+<span class="nc" id="L466">            return this.getDelegate().collectDouble(doubleFunction);</span>
+        }
+    }
+
+    @Override
+    public MutableFloatList collectFloat(FloatFunction&lt;? super T&gt; floatFunction)
+    {
+<span class="nc" id="L473">        synchronized (this.getLock())</span>
+        {
+<span class="nc" id="L475">            return this.getDelegate().collectFloat(floatFunction);</span>
+        }
+    }
+
+    @Override
+    public MutableIntList collectInt(IntFunction&lt;? super T&gt; intFunction)
+    {
+<span class="nc" id="L482">        synchronized (this.getLock())</span>
+        {
+<span class="nc" id="L484">            return this.getDelegate().collectInt(intFunction);</span>
+        }
+    }
+
+    @Override
+    public MutableLongList collectLong(LongFunction&lt;? super T&gt; longFunction)
+    {
+<span class="nc" id="L491">        synchronized (this.getLock())</span>
+        {
+<span class="nc" id="L493">            return this.getDelegate().collectLong(longFunction);</span>
+        }
+    }
+
+    @Override
+    public MutableShortList collectShort(ShortFunction&lt;? super T&gt; shortFunction)
+    {
+<span class="nc" id="L500">        synchronized (this.getLock())</span>
+        {
+<span class="nc" id="L502">            return this.getDelegate().collectShort(shortFunction);</span>
+        }
+    }
+
+    @Override
+    public &lt;S&gt; MutableSortedBag&lt;S&gt; selectInstancesOf(Class&lt;S&gt; clazz)
+    {
+<span class="nc" id="L509">        synchronized (this.getLock())</span>
+        {
+<span class="nc" id="L511">            return this.getDelegate().selectInstancesOf(clazz);</span>
+        }
+    }
+
+    @Override
+    public &lt;V&gt; MutableList&lt;V&gt; collect(Function&lt;? super T, ? extends V&gt; function)
+    {
+<span class="nc" id="L518">        synchronized (this.getLock())</span>
+        {
+<span class="nc" id="L520">            return this.getDelegate().collect(function);</span>
+        }
+    }
+
+    /**
+     * @since 9.1.
+     */
+    @Override
+    public &lt;V&gt; MutableList&lt;V&gt; collectWithIndex(ObjectIntToObjectFunction&lt;? super T, ? extends V&gt; function)
+    {
+<span class="nc" id="L530">        synchronized (this.getLock())</span>
+        {
+<span class="nc" id="L532">            return this.getDelegate().collectWithIndex(function);</span>
+        }
+    }
+
+    /**
+     * @since 9.1.
+     */
+    @Override
+    public &lt;V, R extends Collection&lt;V&gt;&gt; R collectWithIndex(ObjectIntToObjectFunction&lt;? super T, ? extends V&gt; function, R target)
+    {
+<span class="nc" id="L542">        synchronized (this.getLock())</span>
+        {
+<span class="nc" id="L544">            return this.getDelegate().collectWithIndex(function, target);</span>
+        }
+    }
+
+    @Override
+    public MutableSortedSet&lt;Pair&lt;T, Integer&gt;&gt; zipWithIndex()
+    {
+<span class="nc" id="L551">        synchronized (this.getLock())</span>
+        {
+<span class="nc" id="L553">            return this.getDelegate().zipWithIndex();</span>
+        }
+    }
+
+    @Override
+    public &lt;P, V&gt; MutableList&lt;V&gt; collectWith(Function2&lt;? super T, ? super P, ? extends V&gt; function, P parameter)
+    {
+<span class="nc" id="L560">        synchronized (this.getLock())</span>
+        {
+<span class="nc" id="L562">            return this.getDelegate().collectWith(function, parameter);</span>
+        }
+    }
+
+    @Override
+    public &lt;V&gt; MutableList&lt;V&gt; collectIf(
+            Predicate&lt;? super T&gt; predicate,
+            Function&lt;? super T, ? extends V&gt; function)
+    {
+<span class="nc" id="L571">        synchronized (this.getLock())</span>
+        {
+<span class="nc" id="L573">            return this.getDelegate().collectIf(predicate, function);</span>
+        }
+    }
+
+    @Override
+    public &lt;V&gt; MutableList&lt;V&gt; flatCollect(Function&lt;? super T, ? extends Iterable&lt;V&gt;&gt; function)
+    {
+<span class="nc" id="L580">        synchronized (this.getLock())</span>
+        {
+<span class="nc" id="L582">            return this.getDelegate().flatCollect(function);</span>
+        }
+    }
+
+    @Override
+    public &lt;V&gt; MutableSortedBagMultimap&lt;V, T&gt; groupBy(Function&lt;? super T, ? extends V&gt; function)
+    {
+<span class="nc" id="L589">        synchronized (this.getLock())</span>
+        {
+<span class="nc" id="L591">            return this.getDelegate().groupBy(function);</span>
+        }
+    }
+
+    @Override
+    public &lt;V&gt; MutableSortedBagMultimap&lt;V, T&gt; groupByEach(Function&lt;? super T, ? extends Iterable&lt;V&gt;&gt; function)
+    {
+<span class="nc" id="L598">        synchronized (this.getLock())</span>
+        {
+<span class="nc" id="L600">            return this.getDelegate().groupByEach(function);</span>
+        }
+    }
+
+    @Override
+    public &lt;S&gt; MutableList&lt;Pair&lt;T, S&gt;&gt; zip(Iterable&lt;S&gt; that)
+    {
+<span class="nc" id="L607">        synchronized (this.getLock())</span>
+        {
+<span class="nc" id="L609">            return this.getDelegate().zip(that);</span>
+        }
+    }
+
+    @Override
+    public MutableSortedBag&lt;T&gt; asUnmodifiable()
+    {
+<span class="nc" id="L616">        synchronized (this.getLock())</span>
+        {
+<span class="nc" id="L618">            return UnmodifiableSortedBag.of(this);</span>
+        }
+    }
+
+    @Override
+    public MutableSortedBag&lt;T&gt; asSynchronized()
+    {
+<span class="nc" id="L625">        return this;</span>
+    }
+
+    @Override
+    public ImmutableSortedBag&lt;T&gt; toImmutable()
+    {
+<span class="nc" id="L631">        synchronized (this.getLock())</span>
+        {
+<span class="nc" id="L633">            return this.getDelegate().toImmutable();</span>
+        }
+    }
+
+    @Override
+    public MutableSortedBag&lt;T&gt; drop(int count)
+    {
+<span class="nc" id="L640">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L642">            return this.getDelegate().drop(count);</span>
+        }
+    }
+
+    @Override
+    public MutableSortedBag&lt;T&gt; take(int count)
+    {
+<span class="nc" id="L649">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L651">            return this.getDelegate().take(count);</span>
+        }
+    }
+
+    @Override
+    public MutableSortedBag&lt;T&gt; toReversed()
+    {
+<span class="nc" id="L658">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L660">            return this.getDelegate().toReversed();</span>
+        }
+    }
+
+    @Override
+    public void reverseForEach(Procedure&lt;? super T&gt; procedure)
+    {
+<span class="nc" id="L667">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L669">            this.getDelegate().reverseForEach(procedure);</span>
+<span class="nc" id="L670">        }</span>
+<span class="nc" id="L671">    }</span>
+
+    @Override
+    public void reverseForEachWithIndex(ObjectIntProcedure&lt;? super T&gt; procedure)
+    {
+<span class="nc" id="L676">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L678">            this.getDelegate().reverseForEachWithIndex(procedure);</span>
+<span class="nc" id="L679">        }</span>
+<span class="nc" id="L680">    }</span>
+
+    @Override
+    public LazyIterable&lt;T&gt; asReversed()
+    {
+<span class="nc" id="L685">        throw new UnsupportedOperationException(this.getClass().getSimpleName() + &quot;.asReversed() not implemented yet&quot;);</span>
+    }
+
+    @Override
+    public int detectLastIndex(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L691">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L693">            return this.getDelegate().detectLastIndex(predicate);</span>
+        }
+    }
+
+    public ParallelBag&lt;T&gt; asParallel(ExecutorService executorService, int batchSize)
+    {
+<span class="nc" id="L699">        throw new UnsupportedOperationException(&quot;asParallel() method is not supported for &quot; + this.getClass().getSimpleName() + '.');</span>
+    }
+
+    @Override
+    public Optional&lt;T&gt; getFirstOptional()
+    {
+<span class="nc" id="L705">        synchronized (this.getLock())</span>
+        {
+<span class="nc" id="L707">            return this.getDelegate().getFirstOptional();</span>
+        }
+    }
+
+    @Override
+    public Optional&lt;T&gt; getLastOptional()
+    {
+<span class="nc" id="L714">        synchronized (this.getLock())</span>
+        {
+<span class="nc" id="L716">            return this.getDelegate().getLastOptional();</span>
+        }
+    }
+
+    @Override
+    public MutableSortedSet&lt;T&gt; selectUnique()
+    {
+<span class="nc" id="L723">        synchronized (this.getLock())</span>
+        {
+<span class="nc" id="L725">            return this.getDelegate().selectUnique();</span>
+        }
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.0.201801022044</span></div></body></html>

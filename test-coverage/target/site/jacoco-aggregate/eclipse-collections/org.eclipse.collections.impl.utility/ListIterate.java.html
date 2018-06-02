@@ -1,0 +1,1816 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>ListIterate.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Eclipse Collections Test Coverage Aggregation</a> &gt; <a href="../index.html" class="el_bundle">eclipse-collections</a> &gt; <a href="index.source.html" class="el_package">org.eclipse.collections.impl.utility</a> &gt; <span class="el_source">ListIterate.java</span></div><h1>ListIterate.java</h1><pre class="source lang-java linenums">/*
+ * Copyright (c) 2018 Goldman Sachs and others.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * and Eclipse Distribution License v. 1.0 which accompany this distribution.
+ * The Eclipse Public License is available at http://www.eclipse.org/legal/epl-v10.html
+ * and the Eclipse Distribution License is available at
+ * http://www.eclipse.org/org/documents/edl-v10.php.
+ */
+
+package org.eclipse.collections.impl.utility;
+
+import java.math.BigDecimal;
+import java.math.BigInteger;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.Iterator;
+import java.util.List;
+import java.util.ListIterator;
+import java.util.Optional;
+import java.util.RandomAccess;
+
+import org.eclipse.collections.api.RichIterable;
+import org.eclipse.collections.api.block.HashingStrategy;
+import org.eclipse.collections.api.block.function.Function;
+import org.eclipse.collections.api.block.function.Function2;
+import org.eclipse.collections.api.block.function.Function3;
+import org.eclipse.collections.api.block.function.primitive.BooleanFunction;
+import org.eclipse.collections.api.block.function.primitive.ByteFunction;
+import org.eclipse.collections.api.block.function.primitive.CharFunction;
+import org.eclipse.collections.api.block.function.primitive.DoubleFunction;
+import org.eclipse.collections.api.block.function.primitive.DoubleObjectToDoubleFunction;
+import org.eclipse.collections.api.block.function.primitive.FloatFunction;
+import org.eclipse.collections.api.block.function.primitive.FloatObjectToFloatFunction;
+import org.eclipse.collections.api.block.function.primitive.IntFunction;
+import org.eclipse.collections.api.block.function.primitive.IntObjectToIntFunction;
+import org.eclipse.collections.api.block.function.primitive.LongFunction;
+import org.eclipse.collections.api.block.function.primitive.LongObjectToLongFunction;
+import org.eclipse.collections.api.block.function.primitive.ObjectIntToObjectFunction;
+import org.eclipse.collections.api.block.function.primitive.ShortFunction;
+import org.eclipse.collections.api.block.predicate.Predicate;
+import org.eclipse.collections.api.block.predicate.Predicate2;
+import org.eclipse.collections.api.block.procedure.Procedure;
+import org.eclipse.collections.api.block.procedure.Procedure2;
+import org.eclipse.collections.api.block.procedure.primitive.ObjectIntProcedure;
+import org.eclipse.collections.api.collection.MutableCollection;
+import org.eclipse.collections.api.collection.primitive.MutableBooleanCollection;
+import org.eclipse.collections.api.collection.primitive.MutableByteCollection;
+import org.eclipse.collections.api.collection.primitive.MutableCharCollection;
+import org.eclipse.collections.api.collection.primitive.MutableDoubleCollection;
+import org.eclipse.collections.api.collection.primitive.MutableFloatCollection;
+import org.eclipse.collections.api.collection.primitive.MutableIntCollection;
+import org.eclipse.collections.api.collection.primitive.MutableLongCollection;
+import org.eclipse.collections.api.collection.primitive.MutableShortCollection;
+import org.eclipse.collections.api.list.ListIterable;
+import org.eclipse.collections.api.list.MutableList;
+import org.eclipse.collections.api.list.primitive.MutableBooleanList;
+import org.eclipse.collections.api.list.primitive.MutableByteList;
+import org.eclipse.collections.api.list.primitive.MutableCharList;
+import org.eclipse.collections.api.list.primitive.MutableDoubleList;
+import org.eclipse.collections.api.list.primitive.MutableFloatList;
+import org.eclipse.collections.api.list.primitive.MutableIntList;
+import org.eclipse.collections.api.list.primitive.MutableLongList;
+import org.eclipse.collections.api.list.primitive.MutableShortList;
+import org.eclipse.collections.api.map.MutableMap;
+import org.eclipse.collections.api.map.primitive.ObjectDoubleMap;
+import org.eclipse.collections.api.map.primitive.ObjectLongMap;
+import org.eclipse.collections.api.multimap.MutableMultimap;
+import org.eclipse.collections.api.partition.list.PartitionMutableList;
+import org.eclipse.collections.api.tuple.Pair;
+import org.eclipse.collections.api.tuple.Twin;
+import org.eclipse.collections.impl.block.factory.Comparators;
+import org.eclipse.collections.impl.block.factory.HashingStrategies;
+import org.eclipse.collections.impl.factory.Lists;
+import org.eclipse.collections.impl.list.mutable.FastList;
+import org.eclipse.collections.impl.multimap.list.FastListMultimap;
+import org.eclipse.collections.impl.partition.list.PartitionFastList;
+import org.eclipse.collections.impl.utility.internal.IterableIterate;
+import org.eclipse.collections.impl.utility.internal.RandomAccessListIterate;
+
+/**
+ * The ListIterate utility class can be useful for iterating over lists, especially if there
+ * is a desire to return a MutableList from any of the iteration methods.
+ *
+ * @since 1.0
+ */
+public final class ListIterate
+{
+    private ListIterate()
+<span class="nc" id="L91">    {</span>
+<span class="nc" id="L92">        throw new AssertionError(&quot;Suppress default constructor for noninstantiability&quot;);</span>
+    }
+
+    public static boolean equals(List&lt;?&gt; one, List&lt;?&gt; two)
+    {
+<span class="nc bnc" id="L97" title="All 2 branches missed.">        if (one.size() != two.size())   // we assume that size() is a constant time operation in most lists</span>
+        {
+<span class="nc" id="L99">            return false;</span>
+        }
+<span class="nc bnc" id="L101" title="All 2 branches missed.">        if (one instanceof RandomAccess)</span>
+        {
+<span class="nc bnc" id="L103" title="All 2 branches missed.">            return two instanceof RandomAccess ? ListIterate.randomAccessEquals(one, two) : ListIterate.oneRandomAccessEquals(one, two);</span>
+        }
+<span class="nc bnc" id="L105" title="All 2 branches missed.">        return two instanceof RandomAccess ? ListIterate.oneRandomAccessEquals(two, one) : ListIterate.nonRandomAccessEquals(one, two);</span>
+    }
+
+    private static boolean randomAccessEquals(List&lt;?&gt; one, List&lt;?&gt; two)
+    {
+<span class="nc" id="L110">        int localSize = one.size();</span>
+<span class="nc bnc" id="L111" title="All 2 branches missed.">        for (int i = 0; i &lt; localSize; i++)</span>
+        {
+<span class="nc bnc" id="L113" title="All 2 branches missed.">            if (!Comparators.nullSafeEquals(one.get(i), two.get(i)))</span>
+            {
+<span class="nc" id="L115">                return false;</span>
+            }
+        }
+<span class="nc" id="L118">        return true;</span>
+    }
+
+    private static boolean oneRandomAccessEquals(List&lt;?&gt; one, List&lt;?&gt; two)
+    {
+<span class="nc" id="L123">        int localSize = one.size();</span>
+<span class="nc" id="L124">        Iterator&lt;?&gt; twoIterator = two.iterator();</span>
+<span class="nc bnc" id="L125" title="All 2 branches missed.">        for (int i = 0; i &lt; localSize; i++)</span>
+        {
+<span class="nc bnc" id="L127" title="All 4 branches missed.">            if (!twoIterator.hasNext() || !Comparators.nullSafeEquals(one.get(i), twoIterator.next()))</span>
+            {
+<span class="nc" id="L129">                return false;</span>
+            }
+        }
+<span class="nc bnc" id="L132" title="All 2 branches missed.">        return !twoIterator.hasNext();</span>
+    }
+
+    private static boolean nonRandomAccessEquals(List&lt;?&gt; one, List&lt;?&gt; two)
+    {
+<span class="nc" id="L137">        Iterator&lt;?&gt; oneIterator = one.iterator();</span>
+<span class="nc" id="L138">        Iterator&lt;?&gt; twoIterator = two.iterator();</span>
+<span class="nc bnc" id="L139" title="All 2 branches missed.">        while (oneIterator.hasNext())</span>
+        {
+<span class="nc bnc" id="L141" title="All 4 branches missed.">            if (!twoIterator.hasNext() || !Comparators.nullSafeEquals(oneIterator.next(), twoIterator.next()))</span>
+            {
+<span class="nc" id="L143">                return false;</span>
+            }
+        }
+<span class="nc bnc" id="L146" title="All 2 branches missed.">        return !twoIterator.hasNext();</span>
+    }
+
+    public static &lt;T&gt; void toArray(List&lt;T&gt; list, T[] target, int startIndex, int sourceSize)
+    {
+<span class="nc bnc" id="L151" title="All 2 branches missed.">        if (list instanceof RandomAccess)</span>
+        {
+<span class="nc" id="L153">            RandomAccessListIterate.toArray(list, target, startIndex, sourceSize);</span>
+        }
+        else
+        {
+<span class="nc" id="L157">            int index = 0;</span>
+<span class="nc" id="L158">            ListIterator&lt;T&gt; iterator = list.listIterator();</span>
+<span class="nc bnc" id="L159" title="All 4 branches missed.">            while (iterator.hasNext() &amp;&amp; index &lt; sourceSize)</span>
+            {
+<span class="nc" id="L161">                target[startIndex + index] = iterator.next();</span>
+<span class="nc" id="L162">                index++;</span>
+            }
+        }
+<span class="nc" id="L165">    }</span>
+
+    /**
+     * @see Iterate#select(Iterable, Predicate)
+     */
+    public static &lt;T&gt; MutableList&lt;T&gt; select(List&lt;T&gt; list, Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L172">        return ListIterate.select(list, predicate, FastList.newList());</span>
+    }
+
+    /**
+     * @see Iterate#selectWith(Iterable, Predicate2, Object)
+     */
+    public static &lt;T, IV&gt; MutableList&lt;T&gt; selectWith(
+            List&lt;T&gt; list,
+            Predicate2&lt;? super T, ? super IV&gt; predicate,
+            IV injectedValue)
+    {
+<span class="nc" id="L183">        return ListIterate.selectWith(list, predicate, injectedValue, FastList.newList());</span>
+    }
+
+    /**
+     * @see Iterate#select(Iterable, Predicate, Collection)
+     */
+    public static &lt;T, R extends Collection&lt;T&gt;&gt; R select(
+            List&lt;T&gt; list,
+            Predicate&lt;? super T&gt; predicate,
+            R targetCollection)
+    {
+<span class="nc bnc" id="L194" title="All 2 branches missed.">        if (list instanceof RandomAccess)</span>
+        {
+<span class="nc" id="L196">            return RandomAccessListIterate.select(list, predicate, targetCollection);</span>
+        }
+<span class="nc" id="L198">        return IterableIterate.select(list, predicate, targetCollection);</span>
+    }
+
+    /**
+     * @see Iterate#selectWith(Iterable, Predicate2, Object, Collection)
+     */
+    public static &lt;T, P, R extends Collection&lt;T&gt;&gt; R selectWith(
+            List&lt;T&gt; list,
+            Predicate2&lt;? super T, ? super P&gt; predicate,
+            P parameter,
+            R targetCollection)
+    {
+<span class="nc bnc" id="L210" title="All 2 branches missed.">        if (list instanceof RandomAccess)</span>
+        {
+<span class="nc" id="L212">            return RandomAccessListIterate.selectWith(list, predicate, parameter, targetCollection);</span>
+        }
+<span class="nc" id="L214">        return IterableIterate.selectWith(list, predicate, parameter, targetCollection);</span>
+    }
+
+    /**
+     * @see Iterate#selectInstancesOf(Iterable, Class)
+     */
+    public static &lt;T, S&gt; MutableList&lt;S&gt; selectInstancesOf(
+            List&lt;T&gt; list,
+            Class&lt;S&gt; clazz)
+    {
+<span class="nc bnc" id="L224" title="All 2 branches missed.">        if (list instanceof RandomAccess)</span>
+        {
+<span class="nc" id="L226">            return RandomAccessListIterate.selectInstancesOf(list, clazz);</span>
+        }
+<span class="nc" id="L228">        return IterableIterate.selectInstancesOf(list, clazz);</span>
+    }
+
+    /**
+     * @see Iterate#count(Iterable, Predicate)
+     */
+    public static &lt;T&gt; int count(List&lt;T&gt; list, Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc bnc" id="L236" title="All 2 branches missed.">        if (list instanceof RandomAccess)</span>
+        {
+<span class="nc" id="L238">            return RandomAccessListIterate.count(list, predicate);</span>
+        }
+<span class="nc" id="L240">        return IterableIterate.count(list, predicate);</span>
+    }
+
+    /**
+     * @see Iterate#countWith(Iterable, Predicate2, Object)
+     */
+    public static &lt;T, IV&gt; int countWith(
+            List&lt;T&gt; list,
+            Predicate2&lt;? super T, ? super IV&gt; predicate,
+            IV injectedValue)
+    {
+<span class="nc bnc" id="L251" title="All 2 branches missed.">        if (list instanceof RandomAccess)</span>
+        {
+<span class="nc" id="L253">            return RandomAccessListIterate.countWith(list, predicate, injectedValue);</span>
+        }
+<span class="nc" id="L255">        return IterableIterate.countWith(list, predicate, injectedValue);</span>
+    }
+
+    /**
+     * @see Iterate#collectIf(Iterable, Predicate, Function)
+     */
+    public static &lt;T, A&gt; MutableList&lt;A&gt; collectIf(
+            List&lt;T&gt; list,
+            Predicate&lt;? super T&gt; predicate,
+            Function&lt;? super T, ? extends A&gt; function)
+    {
+<span class="nc" id="L266">        return ListIterate.collectIf(list, predicate, function, FastList.newList());</span>
+    }
+
+    /**
+     * @see Iterate#collectIf(Iterable, Predicate, Function, Collection)
+     */
+    public static &lt;T, A, R extends Collection&lt;A&gt;&gt; R collectIf(
+            List&lt;T&gt; list,
+            Predicate&lt;? super T&gt; predicate,
+            Function&lt;? super T, ? extends A&gt; function,
+            R targetCollection)
+    {
+<span class="nc bnc" id="L278" title="All 2 branches missed.">        if (list instanceof RandomAccess)</span>
+        {
+<span class="nc" id="L280">            return RandomAccessListIterate.collectIf(list, predicate, function, targetCollection);</span>
+        }
+<span class="nc" id="L282">        return IterableIterate.collectIf(list, predicate, function, targetCollection);</span>
+    }
+
+    /**
+     * @see Iterate#reject(Iterable, Predicate)
+     */
+    public static &lt;T&gt; MutableList&lt;T&gt; reject(List&lt;T&gt; list, Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L290">        return ListIterate.reject(list, predicate, FastList.newList());</span>
+    }
+
+    /**
+     * @see Iterate#rejectWith(Iterable, Predicate2, Object)
+     */
+    public static &lt;T, IV&gt; MutableList&lt;T&gt; rejectWith(
+            List&lt;T&gt; list,
+            Predicate2&lt;? super T, ? super IV&gt; predicate,
+            IV injectedValue)
+    {
+<span class="nc" id="L301">        return ListIterate.rejectWith(list, predicate, injectedValue, FastList.newList());</span>
+    }
+
+    /**
+     * @see Iterate#reject(Iterable, Predicate, Collection)
+     */
+    public static &lt;T, R extends Collection&lt;T&gt;&gt; R reject(
+            List&lt;T&gt; list,
+            Predicate&lt;? super T&gt; predicate,
+            R targetCollection)
+    {
+<span class="nc bnc" id="L312" title="All 2 branches missed.">        if (list instanceof RandomAccess)</span>
+        {
+<span class="nc" id="L314">            return RandomAccessListIterate.reject(list, predicate, targetCollection);</span>
+        }
+<span class="nc" id="L316">        return IterableIterate.reject(list, predicate, targetCollection);</span>
+    }
+
+    /**
+     * @see Iterate#reject(Iterable, Predicate, Collection)
+     */
+    public static &lt;T, P, R extends Collection&lt;T&gt;&gt; R rejectWith(
+            List&lt;T&gt; list,
+            Predicate2&lt;? super T, ? super P&gt; predicate,
+            P parameter,
+            R targetCollection)
+    {
+<span class="nc bnc" id="L328" title="All 2 branches missed.">        if (list instanceof RandomAccess)</span>
+        {
+<span class="nc" id="L330">            return RandomAccessListIterate.rejectWith(list, predicate, parameter, targetCollection);</span>
+        }
+<span class="nc" id="L332">        return IterableIterate.rejectWith(list, predicate, parameter, targetCollection);</span>
+    }
+
+    /**
+     * @see Iterate#collect(Iterable, Function)
+     */
+    public static &lt;T, A&gt; MutableList&lt;A&gt; collect(
+            List&lt;T&gt; list,
+            Function&lt;? super T, ? extends A&gt; function)
+    {
+<span class="nc" id="L342">        return ListIterate.collect(list, function, FastList.newList(list.size()));</span>
+    }
+
+    /**
+     * @see Iterate#collect(Iterable, Function, Collection)
+     */
+    public static &lt;T, A, R extends Collection&lt;A&gt;&gt; R collect(
+            List&lt;T&gt; list,
+            Function&lt;? super T, ? extends A&gt; function,
+            R targetCollection)
+    {
+<span class="nc bnc" id="L353" title="All 2 branches missed.">        if (list instanceof RandomAccess)</span>
+        {
+<span class="nc" id="L355">            return RandomAccessListIterate.collect(list, function, targetCollection);</span>
+        }
+<span class="nc" id="L357">        return IterableIterate.collect(list, function, targetCollection);</span>
+    }
+
+    /**
+     * @since 9.1
+     */
+    public static &lt;T, A&gt; MutableList&lt;A&gt; collectWithIndex(
+            List&lt;T&gt; list,
+            ObjectIntToObjectFunction&lt;? super T, ? extends A&gt; function)
+    {
+<span class="nc" id="L367">        return ListIterate.collectWithIndex(list, function, FastList.newList(list.size()));</span>
+    }
+
+    /**
+     * @since 9.1
+     */
+    public static &lt;T, A, R extends Collection&lt;A&gt;&gt; R collectWithIndex(
+            List&lt;T&gt; list,
+            ObjectIntToObjectFunction&lt;? super T, ? extends A&gt; function,
+            R targetCollection)
+    {
+<span class="nc bnc" id="L378" title="All 2 branches missed.">        if (list instanceof RandomAccess)</span>
+        {
+<span class="nc" id="L380">            return RandomAccessListIterate.collectWithIndex(list, function, targetCollection);</span>
+        }
+<span class="nc" id="L382">        int index = 0;</span>
+<span class="nc bnc" id="L383" title="All 2 branches missed.">        for (Iterator&lt;T&gt; iterator = list.iterator(); iterator.hasNext(); index++)</span>
+        {
+<span class="nc" id="L385">            targetCollection.add(function.valueOf(iterator.next(), index));</span>
+        }
+<span class="nc" id="L387">        return targetCollection;</span>
+    }
+
+    /**
+     * @see Iterate#collectBoolean(Iterable, BooleanFunction)
+     */
+    public static &lt;T&gt; MutableBooleanList collectBoolean(
+            List&lt;T&gt; list,
+            BooleanFunction&lt;? super T&gt; booleanFunction)
+    {
+<span class="nc bnc" id="L397" title="All 2 branches missed.">        if (list instanceof RandomAccess)</span>
+        {
+<span class="nc" id="L399">            return RandomAccessListIterate.collectBoolean(list, booleanFunction);</span>
+        }
+<span class="nc" id="L401">        return (MutableBooleanList) IterableIterate.collectBoolean(list, booleanFunction);</span>
+    }
+
+    /**
+     * @see Iterate#collectBoolean(Iterable, BooleanFunction, MutableBooleanCollection)
+     */
+    public static &lt;T, R extends MutableBooleanCollection&gt; R collectBoolean(
+            List&lt;T&gt; list,
+            BooleanFunction&lt;? super T&gt; booleanFunction,
+            R target)
+    {
+<span class="nc bnc" id="L412" title="All 2 branches missed.">        if (list instanceof RandomAccess)</span>
+        {
+<span class="nc" id="L414">            return RandomAccessListIterate.collectBoolean(list, booleanFunction, target);</span>
+        }
+<span class="nc" id="L416">        return IterableIterate.collectBoolean(list, booleanFunction, target);</span>
+    }
+
+    /**
+     * @see Iterate#collectByte(Iterable, ByteFunction)
+     */
+    public static &lt;T&gt; MutableByteList collectByte(
+            List&lt;T&gt; list,
+            ByteFunction&lt;? super T&gt; byteFunction)
+    {
+<span class="nc bnc" id="L426" title="All 2 branches missed.">        if (list instanceof RandomAccess)</span>
+        {
+<span class="nc" id="L428">            return RandomAccessListIterate.collectByte(list, byteFunction);</span>
+        }
+<span class="nc" id="L430">        return (MutableByteList) IterableIterate.collectByte(list, byteFunction);</span>
+    }
+
+    /**
+     * @see Iterate#collectByte(Iterable, ByteFunction, MutableByteCollection)
+     */
+    public static &lt;T, R extends MutableByteCollection&gt; R collectByte(
+            List&lt;T&gt; list,
+            ByteFunction&lt;? super T&gt; byteFunction,
+            R target)
+    {
+<span class="nc bnc" id="L441" title="All 2 branches missed.">        if (list instanceof RandomAccess)</span>
+        {
+<span class="nc" id="L443">            return RandomAccessListIterate.collectByte(list, byteFunction, target);</span>
+        }
+<span class="nc" id="L445">        return IterableIterate.collectByte(list, byteFunction, target);</span>
+    }
+
+    /**
+     * @see Iterate#collectChar(Iterable, CharFunction)
+     */
+    public static &lt;T&gt; MutableCharList collectChar(
+            List&lt;T&gt; list,
+            CharFunction&lt;? super T&gt; charFunction)
+    {
+<span class="nc bnc" id="L455" title="All 2 branches missed.">        if (list instanceof RandomAccess)</span>
+        {
+<span class="nc" id="L457">            return RandomAccessListIterate.collectChar(list, charFunction);</span>
+        }
+<span class="nc" id="L459">        return (MutableCharList) IterableIterate.collectChar(list, charFunction);</span>
+    }
+
+    /**
+     * @see Iterate#collectChar(Iterable, CharFunction, MutableCharCollection)
+     */
+    public static &lt;T, R extends MutableCharCollection&gt; R collectChar(
+            List&lt;T&gt; list,
+            CharFunction&lt;? super T&gt; charFunction,
+            R target)
+    {
+<span class="nc bnc" id="L470" title="All 2 branches missed.">        if (list instanceof RandomAccess)</span>
+        {
+<span class="nc" id="L472">            return RandomAccessListIterate.collectChar(list, charFunction, target);</span>
+        }
+<span class="nc" id="L474">        return IterableIterate.collectChar(list, charFunction, target);</span>
+    }
+
+    /**
+     * @see Iterate#collectDouble(Iterable, DoubleFunction)
+     */
+    public static &lt;T&gt; MutableDoubleList collectDouble(
+            List&lt;T&gt; list,
+            DoubleFunction&lt;? super T&gt; doubleFunction)
+    {
+<span class="nc bnc" id="L484" title="All 2 branches missed.">        if (list instanceof RandomAccess)</span>
+        {
+<span class="nc" id="L486">            return RandomAccessListIterate.collectDouble(list, doubleFunction);</span>
+        }
+<span class="nc" id="L488">        return (MutableDoubleList) IterableIterate.collectDouble(list, doubleFunction);</span>
+    }
+
+    /**
+     * @see Iterate#collectDouble(Iterable, DoubleFunction, MutableDoubleCollection)
+     */
+    public static &lt;T, R extends MutableDoubleCollection&gt; R collectDouble(
+            List&lt;T&gt; list,
+            DoubleFunction&lt;? super T&gt; doubleFunction,
+            R target)
+    {
+<span class="nc bnc" id="L499" title="All 2 branches missed.">        if (list instanceof RandomAccess)</span>
+        {
+<span class="nc" id="L501">            return RandomAccessListIterate.collectDouble(list, doubleFunction, target);</span>
+        }
+<span class="nc" id="L503">        return IterableIterate.collectDouble(list, doubleFunction, target);</span>
+    }
+
+    /**
+     * @see Iterate#collectFloat(Iterable, FloatFunction)
+     */
+    public static &lt;T&gt; MutableFloatList collectFloat(
+            List&lt;T&gt; list,
+            FloatFunction&lt;? super T&gt; floatFunction)
+    {
+<span class="nc bnc" id="L513" title="All 2 branches missed.">        if (list instanceof RandomAccess)</span>
+        {
+<span class="nc" id="L515">            return RandomAccessListIterate.collectFloat(list, floatFunction);</span>
+        }
+<span class="nc" id="L517">        return (MutableFloatList) IterableIterate.collectFloat(list, floatFunction);</span>
+    }
+
+    /**
+     * @see Iterate#collectFloat(Iterable, FloatFunction, MutableFloatCollection)
+     */
+    public static &lt;T, R extends MutableFloatCollection&gt; R collectFloat(
+            List&lt;T&gt; list,
+            FloatFunction&lt;? super T&gt; floatFunction,
+            R target)
+    {
+<span class="nc bnc" id="L528" title="All 2 branches missed.">        if (list instanceof RandomAccess)</span>
+        {
+<span class="nc" id="L530">            return RandomAccessListIterate.collectFloat(list, floatFunction, target);</span>
+        }
+<span class="nc" id="L532">        return IterableIterate.collectFloat(list, floatFunction, target);</span>
+    }
+
+    /**
+     * @see Iterate#collectInt(Iterable, IntFunction)
+     */
+    public static &lt;T&gt; MutableIntList collectInt(
+            List&lt;T&gt; list,
+            IntFunction&lt;? super T&gt; intFunction)
+    {
+<span class="nc bnc" id="L542" title="All 2 branches missed.">        if (list instanceof RandomAccess)</span>
+        {
+<span class="nc" id="L544">            return RandomAccessListIterate.collectInt(list, intFunction);</span>
+        }
+<span class="nc" id="L546">        return (MutableIntList) IterableIterate.collectInt(list, intFunction);</span>
+    }
+
+    /**
+     * @see Iterate#collectInt(Iterable, IntFunction, MutableIntCollection)
+     */
+    public static &lt;T, R extends MutableIntCollection&gt; R collectInt(
+            List&lt;T&gt; list,
+            IntFunction&lt;? super T&gt; intFunction,
+            R target)
+    {
+<span class="nc bnc" id="L557" title="All 2 branches missed.">        if (list instanceof RandomAccess)</span>
+        {
+<span class="nc" id="L559">            return RandomAccessListIterate.collectInt(list, intFunction, target);</span>
+        }
+<span class="nc" id="L561">        return IterableIterate.collectInt(list, intFunction, target);</span>
+    }
+
+    /**
+     * @see Iterate#collectLong(Iterable, LongFunction)
+     */
+    public static &lt;T&gt; MutableLongList collectLong(
+            List&lt;T&gt; list,
+            LongFunction&lt;? super T&gt; longFunction)
+    {
+<span class="nc bnc" id="L571" title="All 2 branches missed.">        if (list instanceof RandomAccess)</span>
+        {
+<span class="nc" id="L573">            return RandomAccessListIterate.collectLong(list, longFunction);</span>
+        }
+<span class="nc" id="L575">        return (MutableLongList) IterableIterate.collectLong(list, longFunction);</span>
+    }
+
+    /**
+     * @see Iterate#collectLong(Iterable, LongFunction, MutableLongCollection)
+     */
+    public static &lt;T, R extends MutableLongCollection&gt; R collectLong(
+            List&lt;T&gt; list,
+            LongFunction&lt;? super T&gt; longFunction,
+            R target)
+    {
+<span class="nc bnc" id="L586" title="All 2 branches missed.">        if (list instanceof RandomAccess)</span>
+        {
+<span class="nc" id="L588">            return RandomAccessListIterate.collectLong(list, longFunction, target);</span>
+        }
+<span class="nc" id="L590">        return IterableIterate.collectLong(list, longFunction, target);</span>
+    }
+
+    /**
+     * @see Iterate#collectShort(Iterable, ShortFunction)
+     */
+    public static &lt;T&gt; MutableShortList collectShort(
+            List&lt;T&gt; list,
+            ShortFunction&lt;? super T&gt; shortFunction)
+    {
+<span class="nc bnc" id="L600" title="All 2 branches missed.">        if (list instanceof RandomAccess)</span>
+        {
+<span class="nc" id="L602">            return RandomAccessListIterate.collectShort(list, shortFunction);</span>
+        }
+<span class="nc" id="L604">        return (MutableShortList) IterableIterate.collectShort(list, shortFunction);</span>
+    }
+
+    /**
+     * @see Iterate#collectShort(Iterable, ShortFunction, MutableShortCollection)
+     */
+    public static &lt;T, R extends MutableShortCollection&gt; R collectShort(
+            List&lt;T&gt; list,
+            ShortFunction&lt;? super T&gt; shortFunction,
+            R target)
+    {
+<span class="nc bnc" id="L615" title="All 2 branches missed.">        if (list instanceof RandomAccess)</span>
+        {
+<span class="nc" id="L617">            return RandomAccessListIterate.collectShort(list, shortFunction, target);</span>
+        }
+<span class="nc" id="L619">        return IterableIterate.collectShort(list, shortFunction, target);</span>
+    }
+
+    /**
+     * @see Iterate#flatCollect(Iterable, Function)
+     */
+    public static &lt;T, A&gt; MutableList&lt;A&gt; flatCollect(
+            List&lt;T&gt; list,
+            Function&lt;? super T, ? extends Iterable&lt;A&gt;&gt; function)
+    {
+<span class="nc" id="L629">        return ListIterate.flatCollect(list, function, FastList.newList(list.size()));</span>
+    }
+
+    /**
+     * @see Iterate#flatCollect(Iterable, Function, Collection)
+     */
+    public static &lt;T, A, R extends Collection&lt;A&gt;&gt; R flatCollect(
+            List&lt;T&gt; list,
+            Function&lt;? super T, ? extends Iterable&lt;A&gt;&gt; function,
+            R targetCollection)
+    {
+<span class="nc bnc" id="L640" title="All 2 branches missed.">        if (list instanceof RandomAccess)</span>
+        {
+<span class="nc" id="L642">            return RandomAccessListIterate.flatCollect(list, function, targetCollection);</span>
+        }
+<span class="nc" id="L644">        return IterableIterate.flatCollect(list, function, targetCollection);</span>
+    }
+
+    /**
+     * Returns the first element of a list.
+     */
+    public static &lt;T&gt; T getFirst(List&lt;T&gt; collection)
+    {
+<span class="nc bnc" id="L652" title="All 2 branches missed.">        return Iterate.isEmpty(collection) ? null : collection.get(0);</span>
+    }
+
+    /**
+     * Returns the last element of a list.
+     */
+    public static &lt;T&gt; T getLast(List&lt;T&gt; list)
+    {
+<span class="nc bnc" id="L660" title="All 2 branches missed.">        if (list == null)</span>
+        {
+<span class="nc" id="L662">            return null;</span>
+        }
+<span class="nc bnc" id="L664" title="All 2 branches missed.">        if (list instanceof RandomAccess)</span>
+        {
+<span class="nc" id="L666">            return RandomAccessListIterate.getLast(list);</span>
+        }
+<span class="nc" id="L668">        ListIterator&lt;T&gt; iterator = list.listIterator(list.size());</span>
+<span class="nc bnc" id="L669" title="All 2 branches missed.">        if (iterator.hasPrevious())</span>
+        {
+<span class="nc" id="L671">            return iterator.previous();</span>
+        }
+<span class="nc" id="L673">        return null;</span>
+    }
+
+    /**
+     * @see Iterate#forEach(Iterable, Procedure)
+     */
+    public static &lt;T&gt; void forEach(List&lt;T&gt; list, Procedure&lt;? super T&gt; procedure)
+    {
+<span class="nc bnc" id="L681" title="All 2 branches missed.">        if (list instanceof RandomAccess)</span>
+        {
+<span class="nc" id="L683">            RandomAccessListIterate.forEach(list, procedure);</span>
+        }
+        else
+        {
+<span class="nc" id="L687">            IterableIterate.forEach(list, procedure);</span>
+        }
+<span class="nc" id="L689">    }</span>
+
+    /**
+     * Iterates over the List in reverse order executing the Procedure for each element
+     */
+    public static &lt;T&gt; void reverseForEach(List&lt;T&gt; list, Procedure&lt;? super T&gt; procedure)
+    {
+<span class="nc bnc" id="L696" title="All 2 branches missed.">        if (!list.isEmpty())</span>
+        {
+<span class="nc" id="L698">            ListIterate.forEach(list, list.size() - 1, 0, procedure);</span>
+        }
+<span class="nc" id="L700">    }</span>
+
+    /**
+     * Iterates over the List in reverse order executing the Procedure for each element. The index passed into the ObjectIntProcedure is the actual index of the
+     * range.
+     */
+    public static &lt;T&gt; void reverseForEachWithIndex(List&lt;T&gt; list, ObjectIntProcedure&lt;? super T&gt; objectIntProcedure)
+    {
+<span class="nc bnc" id="L708" title="All 2 branches missed.">        if (!list.isEmpty())</span>
+        {
+<span class="nc" id="L710">            ListIterate.forEachWithIndex(list, list.size() - 1, 0, objectIntProcedure);</span>
+        }
+<span class="nc" id="L712">    }</span>
+
+    /**
+     * Iterates over the section of the list covered by the specified indexes.  The indexes are both inclusive.  If the
+     * from is less than the to, the list is iterated in forward order. If the from is greater than the to, then the
+     * list is iterated in the reverse order.
+     * &lt;p&gt;
+     * &lt;pre&gt;e.g.
+     * MutableList&amp;lt;People&amp;gt; people = FastList.newListWith(ted, mary, bob, sally);
+     * ListIterate.forEach(people, 0, 1, new Procedure&amp;lt;Person&amp;gt;()
+     * {
+     *     public void value(Person person)
+     *     {
+     *          LOGGER.info(person.getName());
+     *     }
+     * });
+     * &lt;/pre&gt;
+     * &lt;p&gt;
+     * This code would output ted and mary's names.
+     */
+    public static &lt;T&gt; void forEach(List&lt;T&gt; list, int from, int to, Procedure&lt;? super T&gt; procedure)
+    {
+<span class="nc" id="L734">        ListIterate.rangeCheck(from, to, list.size());</span>
+
+<span class="nc bnc" id="L736" title="All 2 branches missed.">        if (list instanceof RandomAccess)</span>
+        {
+<span class="nc" id="L738">            RandomAccessListIterate.forEach(list, from, to, procedure);</span>
+        }
+        else
+        {
+<span class="nc bnc" id="L742" title="All 2 branches missed.">            if (from &lt;= to)</span>
+            {
+<span class="nc" id="L744">                ListIterator&lt;T&gt; iterator = list.listIterator(from);</span>
+<span class="nc bnc" id="L745" title="All 2 branches missed.">                for (int i = from; i &lt;= to; i++)</span>
+                {
+<span class="nc" id="L747">                    procedure.value(iterator.next());</span>
+                }
+<span class="nc" id="L749">            }</span>
+            else
+            {
+<span class="nc" id="L752">                ListIterator&lt;T&gt; iterator = list.listIterator(from + 1);</span>
+<span class="nc bnc" id="L753" title="All 2 branches missed.">                for (int i = from; i &gt;= to; i--)</span>
+                {
+<span class="nc" id="L755">                    procedure.value(iterator.previous());</span>
+                }
+            }
+        }
+<span class="nc" id="L759">    }</span>
+
+    /**
+     * Iterates over the section of the list covered by the specified indexes.  The indexes are both inclusive.  If the
+     * from is less than the to, the list is iterated in forward order. If the from is greater than the to, then the
+     * list is iterated in the reverse order. The index passed into the ObjectIntProcedure is the actual index of the
+     * range.
+     * &lt;p&gt;
+     * &lt;pre&gt;e.g.
+     * MutableList&amp;lt;People&amp;gt; people = FastList.newListWith(ted, mary, bob, sally);
+     * ListIterate.forEachWithIndex(people, 0, 1, new ObjectIntProcedure&amp;lt;Person&amp;gt;()
+     * {
+     *     public void value(Person person, int index)
+     *     {
+     *          LOGGER.info(person.getName() + &quot; at index: &quot; + index);
+     *     }
+     * });
+     * &lt;/pre&gt;
+     * &lt;p&gt;
+     * This code would output ted and mary's names.
+     */
+    public static &lt;T&gt; void forEachWithIndex(List&lt;T&gt; list, int from, int to, ObjectIntProcedure&lt;? super T&gt; objectIntProcedure)
+    {
+<span class="nc" id="L782">        ListIterate.rangeCheck(from, to, list.size());</span>
+
+<span class="nc bnc" id="L784" title="All 2 branches missed.">        if (list instanceof RandomAccess)</span>
+        {
+<span class="nc" id="L786">            RandomAccessListIterate.forEachWithIndex(list, from, to, objectIntProcedure);</span>
+        }
+        else
+        {
+<span class="nc bnc" id="L790" title="All 2 branches missed.">            if (from &lt;= to)</span>
+            {
+<span class="nc" id="L792">                ListIterator&lt;T&gt; iterator = list.listIterator(from);</span>
+<span class="nc bnc" id="L793" title="All 2 branches missed.">                for (int i = from; i &lt;= to; i++)</span>
+                {
+<span class="nc" id="L795">                    objectIntProcedure.value(iterator.next(), i);</span>
+                }
+<span class="nc" id="L797">            }</span>
+            else
+            {
+<span class="nc" id="L800">                ListIterator&lt;T&gt; iterator = list.listIterator(from + 1);</span>
+<span class="nc bnc" id="L801" title="All 2 branches missed.">                for (int i = from; i &gt;= to; i--)</span>
+                {
+<span class="nc" id="L803">                    objectIntProcedure.value(iterator.previous(), i);</span>
+                }
+            }
+        }
+<span class="nc" id="L807">    }</span>
+
+    public static void rangeCheck(int from, int to, int size)
+    {
+<span class="nc bnc" id="L811" title="All 2 branches missed.">        if (from &lt; 0)</span>
+        {
+<span class="nc" id="L813">            throw new IndexOutOfBoundsException(&quot;From index: &quot; + from);</span>
+        }
+<span class="nc bnc" id="L815" title="All 2 branches missed.">        if (to &lt; 0)</span>
+        {
+<span class="nc" id="L817">            throw new IndexOutOfBoundsException(&quot;To index: &quot; + to);</span>
+        }
+<span class="nc bnc" id="L819" title="All 2 branches missed.">        if (from &gt;= size)</span>
+        {
+<span class="nc" id="L821">            throw new IndexOutOfBoundsException(&quot;From index: &quot; + from + &quot; Size: &quot; + size);</span>
+        }
+<span class="nc bnc" id="L823" title="All 2 branches missed.">        if (to &gt;= size)</span>
+        {
+<span class="nc" id="L825">            throw new IndexOutOfBoundsException(&quot;To index: &quot; + to + &quot; Size: &quot; + size);</span>
+        }
+<span class="nc" id="L827">    }</span>
+
+    /**
+     * Iterates over both lists together, evaluating Procedure2 with the current element from each list.
+     */
+    public static &lt;T1, T2&gt; void forEachInBoth(List&lt;T1&gt; list1, List&lt;T2&gt; list2, Procedure2&lt;? super T1, ? super T2&gt; procedure)
+    {
+<span class="nc bnc" id="L834" title="All 4 branches missed.">        if (list1 != null &amp;&amp; list2 != null)</span>
+        {
+<span class="nc bnc" id="L836" title="All 2 branches missed.">            if (list1.size() == list2.size())</span>
+            {
+<span class="nc bnc" id="L838" title="All 4 branches missed.">                if (list1 instanceof RandomAccess &amp;&amp; list2 instanceof RandomAccess)</span>
+                {
+<span class="nc" id="L840">                    RandomAccessListIterate.forEachInBoth(list1, list2, procedure);</span>
+                }
+                else
+                {
+<span class="nc" id="L844">                    Iterator&lt;T1&gt; iterator1 = list1.iterator();</span>
+<span class="nc" id="L845">                    Iterator&lt;T2&gt; iterator2 = list2.iterator();</span>
+<span class="nc" id="L846">                    int size = list2.size();</span>
+<span class="nc bnc" id="L847" title="All 2 branches missed.">                    for (int i = 0; i &lt; size; i++)</span>
+                    {
+<span class="nc" id="L849">                        procedure.value(iterator1.next(), iterator2.next());</span>
+                    }
+<span class="nc" id="L851">                }</span>
+            }
+            else
+            {
+<span class="nc" id="L855">                throw new RuntimeException(&quot;Attempt to call forEachInBoth with two Lists of different sizes :&quot;</span>
+<span class="nc" id="L856">                        + list1.size()</span>
+                        + ':'
+<span class="nc" id="L858">                        + list2.size());</span>
+            }
+        }
+<span class="nc" id="L861">    }</span>
+
+    /**
+     * @see Iterate#forEachWithIndex(Iterable, ObjectIntProcedure)
+     */
+    public static &lt;T&gt; void forEachWithIndex(List&lt;T&gt; list, ObjectIntProcedure&lt;? super T&gt; objectIntProcedure)
+    {
+<span class="nc bnc" id="L868" title="All 2 branches missed.">        if (list instanceof RandomAccess)</span>
+        {
+<span class="nc" id="L870">            RandomAccessListIterate.forEachWithIndex(list, objectIntProcedure);</span>
+        }
+        else
+        {
+<span class="nc" id="L874">            IterableIterate.forEachWithIndex(list, objectIntProcedure);</span>
+        }
+<span class="nc" id="L876">    }</span>
+
+    /**
+     * @see Iterate#detect(Iterable, Predicate)
+     */
+    public static &lt;T&gt; T detect(List&lt;T&gt; list, Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc bnc" id="L883" title="All 2 branches missed.">        if (list instanceof RandomAccess)</span>
+        {
+<span class="nc" id="L885">            return RandomAccessListIterate.detect(list, predicate);</span>
+        }
+<span class="nc" id="L887">        return IterableIterate.detect(list, predicate);</span>
+    }
+
+    /**
+     * @see Iterate#detectWith(Iterable, Predicate2, Object)
+     */
+    public static &lt;T, IV&gt; T detectWith(
+            List&lt;T&gt; list,
+            Predicate2&lt;? super T, ? super IV&gt; predicate,
+            IV injectedValue)
+    {
+<span class="nc bnc" id="L898" title="All 2 branches missed.">        if (list instanceof RandomAccess)</span>
+        {
+<span class="nc" id="L900">            return RandomAccessListIterate.detectWith(list, predicate, injectedValue);</span>
+        }
+<span class="nc" id="L902">        return IterableIterate.detectWith(list, predicate, injectedValue);</span>
+    }
+
+    /**
+     * @see Iterate#detectOptional(Iterable, Predicate)
+     */
+    public static &lt;T&gt; Optional&lt;T&gt; detectOptional(List&lt;T&gt; list, Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc bnc" id="L910" title="All 2 branches missed.">        if (list instanceof RandomAccess)</span>
+        {
+<span class="nc" id="L912">            return RandomAccessListIterate.detectOptional(list, predicate);</span>
+        }
+<span class="nc" id="L914">        return IterableIterate.detectOptional(list, predicate);</span>
+    }
+
+    /**
+     * @see Iterate#detectWithOptional(Iterable, Predicate2, Object)
+     */
+    public static &lt;T, IV&gt; Optional&lt;T&gt; detectWithOptional(
+            List&lt;T&gt; list,
+            Predicate2&lt;? super T, ? super IV&gt; predicate,
+            IV injectedValue)
+    {
+<span class="nc bnc" id="L925" title="All 2 branches missed.">        if (list instanceof RandomAccess)</span>
+        {
+<span class="nc" id="L927">            return RandomAccessListIterate.detectWithOptional(list, predicate, injectedValue);</span>
+        }
+<span class="nc" id="L929">        return IterableIterate.detectWithOptional(list, predicate, injectedValue);</span>
+    }
+
+    /**
+     * @see Iterate#detectIfNone(Iterable, Predicate, Object)
+     */
+    public static &lt;T&gt; T detectIfNone(List&lt;T&gt; list, Predicate&lt;? super T&gt; predicate, T ifNone)
+    {
+<span class="nc" id="L937">        T result = ListIterate.detect(list, predicate);</span>
+<span class="nc bnc" id="L938" title="All 2 branches missed.">        return result == null ? ifNone : result;</span>
+    }
+
+    /**
+     * @see Iterate#detectWithIfNone(Iterable, Predicate2, Object, Object)
+     */
+    public static &lt;T, IV&gt; T detectWithIfNone(List&lt;T&gt; list, Predicate2&lt;? super T, ? super IV&gt; predicate, IV injectedValue, T ifNone)
+    {
+<span class="nc" id="L946">        T result = ListIterate.detectWith(list, predicate, injectedValue);</span>
+<span class="nc bnc" id="L947" title="All 2 branches missed.">        return result == null ? ifNone : result;</span>
+    }
+
+    /**
+     * @see Iterate#injectInto(Object, Iterable, Function2)
+     */
+    public static &lt;T, IV&gt; IV injectInto(IV injectValue, List&lt;T&gt; list, Function2&lt;? super IV, ? super T, ? extends IV&gt; function)
+    {
+<span class="nc bnc" id="L955" title="All 2 branches missed.">        if (list instanceof RandomAccess)</span>
+        {
+<span class="nc" id="L957">            return RandomAccessListIterate.injectInto(injectValue, list, function);</span>
+        }
+<span class="nc" id="L959">        return IterableIterate.injectInto(injectValue, list, function);</span>
+    }
+
+    /**
+     * @see Iterate#injectInto(int, Iterable, IntObjectToIntFunction)
+     */
+    public static &lt;T&gt; int injectInto(int injectValue, List&lt;T&gt; list, IntObjectToIntFunction&lt;? super T&gt; function)
+    {
+<span class="nc bnc" id="L967" title="All 2 branches missed.">        if (list instanceof RandomAccess)</span>
+        {
+<span class="nc" id="L969">            return RandomAccessListIterate.injectInto(injectValue, list, function);</span>
+        }
+<span class="nc" id="L971">        return IterableIterate.injectInto(injectValue, list, function);</span>
+    }
+
+    /**
+     * @see Iterate#injectInto(long, Iterable, LongObjectToLongFunction)
+     */
+    public static &lt;T&gt; long injectInto(long injectValue, List&lt;T&gt; list, LongObjectToLongFunction&lt;? super T&gt; function)
+    {
+<span class="nc bnc" id="L979" title="All 2 branches missed.">        if (list instanceof RandomAccess)</span>
+        {
+<span class="nc" id="L981">            return RandomAccessListIterate.injectInto(injectValue, list, function);</span>
+        }
+<span class="nc" id="L983">        return IterableIterate.injectInto(injectValue, list, function);</span>
+    }
+
+    /**
+     * @see Iterate#injectInto(double, Iterable, DoubleObjectToDoubleFunction)
+     */
+    public static &lt;T&gt; double injectInto(double injectValue, List&lt;T&gt; list, DoubleObjectToDoubleFunction&lt;? super T&gt; function)
+    {
+<span class="nc bnc" id="L991" title="All 2 branches missed.">        if (list instanceof RandomAccess)</span>
+        {
+<span class="nc" id="L993">            return RandomAccessListIterate.injectInto(injectValue, list, function);</span>
+        }
+<span class="nc" id="L995">        return IterableIterate.injectInto(injectValue, list, function);</span>
+    }
+
+    /**
+     * @see Iterate#injectInto(float, Iterable, FloatObjectToFloatFunction)
+     */
+    public static &lt;T&gt; float injectInto(float injectValue, List&lt;T&gt; list, FloatObjectToFloatFunction&lt;? super T&gt; function)
+    {
+<span class="nc bnc" id="L1003" title="All 2 branches missed.">        if (list instanceof RandomAccess)</span>
+        {
+<span class="nc" id="L1005">            return RandomAccessListIterate.injectInto(injectValue, list, function);</span>
+        }
+<span class="nc" id="L1007">        return IterableIterate.injectInto(injectValue, list, function);</span>
+    }
+
+    public static &lt;T&gt; long sumOfInt(List&lt;T&gt; list, IntFunction&lt;? super T&gt; function)
+    {
+<span class="nc bnc" id="L1012" title="All 2 branches missed.">        if (list instanceof RandomAccess)</span>
+        {
+<span class="nc" id="L1014">            return RandomAccessListIterate.sumOfInt(list, function);</span>
+        }
+<span class="nc" id="L1016">        return IterableIterate.sumOfInt(list, function);</span>
+    }
+
+    public static &lt;T&gt; long sumOfLong(List&lt;T&gt; list, LongFunction&lt;? super T&gt; function)
+    {
+<span class="nc bnc" id="L1021" title="All 2 branches missed.">        if (list instanceof RandomAccess)</span>
+        {
+<span class="nc" id="L1023">            return RandomAccessListIterate.sumOfLong(list, function);</span>
+        }
+<span class="nc" id="L1025">        return IterableIterate.sumOfLong(list, function);</span>
+    }
+
+    public static &lt;T&gt; double sumOfFloat(List&lt;T&gt; list, FloatFunction&lt;? super T&gt; function)
+    {
+<span class="nc bnc" id="L1030" title="All 2 branches missed.">        if (list instanceof RandomAccess)</span>
+        {
+<span class="nc" id="L1032">            return RandomAccessListIterate.sumOfFloat(list, function);</span>
+        }
+<span class="nc" id="L1034">        return IterableIterate.sumOfFloat(list, function);</span>
+    }
+
+    public static &lt;T&gt; double sumOfDouble(List&lt;T&gt; list, DoubleFunction&lt;? super T&gt; function)
+    {
+<span class="nc bnc" id="L1039" title="All 2 branches missed.">        if (list instanceof RandomAccess)</span>
+        {
+<span class="nc" id="L1041">            return RandomAccessListIterate.sumOfDouble(list, function);</span>
+        }
+<span class="nc" id="L1043">        return IterableIterate.sumOfDouble(list, function);</span>
+    }
+
+    public static &lt;T&gt; BigDecimal sumOfBigDecimal(List&lt;T&gt; list, Function&lt;? super T, BigDecimal&gt; function)
+    {
+<span class="nc bnc" id="L1048" title="All 2 branches missed.">        if (list instanceof RandomAccess)</span>
+        {
+<span class="nc" id="L1050">            return RandomAccessListIterate.sumOfBigDecimal(list, function);</span>
+        }
+<span class="nc" id="L1052">        return IterableIterate.sumOfBigDecimal(list, function);</span>
+    }
+
+    public static &lt;T&gt; BigInteger sumOfBigInteger(List&lt;T&gt; list, Function&lt;? super T, BigInteger&gt; function)
+    {
+<span class="nc bnc" id="L1057" title="All 2 branches missed.">        if (list instanceof RandomAccess)</span>
+        {
+<span class="nc" id="L1059">            return RandomAccessListIterate.sumOfBigInteger(list, function);</span>
+        }
+<span class="nc" id="L1061">        return IterableIterate.sumOfBigInteger(list, function);</span>
+    }
+
+    public static &lt;V, T&gt; MutableMap&lt;V, BigDecimal&gt; sumByBigDecimal(List&lt;T&gt; list, Function&lt;T, V&gt; groupBy, Function&lt;? super T, BigDecimal&gt; function)
+    {
+<span class="nc bnc" id="L1066" title="All 2 branches missed.">        if (list instanceof RandomAccess)</span>
+        {
+<span class="nc" id="L1068">            return RandomAccessListIterate.sumByBigDecimal(list, groupBy, function);</span>
+        }
+<span class="nc" id="L1070">        return IterableIterate.sumByBigDecimal(list, groupBy, function);</span>
+    }
+
+    public static &lt;V, T&gt; MutableMap&lt;V, BigInteger&gt; sumByBigInteger(List&lt;T&gt; list, Function&lt;T, V&gt; groupBy, Function&lt;? super T, BigInteger&gt; function)
+    {
+<span class="nc bnc" id="L1075" title="All 2 branches missed.">        if (list instanceof RandomAccess)</span>
+        {
+<span class="nc" id="L1077">            return RandomAccessListIterate.sumByBigInteger(list, groupBy, function);</span>
+        }
+<span class="nc" id="L1079">        return IterableIterate.sumByBigInteger(list, groupBy, function);</span>
+    }
+
+    public static &lt;V, T&gt; ObjectLongMap&lt;V&gt; sumByInt(List&lt;T&gt; list, Function&lt;T, V&gt; groupBy, IntFunction&lt;? super T&gt; function)
+    {
+<span class="nc bnc" id="L1084" title="All 2 branches missed.">        if (list instanceof RandomAccess)</span>
+        {
+<span class="nc" id="L1086">            return RandomAccessListIterate.sumByInt(list, groupBy, function);</span>
+        }
+<span class="nc" id="L1088">        return IterableIterate.sumByInt(list, groupBy, function);</span>
+    }
+
+    public static &lt;V, T&gt; ObjectLongMap&lt;V&gt; sumByLong(List&lt;T&gt; list, Function&lt;T, V&gt; groupBy, LongFunction&lt;? super T&gt; function)
+    {
+<span class="nc bnc" id="L1093" title="All 2 branches missed.">        if (list instanceof RandomAccess)</span>
+        {
+<span class="nc" id="L1095">            return RandomAccessListIterate.sumByLong(list, groupBy, function);</span>
+        }
+<span class="nc" id="L1097">        return IterableIterate.sumByLong(list, groupBy, function);</span>
+    }
+
+    public static &lt;V, T&gt; ObjectDoubleMap&lt;V&gt; sumByFloat(List&lt;T&gt; list, Function&lt;T, V&gt; groupBy, FloatFunction&lt;? super T&gt; function)
+    {
+<span class="nc bnc" id="L1102" title="All 2 branches missed.">        if (list instanceof RandomAccess)</span>
+        {
+<span class="nc" id="L1104">            return RandomAccessListIterate.sumByFloat(list, groupBy, function);</span>
+        }
+<span class="nc" id="L1106">        return IterableIterate.sumByFloat(list, groupBy, function);</span>
+    }
+
+    public static &lt;V, T&gt; ObjectDoubleMap&lt;V&gt; sumByDouble(List&lt;T&gt; list, Function&lt;T, V&gt; groupBy, DoubleFunction&lt;? super T&gt; function)
+    {
+<span class="nc bnc" id="L1111" title="All 2 branches missed.">        if (list instanceof RandomAccess)</span>
+        {
+<span class="nc" id="L1113">            return RandomAccessListIterate.sumByDouble(list, groupBy, function);</span>
+        }
+<span class="nc" id="L1115">        return IterableIterate.sumByDouble(list, groupBy, function);</span>
+    }
+
+    /**
+     * @see Iterate#anySatisfy(Iterable, Predicate)
+     */
+    public static &lt;T&gt; boolean anySatisfy(List&lt;T&gt; list, Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc bnc" id="L1123" title="All 2 branches missed.">        if (list instanceof RandomAccess)</span>
+        {
+<span class="nc" id="L1125">            return RandomAccessListIterate.anySatisfy(list, predicate);</span>
+        }
+<span class="nc" id="L1127">        return IterableIterate.anySatisfy(list, predicate);</span>
+    }
+
+    /**
+     * @see Iterate#anySatisfyWith(Iterable, Predicate2, Object)
+     */
+    public static &lt;T, IV&gt; boolean anySatisfyWith(List&lt;T&gt; list, Predicate2&lt;? super T, ? super IV&gt; predicate, IV injectedValue)
+    {
+<span class="nc bnc" id="L1135" title="All 2 branches missed.">        if (list instanceof RandomAccess)</span>
+        {
+<span class="nc" id="L1137">            return RandomAccessListIterate.anySatisfyWith(list, predicate, injectedValue);</span>
+        }
+<span class="nc" id="L1139">        return IterableIterate.anySatisfyWith(list, predicate, injectedValue);</span>
+    }
+
+    /**
+     * @see Iterate#allSatisfy(Iterable, Predicate)
+     */
+    public static &lt;T&gt; boolean allSatisfy(List&lt;T&gt; list, Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc bnc" id="L1147" title="All 2 branches missed.">        if (list instanceof RandomAccess)</span>
+        {
+<span class="nc" id="L1149">            return RandomAccessListIterate.allSatisfy(list, predicate);</span>
+        }
+<span class="nc" id="L1151">        return IterableIterate.allSatisfy(list, predicate);</span>
+    }
+
+    /**
+     * @see Iterate#allSatisfyWith(Iterable, Predicate2, Object)
+     */
+    public static &lt;T, IV&gt; boolean allSatisfyWith(List&lt;T&gt; list, Predicate2&lt;? super T, ? super IV&gt; predicate, IV injectedValue)
+    {
+<span class="nc bnc" id="L1159" title="All 2 branches missed.">        if (list instanceof RandomAccess)</span>
+        {
+<span class="nc" id="L1161">            return RandomAccessListIterate.allSatisfyWith(list, predicate, injectedValue);</span>
+        }
+<span class="nc" id="L1163">        return IterableIterate.allSatisfyWith(list, predicate, injectedValue);</span>
+    }
+
+    /**
+     * @see Iterate#noneSatisfy(Iterable, Predicate)
+     */
+    public static &lt;T&gt; boolean noneSatisfy(List&lt;T&gt; list, Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc bnc" id="L1171" title="All 2 branches missed.">        if (list instanceof RandomAccess)</span>
+        {
+<span class="nc" id="L1173">            return RandomAccessListIterate.noneSatisfy(list, predicate);</span>
+        }
+<span class="nc" id="L1175">        return IterableIterate.noneSatisfy(list, predicate);</span>
+    }
+
+    /**
+     * @see Iterate#noneSatisfyWith(Iterable, Predicate2, Object)
+     */
+    public static &lt;T, P&gt; boolean noneSatisfyWith(List&lt;T&gt; list, Predicate2&lt;? super T, ? super P&gt; predicate, P injectedValue)
+    {
+<span class="nc bnc" id="L1183" title="All 2 branches missed.">        if (list instanceof RandomAccess)</span>
+        {
+<span class="nc" id="L1185">            return RandomAccessListIterate.noneSatisfyWith(list, predicate, injectedValue);</span>
+        }
+<span class="nc" id="L1187">        return IterableIterate.noneSatisfyWith(list, predicate, injectedValue);</span>
+    }
+
+    /**
+     * @see Iterate#selectAndRejectWith(Iterable, Predicate2, Object)
+     */
+    public static &lt;T, IV&gt; Twin&lt;MutableList&lt;T&gt;&gt; selectAndRejectWith(
+            List&lt;T&gt; list,
+            Predicate2&lt;? super T, ? super IV&gt; predicate,
+            IV injectedValue)
+    {
+<span class="nc bnc" id="L1198" title="All 2 branches missed.">        if (list instanceof RandomAccess)</span>
+        {
+<span class="nc" id="L1200">            return RandomAccessListIterate.selectAndRejectWith(list, predicate, injectedValue);</span>
+        }
+<span class="nc" id="L1202">        return IterableIterate.selectAndRejectWith(list, predicate, injectedValue);</span>
+    }
+
+    /**
+     * @see Iterate#partition(Iterable, Predicate)
+     */
+    public static &lt;T&gt; PartitionMutableList&lt;T&gt; partition(List&lt;T&gt; list, Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc bnc" id="L1210" title="All 2 branches missed.">        if (list instanceof RandomAccess)</span>
+        {
+<span class="nc" id="L1212">            return RandomAccessListIterate.partition(list, predicate);</span>
+        }
+<span class="nc" id="L1214">        return IterableIterate.partition(list, predicate);</span>
+    }
+
+    public static &lt;T, P&gt; PartitionMutableList&lt;T&gt; partitionWith(List&lt;T&gt; list, Predicate2&lt;? super T, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc bnc" id="L1219" title="All 2 branches missed.">        if (list instanceof RandomAccess)</span>
+        {
+<span class="nc" id="L1221">            return RandomAccessListIterate.partitionWith(list, predicate, parameter);</span>
+        }
+<span class="nc" id="L1223">        return IterableIterate.partitionWith(list, predicate, parameter);</span>
+    }
+
+    /**
+     * @see Iterate#removeIf(Iterable, Predicate)
+     */
+    public static &lt;T&gt; boolean removeIf(List&lt;T&gt; list, Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc bnc" id="L1231" title="All 2 branches missed.">        if (list instanceof RandomAccess)</span>
+        {
+<span class="nc" id="L1233">            return RandomAccessListIterate.removeIf(list, predicate);</span>
+        }
+<span class="nc" id="L1235">        return IterableIterate.removeIf(list, predicate);</span>
+    }
+
+    /**
+     * @see Iterate#removeIfWith(Iterable, Predicate2, Object)
+     */
+    public static &lt;T, P&gt; boolean removeIfWith(List&lt;T&gt; list, Predicate2&lt;? super T, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc bnc" id="L1243" title="All 2 branches missed.">        if (list instanceof RandomAccess)</span>
+        {
+<span class="nc" id="L1245">            return RandomAccessListIterate.removeIfWith(list, predicate, parameter);</span>
+        }
+<span class="nc" id="L1247">        return IterableIterate.removeIfWith(list, predicate, parameter);</span>
+    }
+
+    public static &lt;T&gt; boolean removeIf(List&lt;T&gt; list, Predicate&lt;? super T&gt; predicate, Procedure&lt;? super T&gt; procedure)
+    {
+<span class="nc bnc" id="L1252" title="All 2 branches missed.">        if (list instanceof RandomAccess)</span>
+        {
+<span class="nc" id="L1254">            return RandomAccessListIterate.removeIf(list, predicate, procedure);</span>
+        }
+<span class="nc" id="L1256">        return IterableIterate.removeIf(list, predicate, procedure);</span>
+    }
+
+    public static &lt;T, P&gt; boolean removeIfWith(List&lt;T&gt; list, Predicate2&lt;? super T, ? super P&gt; predicate, P parameter, Procedure&lt;? super T&gt; procedure)
+    {
+<span class="nc bnc" id="L1261" title="All 2 branches missed.">        if (list instanceof RandomAccess)</span>
+        {
+<span class="nc" id="L1263">            return RandomAccessListIterate.removeIfWith(list, predicate, parameter, procedure);</span>
+        }
+<span class="nc" id="L1265">        return IterableIterate.removeIfWith(list, predicate, parameter, procedure);</span>
+    }
+
+    /**
+     * Searches for the first index where the predicate evaluates to true.
+     */
+    public static &lt;T&gt; int detectIndex(List&lt;T&gt; list, Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc bnc" id="L1273" title="All 2 branches missed.">        if (list instanceof RandomAccess)</span>
+        {
+<span class="nc" id="L1275">            return RandomAccessListIterate.detectIndex(list, predicate);</span>
+        }
+<span class="nc" id="L1277">        return IterableIterate.detectIndex(list, predicate);</span>
+    }
+
+    /**
+     * Searches for the first index where the predicate2 and parameter evaluates to true.
+     */
+    public static &lt;T, P&gt; int detectIndexWith(List&lt;T&gt; list, Predicate2&lt;? super T, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc bnc" id="L1285" title="All 2 branches missed.">        if (list instanceof RandomAccess)</span>
+        {
+<span class="nc" id="L1287">            return RandomAccessListIterate.detectIndexWith(list, predicate, parameter);</span>
+        }
+<span class="nc" id="L1289">        return IterableIterate.detectIndexWith(list, predicate, parameter);</span>
+    }
+
+    /**
+     * Returns the last index where the predicate evaluates to true.
+     * Returns -1 for no matches.
+     */
+    public static &lt;T&gt; int detectLastIndex(List&lt;T&gt; list, Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc bnc" id="L1298" title="All 2 branches missed.">        if (list instanceof RandomAccess)</span>
+        {
+<span class="nc" id="L1300">            return RandomAccessListIterate.detectLastIndex(list, predicate);</span>
+        }
+<span class="nc" id="L1302">        int size = list.size();</span>
+<span class="nc" id="L1303">        int i = size - 1;</span>
+<span class="nc" id="L1304">        ListIterator&lt;T&gt; reverseIterator = list.listIterator(size);</span>
+<span class="nc bnc" id="L1305" title="All 2 branches missed.">        while (reverseIterator.hasPrevious())</span>
+        {
+<span class="nc bnc" id="L1307" title="All 2 branches missed.">            if (predicate.accept(reverseIterator.previous()))</span>
+            {
+<span class="nc" id="L1309">                return i;</span>
+            }
+<span class="nc" id="L1311">            i--;</span>
+        }
+<span class="nc" id="L1313">        return -1;</span>
+    }
+
+    public static &lt;T, IV, P&gt; IV injectIntoWith(IV injectedValue, List&lt;T&gt; list, Function3&lt;? super IV, ? super T, ? super P, ? extends IV&gt; function, P parameter)
+    {
+<span class="nc bnc" id="L1318" title="All 2 branches missed.">        if (list instanceof RandomAccess)</span>
+        {
+<span class="nc" id="L1320">            return RandomAccessListIterate.injectIntoWith(injectedValue, list, function, parameter);</span>
+        }
+<span class="nc" id="L1322">        return IterableIterate.injectIntoWith(injectedValue, list, function, parameter);</span>
+    }
+
+    /**
+     * @see Iterate#forEachWith(Iterable, Procedure2, Object)
+     */
+    public static &lt;T, P&gt; void forEachWith(List&lt;T&gt; list, Procedure2&lt;? super T, ? super P&gt; procedure, P parameter)
+    {
+<span class="nc bnc" id="L1330" title="All 2 branches missed.">        if (list instanceof RandomAccess)</span>
+        {
+<span class="nc" id="L1332">            RandomAccessListIterate.forEachWith(list, procedure, parameter);</span>
+        }
+        else
+        {
+<span class="nc" id="L1336">            IterableIterate.forEachWith(list, procedure, parameter);</span>
+        }
+<span class="nc" id="L1338">    }</span>
+
+    /**
+     * @see Iterate#collectWith(Iterable, Function2, Object)
+     */
+    public static &lt;T, P, A&gt; MutableList&lt;A&gt; collectWith(
+            List&lt;T&gt; list,
+            Function2&lt;? super T, ? super P, ? extends A&gt; function,
+            P parameter)
+    {
+<span class="nc" id="L1348">        return ListIterate.collectWith(list, function, parameter, FastList.newList(list.size()));</span>
+    }
+
+    /**
+     * @see Iterate#collectWith(Iterable, Function2, Object, Collection)
+     */
+    public static &lt;T, P, A, R extends Collection&lt;A&gt;&gt; R collectWith(
+            List&lt;T&gt; list,
+            Function2&lt;? super T, ? super P, ? extends A&gt; function,
+            P parameter,
+            R targetCollection)
+    {
+<span class="nc bnc" id="L1360" title="All 2 branches missed.">        if (list instanceof RandomAccess)</span>
+        {
+<span class="nc" id="L1362">            return RandomAccessListIterate.collectWith(list, function, parameter, targetCollection);</span>
+        }
+<span class="nc" id="L1364">        return IterableIterate.collectWith(list, function, parameter, targetCollection);</span>
+    }
+
+    /**
+     * @deprecated in 7.0.
+     */
+    @Deprecated
+    public static &lt;T, R extends List&lt;T&gt;&gt; R distinct(List&lt;T&gt; list, R targetList)
+    {
+<span class="nc bnc" id="L1373" title="All 2 branches missed.">        if (list instanceof RandomAccess)</span>
+        {
+<span class="nc" id="L1375">            return RandomAccessListIterate.distinct(list, targetList);</span>
+        }
+<span class="nc" id="L1377">        return IterableIterate.distinct(list, targetList);</span>
+    }
+
+    /**
+     * @since 7.0.
+     */
+    public static &lt;T&gt; MutableList&lt;T&gt; distinct(List&lt;T&gt; list)
+    {
+<span class="nc" id="L1385">        return ListIterate.distinct(list, FastList.newList());</span>
+    }
+
+    /**
+     * @since 7.0.
+     */
+    public static &lt;T&gt; MutableList&lt;T&gt; distinct(List&lt;T&gt; list, HashingStrategy&lt;? super T&gt; hashingStrategy)
+    {
+<span class="nc bnc" id="L1393" title="All 2 branches missed.">        if (list instanceof RandomAccess)</span>
+        {
+<span class="nc" id="L1395">            return RandomAccessListIterate.distinct(list, hashingStrategy);</span>
+        }
+<span class="nc" id="L1397">        return IterableIterate.distinct(list, hashingStrategy);</span>
+    }
+
+    /**
+     * @since 9.0
+     */
+    public static &lt;T, V&gt; MutableList&lt;T&gt; distinctBy(List&lt;T&gt; list, Function&lt;? super T, ? extends V&gt; function)
+    {
+<span class="nc" id="L1405">        return ListIterate.distinct(list, HashingStrategies.fromFunction(function));</span>
+    }
+
+    /**
+     * Reverses the order of the items in the list.
+     * &lt;pre&gt;
+     *     List&amp;lt;Integer&amp;gt; integers = Lists.fixedSize.of(1, 3, 2);
+     *     Verify.assertListsEqual(FastList.newListWith(2, 3, 1), ListIterate.reverse(integers));
+     * &lt;/pre&gt;
+     *
+     * @return the reversed list
+     */
+    public static &lt;T&gt; List&lt;T&gt; reverseThis(List&lt;T&gt; list)
+    {
+<span class="nc" id="L1419">        Collections.reverse(list);</span>
+<span class="nc" id="L1420">        return list;</span>
+    }
+
+    /**
+     * @see Iterate#take(Iterable, int)
+     */
+    public static &lt;T&gt; MutableList&lt;T&gt; take(List&lt;T&gt; list, int count)
+    {
+<span class="nc bnc" id="L1428" title="All 2 branches missed.">        if (count &lt; 0)</span>
+        {
+<span class="nc" id="L1430">            throw new IllegalArgumentException(&quot;Count must be greater than zero, but was: &quot; + count);</span>
+        }
+<span class="nc bnc" id="L1432" title="All 2 branches missed.">        if (list instanceof RandomAccess)</span>
+        {
+<span class="nc" id="L1434">            return RandomAccessListIterate.take(list, count, FastList.newList(Math.min(list.size(), count)));</span>
+        }
+<span class="nc" id="L1436">        return ListIterate.take(list, count, FastList.newList());</span>
+    }
+
+    /**
+     * @see Iterate#take(Iterable, int)
+     */
+    public static &lt;T, R extends Collection&lt;T&gt;&gt; R take(List&lt;T&gt; list, int count, R targetList)
+    {
+<span class="nc bnc" id="L1444" title="All 2 branches missed.">        if (count &lt; 0)</span>
+        {
+<span class="nc" id="L1446">            throw new IllegalArgumentException(&quot;Count must be greater than zero, but was: &quot; + count);</span>
+        }
+<span class="nc bnc" id="L1448" title="All 2 branches missed.">        if (list instanceof RandomAccess)</span>
+        {
+<span class="nc" id="L1450">            return RandomAccessListIterate.take(list, count, targetList);</span>
+        }
+<span class="nc" id="L1452">        return IterableIterate.take(list, count, targetList);</span>
+    }
+
+    /**
+     * @see Iterate#drop(Iterable, int)
+     */
+    public static &lt;T&gt; MutableList&lt;T&gt; drop(List&lt;T&gt; list, int count)
+    {
+<span class="nc bnc" id="L1460" title="All 2 branches missed.">        if (count &lt; 0)</span>
+        {
+<span class="nc" id="L1462">            throw new IllegalArgumentException(&quot;Count must be greater than zero, but was: &quot; + count);</span>
+        }
+<span class="nc bnc" id="L1464" title="All 2 branches missed.">        if (list instanceof RandomAccess)</span>
+        {
+<span class="nc" id="L1466">            return RandomAccessListIterate.drop(list, count, FastList.newList(list.size() - Math.min(list.size(), count)));</span>
+        }
+<span class="nc" id="L1468">        return ListIterate.drop(list, count, FastList.newList());</span>
+    }
+
+    /**
+     * @see Iterate#drop(Iterable, int)
+     */
+    public static &lt;T, R extends Collection&lt;T&gt;&gt; R drop(List&lt;T&gt; list, int count, R targetList)
+    {
+<span class="nc bnc" id="L1476" title="All 2 branches missed.">        if (count &lt; 0)</span>
+        {
+<span class="nc" id="L1478">            throw new IllegalArgumentException(&quot;Count must be greater than zero, but was: &quot; + count);</span>
+        }
+<span class="nc bnc" id="L1480" title="All 2 branches missed.">        if (list instanceof RandomAccess)</span>
+        {
+<span class="nc" id="L1482">            return RandomAccessListIterate.drop(list, count, targetList);</span>
+        }
+<span class="nc" id="L1484">        return IterableIterate.drop(list, count, targetList);</span>
+    }
+
+    /**
+     * @see RichIterable#appendString(Appendable, String, String, String)
+     */
+    public static &lt;T&gt; void appendString(
+            List&lt;T&gt; list,
+            Appendable appendable,
+            String start,
+            String separator,
+            String end)
+    {
+<span class="nc bnc" id="L1497" title="All 2 branches missed.">        if (list instanceof RandomAccess)</span>
+        {
+<span class="nc" id="L1499">            RandomAccessListIterate.appendString(list, appendable, start, separator, end);</span>
+        }
+        else
+        {
+<span class="nc" id="L1503">            IterableIterate.appendString(list, appendable, start, separator, end);</span>
+        }
+<span class="nc" id="L1505">    }</span>
+
+    /**
+     * @see Iterate#groupBy(Iterable, Function)
+     */
+    public static &lt;T, V&gt; FastListMultimap&lt;V, T&gt; groupBy(
+            List&lt;T&gt; list,
+            Function&lt;? super T, ? extends V&gt; function)
+    {
+<span class="nc" id="L1514">        return ListIterate.groupBy(list, function, FastListMultimap.newMultimap());</span>
+    }
+
+    /**
+     * @see Iterate#groupBy(Iterable, Function, MutableMultimap)
+     */
+    public static &lt;T, V, R extends MutableMultimap&lt;V, T&gt;&gt; R groupBy(
+            List&lt;T&gt; list,
+            Function&lt;? super T, ? extends V&gt; function,
+            R target)
+    {
+<span class="nc bnc" id="L1525" title="All 2 branches missed.">        if (list instanceof RandomAccess)</span>
+        {
+<span class="nc" id="L1527">            return RandomAccessListIterate.groupBy(list, function, target);</span>
+        }
+<span class="nc" id="L1529">        return IterableIterate.groupBy(list, function, target);</span>
+    }
+
+    /**
+     * @see Iterate#groupByEach(Iterable, Function)
+     */
+    public static &lt;T, V&gt; FastListMultimap&lt;V, T&gt; groupByEach(
+            List&lt;T&gt; list,
+            Function&lt;? super T, ? extends Iterable&lt;V&gt;&gt; function)
+    {
+<span class="nc" id="L1539">        return ListIterate.groupByEach(list, function, FastListMultimap.newMultimap());</span>
+    }
+
+    /**
+     * @see Iterate#groupByEach(Iterable, Function, MutableMultimap)
+     */
+    public static &lt;T, V, R extends MutableMultimap&lt;V, T&gt;&gt; R groupByEach(
+            List&lt;T&gt; list,
+            Function&lt;? super T, ? extends Iterable&lt;V&gt;&gt; function,
+            R target)
+    {
+<span class="nc bnc" id="L1550" title="All 2 branches missed.">        if (list instanceof RandomAccess)</span>
+        {
+<span class="nc" id="L1552">            return RandomAccessListIterate.groupByEach(list, function, target);</span>
+        }
+<span class="nc" id="L1554">        return IterableIterate.groupByEach(list, function, target);</span>
+    }
+
+    /**
+     * @see Iterate#groupByUniqueKey(Iterable, Function)
+     */
+    public static &lt;K, T&gt; MutableMap&lt;K, T&gt; groupByUniqueKey(
+            List&lt;T&gt; list,
+            Function&lt;? super T, ? extends K&gt; function)
+    {
+<span class="nc bnc" id="L1564" title="All 2 branches missed.">        if (list instanceof RandomAccess)</span>
+        {
+<span class="nc" id="L1566">            return RandomAccessListIterate.groupByUniqueKey(list, function);</span>
+        }
+<span class="nc" id="L1568">        return IterableIterate.groupByUniqueKey(list, function);</span>
+    }
+
+    /**
+     * @see Iterate#groupByUniqueKey(Iterable, Function, MutableMap)
+     */
+    public static &lt;K, T, R extends MutableMap&lt;K, T&gt;&gt; R groupByUniqueKey(
+            List&lt;T&gt; list,
+            Function&lt;? super T, ? extends K&gt; function,
+            R target)
+    {
+<span class="nc bnc" id="L1579" title="All 2 branches missed.">        if (list instanceof RandomAccess)</span>
+        {
+<span class="nc" id="L1581">            return RandomAccessListIterate.groupByUniqueKey(list, function, target);</span>
+        }
+<span class="nc" id="L1583">        return IterableIterate.groupByUniqueKey(list, function, target);</span>
+    }
+
+    /**
+     * @see Iterate#min(Iterable, Comparator)
+     */
+    public static &lt;T&gt; T min(List&lt;T&gt; list, Comparator&lt;? super T&gt; comparator)
+    {
+<span class="nc bnc" id="L1591" title="All 2 branches missed.">        if (list instanceof RandomAccess)</span>
+        {
+<span class="nc" id="L1593">            return RandomAccessListIterate.min(list, comparator);</span>
+        }
+<span class="nc" id="L1595">        return IterableIterate.min(list, comparator);</span>
+    }
+
+    public static &lt;T, V extends Comparable&lt;? super V&gt;&gt; T minBy(List&lt;T&gt; list, Function&lt;? super T, ? extends V&gt; function)
+    {
+<span class="nc bnc" id="L1600" title="All 2 branches missed.">        if (list instanceof RandomAccess)</span>
+        {
+<span class="nc" id="L1602">            return RandomAccessListIterate.minBy(list, function);</span>
+        }
+<span class="nc" id="L1604">        return IterableIterate.minBy(list, function);</span>
+    }
+
+    public static &lt;T, V extends Comparable&lt;? super V&gt;&gt; T maxBy(List&lt;T&gt; list, Function&lt;? super T, ? extends V&gt; function)
+    {
+<span class="nc bnc" id="L1609" title="All 2 branches missed.">        if (list instanceof RandomAccess)</span>
+        {
+<span class="nc" id="L1611">            return RandomAccessListIterate.maxBy(list, function);</span>
+        }
+<span class="nc" id="L1613">        return IterableIterate.maxBy(list, function);</span>
+    }
+
+    /**
+     * @see Iterate#max(Iterable, Comparator)
+     */
+    public static &lt;T&gt; T max(List&lt;T&gt; list, Comparator&lt;? super T&gt; comparator)
+    {
+<span class="nc bnc" id="L1621" title="All 2 branches missed.">        if (list instanceof RandomAccess)</span>
+        {
+<span class="nc" id="L1623">            return RandomAccessListIterate.max(list, comparator);</span>
+        }
+<span class="nc" id="L1625">        return IterableIterate.max(list, comparator);</span>
+    }
+
+    /**
+     * @see Iterate#min(Iterable)
+     */
+    public static &lt;T&gt; T min(List&lt;T&gt; list)
+    {
+<span class="nc bnc" id="L1633" title="All 2 branches missed.">        if (list instanceof RandomAccess)</span>
+        {
+<span class="nc" id="L1635">            return RandomAccessListIterate.min(list);</span>
+        }
+<span class="nc" id="L1637">        return IterableIterate.min(list);</span>
+    }
+
+    /**
+     * @see Iterate#max(Iterable)
+     */
+    public static &lt;T&gt; T max(List&lt;T&gt; list)
+    {
+<span class="nc bnc" id="L1645" title="All 2 branches missed.">        if (list instanceof RandomAccess)</span>
+        {
+<span class="nc" id="L1647">            return RandomAccessListIterate.max(list);</span>
+        }
+<span class="nc" id="L1649">        return IterableIterate.max(list);</span>
+    }
+
+    /**
+     * @see Iterate#chunk(Iterable, int)
+     */
+    public static &lt;T&gt; RichIterable&lt;RichIterable&lt;T&gt;&gt; chunk(List&lt;T&gt; list, int size)
+    {
+<span class="nc bnc" id="L1657" title="All 2 branches missed.">        if (size &lt;= 0)</span>
+        {
+<span class="nc" id="L1659">            throw new IllegalArgumentException(&quot;Size for groups must be positive but was: &quot; + size);</span>
+        }
+
+<span class="nc" id="L1662">        Iterator&lt;T&gt; iterator = list.iterator();</span>
+<span class="nc" id="L1663">        MutableList&lt;RichIterable&lt;T&gt;&gt; result = Lists.mutable.empty();</span>
+<span class="nc bnc" id="L1664" title="All 2 branches missed.">        while (iterator.hasNext())</span>
+        {
+<span class="nc" id="L1666">            MutableCollection&lt;T&gt; batch = Lists.mutable.empty();</span>
+<span class="nc bnc" id="L1667" title="All 4 branches missed.">            for (int i = 0; i &lt; size &amp;&amp; iterator.hasNext(); i++)</span>
+            {
+<span class="nc" id="L1669">                batch.add(iterator.next());</span>
+            }
+<span class="nc" id="L1671">            result.add(batch);</span>
+<span class="nc" id="L1672">        }</span>
+<span class="nc" id="L1673">        return result;</span>
+    }
+
+    /**
+     * @see Iterate#zip(Iterable, Iterable)
+     */
+    public static &lt;X, Y&gt; MutableList&lt;Pair&lt;X, Y&gt;&gt; zip(
+            List&lt;X&gt; list,
+            Iterable&lt;Y&gt; iterable)
+    {
+<span class="nc bnc" id="L1683" title="All 4 branches missed.">        if (iterable instanceof Collection || iterable instanceof RichIterable)</span>
+        {
+<span class="nc" id="L1685">            int listSize = list.size();</span>
+<span class="nc" id="L1686">            int iterableSize = Iterate.sizeOf(iterable);</span>
+<span class="nc" id="L1687">            FastList&lt;Pair&lt;X, Y&gt;&gt; target = FastList.newList(Math.min(listSize, iterableSize));</span>
+<span class="nc" id="L1688">            return ListIterate.zip(list, iterable, target);</span>
+        }
+<span class="nc" id="L1690">        return ListIterate.zip(list, iterable, FastList.newList());</span>
+    }
+
+    /**
+     * @see Iterate#zip(Iterable, Iterable, Collection)
+     */
+    public static &lt;X, Y, R extends Collection&lt;Pair&lt;X, Y&gt;&gt;&gt; R zip(
+            List&lt;X&gt; list,
+            Iterable&lt;Y&gt; iterable,
+            R target)
+    {
+<span class="nc bnc" id="L1701" title="All 2 branches missed.">        if (list instanceof RandomAccess)</span>
+        {
+<span class="nc" id="L1703">            return RandomAccessListIterate.zip(list, iterable, target);</span>
+        }
+<span class="nc" id="L1705">        return IterableIterate.zip(list, iterable, target);</span>
+    }
+
+    /**
+     * @see Iterate#zipWithIndex(Iterable)
+     */
+    public static &lt;T&gt; MutableList&lt;Pair&lt;T, Integer&gt;&gt; zipWithIndex(List&lt;T&gt; list)
+    {
+<span class="nc" id="L1713">        return ListIterate.zipWithIndex(list, FastList.newList(list.size()));</span>
+    }
+
+    /**
+     * @see Iterate#zipWithIndex(Iterable, Collection)
+     */
+    public static &lt;T, R extends Collection&lt;Pair&lt;T, Integer&gt;&gt;&gt; R zipWithIndex(
+            List&lt;T&gt; list,
+            R target)
+    {
+<span class="nc bnc" id="L1723" title="All 2 branches missed.">        if (list instanceof RandomAccess)</span>
+        {
+<span class="nc" id="L1725">            return RandomAccessListIterate.zipWithIndex(list, target);</span>
+        }
+<span class="nc" id="L1727">        return IterableIterate.zipWithIndex(list, target);</span>
+    }
+
+    /**
+     * @see ListIterable#takeWhile(Predicate)
+     */
+    public static &lt;T&gt; MutableList&lt;T&gt; takeWhile(List&lt;T&gt; list, Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc bnc" id="L1735" title="All 2 branches missed.">        if (list instanceof RandomAccess)</span>
+        {
+<span class="nc" id="L1737">            return RandomAccessListIterate.takeWhile(list, predicate);</span>
+        }
+<span class="nc" id="L1739">        MutableList&lt;T&gt; result = FastList.newList();</span>
+<span class="nc bnc" id="L1740" title="All 2 branches missed.">        for (T t : list)</span>
+        {
+<span class="nc bnc" id="L1742" title="All 2 branches missed.">            if (predicate.accept(t))</span>
+            {
+<span class="nc" id="L1744">                result.add(t);</span>
+            }
+            else
+            {
+<span class="nc" id="L1748">                return result;</span>
+            }
+<span class="nc" id="L1750">        }</span>
+<span class="nc" id="L1751">        return result;</span>
+    }
+
+    /**
+     * @see ListIterable#dropWhile(Predicate)
+     */
+    public static &lt;T&gt; MutableList&lt;T&gt; dropWhile(List&lt;T&gt; list, Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc bnc" id="L1759" title="All 2 branches missed.">        if (list instanceof RandomAccess)</span>
+        {
+<span class="nc" id="L1761">            return RandomAccessListIterate.dropWhile(list, predicate);</span>
+        }
+<span class="nc" id="L1763">        MutableList&lt;T&gt; result = FastList.newList();</span>
+<span class="nc" id="L1764">        Iterator&lt;T&gt; iterator = list.iterator();</span>
+<span class="nc bnc" id="L1765" title="All 2 branches missed.">        while (iterator.hasNext())</span>
+        {
+<span class="nc" id="L1767">            T each = iterator.next();</span>
+<span class="nc bnc" id="L1768" title="All 2 branches missed.">            if (!predicate.accept(each))</span>
+            {
+<span class="nc" id="L1770">                result.add(each);</span>
+<span class="nc bnc" id="L1771" title="All 2 branches missed.">                while (iterator.hasNext())</span>
+                {
+<span class="nc" id="L1773">                    T eachNotDropped = iterator.next();</span>
+<span class="nc" id="L1774">                    result.add(eachNotDropped);</span>
+<span class="nc" id="L1775">                }</span>
+<span class="nc" id="L1776">                return result;</span>
+            }
+<span class="nc" id="L1778">        }</span>
+<span class="nc" id="L1779">        return result;</span>
+    }
+
+    /**
+     * @see ListIterable#partitionWhile(Predicate)
+     */
+    public static &lt;T&gt; PartitionMutableList&lt;T&gt; partitionWhile(List&lt;T&gt; list, Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc bnc" id="L1787" title="All 2 branches missed.">        if (list instanceof RandomAccess)</span>
+        {
+<span class="nc" id="L1789">            return RandomAccessListIterate.partitionWhile(list, predicate);</span>
+        }
+<span class="nc" id="L1791">        PartitionMutableList&lt;T&gt; result = new PartitionFastList&lt;&gt;();</span>
+<span class="nc" id="L1792">        MutableList&lt;T&gt; selected = result.getSelected();</span>
+<span class="nc" id="L1793">        MutableList&lt;T&gt; rejected = result.getRejected();</span>
+
+<span class="nc" id="L1795">        Iterator&lt;T&gt; iterator = list.iterator();</span>
+<span class="nc bnc" id="L1796" title="All 2 branches missed.">        while (iterator.hasNext())</span>
+        {
+<span class="nc" id="L1798">            T each = iterator.next();</span>
+<span class="nc bnc" id="L1799" title="All 2 branches missed.">            if (predicate.accept(each))</span>
+            {
+<span class="nc" id="L1801">                selected.add(each);</span>
+            }
+            else
+            {
+<span class="nc" id="L1805">                rejected.add(each);</span>
+<span class="nc bnc" id="L1806" title="All 2 branches missed.">                while (iterator.hasNext())</span>
+                {
+<span class="nc" id="L1808">                    rejected.add(iterator.next());</span>
+                }
+<span class="nc" id="L1810">                return result;</span>
+            }
+<span class="nc" id="L1812">        }</span>
+<span class="nc" id="L1813">        return result;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.0.201801022044</span></div></body></html>

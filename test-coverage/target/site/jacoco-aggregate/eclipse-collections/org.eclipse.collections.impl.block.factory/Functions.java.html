@@ -1,0 +1,1219 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>Functions.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Eclipse Collections Test Coverage Aggregation</a> &gt; <a href="../index.html" class="el_bundle">eclipse-collections</a> &gt; <a href="index.source.html" class="el_package">org.eclipse.collections.impl.block.factory</a> &gt; <span class="el_source">Functions.java</span></div><h1>Functions.java</h1><pre class="source lang-java linenums">/*
+ * Copyright (c) 2016 Goldman Sachs.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * and Eclipse Distribution License v. 1.0 which accompany this distribution.
+ * The Eclipse Public License is available at http://www.eclipse.org/legal/epl-v10.html
+ * and the Eclipse Distribution License is available at
+ * http://www.eclipse.org/org/documents/edl-v10.php.
+ */
+
+package org.eclipse.collections.impl.block.factory;
+
+import java.util.Map;
+
+import org.eclipse.collections.api.block.SerializableComparator;
+import org.eclipse.collections.api.block.function.Function;
+import org.eclipse.collections.api.block.function.Function2;
+import org.eclipse.collections.api.block.function.primitive.BooleanFunction;
+import org.eclipse.collections.api.block.function.primitive.ByteFunction;
+import org.eclipse.collections.api.block.function.primitive.CharFunction;
+import org.eclipse.collections.api.block.function.primitive.DoubleFunction;
+import org.eclipse.collections.api.block.function.primitive.FloatFunction;
+import org.eclipse.collections.api.block.function.primitive.IntFunction;
+import org.eclipse.collections.api.block.function.primitive.LongFunction;
+import org.eclipse.collections.api.block.function.primitive.ShortFunction;
+import org.eclipse.collections.api.block.predicate.Predicate;
+import org.eclipse.collections.api.block.procedure.Procedure;
+import org.eclipse.collections.api.block.procedure.Procedure2;
+import org.eclipse.collections.api.block.procedure.primitive.ObjectIntProcedure;
+import org.eclipse.collections.api.tuple.Pair;
+import org.eclipse.collections.impl.block.comparator.primitive.BooleanFunctionComparator;
+import org.eclipse.collections.impl.block.comparator.primitive.ByteFunctionComparator;
+import org.eclipse.collections.impl.block.comparator.primitive.CharFunctionComparator;
+import org.eclipse.collections.impl.block.comparator.primitive.DoubleFunctionComparator;
+import org.eclipse.collections.impl.block.comparator.primitive.FloatFunctionComparator;
+import org.eclipse.collections.impl.block.comparator.primitive.IntFunctionComparator;
+import org.eclipse.collections.impl.block.comparator.primitive.LongFunctionComparator;
+import org.eclipse.collections.impl.block.comparator.primitive.ShortFunctionComparator;
+import org.eclipse.collections.impl.block.function.CaseFunction;
+import org.eclipse.collections.impl.block.function.IfFunction;
+import org.eclipse.collections.impl.block.function.checked.CheckedFunction;
+import org.eclipse.collections.impl.block.function.checked.ThrowingFunction;
+import org.eclipse.collections.impl.block.function.primitive.IntegerFunctionImpl;
+import org.eclipse.collections.impl.tuple.Tuples;
+import org.eclipse.collections.impl.utility.Iterate;
+import org.eclipse.collections.impl.utility.StringIterate;
+
+public final class Functions
+{
+<span class="nc" id="L50">    private static final Function&lt;Double, Double&gt; DOUBLE_PASS_THRU_FUNCTION = new DoublePassThruFunction();</span>
+<span class="nc" id="L51">    private static final Function&lt;Integer, Integer&gt; INTEGER_PASS_THRU_FUNCTION = new IntegerPassThruFunction();</span>
+<span class="nc" id="L52">    private static final Function&lt;Long, Long&gt; LONG_PASS_THRU_FUNCTION = new LongPassThruFunction();</span>
+
+<span class="nc" id="L54">    private static final Function&lt;Object, Boolean&gt; TRUE_FUNCTION = new TrueFunction();</span>
+<span class="nc" id="L55">    private static final Function&lt;Object, Boolean&gt; FALSE_FUNCTION = new FalseFunction();</span>
+<span class="nc" id="L56">    private static final Function&lt;?, ?&gt; PASS_THRU_FUNCTION = new PassThruFunction&lt;&gt;();</span>
+<span class="nc" id="L57">    private static final Function&lt;String, String&gt; STRING_TRIM_FUNCTION = new StringTrimFunction();</span>
+<span class="nc" id="L58">    private static final Function&lt;Object, Class&lt;?&gt;&gt; CLASS_FUNCTION = new ClassFunction();</span>
+<span class="nc" id="L59">    private static final Function&lt;Number, Double&gt; MATH_SIN_FUNCTION = new MathSinFunction();</span>
+<span class="nc" id="L60">    private static final Function&lt;Integer, Integer&gt; SQUARED_INTEGER = new SquaredIntegerFunction();</span>
+<span class="nc" id="L61">    private static final Function&lt;Object, String&gt; TO_STRING_FUNCTION = new ToStringFunction();</span>
+<span class="nc" id="L62">    private static final Function&lt;String, Integer&gt; STRING_TO_INTEGER_FUNCTION = new StringToIntegerFunction();</span>
+<span class="nc" id="L63">    private static final Function&lt;?, ?&gt; MAP_KEY_FUNCTION = new MapKeyFunction&lt;&gt;();</span>
+<span class="nc" id="L64">    private static final Function&lt;?, ?&gt; MAP_VALUE_FUNCTION = new MapValueFunction&lt;&gt;();</span>
+<span class="nc" id="L65">    private static final Function&lt;Iterable&lt;?&gt;, Integer&gt; SIZE_FUNCTION = new SizeFunction();</span>
+<span class="nc" id="L66">    private static final FirstOfPairFunction&lt;?&gt; FIRST_OF_PAIR_FUNCTION = new FirstOfPairFunction&lt;&gt;();</span>
+<span class="nc" id="L67">    private static final SecondOfPairFunction&lt;?&gt; SECOND_OF_PAIR_FUNCTION = new SecondOfPairFunction&lt;&gt;();</span>
+<span class="nc" id="L68">    private static final CheckedFunction&lt;String, Class&lt;?&gt;&gt; CLASS_FOR_NAME = new ClassForNameFunction();</span>
+<span class="nc" id="L69">    private static final SwappedPairFunction&lt;?, ?&gt; SWAPPED_PAIR_FUNCTION = new SwappedPairFunction&lt;&gt;();</span>
+
+    private Functions()
+<span class="nc" id="L72">    {</span>
+<span class="nc" id="L73">        throw new AssertionError(&quot;Suppress default constructor for noninstantiability&quot;);</span>
+    }
+
+    private static class PassThruFunction&lt;T&gt; implements Function&lt;T, T&gt;
+    {
+        private static final long serialVersionUID = 1L;
+
+        @Override
+        public T valueOf(T anObject)
+        {
+<span class="nc" id="L83">            return anObject;</span>
+        }
+    }
+
+    private static class StringTrimFunction implements Function&lt;String, String&gt;
+    {
+        private static final long serialVersionUID = 1L;
+
+        @Override
+        public String valueOf(String s)
+        {
+<span class="nc" id="L94">            return s.trim();</span>
+        }
+    }
+
+    private static final class FixedValueFunction&lt;T, V&gt; implements Function&lt;T, V&gt;
+    {
+        private static final long serialVersionUID = 1L;
+        private final V value;
+
+        private FixedValueFunction(V value)
+<span class="nc" id="L104">        {</span>
+<span class="nc" id="L105">            this.value = value;</span>
+<span class="nc" id="L106">        }</span>
+
+        @Override
+        public V valueOf(T object)
+        {
+<span class="nc" id="L111">            return this.value;</span>
+        }
+    }
+
+    private static final class ClassFunction implements Function&lt;Object, Class&lt;?&gt;&gt;
+    {
+        private static final long serialVersionUID = 1L;
+
+        @Override
+        public Class&lt;?&gt; valueOf(Object anObject)
+        {
+<span class="nc" id="L122">            return anObject.getClass();</span>
+        }
+
+        @Override
+        public String toString()
+        {
+<span class="nc" id="L128">            return &quot;object.getClass()&quot;;</span>
+        }
+    }
+
+    private static final class MathSinFunction implements Function&lt;Number, Double&gt;
+    {
+        private static final long serialVersionUID = 1L;
+
+        @Override
+        public Double valueOf(Number number)
+        {
+<span class="nc" id="L139">            return Math.sin(number.doubleValue());</span>
+        }
+
+        @Override
+        public String toString()
+        {
+<span class="nc" id="L145">            return &quot;Math.sin()&quot;;</span>
+        }
+    }
+
+    private static final class SquaredIntegerFunction implements Function&lt;Integer, Integer&gt;
+    {
+        private static final long serialVersionUID = 1L;
+
+        @Override
+        public Integer valueOf(Integer value)
+        {
+<span class="nc" id="L156">            return value * value;</span>
+        }
+    }
+
+    private static final class ToStringFunction implements Function&lt;Object, String&gt;
+    {
+        private static final long serialVersionUID = 1L;
+
+        @Override
+        public String valueOf(Object anObject)
+        {
+<span class="nc" id="L167">            return String.valueOf(anObject);</span>
+        }
+
+        @Override
+        public String toString()
+        {
+<span class="nc" id="L173">            return &quot;toString&quot;;</span>
+        }
+    }
+
+    private static final class StringToIntegerFunction implements Function&lt;String, Integer&gt;
+    {
+        private static final long serialVersionUID = 1L;
+
+        @Override
+        public Integer valueOf(String string)
+        {
+<span class="nc" id="L184">            return Integer.valueOf(string);</span>
+        }
+
+        @Override
+        public String toString()
+        {
+<span class="nc" id="L190">            return &quot;stringToInteger&quot;;</span>
+        }
+    }
+
+    /**
+     * Allows a lambda or anonymous inner class that needs to throw a checked exception to be safely wrapped as a
+     * Function that will throw a RuntimeException, wrapping the checked exception that is the cause.
+     */
+    public static &lt;T, V&gt; Function&lt;T, V&gt; throwing(ThrowingFunction&lt;T, V&gt; throwingFunction)
+    {
+<span class="nc" id="L200">        return new ThrowingFunctionAdapter&lt;&gt;(throwingFunction);</span>
+    }
+
+    /**
+     * Allows a lambda or anonymous inner class that needs to throw a checked exception to be safely wrapped as a
+     * Function that will throw a user specified RuntimeException based on the provided function. The function
+     * is passed the current element and the checked exception that was thrown as context arguments.
+     */
+    public static &lt;T, V&gt; Function&lt;T, V&gt; throwing(
+            ThrowingFunction&lt;T, V&gt; throwingFunction,
+            Function2&lt;T, ? super Throwable, ? extends RuntimeException&gt; rethrow)
+    {
+<span class="nc" id="L212">        return each -&gt;</span>
+        {
+            try
+            {
+<span class="nc" id="L216">                return throwingFunction.safeValueOf(each);</span>
+            }
+<span class="nc" id="L218">            catch (RuntimeException e)</span>
+            {
+<span class="nc" id="L220">                throw e;</span>
+            }
+<span class="nc" id="L222">            catch (Throwable t)</span>
+            {
+<span class="nc" id="L224">                throw rethrow.value(each, t);</span>
+            }
+        };
+    }
+
+    /**
+     * Allows a Java 8 lambda and method reference to be used in a method taking a Function as a parameter
+     * without any ambiguity.
+     */
+    public static &lt;T, V&gt; Function&lt;T, V&gt; cast(Function&lt;T, V&gt; function)
+    {
+<span class="nc" id="L235">        return function;</span>
+    }
+
+    /**
+     * Alias for identity(). Inlineable.
+     *
+     * @see #identity()
+     */
+    public static &lt;T&gt; Function&lt;T, T&gt; getPassThru()
+    {
+<span class="nc" id="L245">        return Functions.identity();</span>
+    }
+
+    /**
+     * @since 6.0
+     */
+    public static &lt;T&gt; Function&lt;T, T&gt; identity()
+    {
+<span class="nc" id="L253">        return (Function&lt;T, T&gt;) PASS_THRU_FUNCTION;</span>
+    }
+
+    /**
+     * @since 6.0
+     */
+    public static Function&lt;Object, Boolean&gt; getTrue()
+    {
+<span class="nc" id="L261">        return TRUE_FUNCTION;</span>
+    }
+
+    /**
+     * @since 6.0
+     */
+    public static Function&lt;Object, Boolean&gt; getFalse()
+    {
+<span class="nc" id="L269">        return FALSE_FUNCTION;</span>
+    }
+
+    public static &lt;T, V&gt; Function&lt;T, V&gt; getFixedValue(V value)
+    {
+<span class="nc" id="L274">        return new FixedValueFunction&lt;&gt;(value);</span>
+    }
+
+    public static Function&lt;Object, Class&lt;?&gt;&gt; getToClass()
+    {
+<span class="nc" id="L279">        return CLASS_FUNCTION;</span>
+    }
+
+    public static Function&lt;Number, Double&gt; getMathSinFunction()
+    {
+<span class="nc" id="L284">        return MATH_SIN_FUNCTION;</span>
+    }
+
+    public static Function&lt;Number, Number&gt; getNumberPassThru()
+    {
+<span class="nc" id="L289">        return (Function&lt;Number, Number&gt;) PASS_THRU_FUNCTION;</span>
+    }
+
+    public static Function&lt;Integer, Integer&gt; getIntegerPassThru()
+    {
+<span class="nc" id="L294">        return INTEGER_PASS_THRU_FUNCTION;</span>
+    }
+
+    public static Function&lt;Long, Long&gt; getLongPassThru()
+    {
+<span class="nc" id="L299">        return LONG_PASS_THRU_FUNCTION;</span>
+    }
+
+    public static Function&lt;Double, Double&gt; getDoublePassThru()
+    {
+<span class="nc" id="L304">        return DOUBLE_PASS_THRU_FUNCTION;</span>
+    }
+
+    public static Function&lt;String, String&gt; getStringPassThru()
+    {
+<span class="nc" id="L309">        return (Function&lt;String, String&gt;) PASS_THRU_FUNCTION;</span>
+    }
+
+    public static Function&lt;String, String&gt; getStringTrim()
+    {
+<span class="nc" id="L314">        return STRING_TRIM_FUNCTION;</span>
+    }
+
+    public static Function&lt;Object, String&gt; getToString()
+    {
+<span class="nc" id="L319">        return TO_STRING_FUNCTION;</span>
+    }
+
+    public static Function&lt;Object, String&gt; getNullSafeToString(String defaultValue)
+    {
+<span class="nc" id="L324">        return Functions.nullSafe(TO_STRING_FUNCTION, defaultValue);</span>
+    }
+
+    public static &lt;T&gt; SerializableComparator&lt;T&gt; toBooleanComparator(BooleanFunction&lt;T&gt; function)
+    {
+<span class="nc" id="L329">        return new BooleanFunctionComparator&lt;&gt;(function);</span>
+    }
+
+    public static &lt;T&gt; SerializableComparator&lt;T&gt; toByteComparator(ByteFunction&lt;T&gt; function)
+    {
+<span class="nc" id="L334">        return new ByteFunctionComparator&lt;&gt;(function);</span>
+    }
+
+    public static &lt;T&gt; SerializableComparator&lt;T&gt; toCharComparator(CharFunction&lt;T&gt; function)
+    {
+<span class="nc" id="L339">        return new CharFunctionComparator&lt;&gt;(function);</span>
+    }
+
+    public static &lt;T&gt; SerializableComparator&lt;T&gt; toFloatComparator(FloatFunction&lt;T&gt; function)
+    {
+<span class="nc" id="L344">        return new FloatFunctionComparator&lt;&gt;(function);</span>
+    }
+
+    public static &lt;T&gt; SerializableComparator&lt;T&gt; toShortComparator(ShortFunction&lt;T&gt; function)
+    {
+<span class="nc" id="L349">        return new ShortFunctionComparator&lt;&gt;(function);</span>
+    }
+
+    public static &lt;T&gt; SerializableComparator&lt;T&gt; toIntComparator(IntFunction&lt;T&gt; function)
+    {
+<span class="nc" id="L354">        return new IntFunctionComparator&lt;&gt;(function);</span>
+    }
+
+    public static &lt;T&gt; SerializableComparator&lt;T&gt; toDoubleComparator(DoubleFunction&lt;T&gt; function)
+    {
+<span class="nc" id="L359">        return new DoubleFunctionComparator&lt;&gt;(function);</span>
+    }
+
+    public static &lt;T&gt; SerializableComparator&lt;T&gt; toLongComparator(LongFunction&lt;T&gt; function)
+    {
+<span class="nc" id="L364">        return new LongFunctionComparator&lt;&gt;(function);</span>
+    }
+
+    public static Function&lt;String, Integer&gt; getStringToInteger()
+    {
+<span class="nc" id="L369">        return STRING_TO_INTEGER_FUNCTION;</span>
+    }
+
+    public static &lt;T, V&gt; Function&lt;T, V&gt; withDefault(Function&lt;? super T, ? extends V&gt; function, V defaultValue)
+    {
+<span class="nc" id="L374">        return new DefaultFunction&lt;&gt;(function, defaultValue);</span>
+    }
+
+    public static &lt;T, V&gt; Function&lt;T, V&gt; nullSafe(Function&lt;? super T, ? extends V&gt; function)
+    {
+<span class="nc" id="L379">        return new NullSafeFunction&lt;&gt;(function, null);</span>
+    }
+
+    public static &lt;T, V&gt; Function&lt;T, V&gt; nullSafe(Function&lt;? super T, ? extends V&gt; function, V nullValue)
+    {
+<span class="nc" id="L384">        return new NullSafeFunction&lt;&gt;(function, nullValue);</span>
+    }
+
+    public static &lt;V1&gt; Function&lt;Pair&lt;V1, ?&gt;, V1&gt; firstOfPair()
+    {
+<span class="nc" id="L389">        return (Function&lt;Pair&lt;V1, ?&gt;, V1&gt;) (Function&lt;?, ?&gt;) FIRST_OF_PAIR_FUNCTION;</span>
+    }
+
+    public static &lt;V2&gt; Function&lt;Pair&lt;?, V2&gt;, V2&gt; secondOfPair()
+    {
+<span class="nc" id="L394">        return (Function&lt;Pair&lt;?, V2&gt;, V2&gt;) (Function&lt;?, ?&gt;) SECOND_OF_PAIR_FUNCTION;</span>
+    }
+
+    /**
+     * Swap the input pair and return the swapped pair.
+     *
+     * @return A function that gets the swapped pair {@code Iterable}
+     */
+    public static &lt;S, T&gt; Function&lt;Pair&lt;S, T&gt;, Pair&lt;T, S&gt;&gt; swappedPair()
+    {
+<span class="nc" id="L404">        return (Function&lt;Pair&lt;S, T&gt;, Pair&lt;T, S&gt;&gt;) (Function&lt;?, ?&gt;) SWAPPED_PAIR_FUNCTION;</span>
+    }
+
+    /**
+     * Bind the parameter passed to a Function2 into a new Function.
+     *
+     * @param function  The Function2 to delegate the invocation to.
+     * @param parameter The parameter the use in the invocation of the delegate function.
+     * @return A new Function
+     */
+    public static &lt;T, P, R&gt; Function&lt;T, R&gt; bind(Function2&lt;? super T, ? super P, ? extends R&gt; function, P parameter)
+    {
+<span class="nc" id="L416">        return new BindFunction2&lt;&gt;(function, parameter);</span>
+    }
+
+    /**
+     * Bind the input of a Procedure to the result of an function, returning a new Procedure.
+     *
+     * @param delegate The Procedure to delegate the invocation to.
+     * @param function The Function that will create the input for the delegate
+     * @return A new Procedure
+     */
+    public static &lt;T1, T2&gt; Procedure&lt;T1&gt; bind(
+            Procedure&lt;? super T2&gt; delegate,
+            Function&lt;? super T1, T2&gt; function)
+    {
+<span class="nc" id="L430">        return new BindProcedure&lt;&gt;(delegate, function);</span>
+    }
+
+    /**
+     * Bind the input of a ObjectIntProcedure to the result of an function, returning a new ObjectIntProcedure.
+     *
+     * @param delegate The ObjectIntProcedure to delegate the invocation to.
+     * @param function The Function that will create the input for the delegate
+     * @return A new ObjectIntProcedure
+     */
+    public static &lt;T1, T2&gt; ObjectIntProcedure&lt;T1&gt; bind(
+            ObjectIntProcedure&lt;? super T2&gt; delegate,
+            Function&lt;? super T1, T2&gt; function)
+    {
+<span class="nc" id="L444">        return new BindObjectIntProcedure&lt;&gt;(delegate, function);</span>
+    }
+
+    /**
+     * Bind the input of the first argument of a Procedure2 to the result of an function, returning a new Procedure2.
+     *
+     * @param delegate The Procedure2 to delegate the invocation to.
+     * @param function The Function that will create the input for the delegate
+     * @return A new Procedure2
+     */
+    public static &lt;T1, T2, T3&gt; Procedure2&lt;T1, T3&gt; bind(
+            Procedure2&lt;? super T2, T3&gt; delegate, Function&lt;? super T1, T2&gt; function)
+    {
+<span class="nc" id="L457">        return new BindProcedure2&lt;&gt;(delegate, function);</span>
+    }
+
+    public static Function&lt;Integer, Integer&gt; squaredInteger()
+    {
+<span class="nc" id="L462">        return SQUARED_INTEGER;</span>
+    }
+
+    public static &lt;T, V&gt; Function&lt;T, V&gt; firstNotNullValue(Function&lt;T, V&gt;... functions)
+    {
+<span class="nc" id="L467">        return new FirstNotNullFunction&lt;&gt;(functions);</span>
+    }
+
+    public static &lt;T&gt; Function&lt;T, String&gt; firstNotEmptyStringValue(
+            Function&lt;T, String&gt;... functions)
+    {
+<span class="nc" id="L473">        return new FirstNotEmptyStringFunction&lt;&gt;(functions);</span>
+    }
+
+    public static &lt;T1, T2, I extends Iterable&lt;T2&gt;&gt; Function&lt;T1, I&gt; firstNotEmptyCollectionValue(
+            Function&lt;T1, I&gt;... functions)
+    {
+<span class="nc" id="L479">        return new FirstNotEmptyCollectionFunction&lt;&gt;(functions);</span>
+    }
+
+    public static &lt;T, V&gt; Function&lt;T, V&gt; ifTrue(
+            Predicate&lt;? super T&gt; predicate,
+            Function&lt;? super T, ? extends V&gt; function)
+    {
+<span class="nc" id="L486">        return new IfFunction&lt;&gt;(predicate, function);</span>
+    }
+
+    public static &lt;T, V&gt; Function&lt;T, V&gt; ifElse(
+            Predicate&lt;? super T&gt; predicate,
+            Function&lt;? super T, ? extends V&gt; trueFunction,
+            Function&lt;? super T, ? extends V&gt; falseFunction)
+    {
+<span class="nc" id="L494">        return new IfFunction&lt;&gt;(predicate, trueFunction, falseFunction);</span>
+    }
+
+    public static &lt;T extends Comparable&lt;? super T&gt;, V&gt; CaseFunction&lt;T, V&gt; caseDefault(
+            Function&lt;? super T, ? extends V&gt; defaultFunction)
+    {
+<span class="nc" id="L500">        return new CaseFunction&lt;T, V&gt;(defaultFunction);</span>
+    }
+
+    public static &lt;T extends Comparable&lt;? super T&gt;, V&gt; CaseFunction&lt;T, V&gt; caseDefault(
+            Function&lt;? super T, ? extends V&gt; defaultFunction,
+            Predicate&lt;? super T&gt; predicate,
+            Function&lt;? super T, ? extends V&gt; function)
+    {
+<span class="nc" id="L508">        CaseFunction&lt;T, V&gt; caseFunction = Functions.&lt;T, V&gt;caseDefault(defaultFunction);</span>
+<span class="nc" id="L509">        return caseFunction.addCase(predicate, function);</span>
+    }
+
+    public static &lt;T, V&gt; Function&lt;T, V&gt; synchronizedEach(Function&lt;T, V&gt; function)
+    {
+<span class="nc" id="L514">        return new SynchronizedFunction&lt;&gt;(function);</span>
+    }
+
+    public static Function&lt;String, Class&lt;?&gt;&gt; classForName()
+    {
+<span class="nc" id="L519">        return CLASS_FOR_NAME;</span>
+    }
+
+    private static final class FirstNotNullFunction&lt;T, V&gt; implements Function&lt;T, V&gt;
+    {
+        private static final long serialVersionUID = 1L;
+
+        private final Function&lt;T, V&gt;[] functions;
+
+        private FirstNotNullFunction(Function&lt;T, V&gt;... functions)
+<span class="nc" id="L529">        {</span>
+<span class="nc" id="L530">            this.functions = functions;</span>
+<span class="nc" id="L531">        }</span>
+
+        @Override
+        public V valueOf(T object)
+        {
+<span class="nc bnc" id="L536" title="All 2 branches missed.">            for (Function&lt;T, V&gt; function : this.functions)</span>
+            {
+<span class="nc" id="L538">                V result = function.valueOf(object);</span>
+<span class="nc bnc" id="L539" title="All 2 branches missed.">                if (result != null)</span>
+                {
+<span class="nc" id="L541">                    return result;</span>
+                }
+            }
+<span class="nc" id="L544">            return null;</span>
+        }
+    }
+
+    private static final class FirstNotEmptyStringFunction&lt;T&gt; implements Function&lt;T, String&gt;
+    {
+        private static final long serialVersionUID = 1L;
+
+        private final Function&lt;T, String&gt;[] functions;
+
+        private FirstNotEmptyStringFunction(Function&lt;T, String&gt;... functions)
+<span class="nc" id="L555">        {</span>
+<span class="nc" id="L556">            this.functions = functions;</span>
+<span class="nc" id="L557">        }</span>
+
+        @Override
+        public String valueOf(T object)
+        {
+<span class="nc bnc" id="L562" title="All 2 branches missed.">            for (Function&lt;T, String&gt; function : this.functions)</span>
+            {
+<span class="nc" id="L564">                String result = function.valueOf(object);</span>
+<span class="nc bnc" id="L565" title="All 2 branches missed.">                if (StringIterate.notEmpty(result))</span>
+                {
+<span class="nc" id="L567">                    return result;</span>
+                }
+            }
+<span class="nc" id="L570">            return null;</span>
+        }
+    }
+
+    private static final class FirstNotEmptyCollectionFunction&lt;T1, T2, I extends Iterable&lt;T2&gt;&gt; implements Function&lt;T1, I&gt;
+    {
+        private static final long serialVersionUID = 1L;
+
+        private final Function&lt;T1, I&gt;[] functions;
+
+        private FirstNotEmptyCollectionFunction(Function&lt;T1, I&gt;[] functions)
+<span class="nc" id="L581">        {</span>
+<span class="nc" id="L582">            this.functions = functions;</span>
+<span class="nc" id="L583">        }</span>
+
+        @Override
+        public I valueOf(T1 object)
+        {
+<span class="nc bnc" id="L588" title="All 2 branches missed.">            for (Function&lt;T1, I&gt; function : this.functions)</span>
+            {
+<span class="nc" id="L590">                I result = function.valueOf(object);</span>
+<span class="nc bnc" id="L591" title="All 2 branches missed.">                if (Iterate.notEmpty(result))</span>
+                {
+<span class="nc" id="L593">                    return result;</span>
+                }
+            }
+<span class="nc" id="L596">            return null;</span>
+        }
+    }
+
+    private static final class SynchronizedFunction&lt;T, V&gt; implements Function&lt;T, V&gt;
+    {
+        private static final long serialVersionUID = 1L;
+
+        private final Function&lt;T, V&gt; function;
+
+        private SynchronizedFunction(Function&lt;T, V&gt; function)
+<span class="nc" id="L607">        {</span>
+<span class="nc" id="L608">            this.function = function;</span>
+<span class="nc" id="L609">        }</span>
+
+        @Override
+        public V valueOf(T each)
+        {
+<span class="nc" id="L614">            synchronized (each)</span>
+            {
+<span class="nc" id="L616">                return this.function.valueOf(each);</span>
+            }
+        }
+    }
+
+    public static &lt;T1, T2, T3&gt; FunctionChain&lt;T1, T2, T3&gt; chain(Function&lt;T1, T2&gt; function1, Function&lt;? super T2, T3&gt; function2)
+    {
+<span class="nc" id="L623">        return new FunctionChain&lt;&gt;(function1, function2);</span>
+    }
+
+    public static &lt;T1, T2&gt; BooleanFunctionChain&lt;T1, T2&gt; chainBoolean(Function&lt;T1, T2&gt; function1, BooleanFunction&lt;? super T2&gt; function2)
+    {
+<span class="nc" id="L628">        return new BooleanFunctionChain&lt;&gt;(function1, function2);</span>
+    }
+
+    public static &lt;T1, T2&gt; ByteFunctionChain&lt;T1, T2&gt; chainByte(Function&lt;T1, T2&gt; function1, ByteFunction&lt;? super T2&gt; function2)
+    {
+<span class="nc" id="L633">        return new ByteFunctionChain&lt;&gt;(function1, function2);</span>
+    }
+
+    public static &lt;T1, T2&gt; CharFunctionChain&lt;T1, T2&gt; chainChar(Function&lt;T1, T2&gt; function1, CharFunction&lt;? super T2&gt; function2)
+    {
+<span class="nc" id="L638">        return new CharFunctionChain&lt;&gt;(function1, function2);</span>
+    }
+
+    public static &lt;T1, T2&gt; DoubleFunctionChain&lt;T1, T2&gt; chainDouble(Function&lt;T1, T2&gt; function1, DoubleFunction&lt;? super T2&gt; function2)
+    {
+<span class="nc" id="L643">        return new DoubleFunctionChain&lt;&gt;(function1, function2);</span>
+    }
+
+    public static &lt;T1, T2&gt; FloatFunctionChain&lt;T1, T2&gt; chainFloat(Function&lt;T1, T2&gt; function1, FloatFunction&lt;? super T2&gt; function2)
+    {
+<span class="nc" id="L648">        return new FloatFunctionChain&lt;&gt;(function1, function2);</span>
+    }
+
+    public static &lt;T1, T2&gt; IntFunctionChain&lt;T1, T2&gt; chainInt(Function&lt;T1, T2&gt; function1, IntFunction&lt;? super T2&gt; function2)
+    {
+<span class="nc" id="L653">        return new IntFunctionChain&lt;&gt;(function1, function2);</span>
+    }
+
+    public static &lt;T1, T2&gt; LongFunctionChain&lt;T1, T2&gt; chainLong(Function&lt;T1, T2&gt; function1, LongFunction&lt;? super T2&gt; function2)
+    {
+<span class="nc" id="L658">        return new LongFunctionChain&lt;&gt;(function1, function2);</span>
+    }
+
+    public static &lt;T1, T2&gt; ShortFunctionChain&lt;T1, T2&gt; chainShort(Function&lt;T1, T2&gt; function1, ShortFunction&lt;? super T2&gt; function2)
+    {
+<span class="nc" id="L663">        return new ShortFunctionChain&lt;&gt;(function1, function2);</span>
+    }
+
+    private static class DoublePassThruFunction implements Function&lt;Double, Double&gt;, DoubleFunction&lt;Double&gt;
+    {
+        private static final long serialVersionUID = 1L;
+
+        @Override
+        public double doubleValueOf(Double each)
+        {
+<span class="nc" id="L673">            return each.doubleValue();</span>
+        }
+
+        @Override
+        public Double valueOf(Double each)
+        {
+<span class="nc" id="L679">            return each;</span>
+        }
+
+        @Override
+        public String toString()
+        {
+<span class="nc" id="L685">            return DoublePassThruFunction.class.getSimpleName();</span>
+        }
+    }
+
+    private static class IntegerPassThruFunction implements Function&lt;Integer, Integer&gt;, IntFunction&lt;Integer&gt;
+    {
+        private static final long serialVersionUID = 1L;
+
+        @Override
+        public int intValueOf(Integer each)
+        {
+<span class="nc" id="L696">            return each.intValue();</span>
+        }
+
+        @Override
+        public Integer valueOf(Integer each)
+        {
+<span class="nc" id="L702">            return each;</span>
+        }
+
+        @Override
+        public String toString()
+        {
+<span class="nc" id="L708">            return IntegerPassThruFunction.class.getSimpleName();</span>
+        }
+    }
+
+    private static class LongPassThruFunction implements Function&lt;Long, Long&gt;, LongFunction&lt;Long&gt;
+    {
+        private static final long serialVersionUID = 1L;
+
+        @Override
+        public long longValueOf(Long each)
+        {
+<span class="nc" id="L719">            return each.longValue();</span>
+        }
+
+        @Override
+        public Long valueOf(Long each)
+        {
+<span class="nc" id="L725">            return each;</span>
+        }
+
+        @Override
+        public String toString()
+        {
+<span class="nc" id="L731">            return LongPassThruFunction.class.getSimpleName();</span>
+        }
+    }
+
+    private static final class DefaultFunction&lt;T, V&gt; implements Function&lt;T, V&gt;
+    {
+        private static final long serialVersionUID = 1L;
+        private final Function&lt;? super T, ? extends V&gt; function;
+        private final V defaultValue;
+
+        private DefaultFunction(Function&lt;? super T, ? extends V&gt; newFunction, V newDefaultValue)
+<span class="nc" id="L742">        {</span>
+<span class="nc" id="L743">            this.function = newFunction;</span>
+<span class="nc" id="L744">            this.defaultValue = newDefaultValue;</span>
+<span class="nc" id="L745">        }</span>
+
+        @Override
+        public V valueOf(T anObject)
+        {
+<span class="nc" id="L750">            V returnValue = this.function.valueOf(anObject);</span>
+<span class="nc bnc" id="L751" title="All 2 branches missed.">            if (returnValue == null)</span>
+            {
+<span class="nc" id="L753">                return this.defaultValue;</span>
+            }
+<span class="nc" id="L755">            return returnValue;</span>
+        }
+    }
+
+    private static final class NullSafeFunction&lt;T, V&gt; implements Function&lt;T, V&gt;
+    {
+        private static final long serialVersionUID = 1L;
+        private final Function&lt;? super T, ? extends V&gt; function;
+        private final V nullValue;
+
+        private NullSafeFunction(Function&lt;? super T, ? extends V&gt; function, V nullValue)
+<span class="nc" id="L766">        {</span>
+<span class="nc" id="L767">            this.function = function;</span>
+<span class="nc" id="L768">            this.nullValue = nullValue;</span>
+<span class="nc" id="L769">        }</span>
+
+        @Override
+        public V valueOf(T object)
+        {
+<span class="nc bnc" id="L774" title="All 2 branches missed.">            return object == null ? this.nullValue : this.function.valueOf(object);</span>
+        }
+    }
+
+    public static &lt;T, V1, V2&gt; Function&lt;T, Pair&lt;V1, V2&gt;&gt; pair(
+            Function&lt;? super T, V1&gt; function1,
+            Function&lt;? super T, V2&gt; function2)
+    {
+<span class="nc" id="L782">        return t -&gt; Tuples.pair(function1.valueOf(t), function2.valueOf(t));</span>
+    }
+
+    /**
+     * @return A function that gets the key out of a {@link java.util.Map.Entry}
+     */
+    @SuppressWarnings(&quot;UnnecessaryFullyQualifiedName&quot;)
+    public static &lt;K&gt; Function&lt;Map.Entry&lt;K, ?&gt;, K&gt; getKeyFunction()
+    {
+<span class="nc" id="L791">        return (Function&lt;Map.Entry&lt;K, ?&gt;, K&gt;) MAP_KEY_FUNCTION;</span>
+    }
+
+    /**
+     * @return A function that gets the value out of a {@link java.util.Map.Entry}
+     */
+    @SuppressWarnings(&quot;UnnecessaryFullyQualifiedName&quot;)
+    public static &lt;V&gt; Function&lt;Map.Entry&lt;?, V&gt;, V&gt; getValueFunction()
+    {
+<span class="nc" id="L800">        return (Function&lt;Map.Entry&lt;?, V&gt;, V&gt;) MAP_VALUE_FUNCTION;</span>
+    }
+
+    private static class MapKeyFunction&lt;K&gt; implements Function&lt;Map.Entry&lt;K, ?&gt;, K&gt;
+    {
+        private static final long serialVersionUID = 1L;
+
+        @Override
+        public K valueOf(Map.Entry&lt;K, ?&gt; entry)
+        {
+<span class="nc" id="L810">            return entry.getKey();</span>
+        }
+    }
+
+    private static class MapValueFunction&lt;V&gt; implements Function&lt;Map.Entry&lt;?, V&gt;, V&gt;
+    {
+        private static final long serialVersionUID = 1L;
+
+        @Override
+        public V valueOf(Map.Entry&lt;?, V&gt; entry)
+        {
+<span class="nc" id="L821">            return entry.getValue();</span>
+        }
+    }
+
+    /**
+     * @return A function that gets the size of an {@code Iterable}
+     */
+    public static Function&lt;Iterable&lt;?&gt;, Integer&gt; getSizeOf()
+    {
+<span class="nc" id="L830">        return SIZE_FUNCTION;</span>
+    }
+
+<span class="nc" id="L833">    public static class SizeFunction extends IntegerFunctionImpl&lt;Iterable&lt;?&gt;&gt;</span>
+    {
+        private static final long serialVersionUID = 1L;
+
+        @Override
+        public int intValueOf(Iterable&lt;?&gt; iterable)
+        {
+<span class="nc" id="L840">            return Iterate.sizeOf(iterable);</span>
+        }
+    }
+
+    public static final class FunctionChain&lt;T1, T2, T3&gt; implements Function&lt;T1, T3&gt;
+    {
+        private static final long serialVersionUID = 1L;
+        private final Function&lt;T1, T2&gt; function1;
+        private final Function&lt;? super T2, T3&gt; function2;
+
+        private FunctionChain(Function&lt;T1, T2&gt; function1, Function&lt;? super T2, T3&gt; function2)
+<span class="nc" id="L851">        {</span>
+<span class="nc" id="L852">            this.function1 = function1;</span>
+<span class="nc" id="L853">            this.function2 = function2;</span>
+<span class="nc" id="L854">        }</span>
+
+        @Override
+        public T3 valueOf(T1 object)
+        {
+<span class="nc" id="L859">            return this.function2.valueOf(this.function1.valueOf(object));</span>
+        }
+
+        public &lt;T4&gt; FunctionChain&lt;T1, T3, T4&gt; chain(Function&lt;? super T3, T4&gt; function)
+        {
+<span class="nc" id="L864">            return new FunctionChain&lt;&gt;(this, function);</span>
+        }
+
+        public BooleanFunctionChain&lt;T1, T3&gt; chainBoolean(BooleanFunction&lt;? super T3&gt; function)
+        {
+<span class="nc" id="L869">            return new BooleanFunctionChain&lt;&gt;(this, function);</span>
+        }
+
+        public ByteFunctionChain&lt;T1, T3&gt; chainByte(ByteFunction&lt;? super T3&gt; function)
+        {
+<span class="nc" id="L874">            return new ByteFunctionChain&lt;&gt;(this, function);</span>
+        }
+
+        public CharFunctionChain&lt;T1, T3&gt; chainChar(CharFunction&lt;? super T3&gt; function)
+        {
+<span class="nc" id="L879">            return new CharFunctionChain&lt;&gt;(this, function);</span>
+        }
+
+        public DoubleFunctionChain&lt;T1, T3&gt; chainDouble(DoubleFunction&lt;? super T3&gt; function)
+        {
+<span class="nc" id="L884">            return new DoubleFunctionChain&lt;&gt;(this, function);</span>
+        }
+
+        public FloatFunctionChain&lt;T1, T3&gt; chainFloat(FloatFunction&lt;? super T3&gt; function)
+        {
+<span class="nc" id="L889">            return new FloatFunctionChain&lt;&gt;(this, function);</span>
+        }
+
+        public IntFunctionChain&lt;T1, T3&gt; chainInt(IntFunction&lt;? super T3&gt; function)
+        {
+<span class="nc" id="L894">            return new IntFunctionChain&lt;&gt;(this, function);</span>
+        }
+
+        public LongFunctionChain&lt;T1, T3&gt; chainLong(LongFunction&lt;? super T3&gt; function)
+        {
+<span class="nc" id="L899">            return new LongFunctionChain&lt;&gt;(this, function);</span>
+        }
+
+        public ShortFunctionChain&lt;T1, T3&gt; chainShort(ShortFunction&lt;? super T3&gt; function)
+        {
+<span class="nc" id="L904">            return new ShortFunctionChain&lt;&gt;(this, function);</span>
+        }
+    }
+
+    public static final class BooleanFunctionChain&lt;T1, T2&gt; implements BooleanFunction&lt;T1&gt;
+    {
+        private static final long serialVersionUID = 1L;
+        private final Function&lt;T1, T2&gt; function1;
+        private final BooleanFunction&lt;? super T2&gt; function2;
+
+        private BooleanFunctionChain(Function&lt;T1, T2&gt; function1, BooleanFunction&lt;? super T2&gt; function2)
+<span class="nc" id="L915">        {</span>
+<span class="nc" id="L916">            this.function1 = function1;</span>
+<span class="nc" id="L917">            this.function2 = function2;</span>
+<span class="nc" id="L918">        }</span>
+
+        @Override
+        public boolean booleanValueOf(T1 object)
+        {
+<span class="nc" id="L923">            return this.function2.booleanValueOf(this.function1.valueOf(object));</span>
+        }
+    }
+
+    public static final class ByteFunctionChain&lt;T1, T2&gt; implements ByteFunction&lt;T1&gt;
+    {
+        private static final long serialVersionUID = 1L;
+        private final Function&lt;T1, T2&gt; function1;
+        private final ByteFunction&lt;? super T2&gt; function2;
+
+        private ByteFunctionChain(Function&lt;T1, T2&gt; function1, ByteFunction&lt;? super T2&gt; function2)
+<span class="nc" id="L934">        {</span>
+<span class="nc" id="L935">            this.function1 = function1;</span>
+<span class="nc" id="L936">            this.function2 = function2;</span>
+<span class="nc" id="L937">        }</span>
+
+        @Override
+        public byte byteValueOf(T1 object)
+        {
+<span class="nc" id="L942">            return this.function2.byteValueOf(this.function1.valueOf(object));</span>
+        }
+    }
+
+    public static final class CharFunctionChain&lt;T1, T2&gt; implements CharFunction&lt;T1&gt;
+    {
+        private static final long serialVersionUID = 1L;
+        private final Function&lt;T1, T2&gt; function1;
+        private final CharFunction&lt;? super T2&gt; function2;
+
+        private CharFunctionChain(Function&lt;T1, T2&gt; function1, CharFunction&lt;? super T2&gt; function2)
+<span class="nc" id="L953">        {</span>
+<span class="nc" id="L954">            this.function1 = function1;</span>
+<span class="nc" id="L955">            this.function2 = function2;</span>
+<span class="nc" id="L956">        }</span>
+
+        @Override
+        public char charValueOf(T1 object)
+        {
+<span class="nc" id="L961">            return this.function2.charValueOf(this.function1.valueOf(object));</span>
+        }
+    }
+
+    public static final class DoubleFunctionChain&lt;T1, T2&gt; implements DoubleFunction&lt;T1&gt;
+    {
+        private static final long serialVersionUID = 1L;
+        private final Function&lt;T1, T2&gt; function1;
+        private final DoubleFunction&lt;? super T2&gt; function2;
+
+        private DoubleFunctionChain(Function&lt;T1, T2&gt; function1, DoubleFunction&lt;? super T2&gt; function2)
+<span class="nc" id="L972">        {</span>
+<span class="nc" id="L973">            this.function1 = function1;</span>
+<span class="nc" id="L974">            this.function2 = function2;</span>
+<span class="nc" id="L975">        }</span>
+
+        @Override
+        public double doubleValueOf(T1 object)
+        {
+<span class="nc" id="L980">            return this.function2.doubleValueOf(this.function1.valueOf(object));</span>
+        }
+    }
+
+    public static final class FloatFunctionChain&lt;T1, T2&gt; implements FloatFunction&lt;T1&gt;
+    {
+        private static final long serialVersionUID = 1L;
+        private final Function&lt;T1, T2&gt; function1;
+        private final FloatFunction&lt;? super T2&gt; function2;
+
+        private FloatFunctionChain(Function&lt;T1, T2&gt; function1, FloatFunction&lt;? super T2&gt; function2)
+<span class="nc" id="L991">        {</span>
+<span class="nc" id="L992">            this.function1 = function1;</span>
+<span class="nc" id="L993">            this.function2 = function2;</span>
+<span class="nc" id="L994">        }</span>
+
+        @Override
+        public float floatValueOf(T1 object)
+        {
+<span class="nc" id="L999">            return this.function2.floatValueOf(this.function1.valueOf(object));</span>
+        }
+    }
+
+    public static final class IntFunctionChain&lt;T1, T2&gt; implements IntFunction&lt;T1&gt;
+    {
+        private static final long serialVersionUID = 1L;
+        private final Function&lt;T1, T2&gt; function1;
+        private final IntFunction&lt;? super T2&gt; function2;
+
+        private IntFunctionChain(Function&lt;T1, T2&gt; function1, IntFunction&lt;? super T2&gt; function2)
+<span class="nc" id="L1010">        {</span>
+<span class="nc" id="L1011">            this.function1 = function1;</span>
+<span class="nc" id="L1012">            this.function2 = function2;</span>
+<span class="nc" id="L1013">        }</span>
+
+        @Override
+        public int intValueOf(T1 object)
+        {
+<span class="nc" id="L1018">            return this.function2.intValueOf(this.function1.valueOf(object));</span>
+        }
+    }
+
+    public static final class LongFunctionChain&lt;T1, T2&gt; implements LongFunction&lt;T1&gt;
+    {
+        private static final long serialVersionUID = 1L;
+        private final Function&lt;T1, T2&gt; function1;
+        private final LongFunction&lt;? super T2&gt; function2;
+
+        private LongFunctionChain(Function&lt;T1, T2&gt; function1, LongFunction&lt;? super T2&gt; function2)
+<span class="nc" id="L1029">        {</span>
+<span class="nc" id="L1030">            this.function1 = function1;</span>
+<span class="nc" id="L1031">            this.function2 = function2;</span>
+<span class="nc" id="L1032">        }</span>
+
+        @Override
+        public long longValueOf(T1 object)
+        {
+<span class="nc" id="L1037">            return this.function2.longValueOf(this.function1.valueOf(object));</span>
+        }
+    }
+
+    public static final class ShortFunctionChain&lt;T1, T2&gt; implements ShortFunction&lt;T1&gt;
+    {
+        private static final long serialVersionUID = 1L;
+        private final Function&lt;T1, T2&gt; function1;
+        private final ShortFunction&lt;? super T2&gt; function2;
+
+        private ShortFunctionChain(Function&lt;T1, T2&gt; function1, ShortFunction&lt;? super T2&gt; function2)
+<span class="nc" id="L1048">        {</span>
+<span class="nc" id="L1049">            this.function1 = function1;</span>
+<span class="nc" id="L1050">            this.function2 = function2;</span>
+<span class="nc" id="L1051">        }</span>
+
+        @Override
+        public short shortValueOf(T1 object)
+        {
+<span class="nc" id="L1056">            return this.function2.shortValueOf(this.function1.valueOf(object));</span>
+        }
+    }
+
+    private static class FirstOfPairFunction&lt;T&gt; implements Function&lt;Pair&lt;T, ?&gt;, T&gt;
+    {
+        private static final long serialVersionUID = 1L;
+
+        @Override
+        public T valueOf(Pair&lt;T, ?&gt; pair)
+        {
+<span class="nc" id="L1067">            return pair.getOne();</span>
+        }
+    }
+
+    private static class SecondOfPairFunction&lt;T&gt; implements Function&lt;Pair&lt;?, T&gt;, T&gt;
+    {
+        private static final long serialVersionUID = 1L;
+
+        @Override
+        public T valueOf(Pair&lt;?, T&gt; pair)
+        {
+<span class="nc" id="L1078">            return pair.getTwo();</span>
+        }
+    }
+
+    private static class ClassForNameFunction extends CheckedFunction&lt;String, Class&lt;?&gt;&gt;
+    {
+        private static final long serialVersionUID = 1L;
+
+        @Override
+        public Class&lt;?&gt; safeValueOf(String className) throws ClassNotFoundException
+        {
+<span class="nc" id="L1089">            return Class.forName(className);</span>
+        }
+    }
+
+    private static final class BindObjectIntProcedure&lt;T1, T2&gt; implements ObjectIntProcedure&lt;T1&gt;
+    {
+        private static final long serialVersionUID = 1L;
+        private final ObjectIntProcedure&lt;? super T2&gt; delegate;
+        private final Function&lt;? super T1, T2&gt; function;
+
+        private BindObjectIntProcedure(ObjectIntProcedure&lt;? super T2&gt; delegate, Function&lt;? super T1, T2&gt; function)
+<span class="nc" id="L1100">        {</span>
+<span class="nc" id="L1101">            this.delegate = delegate;</span>
+<span class="nc" id="L1102">            this.function = function;</span>
+<span class="nc" id="L1103">        }</span>
+
+        @Override
+        public void value(T1 each, int index)
+        {
+<span class="nc" id="L1108">            this.delegate.value(this.function.valueOf(each), index);</span>
+<span class="nc" id="L1109">        }</span>
+    }
+
+    private static final class BindProcedure&lt;T1, T2&gt; implements Procedure&lt;T1&gt;
+    {
+        private static final long serialVersionUID = 1L;
+        private final Procedure&lt;? super T2&gt; delegate;
+        private final Function&lt;? super T1, T2&gt; function;
+
+        private BindProcedure(Procedure&lt;? super T2&gt; delegate, Function&lt;? super T1, T2&gt; function)
+<span class="nc" id="L1119">        {</span>
+<span class="nc" id="L1120">            this.delegate = delegate;</span>
+<span class="nc" id="L1121">            this.function = function;</span>
+<span class="nc" id="L1122">        }</span>
+
+        @Override
+        public void value(T1 each)
+        {
+<span class="nc" id="L1127">            this.delegate.value(this.function.valueOf(each));</span>
+<span class="nc" id="L1128">        }</span>
+    }
+
+    private static final class BindProcedure2&lt;T1, T2, T3&gt; implements Procedure2&lt;T1, T3&gt;
+    {
+        private static final long serialVersionUID = 1L;
+        private final Procedure2&lt;? super T2, T3&gt; delegate;
+        private final Function&lt;? super T1, T2&gt; function;
+
+        private BindProcedure2(Procedure2&lt;? super T2, T3&gt; delegate, Function&lt;? super T1, T2&gt; function)
+<span class="nc" id="L1138">        {</span>
+<span class="nc" id="L1139">            this.delegate = delegate;</span>
+<span class="nc" id="L1140">            this.function = function;</span>
+<span class="nc" id="L1141">        }</span>
+
+        @Override
+        public void value(T1 each, T3 constant)
+        {
+<span class="nc" id="L1146">            this.delegate.value(this.function.valueOf(each), constant);</span>
+<span class="nc" id="L1147">        }</span>
+    }
+
+    private static final class BindFunction2&lt;T1, T2, T3&gt; implements Function&lt;T1, T3&gt;
+    {
+        private static final long serialVersionUID = 1L;
+        private final Function2&lt;? super T1, ? super T2, ? extends T3&gt; delegate;
+        private final T2 parameter;
+
+        private BindFunction2(Function2&lt;? super T1, ? super T2, ? extends T3&gt; delegate, T2 parameter)
+<span class="nc" id="L1157">        {</span>
+<span class="nc" id="L1158">            this.delegate = delegate;</span>
+<span class="nc" id="L1159">            this.parameter = parameter;</span>
+<span class="nc" id="L1160">        }</span>
+
+        @Override
+        public T3 valueOf(T1 object)
+        {
+<span class="nc" id="L1165">            return this.delegate.value(object, this.parameter);</span>
+        }
+    }
+
+    private static class SwappedPairFunction&lt;S, T&gt; implements Function&lt;Pair&lt;S, T&gt;, Pair&lt;T, S&gt;&gt;
+    {
+        private static final long serialVersionUID = 1L;
+
+        @Override
+        public Pair&lt;T, S&gt; valueOf(Pair&lt;S, T&gt; pair)
+        {
+<span class="nc" id="L1176">            return pair.swap();</span>
+        }
+    }
+
+    private static final class ThrowingFunctionAdapter&lt;T, V&gt; extends CheckedFunction&lt;T, V&gt;
+    {
+        private static final long serialVersionUID = 1L;
+        private final ThrowingFunction&lt;T, V&gt; throwingFunction;
+
+        private ThrowingFunctionAdapter(ThrowingFunction&lt;T, V&gt; throwingFunction)
+<span class="nc" id="L1186">        {</span>
+<span class="nc" id="L1187">            this.throwingFunction = throwingFunction;</span>
+<span class="nc" id="L1188">        }</span>
+
+        @Override
+        public V safeValueOf(T object) throws Exception
+        {
+<span class="nc" id="L1193">            return this.throwingFunction.safeValueOf(object);</span>
+        }
+    }
+
+    private static class TrueFunction implements Function&lt;Object, Boolean&gt;
+    {
+        private static final long serialVersionUID = 1L;
+
+        @Override
+        public Boolean valueOf(Object object)
+        {
+<span class="nc" id="L1204">            return Boolean.TRUE;</span>
+        }
+    }
+
+    private static class FalseFunction implements Function&lt;Object, Boolean&gt;
+    {
+        private static final long serialVersionUID = 1L;
+
+        @Override
+        public Boolean valueOf(Object object)
+        {
+<span class="nc" id="L1215">            return Boolean.FALSE;</span>
+        }
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.0.201801022044</span></div></body></html>

@@ -1,0 +1,351 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>ListAdapter.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Eclipse Collections Test Coverage Aggregation</a> &gt; <a href="../index.html" class="el_bundle">eclipse-collections</a> &gt; <a href="index.source.html" class="el_package">org.eclipse.collections.impl.list.mutable</a> &gt; <span class="el_source">ListAdapter.java</span></div><h1>ListAdapter.java</h1><pre class="source lang-java linenums">/*
+ * Copyright (c) 2016 Goldman Sachs.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * and Eclipse Distribution License v. 1.0 which accompany this distribution.
+ * The Eclipse Public License is available at http://www.eclipse.org/legal/epl-v10.html
+ * and the Eclipse Distribution License is available at
+ * http://www.eclipse.org/org/documents/edl-v10.php.
+ */
+
+package org.eclipse.collections.impl.list.mutable;
+
+import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+import java.util.RandomAccess;
+import java.util.concurrent.ExecutorService;
+
+import org.eclipse.collections.api.block.HashingStrategy;
+import org.eclipse.collections.api.block.function.Function0;
+import org.eclipse.collections.api.block.function.Function2;
+import org.eclipse.collections.api.block.predicate.Predicate;
+import org.eclipse.collections.api.block.predicate.Predicate2;
+import org.eclipse.collections.api.block.procedure.Procedure;
+import org.eclipse.collections.api.block.procedure.primitive.ObjectIntProcedure;
+import org.eclipse.collections.api.list.ImmutableList;
+import org.eclipse.collections.api.list.MutableList;
+import org.eclipse.collections.api.list.ParallelListIterable;
+import org.eclipse.collections.api.ordered.OrderedIterable;
+import org.eclipse.collections.api.partition.list.PartitionMutableList;
+import org.eclipse.collections.api.stack.MutableStack;
+import org.eclipse.collections.impl.block.factory.Comparators;
+import org.eclipse.collections.impl.block.procedure.CollectionAddProcedure;
+import org.eclipse.collections.impl.factory.Lists;
+import org.eclipse.collections.impl.lazy.parallel.list.NonParallelListIterable;
+import org.eclipse.collections.impl.stack.mutable.ArrayStack;
+import org.eclipse.collections.impl.utility.ArrayIterate;
+import org.eclipse.collections.impl.utility.Iterate;
+import org.eclipse.collections.impl.utility.ListIterate;
+import org.eclipse.collections.impl.utility.OrderedIterate;
+
+/**
+ * This class provides a MutableList wrapper around a JDK Collections List interface instance.  All of the MutableList
+ * interface methods are supported in addition to the JDK List interface methods.
+ * &lt;p&gt;
+ * To create a new wrapper around an existing List instance, use the {@link #adapt(List)} factory method.
+ */
+public final class ListAdapter&lt;T&gt;
+        extends AbstractListAdapter&lt;T&gt;
+        implements Serializable
+{
+    private static final long serialVersionUID = 1L;
+    private final List&lt;T&gt; delegate;
+
+    ListAdapter(List&lt;T&gt; newDelegate)
+<span class="nc" id="L57">    {</span>
+<span class="nc bnc" id="L58" title="All 2 branches missed.">        if (newDelegate == null)</span>
+        {
+<span class="nc" id="L60">            throw new NullPointerException(&quot;ListAdapter may not wrap null&quot;);</span>
+        }
+<span class="nc bnc" id="L62" title="All 2 branches missed.">        if (newDelegate instanceof RandomAccess)</span>
+        {
+<span class="nc" id="L64">            throw new IllegalArgumentException(&quot;Use RandomAccessListAdapter instead&quot;);</span>
+        }
+<span class="nc" id="L66">        this.delegate = newDelegate;</span>
+<span class="nc" id="L67">    }</span>
+
+    @Override
+    protected List&lt;T&gt; getDelegate()
+    {
+<span class="nc" id="L72">        return this.delegate;</span>
+    }
+
+    public static &lt;E&gt; MutableList&lt;E&gt; adapt(List&lt;E&gt; list)
+    {
+<span class="nc bnc" id="L77" title="All 2 branches missed.">        if (list instanceof MutableList)</span>
+        {
+<span class="nc" id="L79">            return (MutableList&lt;E&gt;) list;</span>
+        }
+<span class="nc bnc" id="L81" title="All 2 branches missed.">        if (list instanceof ArrayList)</span>
+        {
+<span class="nc" id="L83">            return ArrayListAdapter.adapt((ArrayList&lt;E&gt;) list);</span>
+        }
+<span class="nc bnc" id="L85" title="All 2 branches missed.">        if (list instanceof RandomAccess)</span>
+        {
+<span class="nc" id="L87">            return new RandomAccessListAdapter&lt;&gt;(list);</span>
+        }
+<span class="nc" id="L89">        return new ListAdapter&lt;&gt;(list);</span>
+    }
+
+    @Override
+    public ImmutableList&lt;T&gt; toImmutable()
+    {
+<span class="nc" id="L95">        return Lists.immutable.withAll(this.delegate);</span>
+    }
+
+    @Override
+    public MutableList&lt;T&gt; asUnmodifiable()
+    {
+<span class="nc" id="L101">        return UnmodifiableMutableList.of(this);</span>
+    }
+
+    @Override
+    public MutableList&lt;T&gt; asSynchronized()
+    {
+<span class="nc" id="L107">        return SynchronizedMutableList.of(this);</span>
+    }
+
+    @Override
+    public MutableList&lt;T&gt; clone()
+    {
+<span class="nc" id="L113">        return FastList.newList(this.delegate);</span>
+    }
+
+    /**
+     * @deprecated use {@link FastList#newList()} instead (inlineable)
+     */
+    @Override
+    @Deprecated
+    public MutableList&lt;T&gt; newEmpty()
+    {
+<span class="nc" id="L123">        return FastList.newList();</span>
+    }
+
+    @Override
+    public void forEach(Procedure&lt;? super T&gt; procedure)
+    {
+<span class="nc" id="L129">        this.each(procedure);</span>
+<span class="nc" id="L130">    }</span>
+
+    @Override
+    public void each(Procedure&lt;? super T&gt; procedure)
+    {
+<span class="nc" id="L135">        ListIterate.forEach(this.delegate, procedure);</span>
+<span class="nc" id="L136">    }</span>
+
+    @Override
+    public void reverseForEach(Procedure&lt;? super T&gt; procedure)
+    {
+<span class="nc" id="L141">        ListIterate.reverseForEach(this.delegate, procedure);</span>
+<span class="nc" id="L142">    }</span>
+
+    @Override
+    public void reverseForEachWithIndex(ObjectIntProcedure&lt;? super T&gt; procedure)
+    {
+<span class="nc" id="L147">        ListIterate.reverseForEachWithIndex(this.delegate, procedure);</span>
+<span class="nc" id="L148">    }</span>
+
+    @Override
+    public void forEachWithIndex(ObjectIntProcedure&lt;? super T&gt; objectIntProcedure)
+    {
+<span class="nc" id="L153">        ListIterate.forEachWithIndex(this.delegate, objectIntProcedure);</span>
+<span class="nc" id="L154">    }</span>
+
+    @Override
+    public void forEachWithIndex(int fromIndex, int toIndex, ObjectIntProcedure&lt;? super T&gt; objectIntProcedure)
+    {
+<span class="nc" id="L159">        ListIterate.forEachWithIndex(this.delegate, fromIndex, toIndex, objectIntProcedure);</span>
+<span class="nc" id="L160">    }</span>
+
+    @Override
+    public T detect(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L165">        return ListIterate.detect(this.delegate, predicate);</span>
+    }
+
+    @Override
+    public T detectIfNone(Predicate&lt;? super T&gt; predicate, Function0&lt;? extends T&gt; function)
+    {
+<span class="nc" id="L171">        T result = this.detect(predicate);</span>
+<span class="nc bnc" id="L172" title="All 2 branches missed.">        return result == null ? function.value() : result;</span>
+    }
+
+    @Override
+    public int detectIndex(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L178">        return ListIterate.detectIndex(this.delegate, predicate);</span>
+    }
+
+    @Override
+    public int detectLastIndex(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L184">        return ListIterate.detectLastIndex(this.delegate, predicate);</span>
+    }
+
+    @Override
+    public int count(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L190">        return ListIterate.count(this.delegate, predicate);</span>
+    }
+
+    @Override
+    public &lt;S&gt; boolean corresponds(OrderedIterable&lt;S&gt; other, Predicate2&lt;? super T, ? super S&gt; predicate)
+    {
+<span class="nc" id="L196">        return OrderedIterate.corresponds(this, other, predicate);</span>
+    }
+
+    @Override
+    public boolean anySatisfy(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L202">        return ListIterate.anySatisfy(this.delegate, predicate);</span>
+    }
+
+    @Override
+    public boolean allSatisfy(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L208">        return ListIterate.allSatisfy(this.delegate, predicate);</span>
+    }
+
+    @Override
+    public boolean noneSatisfy(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L214">        return ListIterate.noneSatisfy(this.delegate, predicate);</span>
+    }
+
+    @Override
+    public &lt;IV&gt; IV injectInto(IV injectedValue, Function2&lt;? super IV, ? super T, ? extends IV&gt; function)
+    {
+<span class="nc" id="L220">        return ListIterate.injectInto(injectedValue, this.delegate, function);</span>
+    }
+
+    @Override
+    public void forEach(int fromIndex, int toIndex, Procedure&lt;? super T&gt; procedure)
+    {
+<span class="nc" id="L226">        ListIterate.forEach(this.delegate, fromIndex, toIndex, procedure);</span>
+<span class="nc" id="L227">    }</span>
+
+    @Override
+    public ListAdapter&lt;T&gt; sortThis(Comparator&lt;? super T&gt; comparator)
+    {
+<span class="nc" id="L232">        Iterate.sortThis(this.delegate, comparator);</span>
+<span class="nc" id="L233">        return this;</span>
+    }
+
+    @Override
+    public ListAdapter&lt;T&gt; sortThis()
+    {
+<span class="nc" id="L239">        return this.sortThis(Comparators.naturalOrder());</span>
+    }
+
+    @Override
+    public ListAdapter&lt;T&gt; with(T element)
+    {
+<span class="nc" id="L245">        this.add(element);</span>
+<span class="nc" id="L246">        return this;</span>
+    }
+
+    public ListAdapter&lt;T&gt; with(T element1, T element2)
+    {
+<span class="nc" id="L251">        this.add(element1);</span>
+<span class="nc" id="L252">        this.add(element2);</span>
+<span class="nc" id="L253">        return this;</span>
+    }
+
+    public ListAdapter&lt;T&gt; with(T element1, T element2, T element3)
+    {
+<span class="nc" id="L258">        this.add(element1);</span>
+<span class="nc" id="L259">        this.add(element2);</span>
+<span class="nc" id="L260">        this.add(element3);</span>
+<span class="nc" id="L261">        return this;</span>
+    }
+
+    public ListAdapter&lt;T&gt; with(T... elements)
+    {
+<span class="nc" id="L266">        ArrayIterate.forEach(elements, CollectionAddProcedure.on(this.delegate));</span>
+<span class="nc" id="L267">        return this;</span>
+    }
+
+    @Override
+    public ListAdapter&lt;T&gt; without(T element)
+    {
+<span class="nc" id="L273">        this.remove(element);</span>
+<span class="nc" id="L274">        return this;</span>
+    }
+
+    @Override
+    public ListAdapter&lt;T&gt; withAll(Iterable&lt;? extends T&gt; elements)
+    {
+<span class="nc" id="L280">        this.addAllIterable(elements);</span>
+<span class="nc" id="L281">        return this;</span>
+    }
+
+    @Override
+    public ListAdapter&lt;T&gt; withoutAll(Iterable&lt;? extends T&gt; elements)
+    {
+<span class="nc" id="L287">        this.removeAllIterable(elements);</span>
+<span class="nc" id="L288">        return this;</span>
+    }
+
+    @Override
+    public &lt;S&gt; MutableList&lt;S&gt; selectInstancesOf(Class&lt;S&gt; clazz)
+    {
+<span class="nc" id="L294">        return ListIterate.selectInstancesOf(this.delegate, clazz);</span>
+    }
+
+    @Override
+    public MutableList&lt;T&gt; distinct()
+    {
+<span class="nc" id="L300">        return ListIterate.distinct(this.delegate);</span>
+    }
+
+    @Override
+    public MutableList&lt;T&gt; distinct(HashingStrategy&lt;? super T&gt; hashingStrategy)
+    {
+<span class="nc" id="L306">        return ListIterate.distinct(this.delegate, hashingStrategy);</span>
+    }
+
+    @Override
+    public MutableList&lt;T&gt; take(int count)
+    {
+<span class="nc" id="L312">        return ListIterate.take(this, count);</span>
+    }
+
+    @Override
+    public MutableList&lt;T&gt; takeWhile(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L318">        return ListIterate.takeWhile(this.delegate, predicate);</span>
+    }
+
+    @Override
+    public MutableList&lt;T&gt; drop(int count)
+    {
+<span class="nc" id="L324">        return ListIterate.drop(this, count);</span>
+    }
+
+    @Override
+    public MutableList&lt;T&gt; dropWhile(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L330">        return ListIterate.dropWhile(this.delegate, predicate);</span>
+    }
+
+    @Override
+    public PartitionMutableList&lt;T&gt; partitionWhile(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L336">        return ListIterate.partitionWhile(this.delegate, predicate);</span>
+    }
+
+    @Override
+    public MutableStack&lt;T&gt; toStack()
+    {
+<span class="nc" id="L342">        return ArrayStack.newStack(this.delegate);</span>
+    }
+
+    @Override
+    public ParallelListIterable&lt;T&gt; asParallel(ExecutorService executorService, int batchSize)
+    {
+<span class="nc" id="L348">        return new NonParallelListIterable&lt;&gt;(this);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.0.201801022044</span></div></body></html>

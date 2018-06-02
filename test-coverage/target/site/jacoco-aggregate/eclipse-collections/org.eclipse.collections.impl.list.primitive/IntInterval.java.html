@@ -1,0 +1,1011 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>IntInterval.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Eclipse Collections Test Coverage Aggregation</a> &gt; <a href="../index.html" class="el_bundle">eclipse-collections</a> &gt; <a href="index.source.html" class="el_package">org.eclipse.collections.impl.list.primitive</a> &gt; <span class="el_source">IntInterval.java</span></div><h1>IntInterval.java</h1><pre class="source lang-java linenums">/*
+ * Copyright (c) 2018 Goldman Sachs and others.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * and Eclipse Distribution License v. 1.0 which accompany this distribution.
+ * The Eclipse Public License is available at http://www.eclipse.org/legal/epl-v10.html
+ * and the Eclipse Distribution License is available at
+ * http://www.eclipse.org/org/documents/edl-v10.php.
+ */
+
+package org.eclipse.collections.impl.list.primitive;
+
+import java.io.IOException;
+import java.io.Serializable;
+import java.util.Arrays;
+import java.util.Iterator;
+import java.util.NoSuchElementException;
+
+import org.eclipse.collections.api.IntIterable;
+import org.eclipse.collections.api.LazyIntIterable;
+import org.eclipse.collections.api.RichIterable;
+import org.eclipse.collections.api.bag.primitive.MutableIntBag;
+import org.eclipse.collections.api.block.function.primitive.IntToObjectFunction;
+import org.eclipse.collections.api.block.function.primitive.ObjectIntIntToObjectFunction;
+import org.eclipse.collections.api.block.function.primitive.ObjectIntToObjectFunction;
+import org.eclipse.collections.api.block.predicate.primitive.IntPredicate;
+import org.eclipse.collections.api.block.procedure.primitive.IntIntProcedure;
+import org.eclipse.collections.api.block.procedure.primitive.IntProcedure;
+import org.eclipse.collections.api.iterator.IntIterator;
+import org.eclipse.collections.api.list.ImmutableList;
+import org.eclipse.collections.api.list.MutableList;
+import org.eclipse.collections.api.list.primitive.ImmutableIntList;
+import org.eclipse.collections.api.list.primitive.IntList;
+import org.eclipse.collections.api.list.primitive.MutableIntList;
+import org.eclipse.collections.api.set.primitive.MutableIntSet;
+import org.eclipse.collections.api.tuple.primitive.IntIntPair;
+import org.eclipse.collections.api.tuple.primitive.IntObjectPair;
+import org.eclipse.collections.impl.bag.mutable.primitive.IntHashBag;
+import org.eclipse.collections.impl.block.factory.primitive.IntPredicates;
+import org.eclipse.collections.impl.factory.Lists;
+import org.eclipse.collections.impl.factory.primitive.IntLists;
+import org.eclipse.collections.impl.lazy.primitive.CollectIntToObjectIterable;
+import org.eclipse.collections.impl.lazy.primitive.LazyIntIterableAdapter;
+import org.eclipse.collections.impl.lazy.primitive.ReverseIntIterable;
+import org.eclipse.collections.impl.lazy.primitive.SelectIntIterable;
+import org.eclipse.collections.impl.list.mutable.primitive.IntArrayList;
+import org.eclipse.collections.impl.set.mutable.primitive.IntHashSet;
+import org.eclipse.collections.impl.tuple.primitive.PrimitiveTuples;
+import org.eclipse.collections.impl.utility.Iterate;
+
+/**
+ * An IntInterval is a range of ints that may be iterated over using a step value.
+ */
+public final class IntInterval
+        implements ImmutableIntList, Serializable
+{
+    private static final long serialVersionUID = 1L;
+
+    private final int from;
+    private final int to;
+    private final int step;
+
+    private IntInterval(int from, int to, int step)
+<span class="nc" id="L64">    {</span>
+<span class="nc" id="L65">        this.from = from;</span>
+<span class="nc" id="L66">        this.to = to;</span>
+<span class="nc" id="L67">        this.step = step;</span>
+<span class="nc" id="L68">    }</span>
+
+    /**
+     * This static {@code from} method allows IntInterval to act as a fluent builder for itself.
+     * It works in conjunction with the instance methods {@link #to(int)} and {@link #by(int)}.
+     * &lt;p&gt;
+     * Usage Example:
+     * &lt;pre&gt;
+     * IntInterval interval1 = IntInterval.from(1).to(5);         // results in: 1, 2, 3, 4, 5.
+     * IntInterval interval2 = IntInterval.from(1).to(10).by(2);  // results in: 1, 3, 5, 7, 9.
+     * &lt;/pre&gt;
+     */
+    public static IntInterval from(int newFrom)
+    {
+<span class="nc" id="L82">        return IntInterval.fromToBy(newFrom, newFrom, 1);</span>
+    }
+
+    /**
+     * This instance {@code to} method allows IntInterval to act as a fluent builder for itself.
+     * It works in conjunction with the static method {@link #from(int)} and instance method {@link #by(int)}.
+     * &lt;p&gt;
+     * Usage Example:
+     * &lt;pre&gt;
+     * IntInterval interval1 = IntInterval.from(1).to(5);         // results in: 1, 2, 3, 4, 5.
+     * IntInterval interval2 = IntInterval.from(1).to(10).by(2);  // results in: 1, 3, 5, 7, 9.
+     * &lt;/pre&gt;
+     */
+    public IntInterval to(int newTo)
+    {
+<span class="nc" id="L97">        return IntInterval.fromToBy(this.from, newTo, this.step);</span>
+    }
+
+    /**
+     * This instance {@code by} method allows IntInterval to act as a fluent builder for itself.
+     * It works in conjunction with the static method {@link #from(int)} and instance method {@link #to(int)}.
+     * &lt;p&gt;
+     * Usage Example:
+     * &lt;pre&gt;
+     * IntInterval interval1 = IntInterval.from(1).to(5);         // results in: 1, 2, 3, 4, 5.
+     * IntInterval interval2 = IntInterval.from(1).to(10).by(2);  // results in: 1, 3, 5, 7, 9.
+     * &lt;/pre&gt;
+     */
+    public IntInterval by(int newStep)
+    {
+<span class="nc" id="L112">        return IntInterval.fromToBy(this.from, this.to, newStep);</span>
+    }
+
+    /**
+     * Returns an IntInterval starting at zero.
+     * &lt;p&gt;
+     * Usage Example:
+     * &lt;pre&gt;
+     * IntInterval interval1 = IntInterval.zero().to(5);         // results in: 0, 1, 2, 3, 4, 5.
+     * IntInterval interval2 = IntInterval.zero().to(10).by(2);  // results in: 0, 2, 4, 6, 8, 10.
+     * &lt;/pre&gt;
+     */
+    public static IntInterval zero()
+    {
+<span class="nc" id="L126">        return IntInterval.from(0);</span>
+    }
+
+    /**
+     * Returns an IntInterval starting from 1 to the specified count value with a step value of 1.
+     */
+    public static IntInterval oneTo(int count)
+    {
+<span class="nc" id="L134">        return IntInterval.oneToBy(count, 1);</span>
+    }
+
+    /**
+     * Returns an IntInterval starting from 1 to the specified count value with a step value of step.
+     */
+    public static IntInterval oneToBy(int count, int step)
+    {
+<span class="nc bnc" id="L142" title="All 2 branches missed.">        if (count &lt; 1)</span>
+        {
+<span class="nc" id="L144">            throw new IllegalArgumentException(&quot;Only positive ranges allowed using oneToBy&quot;);</span>
+        }
+<span class="nc" id="L146">        return IntInterval.fromToBy(1, count, step);</span>
+    }
+
+    /**
+     * Returns an IntInterval starting from 0 to the specified count value with a step value of 1.
+     */
+    public static IntInterval zeroTo(int count)
+    {
+<span class="nc" id="L154">        return IntInterval.zeroToBy(count, 1);</span>
+    }
+
+    /**
+     * Returns an IntInterval starting from 0 to the specified count value with a step value of step.
+     */
+    public static IntInterval zeroToBy(int count, int step)
+    {
+<span class="nc" id="L162">        return IntInterval.fromToBy(0, count, step);</span>
+    }
+
+    /**
+     * Returns an IntInterval starting from the value from to the specified value to with a step value of 1.
+     */
+    public static IntInterval fromTo(int from, int to)
+    {
+<span class="nc bnc" id="L170" title="All 2 branches missed.">        if (from &lt;= to)</span>
+        {
+<span class="nc" id="L172">            return IntInterval.fromToBy(from, to, 1);</span>
+        }
+<span class="nc" id="L174">        return IntInterval.fromToBy(from, to, -1);</span>
+    }
+
+    /**
+     * Returns an IntInterval representing the even values from the value from to the value to.
+     */
+    public static IntInterval evensFromTo(int from, int to)
+    {
+<span class="nc bnc" id="L182" title="All 2 branches missed.">        if (from % 2 != 0)</span>
+        {
+<span class="nc bnc" id="L184" title="All 2 branches missed.">            if (from &lt; to)</span>
+            {
+<span class="nc" id="L186">                from++;</span>
+            }
+            else
+            {
+<span class="nc" id="L190">                from--;</span>
+            }
+        }
+<span class="nc bnc" id="L193" title="All 2 branches missed.">        if (to % 2 != 0)</span>
+        {
+<span class="nc bnc" id="L195" title="All 2 branches missed.">            if (to &gt; from)</span>
+            {
+<span class="nc" id="L197">                to--;</span>
+            }
+            else
+            {
+<span class="nc" id="L201">                to++;</span>
+            }
+        }
+<span class="nc bnc" id="L204" title="All 2 branches missed.">        return IntInterval.fromToBy(from, to, to &gt; from ? 2 : -2);</span>
+    }
+
+    /**
+     * Returns an IntInterval representing the odd values from the value from to the value to.
+     */
+    public static IntInterval oddsFromTo(int from, int to)
+    {
+<span class="nc bnc" id="L212" title="All 2 branches missed.">        if (from % 2 == 0)</span>
+        {
+<span class="nc bnc" id="L214" title="All 2 branches missed.">            if (from &lt; to)</span>
+            {
+<span class="nc" id="L216">                from++;</span>
+            }
+            else
+            {
+<span class="nc" id="L220">                from--;</span>
+            }
+        }
+<span class="nc bnc" id="L223" title="All 2 branches missed.">        if (to % 2 == 0)</span>
+        {
+<span class="nc bnc" id="L225" title="All 2 branches missed.">            if (to &gt; from)</span>
+            {
+<span class="nc" id="L227">                to--;</span>
+            }
+            else
+            {
+<span class="nc" id="L231">                to++;</span>
+            }
+        }
+<span class="nc bnc" id="L234" title="All 2 branches missed.">        return IntInterval.fromToBy(from, to, to &gt; from ? 2 : -2);</span>
+    }
+
+    /**
+     * Returns an IntInterval for the range of integers inclusively between from and to with the specified
+     * stepBy value.
+     */
+    public static IntInterval fromToBy(int from, int to, int stepBy)
+    {
+<span class="nc bnc" id="L243" title="All 2 branches missed.">        if (stepBy == 0)</span>
+        {
+<span class="nc" id="L245">            throw new IllegalArgumentException(&quot;Cannot use a step by of 0&quot;);</span>
+        }
+<span class="nc bnc" id="L247" title="All 8 branches missed.">        if (from &gt; to &amp;&amp; stepBy &gt; 0 || from &lt; to &amp;&amp; stepBy &lt; 0)</span>
+        {
+<span class="nc" id="L249">            throw new IllegalArgumentException(&quot;Step by is incorrect for the range&quot;);</span>
+        }
+<span class="nc" id="L251">        return new IntInterval(from, to, stepBy);</span>
+    }
+
+    /**
+     * Returns true if the IntInterval contains all of the specified int values.
+     */
+    @Override
+    public boolean containsAll(int... values)
+    {
+<span class="nc bnc" id="L260" title="All 2 branches missed.">        for (int value : values)</span>
+        {
+<span class="nc bnc" id="L262" title="All 2 branches missed.">            if (!this.contains(value))</span>
+            {
+<span class="nc" id="L264">                return false;</span>
+            }
+        }
+<span class="nc" id="L267">        return true;</span>
+    }
+
+    @Override
+    public boolean containsAll(IntIterable source)
+    {
+<span class="nc bnc" id="L273" title="All 2 branches missed.">        for (IntIterator iterator = source.intIterator(); iterator.hasNext(); )</span>
+        {
+<span class="nc bnc" id="L275" title="All 2 branches missed.">            if (!this.contains(iterator.next()))</span>
+            {
+<span class="nc" id="L277">                return false;</span>
+            }
+        }
+<span class="nc" id="L280">        return true;</span>
+    }
+
+    /**
+     * Returns true if the IntInterval contains none of the specified int values.
+     */
+    public boolean containsNone(int... values)
+    {
+<span class="nc bnc" id="L288" title="All 2 branches missed.">        for (int value : values)</span>
+        {
+<span class="nc bnc" id="L290" title="All 2 branches missed.">            if (this.contains(value))</span>
+            {
+<span class="nc" id="L292">                return false;</span>
+            }
+        }
+<span class="nc" id="L295">        return true;</span>
+    }
+
+    /**
+     * Returns true if the IntInterval contains the specified int value.
+     */
+    @Override
+    public boolean contains(int value)
+    {
+<span class="nc bnc" id="L304" title="All 4 branches missed.">        return this.isWithinBoundaries(value) &amp;&amp; (value - this.from) % this.step == 0;</span>
+    }
+
+    private boolean isWithinBoundaries(int value)
+    {
+<span class="nc bnc" id="L309" title="All 12 branches missed.">        return this.step &gt; 0 &amp;&amp; this.from &lt;= value &amp;&amp; value &lt;= this.to</span>
+                || this.step &lt; 0 &amp;&amp; this.to &lt;= value &amp;&amp; value &lt;= this.from;
+    }
+
+    @Override
+    public void forEachWithIndex(IntIntProcedure procedure)
+    {
+<span class="nc" id="L316">        int index = 0;</span>
+<span class="nc bnc" id="L317" title="All 2 branches missed.">        if (this.from &lt;= this.to)</span>
+        {
+<span class="nc bnc" id="L319" title="All 2 branches missed.">            for (int i = this.from; i &lt;= this.to; i += this.step)</span>
+            {
+<span class="nc" id="L321">                procedure.value(i, index++);</span>
+            }
+        }
+        else
+        {
+<span class="nc bnc" id="L326" title="All 2 branches missed.">            for (int i = this.from; i &gt;= this.to; i += this.step)</span>
+            {
+<span class="nc" id="L328">                procedure.value(i, index++);</span>
+            }
+        }
+<span class="nc" id="L331">    }</span>
+
+    @Override
+    public void forEach(IntProcedure procedure)
+    {
+<span class="nc" id="L336">        this.each(procedure);</span>
+<span class="nc" id="L337">    }</span>
+
+    /**
+     * @since 7.0.
+     */
+    @Override
+    public void each(IntProcedure procedure)
+    {
+<span class="nc bnc" id="L345" title="All 2 branches missed.">        if (this.from &lt;= this.to)</span>
+        {
+<span class="nc bnc" id="L347" title="All 2 branches missed.">            for (int i = this.from; i &lt;= this.to; i += this.step)</span>
+            {
+<span class="nc" id="L349">                procedure.value(i);</span>
+            }
+        }
+        else
+        {
+<span class="nc bnc" id="L354" title="All 2 branches missed.">            for (int i = this.from; i &gt;= this.to; i += this.step)</span>
+            {
+<span class="nc" id="L356">                procedure.value(i);</span>
+            }
+        }
+<span class="nc" id="L359">    }</span>
+
+    @Override
+    public int count(IntPredicate predicate)
+    {
+<span class="nc" id="L364">        int count = 0;</span>
+<span class="nc bnc" id="L365" title="All 2 branches missed.">        for (int i = 0; i &lt; this.size(); i++)</span>
+        {
+<span class="nc bnc" id="L367" title="All 2 branches missed.">            if (predicate.accept(this.get(i)))</span>
+            {
+<span class="nc" id="L369">                count++;</span>
+            }
+        }
+<span class="nc" id="L372">        return count;</span>
+    }
+
+    @Override
+    public boolean anySatisfy(IntPredicate predicate)
+    {
+<span class="nc bnc" id="L378" title="All 2 branches missed.">        for (int i = 0; i &lt; this.size(); i++)</span>
+        {
+<span class="nc bnc" id="L380" title="All 2 branches missed.">            if (predicate.accept(this.get(i)))</span>
+            {
+<span class="nc" id="L382">                return true;</span>
+            }
+        }
+<span class="nc" id="L385">        return false;</span>
+    }
+
+    @Override
+    public boolean allSatisfy(IntPredicate predicate)
+    {
+<span class="nc bnc" id="L391" title="All 2 branches missed.">        for (int i = 0; i &lt; this.size(); i++)</span>
+        {
+<span class="nc bnc" id="L393" title="All 2 branches missed.">            if (!predicate.accept(this.get(i)))</span>
+            {
+<span class="nc" id="L395">                return false;</span>
+            }
+        }
+<span class="nc" id="L398">        return true;</span>
+    }
+
+    @Override
+    public boolean noneSatisfy(IntPredicate predicate)
+    {
+<span class="nc bnc" id="L404" title="All 2 branches missed.">        for (int i = 0; i &lt; this.size(); i++)</span>
+        {
+<span class="nc bnc" id="L406" title="All 2 branches missed.">            if (predicate.accept(this.get(i)))</span>
+            {
+<span class="nc" id="L408">                return false;</span>
+            }
+        }
+<span class="nc" id="L411">        return true;</span>
+    }
+
+    @Override
+    public boolean equals(Object otherList)
+    {
+<span class="nc bnc" id="L417" title="All 2 branches missed.">        if (otherList == this)</span>
+        {
+<span class="nc" id="L419">            return true;</span>
+        }
+<span class="nc bnc" id="L421" title="All 2 branches missed.">        if (!(otherList instanceof IntList))</span>
+        {
+<span class="nc" id="L423">            return false;</span>
+        }
+<span class="nc" id="L425">        IntList list = (IntList) otherList;</span>
+<span class="nc bnc" id="L426" title="All 2 branches missed.">        if (this.size() != list.size())</span>
+        {
+<span class="nc" id="L428">            return false;</span>
+        }
+<span class="nc bnc" id="L430" title="All 2 branches missed.">        if (this.from == this.to)</span>
+        {
+<span class="nc bnc" id="L432" title="All 2 branches missed.">            return this.from == list.get(0);</span>
+        }
+<span class="nc bnc" id="L434" title="All 2 branches missed.">        if (this.from &lt; this.to)</span>
+        {
+<span class="nc" id="L436">            int listIndex = 0;</span>
+<span class="nc bnc" id="L437" title="All 2 branches missed.">            for (int i = this.from; i &lt;= this.to; i += this.step)</span>
+            {
+<span class="nc bnc" id="L439" title="All 2 branches missed.">                if (i != list.get(listIndex++))</span>
+                {
+<span class="nc" id="L441">                    return false;</span>
+                }
+            }
+<span class="nc" id="L444">        }</span>
+        else
+        {
+<span class="nc" id="L447">            int listIndex = 0;</span>
+<span class="nc bnc" id="L448" title="All 2 branches missed.">            for (int i = this.from; i &gt;= this.to; i += this.step)</span>
+            {
+<span class="nc bnc" id="L450" title="All 2 branches missed.">                if (i != list.get(listIndex++))</span>
+                {
+<span class="nc" id="L452">                    return false;</span>
+                }
+            }
+        }
+<span class="nc" id="L456">        return true;</span>
+    }
+
+    @Override
+    public int hashCode()
+    {
+<span class="nc" id="L462">        int hashCode = 1;</span>
+<span class="nc bnc" id="L463" title="All 2 branches missed.">        if (this.from == this.to)</span>
+        {
+<span class="nc" id="L465">            hashCode = 31 + this.from;</span>
+        }
+<span class="nc bnc" id="L467" title="All 2 branches missed.">        else if (this.from &lt; this.to)</span>
+        {
+<span class="nc bnc" id="L469" title="All 2 branches missed.">            for (int i = this.from; i &lt;= this.to; i += this.step)</span>
+            {
+<span class="nc" id="L471">                hashCode = 31 * hashCode + i;</span>
+            }
+        }
+        else
+        {
+<span class="nc bnc" id="L476" title="All 2 branches missed.">            for (int i = this.from; i &gt;= this.to; i += this.step)</span>
+            {
+<span class="nc" id="L478">                hashCode = 31 * hashCode + i;</span>
+            }
+        }
+<span class="nc" id="L481">        return hashCode;</span>
+    }
+
+    /**
+     * Returns a new IntInterval with the from and to values reversed and the step value negated.
+     */
+    @Override
+    public IntInterval toReversed()
+    {
+<span class="nc" id="L490">        return IntInterval.fromToBy(this.to, this.from, -this.step);</span>
+    }
+
+    /**
+     * @since 6.0
+     */
+    @Override
+    public ImmutableIntList distinct()
+    {
+<span class="nc" id="L499">        return this;</span>
+    }
+
+    @Override
+    public ImmutableIntList subList(int fromIndex, int toIndex)
+    {
+<span class="nc" id="L505">        throw new UnsupportedOperationException(&quot;subList not yet implemented!&quot;);</span>
+    }
+
+    /**
+     * Calculates and returns the size of the interval.
+     */
+    @Override
+    public int size()
+    {
+<span class="nc" id="L514">        return (this.to - this.from) / this.step + 1;</span>
+    }
+
+    @Override
+    public long dotProduct(IntList list)
+    {
+<span class="nc bnc" id="L520" title="All 2 branches missed.">        if (this.size() != list.size())</span>
+        {
+<span class="nc" id="L522">            throw new IllegalArgumentException(&quot;Lists used in dotProduct must be the same size&quot;);</span>
+        }
+<span class="nc" id="L524">        long sum = 0L;</span>
+<span class="nc bnc" id="L525" title="All 2 branches missed.">        for (int i = 0; i &lt; this.size(); i++)</span>
+        {
+<span class="nc" id="L527">            sum += (long) this.get(i) * list.get(i);</span>
+        }
+<span class="nc" id="L529">        return sum;</span>
+    }
+
+    @Override
+    public boolean isEmpty()
+    {
+<span class="nc bnc" id="L535" title="All 2 branches missed.">        return this.size() == 0;</span>
+    }
+
+    @Override
+    public boolean notEmpty()
+    {
+<span class="nc bnc" id="L541" title="All 2 branches missed.">        return !this.isEmpty();</span>
+    }
+
+    @Override
+    public String makeString()
+    {
+<span class="nc" id="L547">        return this.makeString(&quot;, &quot;);</span>
+    }
+
+    @Override
+    public String makeString(String separator)
+    {
+<span class="nc" id="L553">        return this.makeString(&quot;&quot;, separator, &quot;&quot;);</span>
+    }
+
+    @Override
+    public String makeString(String start, String separator, String end)
+    {
+<span class="nc" id="L559">        Appendable stringBuilder = new StringBuilder();</span>
+<span class="nc" id="L560">        this.appendString(stringBuilder, start, separator, end);</span>
+<span class="nc" id="L561">        return stringBuilder.toString();</span>
+    }
+
+    @Override
+    public void appendString(Appendable appendable)
+    {
+<span class="nc" id="L567">        this.appendString(appendable, &quot;, &quot;);</span>
+<span class="nc" id="L568">    }</span>
+
+    @Override
+    public void appendString(Appendable appendable, String separator)
+    {
+<span class="nc" id="L573">        this.appendString(appendable, &quot;&quot;, separator, &quot;&quot;);</span>
+<span class="nc" id="L574">    }</span>
+
+    @Override
+    public void appendString(
+            Appendable appendable,
+            String start,
+            String separator,
+            String end)
+    {
+        try
+        {
+<span class="nc" id="L585">            appendable.append(start);</span>
+<span class="nc bnc" id="L586" title="All 2 branches missed.">            for (int i = 0; i &lt; this.size(); i++)</span>
+            {
+<span class="nc bnc" id="L588" title="All 2 branches missed.">                if (i &gt; 0)</span>
+                {
+<span class="nc" id="L590">                    appendable.append(separator);</span>
+                }
+<span class="nc" id="L592">                int value = this.get(i);</span>
+<span class="nc" id="L593">                appendable.append(String.valueOf(value));</span>
+            }
+<span class="nc" id="L595">            appendable.append(end);</span>
+        }
+<span class="nc" id="L597">        catch (IOException e)</span>
+        {
+<span class="nc" id="L599">            throw new RuntimeException(e);</span>
+<span class="nc" id="L600">        }</span>
+<span class="nc" id="L601">    }</span>
+
+    @Override
+    public int[] toArray()
+    {
+<span class="nc" id="L606">        int[] result = new int[this.size()];</span>
+<span class="nc" id="L607">        this.forEachWithIndex((each, index) -&gt; result[index] = each);</span>
+<span class="nc" id="L608">        return result;</span>
+    }
+
+    @Override
+    public &lt;T&gt; T injectInto(T injectedValue, ObjectIntToObjectFunction&lt;? super T, ? extends T&gt; function)
+    {
+<span class="nc" id="L614">        T result = injectedValue;</span>
+<span class="nc bnc" id="L615" title="All 2 branches missed.">        if (this.from &lt;= this.to)</span>
+        {
+<span class="nc bnc" id="L617" title="All 2 branches missed.">            for (int i = this.from; i &lt;= this.to; i += this.step)</span>
+            {
+<span class="nc" id="L619">                result = function.valueOf(result, i);</span>
+            }
+        }
+        else
+        {
+<span class="nc bnc" id="L624" title="All 2 branches missed.">            for (int i = this.from; i &gt;= this.to; i += this.step)</span>
+            {
+<span class="nc" id="L626">                result = function.valueOf(result, i);</span>
+            }
+        }
+<span class="nc" id="L629">        return result;</span>
+    }
+
+    @Override
+    public &lt;T&gt; T injectIntoWithIndex(T injectedValue, ObjectIntIntToObjectFunction&lt;? super T, ? extends T&gt; function)
+    {
+<span class="nc" id="L635">        T result = injectedValue;</span>
+<span class="nc" id="L636">        int index = 0;</span>
+
+<span class="nc bnc" id="L638" title="All 2 branches missed.">        if (this.from &lt;= this.to)</span>
+        {
+<span class="nc bnc" id="L640" title="All 2 branches missed.">            for (int i = this.from; i &lt;= this.to; i += this.step)</span>
+            {
+<span class="nc" id="L642">                result = function.valueOf(result, i, index);</span>
+<span class="nc" id="L643">                index++;</span>
+            }
+        }
+        else
+        {
+<span class="nc bnc" id="L648" title="All 2 branches missed.">            for (int i = this.from; i &gt;= this.to; i += this.step)</span>
+            {
+<span class="nc" id="L650">                result = function.valueOf(result, i, index);</span>
+<span class="nc" id="L651">                index++;</span>
+            }
+        }
+<span class="nc" id="L654">        return result;</span>
+    }
+
+    @Override
+    public RichIterable&lt;IntIterable&gt; chunk(int size)
+    {
+<span class="nc bnc" id="L660" title="All 2 branches missed.">        if (size &lt;= 0)</span>
+        {
+<span class="nc" id="L662">            throw new IllegalArgumentException(&quot;Size for groups must be positive but was: &quot; + size);</span>
+        }
+<span class="nc" id="L664">        MutableList&lt;IntIterable&gt; result = Lists.mutable.empty();</span>
+<span class="nc bnc" id="L665" title="All 2 branches missed.">        if (this.notEmpty())</span>
+        {
+<span class="nc" id="L667">            int innerFrom = this.from;</span>
+<span class="nc" id="L668">            int lastUpdated = this.from;</span>
+<span class="nc bnc" id="L669" title="All 2 branches missed.">            if (this.from &lt;= this.to)</span>
+            {
+<span class="nc bnc" id="L671" title="All 2 branches missed.">                while ((lastUpdated + this.step) &lt;= this.to)</span>
+                {
+<span class="nc" id="L673">                    MutableIntList batch = IntLists.mutable.empty();</span>
+<span class="nc bnc" id="L674" title="All 4 branches missed.">                    for (int i = innerFrom; i &lt;= this.to &amp;&amp; batch.size() &lt; size; i += this.step)</span>
+                    {
+<span class="nc" id="L676">                        batch.add(i);</span>
+<span class="nc" id="L677">                        lastUpdated = i;</span>
+                    }
+<span class="nc" id="L679">                    result.add(batch);</span>
+<span class="nc" id="L680">                    innerFrom = lastUpdated + this.step;</span>
+<span class="nc" id="L681">                }</span>
+            }
+            else
+            {
+<span class="nc bnc" id="L685" title="All 2 branches missed.">                while ((lastUpdated + this.step) &gt;= this.to)</span>
+                {
+<span class="nc" id="L687">                    MutableIntList batch = IntLists.mutable.empty();</span>
+<span class="nc bnc" id="L688" title="All 4 branches missed.">                    for (int i = innerFrom; i &gt;= this.to &amp;&amp; batch.size() &lt; size; i += this.step)</span>
+                    {
+<span class="nc" id="L690">                        batch.add(i);</span>
+<span class="nc" id="L691">                        lastUpdated = i;</span>
+                    }
+<span class="nc" id="L693">                    result.add(batch);</span>
+<span class="nc" id="L694">                    innerFrom = lastUpdated + this.step;</span>
+<span class="nc" id="L695">                }</span>
+            }
+        }
+<span class="nc" id="L698">        return result;</span>
+    }
+
+    @Override
+    public String toString()
+    {
+<span class="nc" id="L704">        return this.makeString(&quot;[&quot;, &quot;, &quot;, &quot;]&quot;);</span>
+    }
+
+    @Override
+    public IntIterator intIterator()
+    {
+<span class="nc" id="L710">        return new IntIntervalIterator();</span>
+    }
+
+    @Override
+    public int getFirst()
+    {
+<span class="nc" id="L716">        return this.from;</span>
+    }
+
+    @Override
+    public int getLast()
+    {
+<span class="nc" id="L722">        return this.locationAfterN(this.size() - 1);</span>
+    }
+
+    @Override
+    public int get(int index)
+    {
+<span class="nc" id="L728">        this.checkBounds(&quot;index&quot;, index);</span>
+<span class="nc" id="L729">        return this.locationAfterN(index);</span>
+    }
+
+    private void checkBounds(String name, int index)
+    {
+<span class="nc bnc" id="L734" title="All 4 branches missed.">        if (index &lt; 0 || index &gt;= this.size())</span>
+        {
+<span class="nc" id="L736">            throw new IndexOutOfBoundsException(name + &quot;: &quot; + index + ' ' + this);</span>
+        }
+<span class="nc" id="L738">    }</span>
+
+    private int locationAfterN(int index)
+    {
+<span class="nc bnc" id="L742" title="All 2 branches missed.">        if (index &lt;= 0)</span>
+        {
+<span class="nc" id="L744">            return this.from;</span>
+        }
+<span class="nc bnc" id="L746" title="All 2 branches missed.">        if (this.step &gt; 0)</span>
+        {
+<span class="nc" id="L748">            return (int) Math.min((long) this.from + (long) this.step * (long) index, this.to);</span>
+        }
+<span class="nc" id="L750">        return (int) Math.max((long) this.from + (long) this.step * (long) index, this.to);</span>
+    }
+
+    @Override
+    public int indexOf(int value)
+    {
+<span class="nc bnc" id="L756" title="All 2 branches missed.">        if (!this.isWithinBoundaries(value))</span>
+        {
+<span class="nc" id="L758">            return -1;</span>
+        }
+<span class="nc" id="L760">        int diff = value - this.from;</span>
+<span class="nc bnc" id="L761" title="All 2 branches missed.">        if (diff % this.step == 0)</span>
+        {
+<span class="nc" id="L763">            return diff / this.step;</span>
+        }
+
+<span class="nc" id="L766">        return -1;</span>
+    }
+
+    @Override
+    public int lastIndexOf(int value)
+    {
+<span class="nc" id="L772">        return this.indexOf(value);</span>
+    }
+
+    @Override
+    public ImmutableIntList select(IntPredicate predicate)
+    {
+<span class="nc" id="L778">        return IntArrayList.newList(new SelectIntIterable(this, predicate)).toImmutable();</span>
+    }
+
+    @Override
+    public ImmutableIntList reject(IntPredicate predicate)
+    {
+<span class="nc" id="L784">        return IntArrayList.newList(new SelectIntIterable(this, IntPredicates.not(predicate))).toImmutable();</span>
+    }
+
+    @Override
+    public int detectIfNone(IntPredicate predicate, int ifNone)
+    {
+<span class="nc" id="L790">        return new SelectIntIterable(this, predicate).detectIfNone(predicate, ifNone);</span>
+    }
+
+    @Override
+    public &lt;V&gt; ImmutableList&lt;V&gt; collect(IntToObjectFunction&lt;? extends V&gt; function)
+    {
+<span class="nc" id="L796">        return new CollectIntToObjectIterable&lt;V&gt;(this, function).toList().toImmutable();</span>
+    }
+
+    @Override
+    public LazyIntIterable asReversed()
+    {
+<span class="nc" id="L802">        return ReverseIntIterable.adapt(this);</span>
+    }
+
+    @Override
+    public long sum()
+    {
+<span class="nc" id="L808">        long sum = 0L;</span>
+<span class="nc bnc" id="L809" title="All 2 branches missed.">        for (IntIterator intIterator = this.intIterator(); intIterator.hasNext(); )</span>
+        {
+<span class="nc" id="L811">            sum += intIterator.next();</span>
+        }
+<span class="nc" id="L813">        return sum;</span>
+    }
+
+    @Override
+    public int max()
+    {
+<span class="nc bnc" id="L819" title="All 2 branches missed.">        if (this.from &gt;= this.to)</span>
+        {
+<span class="nc" id="L821">            return this.getFirst();</span>
+        }
+<span class="nc" id="L823">        return this.getLast();</span>
+    }
+
+    @Override
+    public int min()
+    {
+<span class="nc bnc" id="L829" title="All 2 branches missed.">        if (this.from &lt;= this.to)</span>
+        {
+<span class="nc" id="L831">            return this.getFirst();</span>
+        }
+<span class="nc" id="L833">        return this.getLast();</span>
+    }
+
+    @Override
+    public int minIfEmpty(int defaultValue)
+    {
+<span class="nc" id="L839">        return this.min();</span>
+    }
+
+    @Override
+    public int maxIfEmpty(int defaultValue)
+    {
+<span class="nc" id="L845">        return this.max();</span>
+    }
+
+    @Override
+    public double average()
+    {
+<span class="nc" id="L851">        return (double) this.sum() / (double) this.size();</span>
+    }
+
+    @Override
+    public double median()
+    {
+<span class="nc" id="L857">        int[] sortedArray = this.toSortedArray();</span>
+<span class="nc" id="L858">        int middleIndex = sortedArray.length &gt;&gt; 1;</span>
+<span class="nc bnc" id="L859" title="All 4 branches missed.">        if (sortedArray.length &gt; 1 &amp;&amp; (sortedArray.length &amp; 1) == 0)</span>
+        {
+<span class="nc" id="L861">            int first = sortedArray[middleIndex];</span>
+<span class="nc" id="L862">            int second = sortedArray[middleIndex - 1];</span>
+<span class="nc" id="L863">            return ((double) first + (double) second) / 2.0;</span>
+        }
+<span class="nc" id="L865">        return (double) sortedArray[middleIndex];</span>
+    }
+
+    @Override
+    public int binarySearch(int value)
+    {
+<span class="nc bnc" id="L871" title="All 8 branches missed.">        if (this.step &gt; 0 &amp;&amp; this.from &gt; value || this.step &lt; 0 &amp;&amp; this.from &lt; value)</span>
+        {
+<span class="nc" id="L873">            return -1;</span>
+        }
+
+<span class="nc bnc" id="L876" title="All 8 branches missed.">        if (this.step &gt; 0 &amp;&amp; this.to &lt; value || this.step &lt; 0 &amp;&amp; this.to &gt; value)</span>
+        {
+<span class="nc" id="L878">            return -1 - this.size();</span>
+        }
+
+<span class="nc" id="L881">        int diff = value - this.from;</span>
+<span class="nc" id="L882">        int index = diff / this.step;</span>
+<span class="nc bnc" id="L883" title="All 2 branches missed.">        return diff % this.step == 0 ? index : (index + 2) * -1;</span>
+    }
+
+    @Override
+    public int[] toSortedArray()
+    {
+<span class="nc" id="L889">        int[] array = this.toArray();</span>
+<span class="nc" id="L890">        Arrays.sort(array);</span>
+<span class="nc" id="L891">        return array;</span>
+    }
+
+    @Override
+    public MutableIntList toList()
+    {
+<span class="nc" id="L897">        return IntArrayList.newList(this);</span>
+    }
+
+    @Override
+    public MutableIntList toSortedList()
+    {
+<span class="nc" id="L903">        return IntArrayList.newList(this).sortThis();</span>
+    }
+
+    @Override
+    public MutableIntSet toSet()
+    {
+<span class="nc" id="L909">        return IntHashSet.newSet(this);</span>
+    }
+
+    @Override
+    public MutableIntBag toBag()
+    {
+<span class="nc" id="L915">        return IntHashBag.newBag(this);</span>
+    }
+
+    @Override
+    public LazyIntIterable asLazy()
+    {
+<span class="nc" id="L921">        return new LazyIntIterableAdapter(this);</span>
+    }
+
+    @Override
+    public ImmutableIntList toImmutable()
+    {
+<span class="nc" id="L927">        return this;</span>
+    }
+
+    @Override
+    public ImmutableIntList newWith(int element)
+    {
+<span class="nc" id="L933">        return IntArrayList.newList(this).with(element).toImmutable();</span>
+    }
+
+    @Override
+    public ImmutableIntList newWithout(int element)
+    {
+<span class="nc" id="L939">        return IntArrayList.newList(this).without(element).toImmutable();</span>
+    }
+
+    @Override
+    public ImmutableIntList newWithAll(IntIterable elements)
+    {
+<span class="nc" id="L945">        return IntArrayList.newList(this).withAll(elements).toImmutable();</span>
+    }
+
+    @Override
+    public ImmutableIntList newWithoutAll(IntIterable elements)
+    {
+<span class="nc" id="L951">        return IntArrayList.newList(this).withoutAll(elements).toImmutable();</span>
+    }
+
+    @Override
+    public ImmutableList&lt;IntIntPair&gt; zipInt(IntIterable iterable)
+    {
+<span class="nc" id="L957">        int size = this.size();</span>
+<span class="nc" id="L958">        int othersize = iterable.size();</span>
+<span class="nc" id="L959">        MutableList&lt;IntIntPair&gt; target = Lists.mutable.withInitialCapacity(Math.min(size, othersize));</span>
+<span class="nc" id="L960">        IntIterator iterator = this.intIterator();</span>
+<span class="nc" id="L961">        IntIterator otherIterator = iterable.intIterator();</span>
+<span class="nc bnc" id="L962" title="All 4 branches missed.">        for (int i = 0; i &lt; size &amp;&amp; otherIterator.hasNext(); i++)</span>
+        {
+<span class="nc" id="L964">            target.add(PrimitiveTuples.pair(iterator.next(), otherIterator.next()));</span>
+        }
+<span class="nc" id="L966">        return target.toImmutable();</span>
+    }
+
+    @Override
+    public &lt;T&gt; ImmutableList&lt;IntObjectPair&lt;T&gt;&gt; zip(Iterable&lt;T&gt; iterable)
+    {
+<span class="nc" id="L972">        int size = this.size();</span>
+<span class="nc" id="L973">        int othersize = Iterate.sizeOf(iterable);</span>
+<span class="nc" id="L974">        MutableList&lt;IntObjectPair&lt;T&gt;&gt; target = Lists.mutable.withInitialCapacity(Math.min(size, othersize));</span>
+<span class="nc" id="L975">        IntIterator iterator = this.intIterator();</span>
+<span class="nc" id="L976">        Iterator&lt;T&gt; otherIterator = iterable.iterator();</span>
+<span class="nc bnc" id="L977" title="All 4 branches missed.">        for (int i = 0; i &lt; size &amp;&amp; otherIterator.hasNext(); i++)</span>
+        {
+<span class="nc" id="L979">            target.add(PrimitiveTuples.pair(iterator.next(), otherIterator.next()));</span>
+        }
+<span class="nc" id="L981">        return target.toImmutable();</span>
+    }
+
+<span class="nc" id="L984">    private class IntIntervalIterator implements IntIterator</span>
+    {
+<span class="nc" id="L986">        private int current = IntInterval.this.from;</span>
+
+        @Override
+        public boolean hasNext()
+        {
+<span class="nc bnc" id="L991" title="All 2 branches missed.">            if (IntInterval.this.from &lt;= IntInterval.this.to)</span>
+            {
+<span class="nc bnc" id="L993" title="All 2 branches missed.">                return this.current &lt;= IntInterval.this.to;</span>
+            }
+<span class="nc bnc" id="L995" title="All 2 branches missed.">            return this.current &gt;= IntInterval.this.to;</span>
+        }
+
+        @Override
+        public int next()
+        {
+<span class="nc bnc" id="L1001" title="All 2 branches missed.">            if (this.hasNext())</span>
+            {
+<span class="nc" id="L1003">                int result = this.current;</span>
+<span class="nc" id="L1004">                this.current += IntInterval.this.step;</span>
+<span class="nc" id="L1005">                return result;</span>
+            }
+<span class="nc" id="L1007">            throw new NoSuchElementException();</span>
+        }
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.0.201801022044</span></div></body></html>

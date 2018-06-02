@@ -1,0 +1,145 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>AbstractImmutableMultimap.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Eclipse Collections Test Coverage Aggregation</a> &gt; <a href="../index.html" class="el_bundle">eclipse-collections</a> &gt; <a href="index.source.html" class="el_package">org.eclipse.collections.impl.multimap</a> &gt; <span class="el_source">AbstractImmutableMultimap.java</span></div><h1>AbstractImmutableMultimap.java</h1><pre class="source lang-java linenums">/*
+ * Copyright (c) 2016 Goldman Sachs.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * and Eclipse Distribution License v. 1.0 which accompany this distribution.
+ * The Eclipse Public License is available at http://www.eclipse.org/legal/epl-v10.html
+ * and the Eclipse Distribution License is available at
+ * http://www.eclipse.org/org/documents/edl-v10.php.
+ */
+
+package org.eclipse.collections.impl.multimap;
+
+import java.io.InvalidClassException;
+import java.io.ObjectStreamException;
+import java.util.Collection;
+
+import org.eclipse.collections.api.RichIterable;
+import org.eclipse.collections.api.block.function.Function0;
+import org.eclipse.collections.api.block.procedure.Procedure;
+import org.eclipse.collections.api.collection.ImmutableCollection;
+import org.eclipse.collections.api.map.ImmutableMap;
+import org.eclipse.collections.api.map.MutableMap;
+import org.eclipse.collections.api.multimap.ImmutableMultimap;
+import org.eclipse.collections.api.set.SetIterable;
+import org.eclipse.collections.impl.map.mutable.UnifiedMap;
+import org.eclipse.collections.impl.set.mutable.UnmodifiableMutableSet;
+import org.eclipse.collections.impl.utility.Iterate;
+
+public abstract class AbstractImmutableMultimap&lt;K, V, C extends ImmutableCollection&lt;V&gt;&gt;
+        extends AbstractMultimap&lt;K, V, C&gt;
+        implements ImmutableMultimap&lt;K, V&gt;
+{
+    protected final ImmutableMap&lt;K, C&gt; map;
+
+    /**
+     * Creates a new multimap that clones the provided map into an ImmutableMap.
+     *
+     * @param map place to store the mapping from each key to its corresponding values
+     */
+    protected AbstractImmutableMultimap(MutableMap&lt;K, C&gt; map)
+    {
+<span class="nc" id="L42">        this(map.toImmutable());</span>
+<span class="nc" id="L43">    }</span>
+
+    /**
+     * Creates a new multimap that uses the provided immutableMap.
+     *
+     * @param immutableMap place to store the mapping from each key to its corresponding values
+     */
+    protected AbstractImmutableMultimap(ImmutableMap&lt;K, C&gt; immutableMap)
+<span class="nc" id="L51">    {</span>
+<span class="nc" id="L52">        this.map = immutableMap;</span>
+<span class="nc" id="L53">    }</span>
+
+    @Override
+    protected ImmutableMap&lt;K, C&gt; getMap()
+    {
+<span class="nc" id="L58">        return this.map;</span>
+    }
+
+// Query Operations
+
+    @Override
+    public int size()
+    {
+<span class="nc" id="L66">        class CountProcedure implements Procedure&lt;C&gt;</span>
+        {
+            private static final long serialVersionUID = 1L;
+
+            private int totalSize;
+
+            @Override
+            public void value(C collection)
+            {
+<span class="nc" id="L75">                this.totalSize += collection.size();</span>
+<span class="nc" id="L76">            }</span>
+
+            public int getTotalSize()
+            {
+<span class="nc" id="L80">                return this.totalSize;</span>
+            }
+        }
+
+<span class="nc" id="L84">        CountProcedure procedure = new CountProcedure();</span>
+<span class="nc" id="L85">        this.map.forEachValue(procedure);</span>
+<span class="nc" id="L86">        return procedure.getTotalSize();</span>
+    }
+
+    @Override
+    public int sizeDistinct()
+    {
+<span class="nc" id="L92">        return this.map.size();</span>
+    }
+
+    @Override
+    public boolean isEmpty()
+    {
+<span class="nc" id="L98">        return this.map.isEmpty();</span>
+    }
+
+    // Views
+
+    @Override
+    public SetIterable&lt;K&gt; keySet()
+    {
+<span class="nc" id="L106">        return UnmodifiableMutableSet.of(this.getMap().castToMap().keySet());</span>
+    }
+
+    @Override
+    public C get(K key)
+    {
+<span class="nc" id="L112">        return this.map.getIfAbsentWith(key, this.createCollectionBlock(), this);</span>
+    }
+
+    @Override
+    public MutableMap&lt;K, RichIterable&lt;V&gt;&gt; toMap()
+    {
+<span class="nc" id="L118">        return (MutableMap&lt;K, RichIterable&lt;V&gt;&gt;) (MutableMap&lt;?, ?&gt;) this.map.toMap();</span>
+    }
+
+    @Override
+    public &lt;R extends Collection&lt;V&gt;&gt; MutableMap&lt;K, R&gt; toMap(Function0&lt;R&gt; collectionFactory)
+    {
+<span class="nc" id="L124">        MutableMap&lt;K, R&gt; result = UnifiedMap.newMap();</span>
+<span class="nc" id="L125">        this.map.forEachKeyValue((key, iterable) -&gt; {</span>
+<span class="nc" id="L126">            R newCollection = collectionFactory.value();</span>
+<span class="nc" id="L127">            Iterate.addAllTo(iterable, newCollection);</span>
+<span class="nc" id="L128">            result.put(key, newCollection);</span>
+<span class="nc" id="L129">        });</span>
+
+<span class="nc" id="L131">        return result;</span>
+    }
+
+    @Override
+    public ImmutableMultimap&lt;K, V&gt; toImmutable()
+    {
+<span class="nc" id="L137">        return this;</span>
+    }
+
+    protected Object readResolve() throws ObjectStreamException
+    {
+<span class="nc" id="L142">        throw new InvalidClassException(&quot;You should be using the proxy for serialization of ImmutableMultimaps&quot;);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.0.201801022044</span></div></body></html>

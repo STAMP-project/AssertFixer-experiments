@@ -1,0 +1,274 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>AbstractImmutableCollection.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Eclipse Collections Test Coverage Aggregation</a> &gt; <a href="../index.html" class="el_bundle">eclipse-collections</a> &gt; <a href="index.source.html" class="el_package">org.eclipse.collections.impl.collection.immutable</a> &gt; <span class="el_source">AbstractImmutableCollection.java</span></div><h1>AbstractImmutableCollection.java</h1><pre class="source lang-java linenums">/*
+ * Copyright (c) 2017 Goldman Sachs and others.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * and Eclipse Distribution License v. 1.0 which accompany this distribution.
+ * The Eclipse Public License is available at http://www.eclipse.org/legal/epl-v10.html
+ * and the Eclipse Distribution License is available at
+ * http://www.eclipse.org/org/documents/edl-v10.php.
+ */
+
+package org.eclipse.collections.impl.collection.immutable;
+
+import java.util.Collection;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
+import java.util.Spliterator;
+import java.util.Spliterators;
+import java.util.function.BinaryOperator;
+import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
+
+import org.eclipse.collections.api.RichIterable;
+import org.eclipse.collections.api.bag.ImmutableBag;
+import org.eclipse.collections.api.block.function.Function;
+import org.eclipse.collections.api.block.function.Function0;
+import org.eclipse.collections.api.block.function.Function2;
+import org.eclipse.collections.api.block.function.primitive.DoubleFunction;
+import org.eclipse.collections.api.block.function.primitive.FloatFunction;
+import org.eclipse.collections.api.block.function.primitive.IntFunction;
+import org.eclipse.collections.api.block.function.primitive.LongFunction;
+import org.eclipse.collections.api.block.procedure.Procedure2;
+import org.eclipse.collections.api.collection.ImmutableCollection;
+import org.eclipse.collections.api.collection.MutableCollection;
+import org.eclipse.collections.api.list.MutableList;
+import org.eclipse.collections.api.map.ImmutableMap;
+import org.eclipse.collections.api.map.MutableMap;
+import org.eclipse.collections.api.map.primitive.ImmutableObjectDoubleMap;
+import org.eclipse.collections.api.map.primitive.ImmutableObjectLongMap;
+import org.eclipse.collections.api.map.primitive.MutableObjectDoubleMap;
+import org.eclipse.collections.api.map.primitive.MutableObjectLongMap;
+import org.eclipse.collections.impl.AbstractRichIterable;
+import org.eclipse.collections.impl.block.factory.PrimitiveFunctions;
+import org.eclipse.collections.impl.block.procedure.MutatingAggregationProcedure;
+import org.eclipse.collections.impl.block.procedure.NonMutatingAggregationProcedure;
+import org.eclipse.collections.impl.factory.Bags;
+import org.eclipse.collections.impl.factory.Lists;
+import org.eclipse.collections.impl.factory.primitive.ObjectDoubleMaps;
+import org.eclipse.collections.impl.factory.primitive.ObjectLongMaps;
+import org.eclipse.collections.impl.map.mutable.UnifiedMap;
+import org.eclipse.collections.impl.set.mutable.UnifiedSet;
+import org.eclipse.collections.impl.utility.Iterate;
+
+<span class="nc" id="L55">public abstract class AbstractImmutableCollection&lt;T&gt;</span>
+        extends AbstractRichIterable&lt;T&gt;
+        implements ImmutableCollection&lt;T&gt;, Collection&lt;T&gt;
+{
+    protected abstract MutableCollection&lt;T&gt; newMutable(int size);
+
+    @Override
+    public &lt;K, V&gt; ImmutableMap&lt;K, V&gt; aggregateInPlaceBy(
+            Function&lt;? super T, ? extends K&gt; groupBy,
+            Function0&lt;? extends V&gt; zeroValueFactory,
+            Procedure2&lt;? super V, ? super T&gt; mutatingAggregator)
+    {
+<span class="nc" id="L67">        MutableMap&lt;K, V&gt; map = UnifiedMap.newMap();</span>
+<span class="nc" id="L68">        this.forEach(new MutatingAggregationProcedure&lt;&gt;(map, groupBy, zeroValueFactory, mutatingAggregator));</span>
+<span class="nc" id="L69">        return map.toImmutable();</span>
+    }
+
+    @Override
+    public &lt;K, V&gt; ImmutableMap&lt;K, V&gt; aggregateBy(
+            Function&lt;? super T, ? extends K&gt; groupBy,
+            Function0&lt;? extends V&gt; zeroValueFactory,
+            Function2&lt;? super V, ? super T, ? extends V&gt; nonMutatingAggregator)
+    {
+<span class="nc" id="L78">        MutableMap&lt;K, V&gt; map = UnifiedMap.newMap();</span>
+<span class="nc" id="L79">        this.forEach(new NonMutatingAggregationProcedure&lt;&gt;(map, groupBy, zeroValueFactory, nonMutatingAggregator));</span>
+<span class="nc" id="L80">        return map.toImmutable();</span>
+    }
+
+    @Override
+    public Optional&lt;T&gt; reduce(BinaryOperator&lt;T&gt; accumulator)
+    {
+<span class="nc bnc" id="L86" title="All 2 branches missed.">        if (this.isEmpty())</span>
+        {
+<span class="nc" id="L88">            return Optional.empty();</span>
+        }
+<span class="nc" id="L90">        return Optional.of(this.injectInto(null, (result, each) -&gt;</span>
+<span class="nc bnc" id="L91" title="All 2 branches missed.">                result == null ? each : accumulator.apply(result, each)));</span>
+    }
+
+    @Override
+    public &lt;V&gt; ImmutableObjectLongMap&lt;V&gt; sumByInt(Function&lt;? super T, ? extends V&gt; groupBy, IntFunction&lt;? super T&gt; function)
+    {
+<span class="nc" id="L97">        MutableObjectLongMap&lt;V&gt; result = ObjectLongMaps.mutable.empty();</span>
+<span class="nc" id="L98">        return this.injectInto(result, PrimitiveFunctions.sumByIntFunction(groupBy, function)).toImmutable();</span>
+    }
+
+    @Override
+    public &lt;V&gt; ImmutableObjectDoubleMap&lt;V&gt; sumByFloat(Function&lt;? super T, ? extends V&gt; groupBy, FloatFunction&lt;? super T&gt; function)
+    {
+<span class="nc" id="L104">        MutableObjectDoubleMap&lt;V&gt; result = ObjectDoubleMaps.mutable.empty();</span>
+<span class="nc" id="L105">        return this.injectInto(result, PrimitiveFunctions.sumByFloatFunction(groupBy, function)).toImmutable();</span>
+    }
+
+    @Override
+    public &lt;V&gt; ImmutableObjectLongMap&lt;V&gt; sumByLong(Function&lt;? super T, ? extends V&gt; groupBy, LongFunction&lt;? super T&gt; function)
+    {
+<span class="nc" id="L111">        MutableObjectLongMap&lt;V&gt; result = ObjectLongMaps.mutable.empty();</span>
+<span class="nc" id="L112">        return this.injectInto(result, PrimitiveFunctions.sumByLongFunction(groupBy, function)).toImmutable();</span>
+    }
+
+    @Override
+    public &lt;V&gt; ImmutableObjectDoubleMap&lt;V&gt; sumByDouble(Function&lt;? super T, ? extends V&gt; groupBy, DoubleFunction&lt;? super T&gt; function)
+    {
+<span class="nc" id="L118">        MutableObjectDoubleMap&lt;V&gt; result = ObjectDoubleMaps.mutable.empty();</span>
+<span class="nc" id="L119">        return this.injectInto(result, PrimitiveFunctions.sumByDoubleFunction(groupBy, function)).toImmutable();</span>
+    }
+
+    @Override
+    public &lt;V&gt; ImmutableMap&lt;V, T&gt; groupByUniqueKey(Function&lt;? super T, ? extends V&gt; function)
+    {
+<span class="nc" id="L125">        MutableMap&lt;V, T&gt; map = Iterate.groupByUniqueKey(this, function);</span>
+<span class="nc" id="L126">        return map.toImmutable();</span>
+    }
+
+    @Override
+    public boolean add(T t)
+    {
+<span class="nc" id="L132">        throw new UnsupportedOperationException(&quot;Cannot call add() on &quot; + this.getClass().getSimpleName());</span>
+    }
+
+    @Override
+    public boolean remove(Object o)
+    {
+<span class="nc" id="L138">        throw new UnsupportedOperationException(&quot;Cannot call remove() on &quot; + this.getClass().getSimpleName());</span>
+    }
+
+    @Override
+    public boolean addAll(Collection&lt;? extends T&gt; collection)
+    {
+<span class="nc" id="L144">        throw new UnsupportedOperationException(&quot;Cannot call addAll() on &quot; + this.getClass().getSimpleName());</span>
+    }
+
+    @Override
+    public boolean removeAll(Collection&lt;?&gt; collection)
+    {
+<span class="nc" id="L150">        throw new UnsupportedOperationException(&quot;Cannot call removeAll() on &quot; + this.getClass().getSimpleName());</span>
+    }
+
+    @Override
+    public boolean retainAll(Collection&lt;?&gt; collection)
+    {
+<span class="nc" id="L156">        throw new UnsupportedOperationException(&quot;Cannot call retainAll() on &quot; + this.getClass().getSimpleName());</span>
+    }
+
+    @Override
+    public void clear()
+    {
+<span class="nc" id="L162">        throw new UnsupportedOperationException(&quot;Cannot call clear() on &quot; + this.getClass().getSimpleName());</span>
+    }
+
+    protected void removeAllFrom(Iterable&lt;? extends T&gt; elements, MutableCollection&lt;T&gt; result)
+    {
+<span class="nc bnc" id="L167" title="All 2 branches missed.">        if (elements instanceof Set)</span>
+        {
+<span class="nc" id="L169">            result.removeAll((Set&lt;?&gt;) elements);</span>
+        }
+<span class="nc bnc" id="L171" title="All 2 branches missed.">        else if (elements instanceof List)</span>
+        {
+<span class="nc" id="L173">            List&lt;T&gt; toBeRemoved = (List&lt;T&gt;) elements;</span>
+<span class="nc bnc" id="L174" title="All 2 branches missed.">            if (this.size() * toBeRemoved.size() &gt; 10000)</span>
+            {
+<span class="nc" id="L176">                result.removeAll(UnifiedSet.newSet(elements));</span>
+            }
+            else
+            {
+<span class="nc" id="L180">                result.removeAll(toBeRemoved);</span>
+            }
+<span class="nc" id="L182">        }</span>
+        else
+        {
+<span class="nc" id="L185">            result.removeAll(UnifiedSet.newSet(elements));</span>
+        }
+<span class="nc" id="L187">    }</span>
+
+    @Override
+    public RichIterable&lt;RichIterable&lt;T&gt;&gt; chunk(int size)
+    {
+<span class="nc bnc" id="L192" title="All 2 branches missed.">        if (size &lt;= 0)</span>
+        {
+<span class="nc" id="L194">            throw new IllegalArgumentException(&quot;Size for groups must be positive but was: &quot; + size);</span>
+        }
+
+<span class="nc" id="L197">        Iterator&lt;T&gt; iterator = this.iterator();</span>
+<span class="nc" id="L198">        MutableList&lt;RichIterable&lt;T&gt;&gt; result = Lists.mutable.empty();</span>
+<span class="nc bnc" id="L199" title="All 2 branches missed.">        while (iterator.hasNext())</span>
+        {
+<span class="nc" id="L201">            MutableCollection&lt;T&gt; batch = this.newMutable(size);</span>
+<span class="nc bnc" id="L202" title="All 4 branches missed.">            for (int i = 0; i &lt; size &amp;&amp; iterator.hasNext(); i++)</span>
+            {
+<span class="nc" id="L204">                batch.add(iterator.next());</span>
+            }
+<span class="nc" id="L206">            result.add(batch.toImmutable());</span>
+<span class="nc" id="L207">        }</span>
+<span class="nc" id="L208">        return result.toImmutable();</span>
+    }
+
+    /**
+     * @since 9.0
+     */
+    @Override
+    public &lt;V&gt; ImmutableBag&lt;V&gt; countBy(Function&lt;? super T, ? extends V&gt; function)
+    {
+<span class="nc" id="L217">        return this.countBy(function, Bags.mutable.&lt;V&gt;empty()).toImmutable();</span>
+    }
+
+    /**
+     * @since 9.0
+     */
+    @Override
+    public &lt;V, P&gt; ImmutableBag&lt;V&gt; countByWith(Function2&lt;? super T, ? super P, ? extends V&gt; function, P parameter)
+    {
+<span class="nc" id="L226">        return this.countByWith(function, parameter, Bags.mutable.&lt;V&gt;empty()).toImmutable();</span>
+    }
+
+    /**
+     * @since 10.0.0
+     */
+    @Override
+    public &lt;V&gt; ImmutableBag&lt;V&gt; countByEach(Function&lt;? super T, ? extends Iterable&lt;V&gt;&gt; function)
+    {
+<span class="nc" id="L235">        return this.countByEach(function, Bags.mutable.empty()).toImmutable();</span>
+    }
+
+    /**
+     * @since 9.0
+     */
+    @Override
+    public Stream&lt;T&gt; stream()
+    {
+<span class="nc" id="L244">        return StreamSupport.stream(this.spliterator(), false);</span>
+    }
+
+    /**
+     * @since 9.0
+     */
+    @Override
+    public Stream&lt;T&gt; parallelStream()
+    {
+<span class="nc" id="L253">        return StreamSupport.stream(this.spliterator(), true);</span>
+    }
+
+    /**
+     * @since 9.0
+     */
+    @Override
+    public Spliterator&lt;T&gt; spliterator()
+    {
+<span class="nc" id="L262">        return Spliterators.spliterator(this, 0);</span>
+    }
+
+    /**
+     * @since 9.0
+     */
+    @Override
+    public Collection&lt;T&gt; castToCollection()
+    {
+<span class="nc" id="L271">        return this;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.0.201801022044</span></div></body></html>

@@ -1,0 +1,605 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>UnmodifiableMutableList.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Eclipse Collections Test Coverage Aggregation</a> &gt; <a href="../index.html" class="el_bundle">eclipse-collections</a> &gt; <a href="index.source.html" class="el_package">org.eclipse.collections.impl.list.mutable</a> &gt; <span class="el_source">UnmodifiableMutableList.java</span></div><h1>UnmodifiableMutableList.java</h1><pre class="source lang-java linenums">/*
+ * Copyright (c) 2017 Goldman Sachs and others.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * and Eclipse Distribution License v. 1.0 which accompany this distribution.
+ * The Eclipse Public License is available at http://www.eclipse.org/legal/epl-v10.html
+ * and the Eclipse Distribution License is available at
+ * http://www.eclipse.org/org/documents/edl-v10.php.
+ */
+
+package org.eclipse.collections.impl.list.mutable;
+
+import java.io.Serializable;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
+import java.util.ListIterator;
+import java.util.Random;
+import java.util.RandomAccess;
+import java.util.concurrent.ExecutorService;
+
+import org.eclipse.collections.api.LazyIterable;
+import org.eclipse.collections.api.block.HashingStrategy;
+import org.eclipse.collections.api.block.function.Function;
+import org.eclipse.collections.api.block.function.Function2;
+import org.eclipse.collections.api.block.function.primitive.BooleanFunction;
+import org.eclipse.collections.api.block.function.primitive.ByteFunction;
+import org.eclipse.collections.api.block.function.primitive.CharFunction;
+import org.eclipse.collections.api.block.function.primitive.DoubleFunction;
+import org.eclipse.collections.api.block.function.primitive.FloatFunction;
+import org.eclipse.collections.api.block.function.primitive.IntFunction;
+import org.eclipse.collections.api.block.function.primitive.LongFunction;
+import org.eclipse.collections.api.block.function.primitive.ShortFunction;
+import org.eclipse.collections.api.block.predicate.Predicate;
+import org.eclipse.collections.api.block.predicate.Predicate2;
+import org.eclipse.collections.api.block.procedure.Procedure;
+import org.eclipse.collections.api.block.procedure.primitive.ObjectIntProcedure;
+import org.eclipse.collections.api.list.ImmutableList;
+import org.eclipse.collections.api.list.MutableList;
+import org.eclipse.collections.api.list.ParallelListIterable;
+import org.eclipse.collections.api.list.primitive.MutableBooleanList;
+import org.eclipse.collections.api.list.primitive.MutableByteList;
+import org.eclipse.collections.api.list.primitive.MutableCharList;
+import org.eclipse.collections.api.list.primitive.MutableDoubleList;
+import org.eclipse.collections.api.list.primitive.MutableFloatList;
+import org.eclipse.collections.api.list.primitive.MutableIntList;
+import org.eclipse.collections.api.list.primitive.MutableLongList;
+import org.eclipse.collections.api.list.primitive.MutableShortList;
+import org.eclipse.collections.api.multimap.list.MutableListMultimap;
+import org.eclipse.collections.api.ordered.OrderedIterable;
+import org.eclipse.collections.api.partition.list.PartitionMutableList;
+import org.eclipse.collections.api.stack.MutableStack;
+import org.eclipse.collections.api.tuple.Pair;
+import org.eclipse.collections.impl.collection.mutable.AbstractUnmodifiableMutableCollection;
+import org.eclipse.collections.impl.collection.mutable.UnmodifiableCollectionSerializationProxy;
+import org.eclipse.collections.impl.lazy.ReverseIterable;
+import org.eclipse.collections.impl.stack.mutable.ArrayStack;
+
+/**
+ * An unmodifiable view of a list.
+ *
+ * @see MutableList#asUnmodifiable()
+ */
+public class UnmodifiableMutableList&lt;T&gt;
+        extends AbstractUnmodifiableMutableCollection&lt;T&gt;
+        implements MutableList&lt;T&gt;, Serializable
+{
+    UnmodifiableMutableList(MutableList&lt;? extends T&gt; mutableList)
+    {
+<span class="nc" id="L71">        super(mutableList);</span>
+<span class="nc" id="L72">    }</span>
+
+    /**
+     * This method will take a MutableList and wrap it directly in a UnmodifiableMutableList.  It will
+     * take any other non-GS-list and first adapt it will a ListAdapter, and then return a
+     * UnmodifiableMutableList that wraps the adapter.
+     */
+    public static &lt;E, L extends List&lt;E&gt;&gt; UnmodifiableMutableList&lt;E&gt; of(L list)
+    {
+<span class="nc bnc" id="L81" title="All 2 branches missed.">        if (list == null)</span>
+        {
+<span class="nc" id="L83">            throw new IllegalArgumentException(&quot;cannot create an UnmodifiableMutableList for null&quot;);</span>
+        }
+<span class="nc bnc" id="L85" title="All 2 branches missed.">        if (list instanceof RandomAccess)</span>
+        {
+<span class="nc" id="L87">            return new RandomAccessUnmodifiableMutableList&lt;&gt;(RandomAccessListAdapter.adapt(list));</span>
+        }
+<span class="nc" id="L89">        return new UnmodifiableMutableList&lt;&gt;(ListAdapter.adapt(list));</span>
+    }
+
+    private MutableList&lt;T&gt; getMutableList()
+    {
+<span class="nc" id="L94">        return (MutableList&lt;T&gt;) this.getMutableCollection();</span>
+    }
+
+    @Override
+    public boolean equals(Object obj)
+    {
+<span class="nc" id="L100">        return this.getMutableList().equals(obj);</span>
+    }
+
+    @Override
+    public int hashCode()
+    {
+<span class="nc" id="L106">        return this.getMutableList().hashCode();</span>
+    }
+
+    @Override
+    public MutableList&lt;T&gt; asUnmodifiable()
+    {
+<span class="nc" id="L112">        return this;</span>
+    }
+
+    @Override
+    public ImmutableList&lt;T&gt; toImmutable()
+    {
+<span class="nc" id="L118">        return this.getMutableList().toImmutable();</span>
+    }
+
+    @Override
+    public MutableList&lt;T&gt; asSynchronized()
+    {
+<span class="nc" id="L124">        return SynchronizedMutableList.of(this);</span>
+    }
+
+    @Override
+    public UnmodifiableMutableList&lt;T&gt; clone()
+    {
+<span class="nc" id="L130">        return this;</span>
+    }
+
+    @Override
+    public MutableList&lt;T&gt; newEmpty()
+    {
+<span class="nc" id="L136">        return this.getMutableList().newEmpty();</span>
+    }
+
+    @Override
+    public MutableList&lt;T&gt; tap(Procedure&lt;? super T&gt; procedure)
+    {
+<span class="nc" id="L142">        this.forEach(procedure);</span>
+<span class="nc" id="L143">        return this;</span>
+    }
+
+    @Override
+    public &lt;S&gt; boolean corresponds(OrderedIterable&lt;S&gt; other, Predicate2&lt;? super T, ? super S&gt; predicate)
+    {
+<span class="nc" id="L149">        return this.getMutableList().corresponds(other, predicate);</span>
+    }
+
+    @Override
+    public void forEach(int fromIndex, int toIndex, Procedure&lt;? super T&gt; procedure)
+    {
+<span class="nc" id="L155">        this.getMutableList().forEach(fromIndex, toIndex, procedure);</span>
+<span class="nc" id="L156">    }</span>
+
+    @Override
+    public void reverseForEach(Procedure&lt;? super T&gt; procedure)
+    {
+<span class="nc" id="L161">        this.getMutableList().reverseForEach(procedure);</span>
+<span class="nc" id="L162">    }</span>
+
+    @Override
+    public void reverseForEachWithIndex(ObjectIntProcedure&lt;? super T&gt; procedure)
+    {
+<span class="nc" id="L167">        this.getMutableList().reverseForEachWithIndex(procedure);</span>
+<span class="nc" id="L168">    }</span>
+
+    @Override
+    public void forEachWithIndex(int fromIndex, int toIndex, ObjectIntProcedure&lt;? super T&gt; objectIntProcedure)
+    {
+<span class="nc" id="L173">        this.getMutableList().forEachWithIndex(fromIndex, toIndex, objectIntProcedure);</span>
+<span class="nc" id="L174">    }</span>
+
+    @Override
+    public UnmodifiableMutableList&lt;T&gt; sortThis(Comparator&lt;? super T&gt; comparator)
+    {
+<span class="nc" id="L179">        throw new UnsupportedOperationException(&quot;Cannot call sortThis() on &quot; + this.getClass().getSimpleName());</span>
+    }
+
+    @Override
+    public UnmodifiableMutableList&lt;T&gt; sortThis()
+    {
+<span class="nc" id="L185">        throw new UnsupportedOperationException(&quot;Cannot call sortThis() on &quot; + this.getClass().getSimpleName());</span>
+    }
+
+    @Override
+    public MutableList&lt;T&gt; toReversed()
+    {
+<span class="nc" id="L191">        return this.getMutableList().toReversed();</span>
+    }
+
+    @Override
+    public MutableList&lt;T&gt; reverseThis()
+    {
+<span class="nc" id="L197">        throw new UnsupportedOperationException(&quot;Cannot call reverseThis() on &quot; + this.getClass().getSimpleName());</span>
+    }
+
+    @Override
+    public MutableList&lt;T&gt; shuffleThis()
+    {
+<span class="nc" id="L203">        throw new UnsupportedOperationException(&quot;Cannot call shuffleThis() on &quot; + this.getClass().getSimpleName());</span>
+    }
+
+    @Override
+    public MutableList&lt;T&gt; shuffleThis(Random rnd)
+    {
+<span class="nc" id="L209">        throw new UnsupportedOperationException(&quot;Cannot call shuffleThis() on &quot; + this.getClass().getSimpleName());</span>
+    }
+
+    @Override
+    public MutableStack&lt;T&gt; toStack()
+    {
+<span class="nc" id="L215">        return ArrayStack.newStack(this.getMutableList());</span>
+    }
+
+    @Override
+    public &lt;V extends Comparable&lt;? super V&gt;&gt; MutableList&lt;T&gt; sortThisBy(Function&lt;? super T, ? extends V&gt; function)
+    {
+<span class="nc" id="L221">        throw new UnsupportedOperationException(&quot;Cannot call sortThisBy() on &quot; + this.getClass().getSimpleName());</span>
+    }
+
+    @Override
+    public MutableList&lt;T&gt; sortThisByInt(IntFunction&lt;? super T&gt; function)
+    {
+<span class="nc" id="L227">        throw new UnsupportedOperationException(&quot;Cannot call sortThisByInt() on &quot; + this.getClass().getSimpleName());</span>
+    }
+
+    @Override
+    public MutableList&lt;T&gt; sortThisByBoolean(BooleanFunction&lt;? super T&gt; function)
+    {
+<span class="nc" id="L233">        throw new UnsupportedOperationException(&quot;Cannot call sortThisByBoolean() on &quot; + this.getClass().getSimpleName());</span>
+    }
+
+    @Override
+    public MutableList&lt;T&gt; sortThisByChar(CharFunction&lt;? super T&gt; function)
+    {
+<span class="nc" id="L239">        throw new UnsupportedOperationException(&quot;Cannot call sortThisByChar() on &quot; + this.getClass().getSimpleName());</span>
+    }
+
+    @Override
+    public MutableList&lt;T&gt; sortThisByByte(ByteFunction&lt;? super T&gt; function)
+    {
+<span class="nc" id="L245">        throw new UnsupportedOperationException(&quot;Cannot call sortThisByByte() on &quot; + this.getClass().getSimpleName());</span>
+    }
+
+    @Override
+    public MutableList&lt;T&gt; sortThisByShort(ShortFunction&lt;? super T&gt; function)
+    {
+<span class="nc" id="L251">        throw new UnsupportedOperationException(&quot;Cannot call sortThisByShort() on &quot; + this.getClass().getSimpleName());</span>
+    }
+
+    @Override
+    public MutableList&lt;T&gt; sortThisByFloat(FloatFunction&lt;? super T&gt; function)
+    {
+<span class="nc" id="L257">        throw new UnsupportedOperationException(&quot;Cannot call sortThisByFloat() on &quot; + this.getClass().getSimpleName());</span>
+    }
+
+    @Override
+    public MutableList&lt;T&gt; sortThisByLong(LongFunction&lt;? super T&gt; function)
+    {
+<span class="nc" id="L263">        throw new UnsupportedOperationException(&quot;Cannot call sortThisByLong() on &quot; + this.getClass().getSimpleName());</span>
+    }
+
+    @Override
+    public MutableList&lt;T&gt; sortThisByDouble(DoubleFunction&lt;? super T&gt; function)
+    {
+<span class="nc" id="L269">        throw new UnsupportedOperationException(&quot;Cannot call sortThisByDouble() on &quot; + this.getClass().getSimpleName());</span>
+    }
+
+    @Override
+    public boolean addAll(int index, Collection&lt;? extends T&gt; collection)
+    {
+<span class="nc" id="L275">        throw new UnsupportedOperationException(&quot;Cannot call addAll() on &quot; + this.getClass().getSimpleName());</span>
+    }
+
+    @Override
+    public T get(int index)
+    {
+<span class="nc" id="L281">        return this.getMutableList().get(index);</span>
+    }
+
+    @Override
+    public T set(int index, T element)
+    {
+<span class="nc" id="L287">        throw new UnsupportedOperationException(&quot;Cannot call set() on &quot; + this.getClass().getSimpleName());</span>
+    }
+
+    @Override
+    public void add(int index, T element)
+    {
+<span class="nc" id="L293">        throw new UnsupportedOperationException(&quot;Cannot call add() on &quot; + this.getClass().getSimpleName());</span>
+    }
+
+    @Override
+    public T remove(int index)
+    {
+<span class="nc" id="L299">        throw new UnsupportedOperationException(&quot;Cannot call remove() on &quot; + this.getClass().getSimpleName());</span>
+    }
+
+    @Override
+    public int indexOf(Object o)
+    {
+<span class="nc" id="L305">        return this.getMutableList().indexOf(o);</span>
+    }
+
+    @Override
+    public int lastIndexOf(Object o)
+    {
+<span class="nc" id="L311">        return this.getMutableList().lastIndexOf(o);</span>
+    }
+
+    @Override
+    public ListIterator&lt;T&gt; listIterator()
+    {
+<span class="nc" id="L317">        return this.listIterator(0);</span>
+    }
+
+    @Override
+    public ListIterator&lt;T&gt; listIterator(int index)
+    {
+<span class="nc" id="L323">        return new UnmodifiableListIteratorAdapter&lt;&gt;(this.getMutableList().listIterator(index));</span>
+    }
+
+    @Override
+    public UnmodifiableMutableList&lt;T&gt; subList(int fromIndex, int toIndex)
+    {
+<span class="nc" id="L329">        MutableList&lt;T&gt; subList = this.getMutableList().subList(fromIndex, toIndex);</span>
+<span class="nc" id="L330">        return UnmodifiableMutableList.of(subList);</span>
+    }
+
+    @Override
+    public &lt;P, A&gt; MutableList&lt;A&gt; collectWith(Function2&lt;? super T, ? super P, ? extends A&gt; function, P parameter)
+    {
+<span class="nc" id="L336">        return this.getMutableList().collectWith(function, parameter);</span>
+    }
+
+    @Override
+    public &lt;V&gt; MutableList&lt;V&gt; collect(Function&lt;? super T, ? extends V&gt; function)
+    {
+<span class="nc" id="L342">        return this.getMutableList().collect(function);</span>
+    }
+
+    @Override
+    public MutableBooleanList collectBoolean(BooleanFunction&lt;? super T&gt; booleanFunction)
+    {
+<span class="nc" id="L348">        return this.getMutableList().collectBoolean(booleanFunction);</span>
+    }
+
+    @Override
+    public MutableByteList collectByte(ByteFunction&lt;? super T&gt; byteFunction)
+    {
+<span class="nc" id="L354">        return this.getMutableList().collectByte(byteFunction);</span>
+    }
+
+    @Override
+    public MutableCharList collectChar(CharFunction&lt;? super T&gt; charFunction)
+    {
+<span class="nc" id="L360">        return this.getMutableList().collectChar(charFunction);</span>
+    }
+
+    @Override
+    public MutableDoubleList collectDouble(DoubleFunction&lt;? super T&gt; doubleFunction)
+    {
+<span class="nc" id="L366">        return this.getMutableList().collectDouble(doubleFunction);</span>
+    }
+
+    @Override
+    public MutableFloatList collectFloat(FloatFunction&lt;? super T&gt; floatFunction)
+    {
+<span class="nc" id="L372">        return this.getMutableList().collectFloat(floatFunction);</span>
+    }
+
+    @Override
+    public MutableIntList collectInt(IntFunction&lt;? super T&gt; intFunction)
+    {
+<span class="nc" id="L378">        return this.getMutableList().collectInt(intFunction);</span>
+    }
+
+    @Override
+    public MutableLongList collectLong(LongFunction&lt;? super T&gt; longFunction)
+    {
+<span class="nc" id="L384">        return this.getMutableList().collectLong(longFunction);</span>
+    }
+
+    @Override
+    public MutableShortList collectShort(ShortFunction&lt;? super T&gt; shortFunction)
+    {
+<span class="nc" id="L390">        return this.getMutableList().collectShort(shortFunction);</span>
+    }
+
+    @Override
+    public &lt;V&gt; MutableList&lt;V&gt; flatCollect(Function&lt;? super T, ? extends Iterable&lt;V&gt;&gt; function)
+    {
+<span class="nc" id="L396">        return this.getMutableList().flatCollect(function);</span>
+    }
+
+    @Override
+    public &lt;V&gt; MutableList&lt;V&gt; collectIf(
+            Predicate&lt;? super T&gt; predicate,
+            Function&lt;? super T, ? extends V&gt; function)
+    {
+<span class="nc" id="L404">        return this.getMutableList().collectIf(predicate, function);</span>
+    }
+
+    @Override
+    public int detectIndex(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L410">        return this.getMutableList().detectIndex(predicate);</span>
+    }
+
+    @Override
+    public int detectLastIndex(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L416">        return this.getMutableList().detectLastIndex(predicate);</span>
+    }
+
+    @Override
+    public &lt;V&gt; MutableListMultimap&lt;V, T&gt; groupBy(Function&lt;? super T, ? extends V&gt; function)
+    {
+<span class="nc" id="L422">        return this.getMutableList().groupBy(function);</span>
+    }
+
+    @Override
+    public &lt;V&gt; MutableListMultimap&lt;V, T&gt; groupByEach(Function&lt;? super T, ? extends Iterable&lt;V&gt;&gt; function)
+    {
+<span class="nc" id="L428">        return this.getMutableList().groupByEach(function);</span>
+    }
+
+    @Override
+    public MutableList&lt;T&gt; reject(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L434">        return this.getMutableList().reject(predicate);</span>
+    }
+
+    @Override
+    public &lt;P&gt; MutableList&lt;T&gt; rejectWith(Predicate2&lt;? super T, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc" id="L440">        return this.getMutableList().rejectWith(predicate, parameter);</span>
+    }
+
+    @Override
+    public MutableList&lt;T&gt; select(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L446">        return this.getMutableList().select(predicate);</span>
+    }
+
+    @Override
+    public &lt;P&gt; MutableList&lt;T&gt; selectWith(Predicate2&lt;? super T, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc" id="L452">        return this.getMutableList().selectWith(predicate, parameter);</span>
+    }
+
+    @Override
+    public PartitionMutableList&lt;T&gt; partition(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L458">        return this.getMutableList().partition(predicate);</span>
+    }
+
+    @Override
+    public &lt;P&gt; PartitionMutableList&lt;T&gt; partitionWith(Predicate2&lt;? super T, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc" id="L464">        return this.getMutableList().partitionWith(predicate, parameter);</span>
+    }
+
+    @Override
+    public &lt;S&gt; MutableList&lt;S&gt; selectInstancesOf(Class&lt;S&gt; clazz)
+    {
+<span class="nc" id="L470">        return this.getMutableList().selectInstancesOf(clazz);</span>
+    }
+
+    @Override
+    public MutableList&lt;T&gt; distinct()
+    {
+<span class="nc" id="L476">        return this.getMutableList().distinct();</span>
+    }
+
+    @Override
+    public MutableList&lt;T&gt; distinct(HashingStrategy&lt;? super T&gt; hashingStrategy)
+    {
+<span class="nc" id="L482">        return this.getMutableList().distinct(hashingStrategy);</span>
+    }
+
+    /**
+     * @since 9.0.
+     */
+    @Override
+    public &lt;V&gt; MutableList&lt;T&gt; distinctBy(Function&lt;? super T, ? extends V&gt; function)
+    {
+<span class="nc" id="L491">        return this.getMutableList().distinctBy(function);</span>
+    }
+
+    @Override
+    public &lt;S&gt; MutableList&lt;Pair&lt;T, S&gt;&gt; zip(Iterable&lt;S&gt; that)
+    {
+<span class="nc" id="L497">        return this.getMutableList().zip(that);</span>
+    }
+
+    @Override
+    public MutableList&lt;Pair&lt;T, Integer&gt;&gt; zipWithIndex()
+    {
+<span class="nc" id="L503">        return this.getMutableList().zipWithIndex();</span>
+    }
+
+    @Override
+    public MutableList&lt;T&gt; take(int count)
+    {
+<span class="nc" id="L509">        return this.getMutableList().take(count);</span>
+    }
+
+    @Override
+    public MutableList&lt;T&gt; takeWhile(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L515">        return this.getMutableList().takeWhile(predicate);</span>
+    }
+
+    @Override
+    public MutableList&lt;T&gt; drop(int count)
+    {
+<span class="nc" id="L521">        return this.getMutableList().drop(count);</span>
+    }
+
+    @Override
+    public MutableList&lt;T&gt; dropWhile(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L527">        return this.getMutableList().dropWhile(predicate);</span>
+    }
+
+    @Override
+    public PartitionMutableList&lt;T&gt; partitionWhile(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L533">        return this.getMutableList().partitionWhile(predicate);</span>
+    }
+
+    @Override
+    public LazyIterable&lt;T&gt; asReversed()
+    {
+<span class="nc" id="L539">        return ReverseIterable.adapt(this);</span>
+    }
+
+    @Override
+    public ParallelListIterable&lt;T&gt; asParallel(ExecutorService executorService, int batchSize)
+    {
+<span class="nc" id="L545">        return this.getMutableList().asParallel(executorService, batchSize);</span>
+    }
+
+    @Override
+    public int binarySearch(T key, Comparator&lt;? super T&gt; comparator)
+    {
+<span class="nc" id="L551">        return Collections.binarySearch(this, key, comparator);</span>
+    }
+
+    @Override
+    public int binarySearch(T key)
+    {
+<span class="nc" id="L557">        return Collections.binarySearch((List&lt;? extends Comparable&lt;? super T&gt;&gt;) this, key);</span>
+    }
+
+    @Override
+    public MutableList&lt;T&gt; with(T element)
+    {
+<span class="nc" id="L563">        throw new UnsupportedOperationException(&quot;Cannot call with() on &quot; + this.getClass().getSimpleName());</span>
+    }
+
+    @Override
+    public MutableList&lt;T&gt; without(T element)
+    {
+<span class="nc" id="L569">        throw new UnsupportedOperationException(&quot;Cannot call without() on &quot; + this.getClass().getSimpleName());</span>
+    }
+
+    @Override
+    public MutableList&lt;T&gt; withAll(Iterable&lt;? extends T&gt; elements)
+    {
+<span class="nc" id="L575">        throw new UnsupportedOperationException(&quot;Cannot call withAll() on &quot; + this.getClass().getSimpleName());</span>
+    }
+
+    @Override
+    public MutableList&lt;T&gt; withoutAll(Iterable&lt;? extends T&gt; elements)
+    {
+<span class="nc" id="L581">        throw new UnsupportedOperationException(&quot;Cannot call withoutAll() on &quot; + this.getClass().getSimpleName());</span>
+    }
+
+    private static final class RandomAccessUnmodifiableMutableList&lt;T&gt; extends UnmodifiableMutableList&lt;T&gt; implements RandomAccess
+    {
+        private static final long serialVersionUID = 1L;
+
+        RandomAccessUnmodifiableMutableList(MutableList&lt;? extends T&gt; mutableList)
+        {
+<span class="nc" id="L590">            super(mutableList);</span>
+<span class="nc" id="L591">        }</span>
+
+        @Override
+        public RandomAccessUnmodifiableMutableList&lt;T&gt; clone()
+        {
+<span class="nc" id="L596">            return this;</span>
+        }
+    }
+
+    protected Object writeReplace()
+    {
+<span class="nc" id="L602">        return new UnmodifiableCollectionSerializationProxy&lt;&gt;(this.getMutableList());</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.0.201801022044</span></div></body></html>

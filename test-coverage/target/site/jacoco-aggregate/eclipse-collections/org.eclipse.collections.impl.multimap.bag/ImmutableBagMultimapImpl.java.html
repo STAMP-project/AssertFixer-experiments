@@ -1,0 +1,222 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>ImmutableBagMultimapImpl.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Eclipse Collections Test Coverage Aggregation</a> &gt; <a href="../index.html" class="el_bundle">eclipse-collections</a> &gt; <a href="index.source.html" class="el_package">org.eclipse.collections.impl.multimap.bag</a> &gt; <span class="el_source">ImmutableBagMultimapImpl.java</span></div><h1>ImmutableBagMultimapImpl.java</h1><pre class="source lang-java linenums">/*
+ * Copyright (c) 2016 Goldman Sachs.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * and Eclipse Distribution License v. 1.0 which accompany this distribution.
+ * The Eclipse Public License is available at http://www.eclipse.org/legal/epl-v10.html
+ * and the Eclipse Distribution License is available at
+ * http://www.eclipse.org/org/documents/edl-v10.php.
+ */
+
+package org.eclipse.collections.impl.multimap.bag;
+
+import java.io.Externalizable;
+import java.io.IOException;
+import java.io.ObjectInput;
+import java.io.ObjectOutput;
+import java.io.Serializable;
+
+import org.eclipse.collections.api.bag.ImmutableBag;
+import org.eclipse.collections.api.bag.MutableBag;
+import org.eclipse.collections.api.block.function.Function;
+import org.eclipse.collections.api.block.function.Function2;
+import org.eclipse.collections.api.block.predicate.Predicate2;
+import org.eclipse.collections.api.map.ImmutableMap;
+import org.eclipse.collections.api.map.MutableMap;
+import org.eclipse.collections.api.multimap.MutableMultimap;
+import org.eclipse.collections.api.multimap.bag.ImmutableBagMultimap;
+import org.eclipse.collections.api.multimap.bag.MutableBagMultimap;
+import org.eclipse.collections.api.tuple.Pair;
+import org.eclipse.collections.impl.block.procedure.checked.CheckedObjectIntProcedure;
+import org.eclipse.collections.impl.block.procedure.checked.CheckedProcedure2;
+import org.eclipse.collections.impl.factory.Bags;
+import org.eclipse.collections.impl.factory.Maps;
+import org.eclipse.collections.impl.multimap.AbstractImmutableMultimap;
+import org.eclipse.collections.impl.utility.Iterate;
+
+/**
+ * The default ImmutableBagMultimap implementation.
+ *
+ * @since 1.0
+ */
+public final class ImmutableBagMultimapImpl&lt;K, V&gt;
+        extends AbstractImmutableMultimap&lt;K, V, ImmutableBag&lt;V&gt;&gt;
+        implements ImmutableBagMultimap&lt;K, V&gt;, Serializable
+{
+    private static final long serialVersionUID = 1L;
+
+    public ImmutableBagMultimapImpl(MutableMap&lt;K, ImmutableBag&lt;V&gt;&gt; map)
+    {
+<span class="nc" id="L50">        super(map);</span>
+<span class="nc" id="L51">    }</span>
+
+    public ImmutableBagMultimapImpl(ImmutableMap&lt;K, ImmutableBag&lt;V&gt;&gt; map)
+    {
+<span class="nc" id="L55">        super(map);</span>
+<span class="nc" id="L56">    }</span>
+
+    @Override
+    protected ImmutableBag&lt;V&gt; createCollection()
+    {
+<span class="nc" id="L61">        return Bags.immutable.empty();</span>
+    }
+
+    @Override
+    public ImmutableBagMultimap&lt;K, V&gt; newEmpty()
+    {
+<span class="nc" id="L67">        return new ImmutableBagMultimapImpl&lt;&gt;(Maps.immutable.of());</span>
+    }
+
+    @Override
+    public MutableBagMultimap&lt;K, V&gt; toMutable()
+    {
+<span class="nc" id="L73">        return new HashBagMultimap&lt;&gt;(this);</span>
+    }
+
+    @Override
+    public ImmutableBagMultimap&lt;K, V&gt; toImmutable()
+    {
+<span class="nc" id="L79">        return this;</span>
+    }
+
+    private Object writeReplace()
+    {
+<span class="nc" id="L84">        return new ImmutableBagMultimapSerializationProxy&lt;&gt;(this.map);</span>
+    }
+
+    private static class ImmutableBagMultimapSerializationProxy&lt;K, V&gt;
+            implements Externalizable
+    {
+        private static final long serialVersionUID = 1L;
+
+        private ImmutableMap&lt;K, ImmutableBag&lt;V&gt;&gt; map;
+        private MutableMultimap&lt;K, V&gt; multimap;
+
+        @SuppressWarnings(&quot;UnusedDeclaration&quot;)
+        public ImmutableBagMultimapSerializationProxy()
+<span class="nc" id="L97">        {</span>
+            // For Externalizable use only
+<span class="nc" id="L99">        }</span>
+
+        private ImmutableBagMultimapSerializationProxy(ImmutableMap&lt;K, ImmutableBag&lt;V&gt;&gt; map)
+<span class="nc" id="L102">        {</span>
+<span class="nc" id="L103">            this.map = map;</span>
+<span class="nc" id="L104">        }</span>
+
+        protected Object readResolve()
+        {
+<span class="nc" id="L108">            return this.multimap.toImmutable();</span>
+        }
+
+        @Override
+        public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException
+        {
+<span class="nc" id="L114">            this.multimap = new HashBagMultimap&lt;&gt;();</span>
+<span class="nc" id="L115">            int keyCount = in.readInt();</span>
+<span class="nc bnc" id="L116" title="All 2 branches missed.">            for (int i = 0; i &lt; keyCount; i++)</span>
+            {
+<span class="nc" id="L118">                K key = (K) in.readObject();</span>
+<span class="nc" id="L119">                int valuesSize = in.readInt();</span>
+<span class="nc" id="L120">                MutableBag&lt;V&gt; bag = Bags.mutable.empty();</span>
+<span class="nc bnc" id="L121" title="All 2 branches missed.">                for (int j = 0; j &lt; valuesSize; j++)</span>
+                {
+<span class="nc" id="L123">                    V value = (V) in.readObject();</span>
+<span class="nc" id="L124">                    int count = in.readInt();</span>
+
+<span class="nc" id="L126">                    bag.addOccurrences(value, count);</span>
+                }
+<span class="nc" id="L128">                this.multimap.putAll(key, bag);</span>
+            }
+<span class="nc" id="L130">        }</span>
+
+        @Override
+        public void writeExternal(ObjectOutput out) throws IOException
+        {
+<span class="nc" id="L135">            int keysCount = this.map.size();</span>
+<span class="nc" id="L136">            out.writeInt(keysCount);</span>
+<span class="nc" id="L137">            this.map.forEachKeyValue(new CheckedProcedure2&lt;K, ImmutableBag&lt;V&gt;&gt;()</span>
+<span class="nc" id="L138">            {</span>
+                public void safeValue(K key, ImmutableBag&lt;V&gt; bag) throws IOException
+                {
+<span class="nc" id="L141">                    out.writeObject(key);</span>
+<span class="nc" id="L142">                    out.writeInt(bag.sizeDistinct());</span>
+<span class="nc" id="L143">                    bag.forEachWithOccurrences(new CheckedObjectIntProcedure&lt;V&gt;()</span>
+<span class="nc" id="L144">                    {</span>
+                        public void safeValue(V value, int count) throws IOException
+                        {
+<span class="nc" id="L147">                            out.writeObject(value);</span>
+<span class="nc" id="L148">                            out.writeInt(count);</span>
+<span class="nc" id="L149">                        }</span>
+                    });
+<span class="nc" id="L151">                }</span>
+            });
+<span class="nc" id="L153">        }</span>
+    }
+
+    @Override
+    public ImmutableBagMultimap&lt;K, V&gt; newWith(K key, V value)
+    {
+<span class="nc" id="L159">        return (ImmutableBagMultimap&lt;K, V&gt;) super.newWith(key, value);</span>
+    }
+
+    @Override
+    public ImmutableBagMultimap&lt;K, V&gt; newWithout(Object key, Object value)
+    {
+<span class="nc" id="L165">        return (ImmutableBagMultimap&lt;K, V&gt;) super.newWithout(key, value);</span>
+    }
+
+    @Override
+    public ImmutableBagMultimap&lt;K, V&gt; newWithAll(K key, Iterable&lt;? extends V&gt; values)
+    {
+<span class="nc" id="L171">        return (ImmutableBagMultimap&lt;K, V&gt;) super.newWithAll(key, values);</span>
+    }
+
+    @Override
+    public ImmutableBagMultimap&lt;K, V&gt; newWithoutAll(Object key)
+    {
+<span class="nc" id="L177">        return (ImmutableBagMultimap&lt;K, V&gt;) super.newWithoutAll(key);</span>
+    }
+
+    @Override
+    public ImmutableBagMultimap&lt;V, K&gt; flip()
+    {
+<span class="nc" id="L183">        return Iterate.flip(this).toImmutable();</span>
+    }
+
+    @Override
+    public ImmutableBagMultimap&lt;K, V&gt; selectKeysValues(Predicate2&lt;? super K, ? super V&gt; predicate)
+    {
+<span class="nc" id="L189">        return this.selectKeysValues(predicate, HashBagMultimap.newMultimap()).toImmutable();</span>
+    }
+
+    @Override
+    public ImmutableBagMultimap&lt;K, V&gt; rejectKeysValues(Predicate2&lt;? super K, ? super V&gt; predicate)
+    {
+<span class="nc" id="L195">        return this.rejectKeysValues(predicate, HashBagMultimap.newMultimap()).toImmutable();</span>
+    }
+
+    @Override
+    public ImmutableBagMultimap&lt;K, V&gt; selectKeysMultiValues(Predicate2&lt;? super K, ? super Iterable&lt;V&gt;&gt; predicate)
+    {
+<span class="nc" id="L201">        return this.selectKeysMultiValues(predicate, HashBagMultimap.newMultimap()).toImmutable();</span>
+    }
+
+    @Override
+    public ImmutableBagMultimap&lt;K, V&gt; rejectKeysMultiValues(Predicate2&lt;? super K, ? super Iterable&lt;V&gt;&gt; predicate)
+    {
+<span class="nc" id="L207">        return this.rejectKeysMultiValues(predicate, HashBagMultimap.newMultimap()).toImmutable();</span>
+    }
+
+    @Override
+    public &lt;K2, V2&gt; ImmutableBagMultimap&lt;K2, V2&gt; collectKeysValues(Function2&lt;? super K, ? super V, Pair&lt;K2, V2&gt;&gt; function)
+    {
+<span class="nc" id="L213">        return this.collectKeysValues(function, HashBagMultimap.newMultimap()).toImmutable();</span>
+    }
+
+    @Override
+    public &lt;V2&gt; ImmutableBagMultimap&lt;K, V2&gt; collectValues(Function&lt;? super V, ? extends V2&gt; function)
+    {
+<span class="nc" id="L219">        return this.collectValues(function, HashBagMultimap.&lt;K, V2&gt;newMultimap()).toImmutable();</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.0.201801022044</span></div></body></html>

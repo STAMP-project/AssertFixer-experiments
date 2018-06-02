@@ -1,0 +1,210 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>CollectionAdapter.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Eclipse Collections Test Coverage Aggregation</a> &gt; <a href="../index.html" class="el_bundle">eclipse-collections</a> &gt; <a href="index.source.html" class="el_package">org.eclipse.collections.impl.collection.mutable</a> &gt; <span class="el_source">CollectionAdapter.java</span></div><h1>CollectionAdapter.java</h1><pre class="source lang-java linenums">/*
+ * Copyright (c) 2016 Goldman Sachs.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * and Eclipse Distribution License v. 1.0 which accompany this distribution.
+ * The Eclipse Public License is available at http://www.eclipse.org/legal/epl-v10.html
+ * and the Eclipse Distribution License is available at
+ * http://www.eclipse.org/org/documents/edl-v10.php.
+ */
+
+package org.eclipse.collections.impl.collection.mutable;
+
+import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+import java.util.RandomAccess;
+import java.util.Set;
+
+import org.eclipse.collections.api.collection.ImmutableCollection;
+import org.eclipse.collections.api.collection.MutableCollection;
+import org.eclipse.collections.api.list.MutableList;
+import org.eclipse.collections.api.set.MutableSet;
+import org.eclipse.collections.impl.block.factory.Comparators;
+import org.eclipse.collections.impl.block.procedure.CollectionAddProcedure;
+import org.eclipse.collections.impl.block.procedure.CollectionRemoveProcedure;
+import org.eclipse.collections.impl.factory.Lists;
+import org.eclipse.collections.impl.factory.Sets;
+import org.eclipse.collections.impl.list.mutable.ArrayListAdapter;
+import org.eclipse.collections.impl.list.mutable.FastList;
+import org.eclipse.collections.impl.list.mutable.ListAdapter;
+import org.eclipse.collections.impl.list.mutable.RandomAccessListAdapter;
+import org.eclipse.collections.impl.set.mutable.SetAdapter;
+import org.eclipse.collections.impl.set.mutable.UnifiedSet;
+import org.eclipse.collections.impl.utility.ArrayIterate;
+import org.eclipse.collections.impl.utility.Iterate;
+
+/**
+ * This class provides a MutableCollection interface wrapper around a JDK Collections Collection interface instance.  All
+ * of the MutableCollection interface methods are supported in addition to the JDK Collection interface methods.
+ * &lt;p&gt;
+ * To create a new instance that wraps a collection with the MutableSet interface, use the {@link #wrapSet(Iterable)}
+ * factory method.  To create a new instance that wraps a collection with the MutableList interface, use the
+ * {@link #wrapList(Iterable)} factory method.  To wrap a collection with the MutableCollection interface alone, use
+ * the {@link #adapt(Collection)} factory method.
+ */
+public final class CollectionAdapter&lt;T&gt;
+        extends AbstractCollectionAdapter&lt;T&gt;
+        implements Serializable
+{
+    private static final long serialVersionUID = 1L;
+    private final Collection&lt;T&gt; delegate;
+
+    public CollectionAdapter(Collection&lt;T&gt; newDelegate)
+<span class="nc" id="L55">    {</span>
+<span class="nc bnc" id="L56" title="All 2 branches missed.">        if (newDelegate == null)</span>
+        {
+<span class="nc" id="L58">            throw new NullPointerException(&quot;CollectionAdapter may not wrap null&quot;);</span>
+        }
+<span class="nc" id="L60">        this.delegate = newDelegate;</span>
+<span class="nc" id="L61">    }</span>
+
+    @Override
+    protected Collection&lt;T&gt; getDelegate()
+    {
+<span class="nc" id="L66">        return this.delegate;</span>
+    }
+
+    @Override
+    public MutableCollection&lt;T&gt; asUnmodifiable()
+    {
+<span class="nc" id="L72">        return UnmodifiableMutableCollection.of(this);</span>
+    }
+
+    @Override
+    public MutableCollection&lt;T&gt; asSynchronized()
+    {
+<span class="nc" id="L78">        return SynchronizedMutableCollection.of(this);</span>
+    }
+
+    @Override
+    public ImmutableCollection&lt;T&gt; toImmutable()
+    {
+<span class="nc bnc" id="L84" title="All 2 branches missed.">        return this.delegate instanceof Set</span>
+<span class="nc" id="L85">                ? Sets.immutable.withAll(this.delegate)</span>
+<span class="nc" id="L86">                : Lists.immutable.withAll(this.delegate);</span>
+    }
+
+    public static &lt;E&gt; MutableSet&lt;E&gt; wrapSet(Iterable&lt;E&gt; iterable)
+    {
+<span class="nc bnc" id="L91" title="All 2 branches missed.">        if (iterable instanceof MutableSet)</span>
+        {
+<span class="nc" id="L93">            return (MutableSet&lt;E&gt;) iterable;</span>
+        }
+<span class="nc bnc" id="L95" title="All 2 branches missed.">        if (iterable instanceof Set)</span>
+        {
+<span class="nc" id="L97">            return SetAdapter.adapt((Set&lt;E&gt;) iterable);</span>
+        }
+<span class="nc" id="L99">        return UnifiedSet.newSet(iterable);</span>
+    }
+
+    public static &lt;E&gt; MutableList&lt;E&gt; wrapList(Iterable&lt;E&gt; iterable)
+    {
+<span class="nc bnc" id="L104" title="All 2 branches missed.">        if (iterable instanceof MutableList)</span>
+        {
+<span class="nc" id="L106">            return (MutableList&lt;E&gt;) iterable;</span>
+        }
+<span class="nc bnc" id="L108" title="All 2 branches missed.">        if (iterable instanceof ArrayList)</span>
+        {
+<span class="nc" id="L110">            return ArrayListAdapter.adapt((ArrayList&lt;E&gt;) iterable);</span>
+        }
+<span class="nc bnc" id="L112" title="All 2 branches missed.">        if (iterable instanceof RandomAccess)</span>
+        {
+<span class="nc" id="L114">            return RandomAccessListAdapter.adapt((List&lt;E&gt;) iterable);</span>
+        }
+<span class="nc bnc" id="L116" title="All 2 branches missed.">        if (iterable instanceof List)</span>
+        {
+<span class="nc" id="L118">            return ListAdapter.adapt((List&lt;E&gt;) iterable);</span>
+        }
+<span class="nc" id="L120">        return FastList.newList(iterable);</span>
+    }
+
+    public static &lt;E&gt; MutableCollection&lt;E&gt; adapt(Collection&lt;E&gt; collection)
+    {
+<span class="nc bnc" id="L125" title="All 2 branches missed.">        if (collection instanceof MutableCollection)</span>
+        {
+<span class="nc" id="L127">            return (MutableCollection&lt;E&gt;) collection;</span>
+        }
+<span class="nc bnc" id="L129" title="All 2 branches missed.">        if (collection instanceof List)</span>
+        {
+<span class="nc" id="L131">            return CollectionAdapter.wrapList(collection);</span>
+        }
+<span class="nc bnc" id="L133" title="All 2 branches missed.">        if (collection instanceof Set)</span>
+        {
+<span class="nc" id="L135">            return SetAdapter.adapt((Set&lt;E&gt;) collection);</span>
+        }
+<span class="nc" id="L137">        return new CollectionAdapter&lt;&gt;(collection);</span>
+    }
+
+    @Override
+    public boolean equals(Object o)
+    {
+<span class="nc bnc" id="L143" title="All 2 branches missed.">        if (this == o)</span>
+        {
+<span class="nc" id="L145">            return true;</span>
+        }
+<span class="nc bnc" id="L147" title="All 4 branches missed.">        if (o == null || this.getClass() != o.getClass())</span>
+        {
+<span class="nc" id="L149">            return false;</span>
+        }
+
+<span class="nc" id="L152">        CollectionAdapter&lt;?&gt; that = (CollectionAdapter&lt;?&gt;) o;</span>
+<span class="nc" id="L153">        return Comparators.nullSafeEquals(this.delegate, that.delegate);</span>
+    }
+
+    @Override
+    public int hashCode()
+    {
+<span class="nc" id="L159">        return this.delegate.hashCode();</span>
+    }
+
+    public CollectionAdapter&lt;T&gt; with(T... elements)
+    {
+<span class="nc" id="L164">        ArrayIterate.forEach(elements, new CollectionAddProcedure&lt;&gt;(this.delegate));</span>
+<span class="nc" id="L165">        return this;</span>
+    }
+
+    @Override
+    public CollectionAdapter&lt;T&gt; with(T element)
+    {
+<span class="nc" id="L171">        this.delegate.add(element);</span>
+<span class="nc" id="L172">        return this;</span>
+    }
+
+    @Override
+    public CollectionAdapter&lt;T&gt; without(T element)
+    {
+<span class="nc" id="L178">        this.delegate.remove(element);</span>
+<span class="nc" id="L179">        return this;</span>
+    }
+
+    @Override
+    public CollectionAdapter&lt;T&gt; withAll(Iterable&lt;? extends T&gt; elements)
+    {
+<span class="nc" id="L185">        Iterate.forEach(elements, new CollectionAddProcedure&lt;&gt;(this.delegate));</span>
+<span class="nc" id="L186">        return this;</span>
+    }
+
+    @Override
+    public CollectionAdapter&lt;T&gt; withoutAll(Iterable&lt;? extends T&gt; elements)
+    {
+<span class="nc" id="L192">        Iterate.forEach(elements, new CollectionRemoveProcedure&lt;&gt;(this.delegate));</span>
+<span class="nc" id="L193">        return this;</span>
+    }
+
+    /**
+     * @deprecated use {@link FastList#newList()} or {@link UnifiedSet#newSet()} instead
+     */
+    @Override
+    @Deprecated
+    public MutableCollection&lt;T&gt; newEmpty()
+    {
+<span class="nc bnc" id="L203" title="All 2 branches missed.">        if (this.delegate instanceof Set)</span>
+        {
+<span class="nc" id="L205">            return UnifiedSet.newSet();</span>
+        }
+<span class="nc" id="L207">        return Lists.mutable.empty();</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.0.201801022044</span></div></body></html>

@@ -1,0 +1,1154 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>InternalArrayIterate.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Eclipse Collections Test Coverage Aggregation</a> &gt; <a href="../index.html" class="el_bundle">eclipse-collections</a> &gt; <a href="index.source.html" class="el_package">org.eclipse.collections.impl.utility.internal</a> &gt; <span class="el_source">InternalArrayIterate.java</span></div><h1>InternalArrayIterate.java</h1><pre class="source lang-java linenums">/*
+ * Copyright (c) 2017 Goldman Sachs and others.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * and Eclipse Distribution License v. 1.0 which accompany this distribution.
+ * The Eclipse Public License is available at http://www.eclipse.org/legal/epl-v10.html
+ * and the Eclipse Distribution License is available at
+ * http://www.eclipse.org/org/documents/edl-v10.php.
+ */
+
+package org.eclipse.collections.impl.utility.internal;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Comparator;
+import java.util.DoubleSummaryStatistics;
+import java.util.IntSummaryStatistics;
+import java.util.Iterator;
+import java.util.List;
+import java.util.LongSummaryStatistics;
+import java.util.NoSuchElementException;
+import java.util.Optional;
+import java.util.RandomAccess;
+import java.util.function.BiConsumer;
+import java.util.function.BinaryOperator;
+import java.util.function.Supplier;
+import java.util.stream.Collector;
+
+import org.eclipse.collections.api.RichIterable;
+import org.eclipse.collections.api.block.HashingStrategy;
+import org.eclipse.collections.api.block.function.Function;
+import org.eclipse.collections.api.block.function.Function2;
+import org.eclipse.collections.api.block.function.primitive.DoubleFunction;
+import org.eclipse.collections.api.block.function.primitive.FloatFunction;
+import org.eclipse.collections.api.block.function.primitive.IntFunction;
+import org.eclipse.collections.api.block.function.primitive.LongFunction;
+import org.eclipse.collections.api.block.function.primitive.ObjectIntToObjectFunction;
+import org.eclipse.collections.api.block.predicate.Predicate;
+import org.eclipse.collections.api.block.predicate.Predicate2;
+import org.eclipse.collections.api.block.procedure.Procedure;
+import org.eclipse.collections.api.block.procedure.primitive.ObjectIntProcedure;
+import org.eclipse.collections.api.list.ListIterable;
+import org.eclipse.collections.api.list.MutableList;
+import org.eclipse.collections.api.map.MutableMap;
+import org.eclipse.collections.api.map.primitive.MutableObjectDoubleMap;
+import org.eclipse.collections.api.map.primitive.MutableObjectLongMap;
+import org.eclipse.collections.api.multimap.MutableMultimap;
+import org.eclipse.collections.api.ordered.OrderedIterable;
+import org.eclipse.collections.api.set.MutableSet;
+import org.eclipse.collections.api.tuple.Twin;
+import org.eclipse.collections.impl.block.factory.Comparators;
+import org.eclipse.collections.impl.block.procedure.CountProcedure;
+import org.eclipse.collections.impl.block.procedure.FastListCollectIfProcedure;
+import org.eclipse.collections.impl.block.procedure.FastListCollectProcedure;
+import org.eclipse.collections.impl.block.procedure.FastListRejectProcedure;
+import org.eclipse.collections.impl.block.procedure.FastListSelectProcedure;
+import org.eclipse.collections.impl.block.procedure.MultimapPutProcedure;
+import org.eclipse.collections.impl.factory.Lists;
+import org.eclipse.collections.impl.factory.primitive.ObjectDoubleMaps;
+import org.eclipse.collections.impl.factory.primitive.ObjectLongMaps;
+import org.eclipse.collections.impl.list.mutable.FastList;
+import org.eclipse.collections.impl.map.mutable.primitive.ObjectDoubleHashMap;
+import org.eclipse.collections.impl.partition.list.PartitionFastList;
+import org.eclipse.collections.impl.set.mutable.UnifiedSet;
+import org.eclipse.collections.impl.set.strategy.mutable.UnifiedSetWithHashingStrategy;
+import org.eclipse.collections.impl.tuple.Tuples;
+import org.eclipse.collections.impl.utility.ArrayIterate;
+import org.eclipse.collections.impl.utility.Iterate;
+
+public final class InternalArrayIterate
+{
+    private InternalArrayIterate()
+<span class="nc" id="L74">    {</span>
+<span class="nc" id="L75">        throw new AssertionError(&quot;Suppress default constructor for noninstantiability&quot;);</span>
+    }
+
+    public static &lt;T&gt; boolean arrayEqualsList(T[] array, int size, List&lt;?&gt; list)
+    {
+<span class="nc bnc" id="L80" title="All 2 branches missed.">        if (size != list.size())</span>
+        {
+<span class="nc" id="L82">            return false;</span>
+        }
+<span class="nc bnc" id="L84" title="All 2 branches missed.">        if (list instanceof RandomAccess)</span>
+        {
+<span class="nc" id="L86">            return InternalArrayIterate.randomAccessListEquals(array, size, list);</span>
+        }
+<span class="nc" id="L88">        return InternalArrayIterate.nonRandomAccessListEquals(array, size, list);</span>
+    }
+
+    private static &lt;T&gt; boolean randomAccessListEquals(T[] array, int size, List&lt;?&gt; list)
+    {
+<span class="nc bnc" id="L93" title="All 2 branches missed.">        for (int i = 0; i &lt; size; i++)</span>
+        {
+<span class="nc bnc" id="L95" title="All 2 branches missed.">            if (!Comparators.nullSafeEquals(array[i], list.get(i)))</span>
+            {
+<span class="nc" id="L97">                return false;</span>
+            }
+        }
+<span class="nc" id="L100">        return true;</span>
+    }
+
+    private static &lt;T&gt; boolean nonRandomAccessListEquals(T[] array, int size, List&lt;?&gt; list)
+    {
+<span class="nc" id="L105">        Iterator&lt;?&gt; iterator = list.iterator();</span>
+<span class="nc bnc" id="L106" title="All 2 branches missed.">        for (int i = 0; i &lt; size; i++)</span>
+        {
+<span class="nc bnc" id="L108" title="All 2 branches missed.">            if (!iterator.hasNext())</span>
+            {
+<span class="nc" id="L110">                return false;</span>
+            }
+<span class="nc bnc" id="L112" title="All 2 branches missed.">            if (!Comparators.nullSafeEquals(array[i], iterator.next()))</span>
+            {
+<span class="nc" id="L114">                return false;</span>
+            }
+        }
+<span class="nc bnc" id="L117" title="All 2 branches missed.">        return !iterator.hasNext();</span>
+    }
+
+    public static &lt;T&gt; void forEachWithoutChecks(T[] objectArray, int from, int to, Procedure&lt;? super T&gt; procedure)
+    {
+<span class="nc bnc" id="L122" title="All 2 branches missed.">        if (from &lt;= to)</span>
+        {
+<span class="nc bnc" id="L124" title="All 2 branches missed.">            for (int i = from; i &lt;= to; i++)</span>
+            {
+<span class="nc" id="L126">                procedure.value(objectArray[i]);</span>
+            }
+        }
+        else
+        {
+<span class="nc bnc" id="L131" title="All 2 branches missed.">            for (int i = from; i &gt;= to; i--)</span>
+            {
+<span class="nc" id="L133">                procedure.value(objectArray[i]);</span>
+            }
+        }
+<span class="nc" id="L136">    }</span>
+
+    public static &lt;T&gt; void forEachWithIndexWithoutChecks(T[] objectArray, int from, int to, ObjectIntProcedure&lt;? super T&gt; objectIntProcedure)
+    {
+<span class="nc bnc" id="L140" title="All 2 branches missed.">        if (from &lt;= to)</span>
+        {
+<span class="nc bnc" id="L142" title="All 2 branches missed.">            for (int i = from; i &lt;= to; i++)</span>
+            {
+<span class="nc" id="L144">                objectIntProcedure.value(objectArray[i], i);</span>
+            }
+        }
+        else
+        {
+<span class="nc bnc" id="L149" title="All 2 branches missed.">            for (int i = from; i &gt;= to; i--)</span>
+            {
+<span class="nc" id="L151">                objectIntProcedure.value(objectArray[i], i);</span>
+            }
+        }
+<span class="nc" id="L154">    }</span>
+
+    public static &lt;T&gt; void batchForEach(Procedure&lt;? super T&gt; procedure, T[] array, int size, int sectionIndex, int sectionCount)
+    {
+<span class="nc" id="L158">        int sectionSize = size / sectionCount;</span>
+<span class="nc" id="L159">        int start = sectionSize * sectionIndex;</span>
+<span class="nc bnc" id="L160" title="All 2 branches missed.">        int end = sectionIndex == sectionCount - 1 ? size : start + sectionSize;</span>
+<span class="nc bnc" id="L161" title="All 2 branches missed.">        if (procedure instanceof FastListSelectProcedure)</span>
+        {
+<span class="nc" id="L163">            InternalArrayIterate.batchFastListSelect(array, start, end, (FastListSelectProcedure&lt;T&gt;) procedure);</span>
+        }
+<span class="nc bnc" id="L165" title="All 2 branches missed.">        else if (procedure instanceof FastListCollectProcedure)</span>
+        {
+<span class="nc" id="L167">            InternalArrayIterate.batchFastListCollect(array, start, end, (FastListCollectProcedure&lt;T, ?&gt;) procedure);</span>
+        }
+<span class="nc bnc" id="L169" title="All 2 branches missed.">        else if (procedure instanceof FastListCollectIfProcedure)</span>
+        {
+<span class="nc" id="L171">            InternalArrayIterate.batchFastListCollectIf(array, start, end, (FastListCollectIfProcedure&lt;T, ?&gt;) procedure);</span>
+        }
+<span class="nc bnc" id="L173" title="All 2 branches missed.">        else if (procedure instanceof CountProcedure)</span>
+        {
+<span class="nc" id="L175">            InternalArrayIterate.batchCount(array, start, end, (CountProcedure&lt;T&gt;) procedure);</span>
+        }
+<span class="nc bnc" id="L177" title="All 2 branches missed.">        else if (procedure instanceof FastListRejectProcedure)</span>
+        {
+<span class="nc" id="L179">            InternalArrayIterate.batchReject(array, start, end, (FastListRejectProcedure&lt;T&gt;) procedure);</span>
+        }
+<span class="nc bnc" id="L181" title="All 2 branches missed.">        else if (procedure instanceof MultimapPutProcedure)</span>
+        {
+<span class="nc" id="L183">            InternalArrayIterate.batchGroupBy(array, start, end, (MultimapPutProcedure&lt;?, T&gt;) procedure);</span>
+        }
+        else
+        {
+<span class="nc bnc" id="L187" title="All 2 branches missed.">            for (int i = start; i &lt; end; i++)</span>
+            {
+<span class="nc" id="L189">                procedure.value(array[i]);</span>
+            }
+        }
+<span class="nc" id="L192">    }</span>
+
+    /**
+     * Implemented to avoid megamorphic call on castProcedure.
+     */
+    private static &lt;T&gt; void batchGroupBy(T[] array, int start, int end, MultimapPutProcedure&lt;?, T&gt; castProcedure)
+    {
+<span class="nc bnc" id="L199" title="All 2 branches missed.">        for (int i = start; i &lt; end; i++)</span>
+        {
+<span class="nc" id="L201">            castProcedure.value(array[i]);</span>
+        }
+<span class="nc" id="L203">    }</span>
+
+    /**
+     * Implemented to avoid megamorphic call on castProcedure.
+     */
+    private static &lt;T&gt; void batchReject(T[] array, int start, int end, FastListRejectProcedure&lt;T&gt; castProcedure)
+    {
+<span class="nc bnc" id="L210" title="All 2 branches missed.">        for (int i = start; i &lt; end; i++)</span>
+        {
+<span class="nc" id="L212">            castProcedure.value(array[i]);</span>
+        }
+<span class="nc" id="L214">    }</span>
+
+    /**
+     * Implemented to avoid megamorphic call on castProcedure.
+     */
+    private static &lt;T&gt; void batchCount(T[] array, int start, int end, CountProcedure&lt;T&gt; castProcedure)
+    {
+<span class="nc bnc" id="L221" title="All 2 branches missed.">        for (int i = start; i &lt; end; i++)</span>
+        {
+<span class="nc" id="L223">            castProcedure.value(array[i]);</span>
+        }
+<span class="nc" id="L225">    }</span>
+
+    /**
+     * Implemented to avoid megamorphic call on castProcedure.
+     */
+    private static &lt;T&gt; void batchFastListCollectIf(T[] array, int start, int end, FastListCollectIfProcedure&lt;T, ?&gt; castProcedure)
+    {
+<span class="nc bnc" id="L232" title="All 2 branches missed.">        for (int i = start; i &lt; end; i++)</span>
+        {
+<span class="nc" id="L234">            castProcedure.value(array[i]);</span>
+        }
+<span class="nc" id="L236">    }</span>
+
+    /**
+     * Implemented to avoid megamorphic call on castProcedure.
+     */
+    private static &lt;T&gt; void batchFastListCollect(T[] array, int start, int end, FastListCollectProcedure&lt;T, ?&gt; castProcedure)
+    {
+<span class="nc bnc" id="L243" title="All 2 branches missed.">        for (int i = start; i &lt; end; i++)</span>
+        {
+<span class="nc" id="L245">            castProcedure.value(array[i]);</span>
+        }
+<span class="nc" id="L247">    }</span>
+
+    /**
+     * Implemented to avoid megamorphic call on castProcedure.
+     */
+    private static &lt;T&gt; void batchFastListSelect(T[] array, int start, int end, FastListSelectProcedure&lt;T&gt; castProcedure)
+    {
+<span class="nc bnc" id="L254" title="All 2 branches missed.">        for (int i = start; i &lt; end; i++)</span>
+        {
+<span class="nc" id="L256">            castProcedure.value(array[i]);</span>
+        }
+<span class="nc" id="L258">    }</span>
+
+    public static &lt;T, V, R extends MutableMultimap&lt;V, T&gt;&gt; R groupBy(T[] array, int size, Function&lt;? super T, ? extends V&gt; function, R target)
+    {
+<span class="nc bnc" id="L262" title="All 2 branches missed.">        for (int i = 0; i &lt; size; i++)</span>
+        {
+<span class="nc" id="L264">            T item = array[i];</span>
+<span class="nc" id="L265">            target.put(function.valueOf(item), item);</span>
+        }
+<span class="nc" id="L267">        return target;</span>
+    }
+
+    public static &lt;T, V, R extends MutableMultimap&lt;V, T&gt;&gt; R groupByEach(
+            T[] array,
+            int size,
+            Function&lt;? super T, ? extends Iterable&lt;V&gt;&gt; function,
+            R target)
+    {
+<span class="nc bnc" id="L276" title="All 2 branches missed.">        for (int i = 0; i &lt; size; i++)</span>
+        {
+<span class="nc" id="L278">            T item = array[i];</span>
+<span class="nc" id="L279">            Iterable&lt;V&gt; iterable = function.valueOf(item);</span>
+<span class="nc bnc" id="L280" title="All 2 branches missed.">            for (V key : iterable)</span>
+            {
+<span class="nc" id="L282">                target.put(key, item);</span>
+<span class="nc" id="L283">            }</span>
+        }
+<span class="nc" id="L285">        return target;</span>
+    }
+
+    public static &lt;T, K, R extends MutableMap&lt;K, T&gt;&gt; R groupByUniqueKey(
+            T[] array,
+            int size,
+            Function&lt;? super T, ? extends K&gt; function,
+            R target)
+    {
+<span class="nc bnc" id="L294" title="All 2 branches missed.">        for (int i = 0; i &lt; size; i++)</span>
+        {
+<span class="nc" id="L296">            T value = array[i];</span>
+<span class="nc" id="L297">            K key = function.valueOf(value);</span>
+<span class="nc bnc" id="L298" title="All 2 branches missed.">            if (target.put(key, value) != null)</span>
+            {
+<span class="nc" id="L300">                throw new IllegalStateException(&quot;Key &quot; + key + &quot; already exists in map!&quot;);</span>
+            }
+        }
+<span class="nc" id="L303">        return target;</span>
+    }
+
+    public static &lt;T&gt; PartitionFastList&lt;T&gt; partition(T[] array, int size, Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L308">        PartitionFastList&lt;T&gt; partitionFastList = new PartitionFastList&lt;&gt;();</span>
+
+<span class="nc bnc" id="L310" title="All 2 branches missed.">        for (int i = 0; i &lt; size; i++)</span>
+        {
+<span class="nc" id="L312">            T each = array[i];</span>
+<span class="nc bnc" id="L313" title="All 2 branches missed.">            MutableList&lt;T&gt; bucket = predicate.accept(each) ? partitionFastList.getSelected() : partitionFastList.getRejected();</span>
+<span class="nc" id="L314">            bucket.add(each);</span>
+        }
+<span class="nc" id="L316">        return partitionFastList;</span>
+    }
+
+    public static &lt;T, P&gt; PartitionFastList&lt;T&gt; partitionWith(T[] array, int size, Predicate2&lt;? super T, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc" id="L321">        PartitionFastList&lt;T&gt; partitionFastList = new PartitionFastList&lt;&gt;();</span>
+
+<span class="nc bnc" id="L323" title="All 2 branches missed.">        for (int i = 0; i &lt; size; i++)</span>
+        {
+<span class="nc" id="L325">            T each = array[i];</span>
+<span class="nc bnc" id="L326" title="All 2 branches missed.">            MutableList&lt;T&gt; bucket = predicate.accept(each, parameter) ? partitionFastList.getSelected() : partitionFastList.getRejected();</span>
+<span class="nc" id="L327">            bucket.add(each);</span>
+        }
+<span class="nc" id="L329">        return partitionFastList;</span>
+    }
+
+    /**
+     * @see Iterate#selectAndRejectWith(Iterable, Predicate2, Object)
+     * @deprecated since 6.0 use {@link RichIterable#partitionWith(Predicate2, Object)} instead.
+     */
+    @Deprecated
+    public static &lt;T, P&gt; Twin&lt;MutableList&lt;T&gt;&gt; selectAndRejectWith(T[] objectArray, int size, Predicate2&lt;? super T, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc" id="L339">        MutableList&lt;T&gt; positiveResult = Lists.mutable.empty();</span>
+<span class="nc" id="L340">        MutableList&lt;T&gt; negativeResult = Lists.mutable.empty();</span>
+<span class="nc bnc" id="L341" title="All 2 branches missed.">        for (int i = 0; i &lt; size; i++)</span>
+        {
+<span class="nc" id="L343">            T each = objectArray[i];</span>
+<span class="nc bnc" id="L344" title="All 2 branches missed.">            (predicate.accept(each, parameter) ? positiveResult : negativeResult).add(each);</span>
+        }
+<span class="nc" id="L346">        return Tuples.twin(positiveResult, negativeResult);</span>
+    }
+
+    public static int indexOf(Object[] array, int size, Object object)
+    {
+<span class="nc bnc" id="L351" title="All 2 branches missed.">        for (int i = 0; i &lt; size; i++)</span>
+        {
+<span class="nc bnc" id="L353" title="All 2 branches missed.">            if (Comparators.nullSafeEquals(array[i], object))</span>
+            {
+<span class="nc" id="L355">                return i;</span>
+            }
+        }
+<span class="nc" id="L358">        return -1;</span>
+    }
+
+    public static int lastIndexOf(Object[] array, int size, Object object)
+    {
+<span class="nc bnc" id="L363" title="All 2 branches missed.">        for (int i = size - 1; i &gt;= 0; i--)</span>
+        {
+<span class="nc bnc" id="L365" title="All 2 branches missed.">            if (Comparators.nullSafeEquals(array[i], object))</span>
+            {
+<span class="nc" id="L367">                return i;</span>
+            }
+        }
+<span class="nc" id="L370">        return -1;</span>
+    }
+
+    public static &lt;T, R extends Collection&lt;T&gt;&gt; R select(T[] array, int size, Predicate&lt;? super T&gt; predicate, R target)
+    {
+<span class="nc bnc" id="L375" title="All 2 branches missed.">        for (int i = 0; i &lt; size; i++)</span>
+        {
+<span class="nc" id="L377">            T item = array[i];</span>
+<span class="nc bnc" id="L378" title="All 2 branches missed.">            if (predicate.accept(item))</span>
+            {
+<span class="nc" id="L380">                target.add(item);</span>
+            }
+        }
+<span class="nc" id="L383">        return target;</span>
+    }
+
+    public static &lt;T, P, R extends Collection&lt;T&gt;&gt; R selectWith(
+            T[] array,
+            int size,
+            Predicate2&lt;? super T, ? super P&gt; predicate,
+            P parameter,
+            R targetCollection)
+    {
+<span class="nc bnc" id="L393" title="All 2 branches missed.">        for (int i = 0; i &lt; size; i++)</span>
+        {
+<span class="nc" id="L395">            T item = array[i];</span>
+<span class="nc bnc" id="L396" title="All 2 branches missed.">            if (predicate.accept(item, parameter))</span>
+            {
+<span class="nc" id="L398">                targetCollection.add(item);</span>
+            }
+        }
+<span class="nc" id="L401">        return targetCollection;</span>
+    }
+
+    public static &lt;T, R extends Collection&lt;T&gt;&gt; R reject(T[] array, int size, Predicate&lt;? super T&gt; predicate, R target)
+    {
+<span class="nc bnc" id="L406" title="All 2 branches missed.">        for (int i = 0; i &lt; size; i++)</span>
+        {
+<span class="nc" id="L408">            T item = array[i];</span>
+<span class="nc bnc" id="L409" title="All 2 branches missed.">            if (!predicate.accept(item))</span>
+            {
+<span class="nc" id="L411">                target.add(item);</span>
+            }
+        }
+<span class="nc" id="L414">        return target;</span>
+    }
+
+    public static &lt;T, P, R extends Collection&lt;T&gt;&gt; R rejectWith(
+            T[] array,
+            int size,
+            Predicate2&lt;? super T, ? super P&gt; predicate,
+            P parameter,
+            R target)
+    {
+<span class="nc bnc" id="L424" title="All 2 branches missed.">        for (int i = 0; i &lt; size; i++)</span>
+        {
+<span class="nc" id="L426">            T item = array[i];</span>
+<span class="nc bnc" id="L427" title="All 2 branches missed.">            if (!predicate.accept(item, parameter))</span>
+            {
+<span class="nc" id="L429">                target.add(item);</span>
+            }
+        }
+<span class="nc" id="L432">        return target;</span>
+    }
+
+    public static &lt;T&gt; FastList&lt;T&gt; selectInstancesOf(Object[] array, int size, Class&lt;T&gt; clazz)
+    {
+<span class="nc" id="L437">        FastList&lt;T&gt; results = FastList.newList(size);</span>
+<span class="nc bnc" id="L438" title="All 2 branches missed.">        for (int i = 0; i &lt; size; i++)</span>
+        {
+<span class="nc" id="L440">            Object each = array[i];</span>
+<span class="nc bnc" id="L441" title="All 2 branches missed.">            if (clazz.isInstance(each))</span>
+            {
+<span class="nc" id="L443">                results.add((T) each);</span>
+            }
+        }
+<span class="nc" id="L446">        return results;</span>
+    }
+
+    public static &lt;T, V, R extends Collection&lt;V&gt;&gt; R collect(
+            T[] array,
+            int size,
+            Function&lt;? super T, ? extends V&gt; function,
+            R target)
+    {
+<span class="nc" id="L455">        InternalArrayIterate.ensureCapacityForAdditionalSize(size, target);</span>
+<span class="nc bnc" id="L456" title="All 2 branches missed.">        for (int i = 0; i &lt; size; i++)</span>
+        {
+<span class="nc" id="L458">            target.add(function.valueOf(array[i]));</span>
+        }
+<span class="nc" id="L460">        return target;</span>
+    }
+
+    /**
+     * @since 9.1.
+     */
+    public static &lt;T, V, R extends Collection&lt;V&gt;&gt; R collectWithIndex(
+            T[] array,
+            int size,
+            ObjectIntToObjectFunction&lt;? super T, ? extends V&gt; function,
+            R target)
+    {
+<span class="nc" id="L472">        InternalArrayIterate.ensureCapacityForAdditionalSize(size, target);</span>
+<span class="nc" id="L473">        int index = 0;</span>
+<span class="nc bnc" id="L474" title="All 2 branches missed.">        for (int i = 0; i &lt; size; i++)</span>
+        {
+<span class="nc" id="L476">            target.add(function.valueOf(array[i], index++));</span>
+        }
+<span class="nc" id="L478">        return target;</span>
+    }
+
+    private static void ensureCapacityForAdditionalSize(int size, Collection&lt;?&gt; target)
+    {
+<span class="nc bnc" id="L483" title="All 2 branches missed.">        if (target instanceof FastList&lt;?&gt;)</span>
+        {
+<span class="nc" id="L485">            ((FastList&lt;?&gt;) target).ensureCapacity(target.size() + size);</span>
+        }
+<span class="nc bnc" id="L487" title="All 2 branches missed.">        else if (target instanceof ArrayList)</span>
+        {
+<span class="nc" id="L489">            ((ArrayList&lt;?&gt;) target).ensureCapacity(target.size() + size);</span>
+        }
+<span class="nc" id="L491">    }</span>
+
+    public static &lt;T, V, R extends Collection&lt;V&gt;&gt; R flatCollect(
+            T[] array,
+            int size,
+            Function&lt;? super T, ? extends Iterable&lt;V&gt;&gt; function,
+            R target)
+    {
+<span class="nc bnc" id="L499" title="All 2 branches missed.">        for (int i = 0; i &lt; size; i++)</span>
+        {
+<span class="nc" id="L501">            Iterate.addAllTo(function.valueOf(array[i]), target);</span>
+        }
+<span class="nc" id="L503">        return target;</span>
+    }
+
+    public static &lt;T, P, V, R extends Collection&lt;V&gt;&gt; R collectWith(
+            T[] array,
+            int size,
+            Function2&lt;? super T, ? super P, ? extends V&gt; function,
+            P parameter,
+            R target)
+    {
+<span class="nc" id="L513">        InternalArrayIterate.ensureCapacityForAdditionalSize(size, target);</span>
+<span class="nc bnc" id="L514" title="All 2 branches missed.">        for (int i = 0; i &lt; size; i++)</span>
+        {
+<span class="nc" id="L516">            target.add(function.value(array[i], parameter));</span>
+        }
+<span class="nc" id="L518">        return target;</span>
+    }
+
+    public static &lt;T, V, R extends Collection&lt;V&gt;&gt; R collectIf(
+            T[] array,
+            int size,
+            Predicate&lt;? super T&gt; predicate,
+            Function&lt;? super T, ? extends V&gt; function,
+            R target)
+    {
+<span class="nc bnc" id="L528" title="All 2 branches missed.">        for (int i = 0; i &lt; size; i++)</span>
+        {
+<span class="nc" id="L530">            T item = array[i];</span>
+<span class="nc bnc" id="L531" title="All 2 branches missed.">            if (predicate.accept(item))</span>
+            {
+<span class="nc" id="L533">                target.add(function.valueOf(item));</span>
+            }
+        }
+<span class="nc" id="L536">        return target;</span>
+    }
+
+    public static &lt;T&gt; T min(T[] array, int size, Comparator&lt;? super T&gt; comparator)
+    {
+<span class="nc bnc" id="L541" title="All 2 branches missed.">        if (size == 0)</span>
+        {
+<span class="nc" id="L543">            throw new NoSuchElementException();</span>
+        }
+
+<span class="nc" id="L546">        T min = array[0];</span>
+<span class="nc bnc" id="L547" title="All 2 branches missed.">        for (int i = 1; i &lt; size; i++)</span>
+        {
+<span class="nc" id="L549">            T item = array[i];</span>
+<span class="nc bnc" id="L550" title="All 2 branches missed.">            if (comparator.compare(item, min) &lt; 0)</span>
+            {
+<span class="nc" id="L552">                min = item;</span>
+            }
+        }
+<span class="nc" id="L555">        return min;</span>
+    }
+
+    public static &lt;T&gt; T max(T[] array, int size, Comparator&lt;? super T&gt; comparator)
+    {
+<span class="nc bnc" id="L560" title="All 2 branches missed.">        if (size == 0)</span>
+        {
+<span class="nc" id="L562">            throw new NoSuchElementException();</span>
+        }
+
+<span class="nc" id="L565">        T max = array[0];</span>
+<span class="nc bnc" id="L566" title="All 2 branches missed.">        for (int i = 1; i &lt; size; i++)</span>
+        {
+<span class="nc" id="L568">            T item = array[i];</span>
+<span class="nc bnc" id="L569" title="All 2 branches missed.">            if (comparator.compare(item, max) &gt; 0)</span>
+            {
+<span class="nc" id="L571">                max = item;</span>
+            }
+        }
+<span class="nc" id="L574">        return max;</span>
+    }
+
+    public static &lt;T&gt; T min(T[] array, int size)
+    {
+<span class="nc bnc" id="L579" title="All 2 branches missed.">        if (size == 0)</span>
+        {
+<span class="nc" id="L581">            throw new NoSuchElementException();</span>
+        }
+
+<span class="nc" id="L584">        T min = array[0];</span>
+<span class="nc bnc" id="L585" title="All 2 branches missed.">        for (int i = 1; i &lt; size; i++)</span>
+        {
+<span class="nc" id="L587">            T item = array[i];</span>
+<span class="nc bnc" id="L588" title="All 2 branches missed.">            if (((Comparable&lt;? super T&gt;) item).compareTo(min) &lt; 0)</span>
+            {
+<span class="nc" id="L590">                min = item;</span>
+            }
+        }
+<span class="nc" id="L593">        return min;</span>
+    }
+
+    public static &lt;T&gt; T max(T[] array, int size)
+    {
+<span class="nc bnc" id="L598" title="All 2 branches missed.">        if (size == 0)</span>
+        {
+<span class="nc" id="L600">            throw new NoSuchElementException();</span>
+        }
+
+<span class="nc" id="L603">        T max = array[0];</span>
+<span class="nc bnc" id="L604" title="All 2 branches missed.">        for (int i = 1; i &lt; size; i++)</span>
+        {
+<span class="nc" id="L606">            T item = array[i];</span>
+<span class="nc bnc" id="L607" title="All 2 branches missed.">            if (((Comparable&lt;T&gt;) item).compareTo(max) &gt; 0)</span>
+            {
+<span class="nc" id="L609">                max = item;</span>
+            }
+        }
+<span class="nc" id="L612">        return max;</span>
+    }
+
+    public static &lt;T, V extends Comparable&lt;? super V&gt;&gt; T minBy(T[] array, int size, Function&lt;? super T, ? extends V&gt; function)
+    {
+<span class="nc bnc" id="L617" title="All 2 branches missed.">        if (ArrayIterate.isEmpty(array))</span>
+        {
+<span class="nc" id="L619">            throw new NoSuchElementException();</span>
+        }
+
+<span class="nc" id="L622">        T min = array[0];</span>
+<span class="nc" id="L623">        V minValue = function.valueOf(min);</span>
+<span class="nc bnc" id="L624" title="All 2 branches missed.">        for (int i = 1; i &lt; size; i++)</span>
+        {
+<span class="nc" id="L626">            T next = array[i];</span>
+<span class="nc" id="L627">            V nextValue = function.valueOf(next);</span>
+<span class="nc bnc" id="L628" title="All 2 branches missed.">            if (nextValue.compareTo(minValue) &lt; 0)</span>
+            {
+<span class="nc" id="L630">                min = next;</span>
+<span class="nc" id="L631">                minValue = nextValue;</span>
+            }
+        }
+<span class="nc" id="L634">        return min;</span>
+    }
+
+    public static &lt;T, V extends Comparable&lt;? super V&gt;&gt; T maxBy(T[] array, int size, Function&lt;? super T, ? extends V&gt; function)
+    {
+<span class="nc bnc" id="L639" title="All 2 branches missed.">        if (ArrayIterate.isEmpty(array))</span>
+        {
+<span class="nc" id="L641">            throw new NoSuchElementException();</span>
+        }
+
+<span class="nc" id="L644">        T max = array[0];</span>
+<span class="nc" id="L645">        V maxValue = function.valueOf(max);</span>
+<span class="nc bnc" id="L646" title="All 2 branches missed.">        for (int i = 1; i &lt; size; i++)</span>
+        {
+<span class="nc" id="L648">            T next = array[i];</span>
+<span class="nc" id="L649">            V nextValue = function.valueOf(next);</span>
+<span class="nc bnc" id="L650" title="All 2 branches missed.">            if (nextValue.compareTo(maxValue) &gt; 0)</span>
+            {
+<span class="nc" id="L652">                max = next;</span>
+<span class="nc" id="L653">                maxValue = nextValue;</span>
+            }
+        }
+<span class="nc" id="L656">        return max;</span>
+    }
+
+    public static &lt;T&gt; int count(T[] array, int size, Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L661">        int count = 0;</span>
+<span class="nc bnc" id="L662" title="All 2 branches missed.">        for (int i = 0; i &lt; size; i++)</span>
+        {
+<span class="nc bnc" id="L664" title="All 2 branches missed.">            if (predicate.accept(array[i]))</span>
+            {
+<span class="nc" id="L666">                count++;</span>
+            }
+        }
+<span class="nc" id="L669">        return count;</span>
+    }
+
+    public static &lt;T, P&gt; int countWith(T[] array, int size, Predicate2&lt;? super T, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc" id="L674">        int count = 0;</span>
+<span class="nc bnc" id="L675" title="All 2 branches missed.">        for (int i = 0; i &lt; size; i++)</span>
+        {
+<span class="nc bnc" id="L677" title="All 2 branches missed.">            if (predicate.accept(array[i], parameter))</span>
+            {
+<span class="nc" id="L679">                count++;</span>
+            }
+        }
+<span class="nc" id="L682">        return count;</span>
+    }
+
+    public static &lt;T&gt; boolean shortCircuit(
+            T[] array,
+            int size,
+            Predicate&lt;? super T&gt; predicate,
+            boolean expected,
+            boolean onShortCircuit,
+            boolean atEnd)
+    {
+<span class="nc bnc" id="L693" title="All 2 branches missed.">        for (int i = 0; i &lt; size; i++)</span>
+        {
+<span class="nc" id="L695">            T each = array[i];</span>
+<span class="nc bnc" id="L696" title="All 2 branches missed.">            if (predicate.accept(each) == expected)</span>
+            {
+<span class="nc" id="L698">                return onShortCircuit;</span>
+            }
+        }
+<span class="nc" id="L701">        return atEnd;</span>
+    }
+
+    public static &lt;T, P&gt; boolean shortCircuitWith(
+            T[] array,
+            int size,
+            Predicate2&lt;? super T, ? super P&gt; predicate2,
+            P parameter,
+            boolean expected,
+            boolean onShortCircuit,
+            boolean atEnd)
+    {
+<span class="nc bnc" id="L713" title="All 2 branches missed.">        for (int i = 0; i &lt; size; i++)</span>
+        {
+<span class="nc" id="L715">            T each = array[i];</span>
+<span class="nc bnc" id="L716" title="All 2 branches missed.">            if (predicate2.accept(each, parameter) == expected)</span>
+            {
+<span class="nc" id="L718">                return onShortCircuit;</span>
+            }
+        }
+<span class="nc" id="L721">        return atEnd;</span>
+    }
+
+    public static &lt;T, P&gt; boolean corresponds(T[] array, int size, OrderedIterable&lt;P&gt; other, Predicate2&lt;? super T, ? super P&gt; predicate)
+    {
+<span class="nc bnc" id="L726" title="All 2 branches missed.">        if (size != other.size())</span>
+        {
+<span class="nc" id="L728">            return false;</span>
+        }
+
+<span class="nc bnc" id="L731" title="All 2 branches missed.">        if (other instanceof RandomAccess)</span>
+        {
+<span class="nc" id="L733">            List&lt;P&gt; otherList = (List&lt;P&gt;) other;</span>
+<span class="nc bnc" id="L734" title="All 2 branches missed.">            for (int index = 0; index &lt; size; index++)</span>
+            {
+<span class="nc bnc" id="L736" title="All 2 branches missed.">                if (!predicate.accept(array[index], otherList.get(index)))</span>
+                {
+<span class="nc" id="L738">                    return false;</span>
+                }
+            }
+<span class="nc" id="L741">            return true;</span>
+        }
+
+<span class="nc" id="L744">        Iterator&lt;P&gt; otherIterator = other.iterator();</span>
+<span class="nc bnc" id="L745" title="All 2 branches missed.">        for (int index = 0; index &lt; size; index++)</span>
+        {
+<span class="nc bnc" id="L747" title="All 2 branches missed.">            if (!predicate.accept(array[index], otherIterator.next()))</span>
+            {
+<span class="nc" id="L749">                return false;</span>
+            }
+        }
+
+<span class="nc" id="L753">        return true;</span>
+    }
+
+    public static &lt;T&gt; boolean anySatisfy(T[] array, int size, Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L758">        return InternalArrayIterate.shortCircuit(array, size, predicate, true, true, false);</span>
+    }
+
+    public static &lt;T, P&gt; boolean anySatisfyWith(T[] array, int size, Predicate2&lt;? super T, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc" id="L763">        return InternalArrayIterate.shortCircuitWith(array, size, predicate, parameter, true, true, false);</span>
+    }
+
+    public static &lt;T&gt; boolean allSatisfy(T[] array, int size, Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L768">        return InternalArrayIterate.shortCircuit(array, size, predicate, false, false, true);</span>
+    }
+
+    public static &lt;T, P&gt; boolean allSatisfyWith(T[] array, int size, Predicate2&lt;? super T, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc" id="L773">        return InternalArrayIterate.shortCircuitWith(array, size, predicate, parameter, false, false, true);</span>
+    }
+
+    public static &lt;T&gt; boolean noneSatisfy(T[] array, int size, Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L778">        return InternalArrayIterate.shortCircuit(array, size, predicate, true, false, true);</span>
+    }
+
+    public static &lt;T, P&gt; boolean noneSatisfyWith(T[] array, int size, Predicate2&lt;? super T, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc" id="L783">        return InternalArrayIterate.shortCircuitWith(array, size, predicate, parameter, true, false, true);</span>
+    }
+
+    public static &lt;T&gt; T detect(T[] array, int size, Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc bnc" id="L788" title="All 2 branches missed.">        for (int i = 0; i &lt; size; i++)</span>
+        {
+<span class="nc" id="L790">            T each = array[i];</span>
+<span class="nc bnc" id="L791" title="All 2 branches missed.">            if (predicate.accept(each))</span>
+            {
+<span class="nc" id="L793">                return each;</span>
+            }
+        }
+<span class="nc" id="L796">        return null;</span>
+    }
+
+    public static &lt;T, P&gt; T detectWith(T[] array, int size, Predicate2&lt;? super T, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc bnc" id="L801" title="All 2 branches missed.">        for (int i = 0; i &lt; size; i++)</span>
+        {
+<span class="nc" id="L803">            T each = array[i];</span>
+<span class="nc bnc" id="L804" title="All 2 branches missed.">            if (predicate.accept(each, parameter))</span>
+            {
+<span class="nc" id="L806">                return each;</span>
+            }
+        }
+<span class="nc" id="L809">        return null;</span>
+    }
+
+    public static &lt;T&gt; Optional&lt;T&gt; detectOptional(T[] array, int size, Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc bnc" id="L814" title="All 2 branches missed.">        for (int i = 0; i &lt; size; i++)</span>
+        {
+<span class="nc" id="L816">            T each = array[i];</span>
+<span class="nc bnc" id="L817" title="All 2 branches missed.">            if (predicate.accept(each))</span>
+            {
+<span class="nc" id="L819">                return Optional.of(each);</span>
+            }
+        }
+<span class="nc" id="L822">        return Optional.empty();</span>
+    }
+
+    public static &lt;T, P&gt; Optional&lt;T&gt; detectWithOptional(T[] array, int size, Predicate2&lt;? super T, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc bnc" id="L827" title="All 2 branches missed.">        for (int i = 0; i &lt; size; i++)</span>
+        {
+<span class="nc" id="L829">            T each = array[i];</span>
+<span class="nc bnc" id="L830" title="All 2 branches missed.">            if (predicate.accept(each, parameter))</span>
+            {
+<span class="nc" id="L832">                return Optional.of(each);</span>
+            }
+        }
+<span class="nc" id="L835">        return Optional.empty();</span>
+    }
+
+    public static &lt;T&gt; void appendString(
+            ListIterable&lt;T&gt; iterable,
+            T[] array,
+            int size,
+            Appendable appendable,
+            String start,
+            String separator,
+            String end)
+    {
+        try
+        {
+<span class="nc" id="L849">            appendable.append(start);</span>
+
+<span class="nc bnc" id="L851" title="All 2 branches missed.">            if (size &gt; 0)</span>
+            {
+<span class="nc" id="L853">                appendable.append(IterableIterate.stringValueOfItem(iterable, array[0]));</span>
+
+<span class="nc bnc" id="L855" title="All 2 branches missed.">                for (int i = 1; i &lt; size; i++)</span>
+                {
+<span class="nc" id="L857">                    appendable.append(separator);</span>
+<span class="nc" id="L858">                    appendable.append(IterableIterate.stringValueOfItem(iterable, array[i]));</span>
+                }
+            }
+
+<span class="nc" id="L862">            appendable.append(end);</span>
+        }
+<span class="nc" id="L864">        catch (IOException e)</span>
+        {
+<span class="nc" id="L866">            throw new RuntimeException(e);</span>
+<span class="nc" id="L867">        }</span>
+<span class="nc" id="L868">    }</span>
+
+    public static &lt;T&gt; int detectIndex(T[] objectArray, int size, Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc bnc" id="L872" title="All 2 branches missed.">        for (int i = 0; i &lt; size; i++)</span>
+        {
+<span class="nc bnc" id="L874" title="All 2 branches missed.">            if (predicate.accept(objectArray[i]))</span>
+            {
+<span class="nc" id="L876">                return i;</span>
+            }
+        }
+<span class="nc" id="L879">        return -1;</span>
+    }
+
+    public static &lt;T&gt; int detectLastIndex(T[] objectArray, int size, Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc bnc" id="L884" title="All 2 branches missed.">        for (int i = size - 1; i &gt;= 0; i--)</span>
+        {
+<span class="nc bnc" id="L886" title="All 2 branches missed.">            if (predicate.accept(objectArray[i]))</span>
+            {
+<span class="nc" id="L888">                return i;</span>
+            }
+        }
+<span class="nc" id="L891">        return -1;</span>
+    }
+
+    public static &lt;T&gt; void forEachWithIndex(T[] objectArray, int size, ObjectIntProcedure&lt;? super T&gt; objectIntProcedure)
+    {
+<span class="nc bnc" id="L896" title="All 2 branches missed.">        for (int i = 0; i &lt; size; i++)</span>
+        {
+<span class="nc" id="L898">            objectIntProcedure.value(objectArray[i], i);</span>
+        }
+<span class="nc" id="L900">    }</span>
+
+    /**
+     * @deprecated in 7.0.
+     */
+    @Deprecated
+    public static &lt;T, R extends List&lt;T&gt;&gt; R distinct(T[] objectArray, int size, R targetList)
+    {
+<span class="nc" id="L908">        MutableSet&lt;T&gt; seenSoFar = UnifiedSet.newSet();</span>
+
+<span class="nc bnc" id="L910" title="All 2 branches missed.">        for (int i = 0; i &lt; size; i++)</span>
+        {
+<span class="nc" id="L912">            T each = objectArray[i];</span>
+<span class="nc bnc" id="L913" title="All 2 branches missed.">            if (seenSoFar.add(each))</span>
+            {
+<span class="nc" id="L915">                targetList.add(each);</span>
+            }
+        }
+<span class="nc" id="L918">        return targetList;</span>
+    }
+
+    /**
+     * @since 7.0.
+     */
+    public static &lt;T&gt; FastList&lt;T&gt; distinct(T[] objectArray, int size)
+    {
+<span class="nc" id="L926">        return InternalArrayIterate.distinct(objectArray, size, FastList.newList());</span>
+    }
+
+    /**
+     * @since 7.0.
+     */
+    public static &lt;T&gt; FastList&lt;T&gt; distinct(T[] objectArray, int size, HashingStrategy&lt;? super T&gt; hashingStrategy)
+    {
+<span class="nc" id="L934">        MutableSet&lt;T&gt; seenSoFar = UnifiedSetWithHashingStrategy.newSet(hashingStrategy);</span>
+
+<span class="nc" id="L936">        FastList&lt;T&gt; result = FastList.newList();</span>
+<span class="nc bnc" id="L937" title="All 2 branches missed.">        for (int i = 0; i &lt; size; i++)</span>
+        {
+<span class="nc" id="L939">            T each = objectArray[i];</span>
+<span class="nc bnc" id="L940" title="All 2 branches missed.">            if (seenSoFar.add(each))</span>
+            {
+<span class="nc" id="L942">                result.add(each);</span>
+            }
+        }
+<span class="nc" id="L945">        return result;</span>
+    }
+
+    public static &lt;T&gt; long sumOfInt(T[] array, int size, IntFunction&lt;? super T&gt; function)
+    {
+<span class="nc" id="L950">        long result = 0L;</span>
+<span class="nc bnc" id="L951" title="All 2 branches missed.">        for (int i = 0; i &lt; size; i++)</span>
+        {
+<span class="nc" id="L953">            result += (long) function.intValueOf(array[i]);</span>
+        }
+<span class="nc" id="L955">        return result;</span>
+    }
+
+    public static &lt;T&gt; long sumOfLong(T[] array, int size, LongFunction&lt;? super T&gt; function)
+    {
+<span class="nc" id="L960">        long result = 0L;</span>
+<span class="nc bnc" id="L961" title="All 2 branches missed.">        for (int i = 0; i &lt; size; i++)</span>
+        {
+<span class="nc" id="L963">            result += function.longValueOf(array[i]);</span>
+        }
+<span class="nc" id="L965">        return result;</span>
+    }
+
+    public static &lt;T&gt; double sumOfFloat(T[] array, int size, FloatFunction&lt;? super T&gt; function)
+    {
+<span class="nc" id="L970">        double sum = 0.0d;</span>
+<span class="nc" id="L971">        double compensation = 0.0d;</span>
+<span class="nc bnc" id="L972" title="All 2 branches missed.">        for (int i = 0; i &lt; size; i++)</span>
+        {
+<span class="nc" id="L974">            double adjustedValue = (double) function.floatValueOf(array[i]) - compensation;</span>
+<span class="nc" id="L975">            double nextSum = sum + adjustedValue;</span>
+<span class="nc" id="L976">            compensation = nextSum - sum - adjustedValue;</span>
+<span class="nc" id="L977">            sum = nextSum;</span>
+        }
+<span class="nc" id="L979">        return sum;</span>
+    }
+
+    public static &lt;T&gt; double sumOfDouble(T[] array, int size, DoubleFunction&lt;? super T&gt; function)
+    {
+<span class="nc" id="L984">        double sum = 0.0d;</span>
+<span class="nc" id="L985">        double compensation = 0.0d;</span>
+<span class="nc bnc" id="L986" title="All 2 branches missed.">        for (int i = 0; i &lt; size; i++)</span>
+        {
+<span class="nc" id="L988">            double adjustedValue = function.doubleValueOf(array[i]) - compensation;</span>
+<span class="nc" id="L989">            double nextSum = sum + adjustedValue;</span>
+<span class="nc" id="L990">            compensation = nextSum - sum - adjustedValue;</span>
+<span class="nc" id="L991">            sum = nextSum;</span>
+        }
+<span class="nc" id="L993">        return sum;</span>
+    }
+
+    public static &lt;V, T&gt; MutableObjectLongMap&lt;V&gt; sumByInt(T[] array, int size, Function&lt;? super T, ? extends V&gt; groupBy, IntFunction&lt;? super T&gt; function)
+    {
+<span class="nc" id="L998">        MutableObjectLongMap&lt;V&gt; result = ObjectLongMaps.mutable.empty();</span>
+<span class="nc bnc" id="L999" title="All 2 branches missed.">        for (int i = 0; i &lt; size; i++)</span>
+        {
+<span class="nc" id="L1001">            T item = array[i];</span>
+<span class="nc" id="L1002">            result.addToValue(groupBy.valueOf(item), function.intValueOf(item));</span>
+        }
+<span class="nc" id="L1004">        return result;</span>
+    }
+
+    public static &lt;V, T&gt; MutableObjectLongMap&lt;V&gt; sumByLong(T[] array, int size, Function&lt;? super T, ? extends V&gt; groupBy, LongFunction&lt;? super T&gt; function)
+    {
+<span class="nc" id="L1009">        MutableObjectLongMap&lt;V&gt; result = ObjectLongMaps.mutable.empty();</span>
+<span class="nc bnc" id="L1010" title="All 2 branches missed.">        for (int i = 0; i &lt; size; i++)</span>
+        {
+<span class="nc" id="L1012">            T item = array[i];</span>
+<span class="nc" id="L1013">            result.addToValue(groupBy.valueOf(item), function.longValueOf(item));</span>
+        }
+<span class="nc" id="L1015">        return result;</span>
+    }
+
+    public static &lt;V, T&gt; MutableObjectDoubleMap&lt;V&gt; sumByFloat(T[] array, int size, Function&lt;? super T, ? extends V&gt; groupBy, FloatFunction&lt;? super T&gt; function)
+    {
+<span class="nc" id="L1020">        MutableObjectDoubleMap&lt;V&gt; result = ObjectDoubleMaps.mutable.empty();</span>
+<span class="nc" id="L1021">        MutableObjectDoubleMap&lt;V&gt; groupKeyToCompensation = ObjectDoubleMaps.mutable.empty();</span>
+<span class="nc bnc" id="L1022" title="All 2 branches missed.">        for (int i = 0; i &lt; size; i++)</span>
+        {
+<span class="nc" id="L1024">            T item = array[i];</span>
+<span class="nc" id="L1025">            V groupByKey = groupBy.valueOf(item);</span>
+<span class="nc" id="L1026">            double compensation = groupKeyToCompensation.getIfAbsentPut(groupByKey, 0.0d);</span>
+<span class="nc" id="L1027">            double adjustedValue = function.floatValueOf(item) - compensation;</span>
+<span class="nc" id="L1028">            double nextSum = result.get(groupByKey) + adjustedValue;</span>
+<span class="nc" id="L1029">            groupKeyToCompensation.put(groupByKey, nextSum - result.get(groupByKey) - adjustedValue);</span>
+<span class="nc" id="L1030">            result.put(groupByKey, nextSum);</span>
+        }
+<span class="nc" id="L1032">        return result;</span>
+    }
+
+    public static &lt;V, T&gt; MutableObjectDoubleMap&lt;V&gt; sumByDouble(T[] array, int size, Function&lt;? super T, ? extends V&gt; groupBy, DoubleFunction&lt;? super T&gt; function)
+    {
+<span class="nc" id="L1037">        MutableObjectDoubleMap&lt;V&gt; result = ObjectDoubleMaps.mutable.empty();</span>
+<span class="nc" id="L1038">        MutableObjectDoubleMap&lt;V&gt; groupKeyToCompensation = ObjectDoubleHashMap.newMap();</span>
+<span class="nc bnc" id="L1039" title="All 2 branches missed.">        for (int i = 0; i &lt; size; i++)</span>
+        {
+<span class="nc" id="L1041">            T item = array[i];</span>
+<span class="nc" id="L1042">            V groupByKey = groupBy.valueOf(item);</span>
+<span class="nc" id="L1043">            double compensation = groupKeyToCompensation.getIfAbsentPut(groupByKey, 0.0d);</span>
+<span class="nc" id="L1044">            double adjustedValue = function.doubleValueOf(item) - compensation;</span>
+<span class="nc" id="L1045">            double nextSum = result.get(groupByKey) + adjustedValue;</span>
+<span class="nc" id="L1046">            groupKeyToCompensation.put(groupByKey, nextSum - result.get(groupByKey) - adjustedValue);</span>
+<span class="nc" id="L1047">            result.put(groupByKey, nextSum);</span>
+        }
+<span class="nc" id="L1049">        return result;</span>
+    }
+
+    /**
+     * @since 8.0
+     */
+    public static &lt;T&gt; IntSummaryStatistics summarizeInt(T[] items, int size, IntFunction&lt;? super T&gt; function)
+    {
+<span class="nc" id="L1057">        IntSummaryStatistics stats = new IntSummaryStatistics();</span>
+<span class="nc bnc" id="L1058" title="All 2 branches missed.">        for (int i = 0; i &lt; size; i++)</span>
+        {
+<span class="nc" id="L1060">            T item = items[i];</span>
+<span class="nc" id="L1061">            stats.accept(function.intValueOf(item));</span>
+        }
+<span class="nc" id="L1063">        return stats;</span>
+    }
+
+    /**
+     * @since 8.0
+     */
+    public static &lt;T&gt; DoubleSummaryStatistics summarizeFloat(T[] items, int size, FloatFunction&lt;? super T&gt; function)
+    {
+<span class="nc" id="L1071">        DoubleSummaryStatistics stats = new DoubleSummaryStatistics();</span>
+<span class="nc bnc" id="L1072" title="All 2 branches missed.">        for (int i = 0; i &lt; size; i++)</span>
+        {
+<span class="nc" id="L1074">            T item = items[i];</span>
+<span class="nc" id="L1075">            stats.accept((double) function.floatValueOf(item));</span>
+        }
+<span class="nc" id="L1077">        return stats;</span>
+    }
+
+    /**
+     * @since 8.0
+     */
+    public static &lt;T&gt; LongSummaryStatistics summarizeLong(T[] items, int size, LongFunction&lt;? super T&gt; function)
+    {
+<span class="nc" id="L1085">        LongSummaryStatistics stats = new LongSummaryStatistics();</span>
+<span class="nc bnc" id="L1086" title="All 2 branches missed.">        for (int i = 0; i &lt; size; i++)</span>
+        {
+<span class="nc" id="L1088">            T item = items[i];</span>
+<span class="nc" id="L1089">            stats.accept(function.longValueOf(item));</span>
+        }
+<span class="nc" id="L1091">        return stats;</span>
+    }
+
+    /**
+     * @since 8.0
+     */
+    public static &lt;T&gt; DoubleSummaryStatistics summarizeDouble(T[] items, int size, DoubleFunction&lt;? super T&gt; function)
+    {
+<span class="nc" id="L1099">        DoubleSummaryStatistics stats = new DoubleSummaryStatistics();</span>
+<span class="nc bnc" id="L1100" title="All 2 branches missed.">        for (int i = 0; i &lt; size; i++)</span>
+        {
+<span class="nc" id="L1102">            T item = items[i];</span>
+<span class="nc" id="L1103">            stats.accept(function.doubleValueOf(item));</span>
+        }
+<span class="nc" id="L1105">        return stats;</span>
+    }
+
+    /**
+     * @since 8.0
+     */
+    public static &lt;T&gt; Optional&lt;T&gt; reduce(T[] items, int size, BinaryOperator&lt;T&gt; accumulator)
+    {
+<span class="nc bnc" id="L1113" title="All 2 branches missed.">        if (size == 0)</span>
+        {
+<span class="nc" id="L1115">            return Optional.empty();</span>
+        }
+<span class="nc" id="L1117">        T result = items[0];</span>
+<span class="nc bnc" id="L1118" title="All 2 branches missed.">        for (int i = 1; i &lt; size; i++)</span>
+        {
+<span class="nc" id="L1120">            result = accumulator.apply(result, items[i]);</span>
+        }
+<span class="nc" id="L1122">        return Optional.of(result);</span>
+    }
+
+    /**
+     * @since 8.0
+     */
+    public static &lt;R, A, T&gt; R reduceInPlace(T[] items, int size, Collector&lt;? super T, A, R&gt; collector)
+    {
+<span class="nc" id="L1130">        A mutableResult = collector.supplier().get();</span>
+<span class="nc" id="L1131">        BiConsumer&lt;A, ? super T&gt; accumulator = collector.accumulator();</span>
+<span class="nc bnc" id="L1132" title="All 2 branches missed.">        for (int i = 0; i &lt; size; i++)</span>
+        {
+<span class="nc" id="L1134">            T item = items[i];</span>
+<span class="nc" id="L1135">            accumulator.accept(mutableResult, item);</span>
+        }
+<span class="nc" id="L1137">        return collector.finisher().apply(mutableResult);</span>
+    }
+
+    /**
+     * @since 8.0
+     */
+    public static &lt;R, T&gt; R reduceInPlace(T[] items, int size, Supplier&lt;R&gt; supplier, BiConsumer&lt;R, ? super T&gt; accumulator)
+    {
+<span class="nc" id="L1145">        R mutableResult = supplier.get();</span>
+<span class="nc bnc" id="L1146" title="All 2 branches missed.">        for (int i = 0; i &lt; size; i++)</span>
+        {
+<span class="nc" id="L1148">            T item = items[i];</span>
+<span class="nc" id="L1149">            accumulator.accept(mutableResult, item);</span>
+        }
+<span class="nc" id="L1151">        return mutableResult;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.0.201801022044</span></div></body></html>

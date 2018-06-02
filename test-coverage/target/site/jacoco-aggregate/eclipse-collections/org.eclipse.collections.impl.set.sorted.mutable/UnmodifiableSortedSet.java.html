@@ -1,0 +1,562 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>UnmodifiableSortedSet.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Eclipse Collections Test Coverage Aggregation</a> &gt; <a href="../index.html" class="el_bundle">eclipse-collections</a> &gt; <a href="index.source.html" class="el_package">org.eclipse.collections.impl.set.sorted.mutable</a> &gt; <span class="el_source">UnmodifiableSortedSet.java</span></div><h1>UnmodifiableSortedSet.java</h1><pre class="source lang-java linenums">/*
+ * Copyright (c) 2017 Goldman Sachs and others.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * and Eclipse Distribution License v. 1.0 which accompany this distribution.
+ * The Eclipse Public License is available at http://www.eclipse.org/legal/epl-v10.html
+ * and the Eclipse Distribution License is available at
+ * http://www.eclipse.org/org/documents/edl-v10.php.
+ */
+
+package org.eclipse.collections.impl.set.sorted.mutable;
+
+import java.io.Serializable;
+import java.util.Collection;
+import java.util.Comparator;
+import java.util.Set;
+import java.util.SortedSet;
+import java.util.concurrent.ExecutorService;
+
+import org.eclipse.collections.api.LazyIterable;
+import org.eclipse.collections.api.block.function.Function;
+import org.eclipse.collections.api.block.function.Function2;
+import org.eclipse.collections.api.block.function.primitive.BooleanFunction;
+import org.eclipse.collections.api.block.function.primitive.ByteFunction;
+import org.eclipse.collections.api.block.function.primitive.CharFunction;
+import org.eclipse.collections.api.block.function.primitive.DoubleFunction;
+import org.eclipse.collections.api.block.function.primitive.FloatFunction;
+import org.eclipse.collections.api.block.function.primitive.IntFunction;
+import org.eclipse.collections.api.block.function.primitive.LongFunction;
+import org.eclipse.collections.api.block.function.primitive.ObjectIntToObjectFunction;
+import org.eclipse.collections.api.block.function.primitive.ShortFunction;
+import org.eclipse.collections.api.block.predicate.Predicate;
+import org.eclipse.collections.api.block.predicate.Predicate2;
+import org.eclipse.collections.api.block.procedure.Procedure;
+import org.eclipse.collections.api.block.procedure.primitive.ObjectIntProcedure;
+import org.eclipse.collections.api.list.MutableList;
+import org.eclipse.collections.api.list.primitive.MutableBooleanList;
+import org.eclipse.collections.api.list.primitive.MutableByteList;
+import org.eclipse.collections.api.list.primitive.MutableCharList;
+import org.eclipse.collections.api.list.primitive.MutableDoubleList;
+import org.eclipse.collections.api.list.primitive.MutableFloatList;
+import org.eclipse.collections.api.list.primitive.MutableIntList;
+import org.eclipse.collections.api.list.primitive.MutableLongList;
+import org.eclipse.collections.api.list.primitive.MutableShortList;
+import org.eclipse.collections.api.multimap.sortedset.MutableSortedSetMultimap;
+import org.eclipse.collections.api.ordered.OrderedIterable;
+import org.eclipse.collections.api.partition.set.sorted.PartitionMutableSortedSet;
+import org.eclipse.collections.api.set.SetIterable;
+import org.eclipse.collections.api.set.sorted.ImmutableSortedSet;
+import org.eclipse.collections.api.set.sorted.MutableSortedSet;
+import org.eclipse.collections.api.set.sorted.ParallelSortedSetIterable;
+import org.eclipse.collections.api.set.sorted.SortedSetIterable;
+import org.eclipse.collections.api.stack.MutableStack;
+import org.eclipse.collections.api.tuple.Pair;
+import org.eclipse.collections.impl.collection.mutable.AbstractUnmodifiableMutableCollection;
+import org.eclipse.collections.impl.collection.mutable.UnmodifiableCollectionSerializationProxy;
+import org.eclipse.collections.impl.factory.SortedSets;
+
+/**
+ * An unmodifiable view of a SortedSet.
+ *
+ * @see MutableSortedSet#asUnmodifiable()
+ */
+public class UnmodifiableSortedSet&lt;T&gt;
+        extends AbstractUnmodifiableMutableCollection&lt;T&gt;
+        implements MutableSortedSet&lt;T&gt;, Serializable
+{
+    UnmodifiableSortedSet(MutableSortedSet&lt;? extends T&gt; sortedSet)
+    {
+<span class="nc" id="L70">        super(sortedSet);</span>
+<span class="nc" id="L71">    }</span>
+
+    /**
+     * This method will take a MutableSortedSet and wrap it directly in a UnmodifiableSortedSet.  It will
+     * take any other non-GS-SortedSet and first adapt it will a SortedSetAdapter, and then return a
+     * UnmodifiableSortedSet that wraps the adapter.
+     */
+    public static &lt;E, S extends SortedSet&lt;E&gt;&gt; UnmodifiableSortedSet&lt;E&gt; of(S set)
+    {
+<span class="nc bnc" id="L80" title="All 2 branches missed.">        if (set == null)</span>
+        {
+<span class="nc" id="L82">            throw new IllegalArgumentException(&quot;cannot create an UnmodifiableSortedSet for null&quot;);</span>
+        }
+<span class="nc" id="L84">        return new UnmodifiableSortedSet&lt;&gt;(SortedSetAdapter.adapt(set));</span>
+    }
+
+    protected MutableSortedSet&lt;T&gt; getSortedSet()
+    {
+<span class="nc" id="L89">        return (MutableSortedSet&lt;T&gt;) this.getMutableCollection();</span>
+    }
+
+    @Override
+    public MutableSortedSet&lt;T&gt; asUnmodifiable()
+    {
+<span class="nc" id="L95">        return this;</span>
+    }
+
+    @Override
+    public MutableSortedSet&lt;T&gt; asSynchronized()
+    {
+<span class="nc" id="L101">        return SynchronizedSortedSet.of(this);</span>
+    }
+
+    @Override
+    public ImmutableSortedSet&lt;T&gt; toImmutable()
+    {
+<span class="nc" id="L107">        return SortedSets.immutable.withSortedSet(this.getSortedSet());</span>
+    }
+
+    @Override
+    public boolean equals(Object obj)
+    {
+<span class="nc" id="L113">        return this.getSortedSet().equals(obj);</span>
+    }
+
+    @Override
+    public int hashCode()
+    {
+<span class="nc" id="L119">        return this.getSortedSet().hashCode();</span>
+    }
+
+    @Override
+    public UnmodifiableSortedSet&lt;T&gt; clone()
+    {
+<span class="nc" id="L125">        return this;</span>
+    }
+
+    @Override
+    public MutableSortedSet&lt;T&gt; newEmpty()
+    {
+<span class="nc" id="L131">        return this.getSortedSet().newEmpty();</span>
+    }
+
+    @Override
+    public MutableSortedSet&lt;T&gt; tap(Procedure&lt;? super T&gt; procedure)
+    {
+<span class="nc" id="L137">        this.forEach(procedure);</span>
+<span class="nc" id="L138">        return this;</span>
+    }
+
+    @Override
+    public MutableSortedSet&lt;T&gt; select(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L144">        return this.getSortedSet().select(predicate);</span>
+    }
+
+    @Override
+    public &lt;P&gt; MutableSortedSet&lt;T&gt; selectWith(Predicate2&lt;? super T, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc" id="L150">        return this.getSortedSet().selectWith(predicate, parameter);</span>
+    }
+
+    @Override
+    public MutableSortedSet&lt;T&gt; reject(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L156">        return this.getSortedSet().reject(predicate);</span>
+    }
+
+    @Override
+    public &lt;P&gt; MutableSortedSet&lt;T&gt; rejectWith(Predicate2&lt;? super T, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc" id="L162">        return this.getSortedSet().rejectWith(predicate, parameter);</span>
+    }
+
+    @Override
+    public PartitionMutableSortedSet&lt;T&gt; partition(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L168">        return this.getSortedSet().partition(predicate);</span>
+    }
+
+    @Override
+    public &lt;P&gt; PartitionMutableSortedSet&lt;T&gt; partitionWith(Predicate2&lt;? super T, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc" id="L174">        return this.getSortedSet().partitionWith(predicate, parameter);</span>
+    }
+
+    @Override
+    public PartitionMutableSortedSet&lt;T&gt; partitionWhile(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L180">        return this.getSortedSet().partitionWhile(predicate);</span>
+    }
+
+    @Override
+    public &lt;S&gt; MutableSortedSet&lt;S&gt; selectInstancesOf(Class&lt;S&gt; clazz)
+    {
+<span class="nc" id="L186">        return this.getSortedSet().selectInstancesOf(clazz);</span>
+    }
+
+    @Override
+    public &lt;V&gt; MutableList&lt;V&gt; collect(Function&lt;? super T, ? extends V&gt; function)
+    {
+<span class="nc" id="L192">        return this.getSortedSet().collect(function);</span>
+    }
+
+    @Override
+    public MutableBooleanList collectBoolean(BooleanFunction&lt;? super T&gt; booleanFunction)
+    {
+<span class="nc" id="L198">        return this.getSortedSet().collectBoolean(booleanFunction);</span>
+    }
+
+    @Override
+    public MutableByteList collectByte(ByteFunction&lt;? super T&gt; byteFunction)
+    {
+<span class="nc" id="L204">        return this.getSortedSet().collectByte(byteFunction);</span>
+    }
+
+    @Override
+    public MutableCharList collectChar(CharFunction&lt;? super T&gt; charFunction)
+    {
+<span class="nc" id="L210">        return this.getSortedSet().collectChar(charFunction);</span>
+    }
+
+    @Override
+    public MutableDoubleList collectDouble(DoubleFunction&lt;? super T&gt; doubleFunction)
+    {
+<span class="nc" id="L216">        return this.getSortedSet().collectDouble(doubleFunction);</span>
+    }
+
+    @Override
+    public MutableFloatList collectFloat(FloatFunction&lt;? super T&gt; floatFunction)
+    {
+<span class="nc" id="L222">        return this.getSortedSet().collectFloat(floatFunction);</span>
+    }
+
+    @Override
+    public MutableIntList collectInt(IntFunction&lt;? super T&gt; intFunction)
+    {
+<span class="nc" id="L228">        return this.getSortedSet().collectInt(intFunction);</span>
+    }
+
+    @Override
+    public MutableLongList collectLong(LongFunction&lt;? super T&gt; longFunction)
+    {
+<span class="nc" id="L234">        return this.getSortedSet().collectLong(longFunction);</span>
+    }
+
+    @Override
+    public MutableShortList collectShort(ShortFunction&lt;? super T&gt; shortFunction)
+    {
+<span class="nc" id="L240">        return this.getSortedSet().collectShort(shortFunction);</span>
+    }
+
+    @Override
+    public &lt;V&gt; MutableList&lt;V&gt; flatCollect(Function&lt;? super T, ? extends Iterable&lt;V&gt;&gt; function)
+    {
+<span class="nc" id="L246">        return this.getSortedSet().flatCollect(function);</span>
+    }
+
+    @Override
+    public &lt;P, A&gt; MutableList&lt;A&gt; collectWith(Function2&lt;? super T, ? super P, ? extends A&gt; function, P parameter)
+    {
+<span class="nc" id="L252">        return this.getSortedSet().collectWith(function, parameter);</span>
+    }
+
+    /**
+     * @since 9.1
+     */
+    @Override
+    public &lt;V&gt; MutableList&lt;V&gt; collectWithIndex(ObjectIntToObjectFunction&lt;? super T, ? extends V&gt; function)
+    {
+<span class="nc" id="L261">        return this.getSortedSet().collectWithIndex(function);</span>
+    }
+
+    /**
+     * @since 9.1
+     */
+    @Override
+    public &lt;V, R extends Collection&lt;V&gt;&gt; R collectWithIndex(ObjectIntToObjectFunction&lt;? super T, ? extends V&gt; function, R target)
+    {
+<span class="nc" id="L270">        return this.getSortedSet().collectWithIndex(function, target);</span>
+    }
+
+    @Override
+    public &lt;V&gt; MutableList&lt;V&gt; collectIf(
+            Predicate&lt;? super T&gt; predicate,
+            Function&lt;? super T, ? extends V&gt; function)
+    {
+<span class="nc" id="L278">        return this.getSortedSet().collectIf(predicate, function);</span>
+    }
+
+    @Override
+    public MutableSortedSet&lt;T&gt; distinct()
+    {
+<span class="nc" id="L284">        return this.getSortedSet().distinct();</span>
+    }
+
+    @Override
+    public MutableSortedSet&lt;T&gt; takeWhile(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L290">        return this.getSortedSet().takeWhile(predicate);</span>
+    }
+
+    @Override
+    public MutableSortedSet&lt;T&gt; dropWhile(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L296">        return this.getSortedSet().dropWhile(predicate);</span>
+    }
+
+    @Override
+    public int detectIndex(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L302">        return this.getSortedSet().detectIndex(predicate);</span>
+    }
+
+    @Override
+    public &lt;V&gt; MutableSortedSetMultimap&lt;V, T&gt; groupBy(Function&lt;? super T, ? extends V&gt; function)
+    {
+<span class="nc" id="L308">        return this.getSortedSet().groupBy(function);</span>
+    }
+
+    @Override
+    public &lt;V&gt; MutableSortedSetMultimap&lt;V, T&gt; groupByEach(Function&lt;? super T, ? extends Iterable&lt;V&gt;&gt; function)
+    {
+<span class="nc" id="L314">        return this.getSortedSet().groupByEach(function);</span>
+    }
+
+    @Override
+    public &lt;S&gt; MutableList&lt;Pair&lt;T, S&gt;&gt; zip(Iterable&lt;S&gt; that)
+    {
+<span class="nc" id="L320">        return this.getSortedSet().zip(that);</span>
+    }
+
+    @Override
+    public &lt;S, R extends Collection&lt;Pair&lt;T, S&gt;&gt;&gt; R zip(Iterable&lt;S&gt; that, R target)
+    {
+<span class="nc" id="L326">        return this.getSortedSet().zip(that, target);</span>
+    }
+
+    @Override
+    public MutableSortedSet&lt;Pair&lt;T, Integer&gt;&gt; zipWithIndex()
+    {
+<span class="nc" id="L332">        return this.getSortedSet().zipWithIndex();</span>
+    }
+
+    @Override
+    public &lt;R extends Collection&lt;Pair&lt;T, Integer&gt;&gt;&gt; R zipWithIndex(R target)
+    {
+<span class="nc" id="L338">        return this.getSortedSet().zipWithIndex(target);</span>
+    }
+
+    @Override
+    public Comparator&lt;? super T&gt; comparator()
+    {
+<span class="nc" id="L344">        return this.getSortedSet().comparator();</span>
+    }
+
+    @Override
+    public MutableSortedSet&lt;T&gt; union(SetIterable&lt;? extends T&gt; set)
+    {
+<span class="nc" id="L350">        return this.getSortedSet().union(set);</span>
+    }
+
+    @Override
+    public &lt;R extends Set&lt;T&gt;&gt; R unionInto(SetIterable&lt;? extends T&gt; set, R targetSet)
+    {
+<span class="nc" id="L356">        return this.getSortedSet().unionInto(set, targetSet);</span>
+    }
+
+    @Override
+    public MutableSortedSet&lt;T&gt; intersect(SetIterable&lt;? extends T&gt; set)
+    {
+<span class="nc" id="L362">        return this.getSortedSet().intersect(set);</span>
+    }
+
+    @Override
+    public &lt;R extends Set&lt;T&gt;&gt; R intersectInto(SetIterable&lt;? extends T&gt; set, R targetSet)
+    {
+<span class="nc" id="L368">        return this.getSortedSet().intersectInto(set, targetSet);</span>
+    }
+
+    @Override
+    public MutableSortedSet&lt;T&gt; difference(SetIterable&lt;? extends T&gt; subtrahendSet)
+    {
+<span class="nc" id="L374">        return this.getSortedSet().difference(subtrahendSet);</span>
+    }
+
+    @Override
+    public &lt;R extends Set&lt;T&gt;&gt; R differenceInto(SetIterable&lt;? extends T&gt; subtrahendSet, R targetSet)
+    {
+<span class="nc" id="L380">        return this.getSortedSet().differenceInto(subtrahendSet, targetSet);</span>
+    }
+
+    @Override
+    public MutableSortedSet&lt;T&gt; symmetricDifference(SetIterable&lt;? extends T&gt; setB)
+    {
+<span class="nc" id="L386">        return this.getSortedSet().symmetricDifference(setB);</span>
+    }
+
+    @Override
+    public &lt;R extends Set&lt;T&gt;&gt; R symmetricDifferenceInto(SetIterable&lt;? extends T&gt; set, R targetSet)
+    {
+<span class="nc" id="L392">        return this.getSortedSet().symmetricDifferenceInto(set, targetSet);</span>
+    }
+
+    @Override
+    public boolean isSubsetOf(SetIterable&lt;? extends T&gt; candidateSuperset)
+    {
+<span class="nc" id="L398">        return this.getSortedSet().isSubsetOf(candidateSuperset);</span>
+    }
+
+    @Override
+    public boolean isProperSubsetOf(SetIterable&lt;? extends T&gt; candidateSuperset)
+    {
+<span class="nc" id="L404">        return this.getSortedSet().isProperSubsetOf(candidateSuperset);</span>
+    }
+
+    @Override
+    public MutableSortedSet&lt;SortedSetIterable&lt;T&gt;&gt; powerSet()
+    {
+<span class="nc" id="L410">        return this.getSortedSet().powerSet();</span>
+    }
+
+    @Override
+    public &lt;B&gt; LazyIterable&lt;Pair&lt;T, B&gt;&gt; cartesianProduct(SetIterable&lt;B&gt; set)
+    {
+<span class="nc" id="L416">        return this.getSortedSet().cartesianProduct(set);</span>
+    }
+
+    @Override
+    public MutableSortedSet&lt;T&gt; subSet(T fromElement, T toElement)
+    {
+<span class="nc" id="L422">        return this.getSortedSet().subSet(fromElement, toElement).asUnmodifiable();</span>
+    }
+
+    @Override
+    public MutableSortedSet&lt;T&gt; headSet(T toElement)
+    {
+<span class="nc" id="L428">        return this.getSortedSet().headSet(toElement).asUnmodifiable();</span>
+    }
+
+    @Override
+    public MutableSortedSet&lt;T&gt; tailSet(T fromElement)
+    {
+<span class="nc" id="L434">        return this.getSortedSet().tailSet(fromElement).asUnmodifiable();</span>
+    }
+
+    @Override
+    public T first()
+    {
+<span class="nc" id="L440">        return this.getSortedSet().first();</span>
+    }
+
+    @Override
+    public T last()
+    {
+<span class="nc" id="L446">        return this.getSortedSet().last();</span>
+    }
+
+    @Override
+    public int compareTo(SortedSetIterable&lt;T&gt; o)
+    {
+<span class="nc" id="L452">        return this.getSortedSet().compareTo(o);</span>
+    }
+
+    @Override
+    public MutableStack&lt;T&gt; toStack()
+    {
+<span class="nc" id="L458">        return this.getSortedSet().toStack();</span>
+    }
+
+    @Override
+    public int indexOf(Object object)
+    {
+<span class="nc" id="L464">        return this.getSortedSet().indexOf(object);</span>
+    }
+
+    @Override
+    public &lt;S&gt; boolean corresponds(OrderedIterable&lt;S&gt; other, Predicate2&lt;? super T, ? super S&gt; predicate)
+    {
+<span class="nc" id="L470">        return this.getSortedSet().corresponds(other, predicate);</span>
+    }
+
+    @Override
+    public void forEach(int startIndex, int endIndex, Procedure&lt;? super T&gt; procedure)
+    {
+<span class="nc" id="L476">        this.getSortedSet().forEach(startIndex, endIndex, procedure);</span>
+<span class="nc" id="L477">    }</span>
+
+    @Override
+    public void forEachWithIndex(int fromIndex, int toIndex, ObjectIntProcedure&lt;? super T&gt; objectIntProcedure)
+    {
+<span class="nc" id="L482">        this.getSortedSet().forEachWithIndex(fromIndex, toIndex, objectIntProcedure);</span>
+<span class="nc" id="L483">    }</span>
+
+    @Override
+    public MutableSortedSet&lt;T&gt; toReversed()
+    {
+<span class="nc" id="L488">        return this.getSortedSet().toReversed();</span>
+    }
+
+    @Override
+    public MutableSortedSet&lt;T&gt; take(int count)
+    {
+<span class="nc" id="L494">        return this.getSortedSet().take(count);</span>
+    }
+
+    @Override
+    public MutableSortedSet&lt;T&gt; drop(int count)
+    {
+<span class="nc" id="L500">        return this.getSortedSet().drop(count);</span>
+    }
+
+    @Override
+    public void reverseForEach(Procedure&lt;? super T&gt; procedure)
+    {
+<span class="nc" id="L506">        this.getSortedSet().reverseForEach(procedure);</span>
+<span class="nc" id="L507">    }</span>
+
+    @Override
+    public void reverseForEachWithIndex(ObjectIntProcedure&lt;? super T&gt; procedure)
+    {
+<span class="nc" id="L512">        this.getSortedSet().reverseForEachWithIndex(procedure);</span>
+<span class="nc" id="L513">    }</span>
+
+    @Override
+    public LazyIterable&lt;T&gt; asReversed()
+    {
+<span class="nc" id="L518">        return this.getSortedSet().asReversed();</span>
+    }
+
+    @Override
+    public int detectLastIndex(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L524">        return this.getSortedSet().detectLastIndex(predicate);</span>
+    }
+
+    @Override
+    public MutableSortedSet&lt;T&gt; with(T element)
+    {
+<span class="nc" id="L530">        throw new UnsupportedOperationException(&quot;Cannot call with() on &quot; + this.getClass().getSimpleName());</span>
+    }
+
+    @Override
+    public MutableSortedSet&lt;T&gt; without(T element)
+    {
+<span class="nc" id="L536">        throw new UnsupportedOperationException(&quot;Cannot call without() on &quot; + this.getClass().getSimpleName());</span>
+    }
+
+    @Override
+    public MutableSortedSet&lt;T&gt; withAll(Iterable&lt;? extends T&gt; elements)
+    {
+<span class="nc" id="L542">        throw new UnsupportedOperationException(&quot;Cannot call withAll() on &quot; + this.getClass().getSimpleName());</span>
+    }
+
+    @Override
+    public MutableSortedSet&lt;T&gt; withoutAll(Iterable&lt;? extends T&gt; elements)
+    {
+<span class="nc" id="L548">        throw new UnsupportedOperationException(&quot;Cannot call withoutAll() on &quot; + this.getClass().getSimpleName());</span>
+    }
+
+    protected Object writeReplace()
+    {
+<span class="nc" id="L553">        return new UnmodifiableCollectionSerializationProxy&lt;&gt;(this.getSortedSet());</span>
+    }
+
+    @Override
+    public ParallelSortedSetIterable&lt;T&gt; asParallel(ExecutorService executorService, int batchSize)
+    {
+<span class="nc" id="L559">        return this.getSortedSet().asParallel(executorService, batchSize);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.0.201801022044</span></div></body></html>

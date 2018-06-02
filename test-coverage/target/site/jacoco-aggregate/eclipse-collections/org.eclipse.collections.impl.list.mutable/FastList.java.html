@@ -1,0 +1,1575 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>FastList.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Eclipse Collections Test Coverage Aggregation</a> &gt; <a href="../index.html" class="el_bundle">eclipse-collections</a> &gt; <a href="index.source.html" class="el_package">org.eclipse.collections.impl.list.mutable</a> &gt; <span class="el_source">FastList.java</span></div><h1>FastList.java</h1><pre class="source lang-java linenums">/*
+ * Copyright (c) 2017 Goldman Sachs and others.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * and Eclipse Distribution License v. 1.0 which accompany this distribution.
+ * The Eclipse Public License is available at http://www.eclipse.org/legal/epl-v10.html
+ * and the Eclipse Distribution License is available at
+ * http://www.eclipse.org/org/documents/edl-v10.php.
+ */
+
+package org.eclipse.collections.impl.list.mutable;
+
+import java.io.Externalizable;
+import java.io.IOException;
+import java.io.ObjectInput;
+import java.io.ObjectOutput;
+import java.lang.reflect.Array;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Comparator;
+import java.util.DoubleSummaryStatistics;
+import java.util.IntSummaryStatistics;
+import java.util.List;
+import java.util.LongSummaryStatistics;
+import java.util.Optional;
+import java.util.RandomAccess;
+import java.util.Spliterator;
+import java.util.Spliterators;
+import java.util.function.BiConsumer;
+import java.util.function.BinaryOperator;
+import java.util.function.Supplier;
+import java.util.stream.Collector;
+
+import org.eclipse.collections.api.block.HashingStrategy;
+import org.eclipse.collections.api.block.function.Function;
+import org.eclipse.collections.api.block.function.Function0;
+import org.eclipse.collections.api.block.function.Function2;
+import org.eclipse.collections.api.block.function.Function3;
+import org.eclipse.collections.api.block.function.primitive.BooleanFunction;
+import org.eclipse.collections.api.block.function.primitive.ByteFunction;
+import org.eclipse.collections.api.block.function.primitive.CharFunction;
+import org.eclipse.collections.api.block.function.primitive.DoubleFunction;
+import org.eclipse.collections.api.block.function.primitive.DoubleObjectToDoubleFunction;
+import org.eclipse.collections.api.block.function.primitive.FloatFunction;
+import org.eclipse.collections.api.block.function.primitive.FloatObjectToFloatFunction;
+import org.eclipse.collections.api.block.function.primitive.IntFunction;
+import org.eclipse.collections.api.block.function.primitive.IntObjectToIntFunction;
+import org.eclipse.collections.api.block.function.primitive.LongFunction;
+import org.eclipse.collections.api.block.function.primitive.LongObjectToLongFunction;
+import org.eclipse.collections.api.block.function.primitive.ObjectIntToObjectFunction;
+import org.eclipse.collections.api.block.function.primitive.ShortFunction;
+import org.eclipse.collections.api.block.predicate.Predicate;
+import org.eclipse.collections.api.block.predicate.Predicate2;
+import org.eclipse.collections.api.block.procedure.Procedure;
+import org.eclipse.collections.api.block.procedure.Procedure2;
+import org.eclipse.collections.api.block.procedure.primitive.ObjectIntProcedure;
+import org.eclipse.collections.api.collection.primitive.MutableBooleanCollection;
+import org.eclipse.collections.api.collection.primitive.MutableByteCollection;
+import org.eclipse.collections.api.collection.primitive.MutableCharCollection;
+import org.eclipse.collections.api.collection.primitive.MutableDoubleCollection;
+import org.eclipse.collections.api.collection.primitive.MutableFloatCollection;
+import org.eclipse.collections.api.collection.primitive.MutableIntCollection;
+import org.eclipse.collections.api.collection.primitive.MutableLongCollection;
+import org.eclipse.collections.api.collection.primitive.MutableShortCollection;
+import org.eclipse.collections.api.list.MutableList;
+import org.eclipse.collections.api.list.primitive.MutableBooleanList;
+import org.eclipse.collections.api.list.primitive.MutableByteList;
+import org.eclipse.collections.api.list.primitive.MutableCharList;
+import org.eclipse.collections.api.list.primitive.MutableDoubleList;
+import org.eclipse.collections.api.list.primitive.MutableFloatList;
+import org.eclipse.collections.api.list.primitive.MutableIntList;
+import org.eclipse.collections.api.list.primitive.MutableLongList;
+import org.eclipse.collections.api.list.primitive.MutableShortList;
+import org.eclipse.collections.api.map.MutableMap;
+import org.eclipse.collections.api.map.primitive.MutableObjectDoubleMap;
+import org.eclipse.collections.api.map.primitive.MutableObjectLongMap;
+import org.eclipse.collections.api.multimap.MutableMultimap;
+import org.eclipse.collections.api.ordered.OrderedIterable;
+import org.eclipse.collections.api.partition.list.PartitionMutableList;
+import org.eclipse.collections.api.tuple.Twin;
+import org.eclipse.collections.impl.block.factory.Comparators;
+import org.eclipse.collections.impl.block.factory.Predicates2;
+import org.eclipse.collections.impl.block.factory.Procedures2;
+import org.eclipse.collections.impl.list.mutable.primitive.BooleanArrayList;
+import org.eclipse.collections.impl.list.mutable.primitive.ByteArrayList;
+import org.eclipse.collections.impl.list.mutable.primitive.CharArrayList;
+import org.eclipse.collections.impl.list.mutable.primitive.DoubleArrayList;
+import org.eclipse.collections.impl.list.mutable.primitive.FloatArrayList;
+import org.eclipse.collections.impl.list.mutable.primitive.IntArrayList;
+import org.eclipse.collections.impl.list.mutable.primitive.LongArrayList;
+import org.eclipse.collections.impl.list.mutable.primitive.ShortArrayList;
+import org.eclipse.collections.impl.map.mutable.UnifiedMap;
+import org.eclipse.collections.impl.multimap.list.FastListMultimap;
+import org.eclipse.collections.impl.parallel.BatchIterable;
+import org.eclipse.collections.impl.partition.list.PartitionFastList;
+import org.eclipse.collections.impl.utility.ArrayIterate;
+import org.eclipse.collections.impl.utility.ArrayListIterate;
+import org.eclipse.collections.impl.utility.Iterate;
+import org.eclipse.collections.impl.utility.ListIterate;
+import org.eclipse.collections.impl.utility.internal.InternalArrayIterate;
+import org.eclipse.collections.impl.utility.internal.RandomAccessListIterate;
+
+/**
+ * FastList is an attempt to provide the same functionality as ArrayList without the support for concurrent
+ * modification exceptions.  It also attempts to correct the problem with subclassing ArrayList
+ * in that the data elements are protected, not private.  It is this issue that caused this class
+ * to be created in the first place.  The intent was to provide optimized internal iterators which use direct access
+ * against the array of items, which is currently not possible by subclassing ArrayList.
+ * &lt;p&gt;
+ * An empty FastList created by calling the default constructor starts with a shared reference to a static
+ * empty array (DEFAULT_SIZED_EMPTY_ARRAY).  This makes empty FastLists very memory efficient.  The
+ * first call to add will lazily create an array of size 10.
+ * &lt;p&gt;
+ * An empty FastList created by calling the pre-size constructor with a value of 0 (new FastList(0)) starts
+ * with a shared reference to a static  empty array (ZERO_SIZED_ARRAY).  This makes FastLists presized to 0 very
+ * memory efficient as well.  The first call to add will lazily create an array of size 1.
+ */
+public class FastList&lt;T&gt;
+        extends AbstractMutableList&lt;T&gt;
+        implements Externalizable, RandomAccess, BatchIterable&lt;T&gt;
+{
+    private static final long serialVersionUID = 1L;
+<span class="nc" id="L124">    private static final Object[] DEFAULT_SIZED_EMPTY_ARRAY = {};</span>
+<span class="nc" id="L125">    private static final Object[] ZERO_SIZED_ARRAY = {};</span>
+    private static final int MAXIMUM_ARRAY_SIZE = Integer.MAX_VALUE - 8;
+
+    protected int size;
+<span class="nc" id="L129">    protected transient T[] items = (T[]) DEFAULT_SIZED_EMPTY_ARRAY;</span>
+
+    public FastList()
+<span class="nc" id="L132">    {</span>
+<span class="nc" id="L133">    }</span>
+
+    public FastList(int initialCapacity)
+<span class="nc" id="L136">    {</span>
+<span class="nc bnc" id="L137" title="All 2 branches missed.">        if (initialCapacity &lt; 0)</span>
+        {
+<span class="nc" id="L139">            throw new IllegalArgumentException(&quot;Expected initial capacity is greater than or equal to 0. Was: &quot; + initialCapacity);</span>
+        }
+<span class="nc bnc" id="L141" title="All 2 branches missed.">        this.items = initialCapacity == 0 ? (T[]) ZERO_SIZED_ARRAY : (T[]) new Object[initialCapacity];</span>
+<span class="nc" id="L142">    }</span>
+
+    protected FastList(T[] array)
+    {
+<span class="nc" id="L146">        this(array.length, array);</span>
+<span class="nc" id="L147">    }</span>
+
+    protected FastList(int size, T[] array)
+<span class="nc" id="L150">    {</span>
+<span class="nc" id="L151">        this.size = size;</span>
+<span class="nc" id="L152">        this.items = array;</span>
+<span class="nc" id="L153">    }</span>
+
+    public FastList(Collection&lt;? extends T&gt; source)
+<span class="nc" id="L156">    {</span>
+<span class="nc" id="L157">        this.items = (T[]) source.toArray();</span>
+<span class="nc" id="L158">        this.size = this.items.length;</span>
+<span class="nc" id="L159">    }</span>
+
+    public static &lt;E&gt; FastList&lt;E&gt; newList()
+    {
+<span class="nc" id="L163">        return new FastList&lt;&gt;();</span>
+    }
+
+    public static &lt;E&gt; FastList&lt;E&gt; wrapCopy(E... array)
+    {
+<span class="nc" id="L168">        E[] newArray = (E[]) new Object[array.length];</span>
+<span class="nc" id="L169">        System.arraycopy(array, 0, newArray, 0, array.length);</span>
+<span class="nc" id="L170">        return new FastList&lt;&gt;(newArray);</span>
+    }
+
+    public static &lt;E&gt; FastList&lt;E&gt; newList(int initialCapacity)
+    {
+<span class="nc" id="L175">        return new FastList&lt;&gt;(initialCapacity);</span>
+    }
+
+    public static &lt;E&gt; FastList&lt;E&gt; newList(Iterable&lt;? extends E&gt; source)
+    {
+<span class="nc" id="L180">        return FastList.newListWith((E[]) Iterate.toArray(source));</span>
+    }
+
+    /**
+     * Creates a new list using the passed {@code elements} argument as the backing store.
+     * &lt;p&gt;
+     * !!! WARNING: This method uses the passed in array, so can be very unsafe if the original
+     * array is held onto anywhere else. !!!
+     */
+    public static &lt;E&gt; FastList&lt;E&gt; newListWith(E... elements)
+    {
+<span class="nc" id="L191">        return new FastList&lt;&gt;(elements);</span>
+    }
+
+    /**
+     * Creates a new FastList pre-sized to the specified size filled with default values generated by the specified function.
+     *
+     * @since 3.0
+     */
+    public static &lt;E&gt; FastList&lt;E&gt; newWithNValues(int size, Function0&lt;E&gt; factory)
+    {
+<span class="nc" id="L201">        FastList&lt;E&gt; newFastList = FastList.newList(size);</span>
+<span class="nc bnc" id="L202" title="All 2 branches missed.">        for (int i = 0; i &lt; size; i++)</span>
+        {
+<span class="nc" id="L204">            newFastList.add(factory.value());</span>
+        }
+<span class="nc" id="L206">        return newFastList;</span>
+    }
+
+    @Override
+    public FastList&lt;T&gt; clone()
+    {
+<span class="nc" id="L212">        FastList&lt;T&gt; result = (FastList&lt;T&gt;) super.clone();</span>
+<span class="nc bnc" id="L213" title="All 2 branches missed.">        if (this.items.length &gt; 0)</span>
+        {
+<span class="nc" id="L215">            result.items = this.items.clone();</span>
+        }
+<span class="nc" id="L217">        return result;</span>
+    }
+
+    @Override
+    public void clear()
+    {
+<span class="nc" id="L223">        Arrays.fill(this.items, 0, this.size, null);</span>
+<span class="nc" id="L224">        this.size = 0;</span>
+<span class="nc" id="L225">    }</span>
+
+    @Override
+    public void forEach(int from, int to, Procedure&lt;? super T&gt; procedure)
+    {
+<span class="nc" id="L230">        ListIterate.rangeCheck(from, to, this.size);</span>
+<span class="nc" id="L231">        InternalArrayIterate.forEachWithoutChecks(this.items, from, to, procedure);</span>
+<span class="nc" id="L232">    }</span>
+
+    @Override
+    public void forEachWithIndex(int from, int to, ObjectIntProcedure&lt;? super T&gt; objectIntProcedure)
+    {
+<span class="nc" id="L237">        ListIterate.rangeCheck(from, to, this.size);</span>
+<span class="nc" id="L238">        InternalArrayIterate.forEachWithIndexWithoutChecks(this.items, from, to, objectIntProcedure);</span>
+<span class="nc" id="L239">    }</span>
+
+    @Override
+    public void batchForEach(Procedure&lt;? super T&gt; procedure, int sectionIndex, int sectionCount)
+    {
+<span class="nc" id="L244">        InternalArrayIterate.batchForEach(procedure, this.items, this.size, sectionIndex, sectionCount);</span>
+<span class="nc" id="L245">    }</span>
+
+    @Override
+    public int getBatchCount(int batchSize)
+    {
+<span class="nc" id="L250">        return Math.max(1, this.size() / batchSize);</span>
+    }
+
+    public &lt;E&gt; E[] toArray(E[] array, int sourceFromIndex, int sourceToIndex, int destinationIndex)
+    {
+<span class="nc" id="L255">        System.arraycopy(this.items, sourceFromIndex, array, destinationIndex, sourceToIndex - sourceFromIndex + 1);</span>
+<span class="nc" id="L256">        return array;</span>
+    }
+
+    public &lt;E&gt; E[] toArray(int sourceFromIndex, int sourceToIndex)
+    {
+<span class="nc" id="L261">        return this.toArray((E[]) new Object[sourceToIndex - sourceFromIndex + 1], sourceFromIndex, sourceToIndex, 0);</span>
+    }
+
+    @Override
+    public FastList&lt;T&gt; sortThis(Comparator&lt;? super T&gt; comparator)
+    {
+<span class="nc" id="L267">        Arrays.sort(this.items, 0, this.size, comparator);</span>
+<span class="nc" id="L268">        return this;</span>
+    }
+
+    @Override
+    public FastList&lt;T&gt; sortThis()
+    {
+<span class="nc" id="L274">        Arrays.sort(this.items, 0, this.size);</span>
+<span class="nc" id="L275">        return this;</span>
+    }
+
+    @Override
+    public FastList&lt;T&gt; reverseThis()
+    {
+<span class="nc" id="L281">        ArrayIterate.reverse(this.items, this.size);</span>
+<span class="nc" id="L282">        return this;</span>
+    }
+
+    @Override
+    public boolean addAll(Collection&lt;? extends T&gt; source)
+    {
+<span class="nc bnc" id="L288" title="All 2 branches missed.">        if (source.isEmpty())</span>
+        {
+<span class="nc" id="L290">            return false;</span>
+        }
+
+<span class="nc bnc" id="L293" title="All 2 branches missed.">        if (source.getClass() == FastList.class)</span>
+        {
+<span class="nc" id="L295">            this.addAllFastList((FastList&lt;T&gt;) source);</span>
+        }
+<span class="nc bnc" id="L297" title="All 2 branches missed.">        else if (source.getClass() == ArrayList.class)</span>
+        {
+<span class="nc" id="L299">            this.addAllArrayList((ArrayList&lt;T&gt;) source);</span>
+        }
+<span class="nc bnc" id="L301" title="All 4 branches missed.">        else if (source instanceof List &amp;&amp; source instanceof RandomAccess)</span>
+        {
+<span class="nc" id="L303">            this.addAllRandomAccessList((List&lt;T&gt;) source);</span>
+        }
+        else
+        {
+<span class="nc" id="L307">            this.addAllCollection(source);</span>
+        }
+
+<span class="nc" id="L310">        return true;</span>
+    }
+
+    private void addAllFastList(FastList&lt;T&gt; source)
+    {
+<span class="nc" id="L315">        int newSize = this.ensureCapacityForAddAll(source);</span>
+<span class="nc" id="L316">        System.arraycopy(source.items, 0, this.items, this.size, source.size());</span>
+<span class="nc" id="L317">        this.size = newSize;</span>
+<span class="nc" id="L318">    }</span>
+
+    private void addAllArrayList(ArrayList&lt;T&gt; source)
+    {
+<span class="nc" id="L322">        int newSize = this.ensureCapacityForAddAll(source);</span>
+<span class="nc" id="L323">        ArrayListIterate.toArray(source, this.items, this.size, source.size());</span>
+<span class="nc" id="L324">        this.size = newSize;</span>
+<span class="nc" id="L325">    }</span>
+
+    private void addAllRandomAccessList(List&lt;T&gt; source)
+    {
+<span class="nc" id="L329">        int newSize = this.ensureCapacityForAddAll(source);</span>
+<span class="nc" id="L330">        RandomAccessListIterate.toArray(source, this.items, this.size, source.size());</span>
+<span class="nc" id="L331">        this.size = newSize;</span>
+<span class="nc" id="L332">    }</span>
+
+    private void addAllCollection(Collection&lt;? extends T&gt; source)
+    {
+<span class="nc" id="L336">        this.ensureCapacity(this.size + source.size());</span>
+<span class="nc" id="L337">        Iterate.forEachWith(source, Procedures2.addToCollection(), this);</span>
+<span class="nc" id="L338">    }</span>
+
+    @Override
+    public boolean containsAll(Collection&lt;?&gt; source)
+    {
+<span class="nc" id="L343">        return Iterate.allSatisfyWith(source, Predicates2.in(), this);</span>
+    }
+
+    @Override
+    public boolean containsAllArguments(Object... source)
+    {
+<span class="nc" id="L349">        return ArrayIterate.allSatisfyWith(source, Predicates2.in(), this);</span>
+    }
+
+    @Override
+    public &lt;E&gt; E[] toArray(E[] array)
+    {
+<span class="nc bnc" id="L355" title="All 2 branches missed.">        if (array.length &lt; this.size)</span>
+        {
+<span class="nc" id="L357">            array = (E[]) Array.newInstance(array.getClass().getComponentType(), this.size);</span>
+        }
+<span class="nc" id="L359">        System.arraycopy(this.items, 0, array, 0, this.size);</span>
+<span class="nc bnc" id="L360" title="All 2 branches missed.">        if (array.length &gt; this.size)</span>
+        {
+<span class="nc" id="L362">            array[this.size] = null;</span>
+        }
+<span class="nc" id="L364">        return array;</span>
+    }
+
+    @Override
+    public Object[] toArray()
+    {
+<span class="nc" id="L370">        return this.copyItemsWithNewCapacity(this.size);</span>
+    }
+
+    public T[] toTypedArray(Class&lt;T&gt; clazz)
+    {
+<span class="nc" id="L375">        T[] array = (T[]) Array.newInstance(clazz, this.size);</span>
+<span class="nc" id="L376">        System.arraycopy(this.items, 0, array, 0, this.size);</span>
+<span class="nc" id="L377">        return array;</span>
+    }
+
+    private void throwOutOfBounds(int index)
+    {
+<span class="nc" id="L382">        throw this.newIndexOutOfBoundsException(index);</span>
+    }
+
+    @Override
+    public T set(int index, T element)
+    {
+<span class="nc" id="L388">        T previous = this.get(index);</span>
+<span class="nc" id="L389">        this.items[index] = element;</span>
+<span class="nc" id="L390">        return previous;</span>
+    }
+
+    @Override
+    public int indexOf(Object object)
+    {
+<span class="nc" id="L396">        return InternalArrayIterate.indexOf(this.items, this.size, object);</span>
+    }
+
+    @Override
+    public int lastIndexOf(Object object)
+    {
+<span class="nc" id="L402">        return InternalArrayIterate.lastIndexOf(this.items, this.size, object);</span>
+    }
+
+    /**
+     * @since 8.1
+     */
+    @Override
+    public Spliterator&lt;T&gt; spliterator()
+    {
+<span class="nc" id="L411">        return Spliterators.spliterator(this.items, 0, this.size, Spliterator.ORDERED);</span>
+    }
+
+    public void trimToSize()
+    {
+<span class="nc bnc" id="L416" title="All 2 branches missed.">        if (this.size &lt; this.items.length)</span>
+        {
+<span class="nc" id="L418">            this.transferItemsToNewArrayWithCapacity(this.size);</span>
+        }
+<span class="nc" id="L420">    }</span>
+
+    /**
+     * Express load factor as 0.25 to trim a collection with more than 25% excess capacity
+     */
+    public boolean trimToSizeIfGreaterThanPercent(double loadFactor)
+    {
+<span class="nc" id="L427">        double excessCapacity = 1.0 - (double) this.size / (double) this.items.length;</span>
+<span class="nc bnc" id="L428" title="All 2 branches missed.">        if (excessCapacity &gt; loadFactor)</span>
+        {
+<span class="nc" id="L430">            this.trimToSize();</span>
+<span class="nc" id="L431">            return true;</span>
+        }
+<span class="nc" id="L433">        return false;</span>
+    }
+
+    private void ensureCapacityForAdd()
+    {
+<span class="nc bnc" id="L438" title="All 2 branches missed.">        if (this.items == DEFAULT_SIZED_EMPTY_ARRAY)</span>
+        {
+<span class="nc" id="L440">            this.items = (T[]) new Object[10];</span>
+        }
+        else
+        {
+<span class="nc" id="L444">            this.transferItemsToNewArrayWithCapacity(this.sizePlusFiftyPercent(this.size));</span>
+        }
+<span class="nc" id="L446">    }</span>
+
+    private int ensureCapacityForAddAll(Collection&lt;T&gt; source)
+    {
+<span class="nc" id="L450">        int sourceSize = source.size();</span>
+<span class="nc" id="L451">        int newSize = this.size + sourceSize;</span>
+<span class="nc" id="L452">        this.ensureCapacity(newSize);</span>
+<span class="nc" id="L453">        return newSize;</span>
+    }
+
+    public void ensureCapacity(int minCapacity)
+    {
+<span class="nc" id="L458">        int oldCapacity = this.items.length;</span>
+<span class="nc bnc" id="L459" title="All 2 branches missed.">        if (minCapacity &gt; oldCapacity)</span>
+        {
+<span class="nc" id="L461">            int newCapacity = Math.max(this.sizePlusFiftyPercent(oldCapacity), minCapacity);</span>
+<span class="nc" id="L462">            this.transferItemsToNewArrayWithCapacity(newCapacity);</span>
+        }
+<span class="nc" id="L464">    }</span>
+
+    private void transferItemsToNewArrayWithCapacity(int newCapacity)
+    {
+<span class="nc" id="L468">        this.items = (T[]) this.copyItemsWithNewCapacity(newCapacity);</span>
+<span class="nc" id="L469">    }</span>
+
+    private Object[] copyItemsWithNewCapacity(int newCapacity)
+    {
+<span class="nc" id="L473">        Object[] newItems = new Object[newCapacity];</span>
+<span class="nc" id="L474">        System.arraycopy(this.items, 0, newItems, 0, Math.min(this.size, newCapacity));</span>
+<span class="nc" id="L475">        return newItems;</span>
+    }
+
+    public FastList&lt;T&gt; with(T element1, T element2)
+    {
+<span class="nc" id="L480">        this.add(element1);</span>
+<span class="nc" id="L481">        this.add(element2);</span>
+<span class="nc" id="L482">        return this;</span>
+    }
+
+    public FastList&lt;T&gt; with(T element1, T element2, T element3)
+    {
+<span class="nc" id="L487">        this.add(element1);</span>
+<span class="nc" id="L488">        this.add(element2);</span>
+<span class="nc" id="L489">        this.add(element3);</span>
+<span class="nc" id="L490">        return this;</span>
+    }
+
+    public FastList&lt;T&gt; with(T... elements)
+    {
+<span class="nc" id="L495">        return this.withArrayCopy(elements, 0, elements.length);</span>
+    }
+
+    public FastList&lt;T&gt; withArrayCopy(T[] elements, int begin, int length)
+    {
+<span class="nc" id="L500">        this.ensureCapacity(this.size + length);</span>
+<span class="nc" id="L501">        System.arraycopy(elements, begin, this.items, this.size, length);</span>
+<span class="nc" id="L502">        this.size += length;</span>
+<span class="nc" id="L503">        return this;</span>
+    }
+
+    @Override
+    public T getFirst()
+    {
+<span class="nc bnc" id="L509" title="All 2 branches missed.">        return this.isEmpty() ? null : this.items[0];</span>
+    }
+
+    @Override
+    public T getLast()
+    {
+<span class="nc bnc" id="L515" title="All 2 branches missed.">        return this.isEmpty() ? null : this.items[this.size() - 1];</span>
+    }
+
+    @Override
+    public &lt;V&gt; FastListMultimap&lt;V, T&gt; groupBy(Function&lt;? super T, ? extends V&gt; function)
+    {
+<span class="nc" id="L521">        return this.groupBy(function, FastListMultimap.newMultimap());</span>
+    }
+
+    @Override
+    public &lt;V, R extends MutableMultimap&lt;V, T&gt;&gt; R groupBy(Function&lt;? super T, ? extends V&gt; function, R target)
+    {
+<span class="nc" id="L527">        return InternalArrayIterate.groupBy(this.items, this.size, function, target);</span>
+    }
+
+    @Override
+    public &lt;V&gt; FastListMultimap&lt;V, T&gt; groupByEach(Function&lt;? super T, ? extends Iterable&lt;V&gt;&gt; function)
+    {
+<span class="nc" id="L533">        return this.groupByEach(function, FastListMultimap.newMultimap());</span>
+    }
+
+    @Override
+    public &lt;V, R extends MutableMultimap&lt;V, T&gt;&gt; R groupByEach(
+            Function&lt;? super T, ? extends Iterable&lt;V&gt;&gt; function,
+            R target)
+    {
+<span class="nc" id="L541">        return InternalArrayIterate.groupByEach(this.items, this.size, function, target);</span>
+    }
+
+    @Override
+    public &lt;K&gt; MutableMap&lt;K, T&gt; groupByUniqueKey(Function&lt;? super T, ? extends K&gt; function)
+    {
+<span class="nc" id="L547">        return this.groupByUniqueKey(function, UnifiedMap.newMap(this.size()));</span>
+    }
+
+    @Override
+    public &lt;K, R extends MutableMap&lt;K, T&gt;&gt; R groupByUniqueKey(Function&lt;? super T, ? extends K&gt; function, R target)
+    {
+<span class="nc" id="L553">        return InternalArrayIterate.groupByUniqueKey(this.items, this.size, function, target);</span>
+    }
+
+    @Override
+    public void appendString(Appendable appendable, String start, String separator, String end)
+    {
+<span class="nc" id="L559">        InternalArrayIterate.appendString(this, this.items, this.size, appendable, start, separator, end);</span>
+<span class="nc" id="L560">    }</span>
+
+    @Override
+    public MutableList&lt;T&gt; take(int count)
+    {
+<span class="nc" id="L565">        return RandomAccessListIterate.take(this, count);</span>
+    }
+
+    @Override
+    public MutableList&lt;T&gt; drop(int count)
+    {
+<span class="nc" id="L571">        return RandomAccessListIterate.drop(this, count);</span>
+    }
+
+    @Override
+    public PartitionFastList&lt;T&gt; partition(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L577">        return InternalArrayIterate.partition(this.items, this.size, predicate);</span>
+    }
+
+    @Override
+    public &lt;P&gt; PartitionFastList&lt;T&gt; partitionWith(Predicate2&lt;? super T, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc" id="L583">        return InternalArrayIterate.partitionWith(this.items, this.size, predicate, parameter);</span>
+    }
+
+    @Override
+    public void each(Procedure&lt;? super T&gt; procedure)
+    {
+<span class="nc bnc" id="L589" title="All 2 branches missed.">        for (int i = 0; i &lt; this.size; i++)</span>
+        {
+<span class="nc" id="L591">            procedure.value(this.items[i]);</span>
+        }
+<span class="nc" id="L593">    }</span>
+
+    public void forEachIf(Predicate&lt;? super T&gt; predicate, Procedure&lt;? super T&gt; procedure)
+    {
+<span class="nc bnc" id="L597" title="All 2 branches missed.">        for (int i = 0; i &lt; this.size; i++)</span>
+        {
+<span class="nc" id="L599">            T item = this.items[i];</span>
+<span class="nc bnc" id="L600" title="All 2 branches missed.">            if (predicate.accept(item))</span>
+            {
+<span class="nc" id="L602">                procedure.value(item);</span>
+            }
+        }
+<span class="nc" id="L605">    }</span>
+
+    @Override
+    public void forEachWithIndex(ObjectIntProcedure&lt;? super T&gt; objectIntProcedure)
+    {
+<span class="nc" id="L610">        InternalArrayIterate.forEachWithIndex(this.items, this.size, objectIntProcedure);</span>
+<span class="nc" id="L611">    }</span>
+
+    @Override
+    public &lt;P&gt; void forEachWith(Procedure2&lt;? super T, ? super P&gt; procedure, P parameter)
+    {
+<span class="nc bnc" id="L616" title="All 2 branches missed.">        for (int i = 0; i &lt; this.size; i++)</span>
+        {
+<span class="nc" id="L618">            procedure.value(this.items[i], parameter);</span>
+        }
+<span class="nc" id="L620">    }</span>
+
+    @Override
+    public FastList&lt;T&gt; select(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L625">        return this.select(predicate, FastList.newList());</span>
+    }
+
+    @Override
+    public &lt;R extends Collection&lt;T&gt;&gt; R select(Predicate&lt;? super T&gt; predicate, R target)
+    {
+<span class="nc" id="L631">        return InternalArrayIterate.select(this.items, this.size, predicate, target);</span>
+    }
+
+    @Override
+    public &lt;P&gt; FastList&lt;T&gt; selectWith(Predicate2&lt;? super T, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc" id="L637">        return this.selectWith(predicate, parameter, FastList.newList());</span>
+    }
+
+    @Override
+    public &lt;P, R extends Collection&lt;T&gt;&gt; R selectWith(
+            Predicate2&lt;? super T, ? super P&gt; predicate,
+            P parameter,
+            R target)
+    {
+<span class="nc" id="L646">        return InternalArrayIterate.selectWith(this.items, this.size, predicate, parameter, target);</span>
+    }
+
+    @Override
+    public FastList&lt;T&gt; reject(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L652">        return this.reject(predicate, FastList.newList());</span>
+    }
+
+    @Override
+    public &lt;R extends Collection&lt;T&gt;&gt; R reject(Predicate&lt;? super T&gt; predicate, R target)
+    {
+<span class="nc" id="L658">        return InternalArrayIterate.reject(this.items, this.size, predicate, target);</span>
+    }
+
+    @Override
+    public &lt;P&gt; FastList&lt;T&gt; rejectWith(Predicate2&lt;? super T, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc" id="L664">        return this.rejectWith(predicate, parameter, FastList.newList());</span>
+    }
+
+    @Override
+    public &lt;P, R extends Collection&lt;T&gt;&gt; R rejectWith(
+            Predicate2&lt;? super T, ? super P&gt; predicate,
+            P parameter,
+            R target)
+    {
+<span class="nc" id="L673">        return InternalArrayIterate.rejectWith(this.items, this.size, predicate, parameter, target);</span>
+    }
+
+    @Override
+    public &lt;P&gt; Twin&lt;MutableList&lt;T&gt;&gt; selectAndRejectWith(
+            Predicate2&lt;? super T, ? super P&gt; predicate,
+            P parameter)
+    {
+<span class="nc" id="L681">        return InternalArrayIterate.selectAndRejectWith(this.items, this.size, predicate, parameter);</span>
+    }
+
+    @Override
+    public &lt;S&gt; FastList&lt;S&gt; selectInstancesOf(Class&lt;S&gt; clazz)
+    {
+<span class="nc" id="L687">        return InternalArrayIterate.selectInstancesOf(this.items, this.size, clazz);</span>
+    }
+
+    @Override
+    public boolean removeIf(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L693">        int currentFilledIndex = 0;</span>
+<span class="nc bnc" id="L694" title="All 2 branches missed.">        for (int i = 0; i &lt; this.size; i++)</span>
+        {
+<span class="nc" id="L696">            T item = this.items[i];</span>
+<span class="nc bnc" id="L697" title="All 2 branches missed.">            if (!predicate.accept(item))</span>
+            {
+                // keep it
+<span class="nc bnc" id="L700" title="All 2 branches missed.">                if (currentFilledIndex != i)</span>
+                {
+<span class="nc" id="L702">                    this.items[currentFilledIndex] = item;</span>
+                }
+<span class="nc" id="L704">                currentFilledIndex++;</span>
+            }
+        }
+<span class="nc bnc" id="L707" title="All 2 branches missed.">        boolean changed = currentFilledIndex &lt; this.size;</span>
+<span class="nc" id="L708">        this.wipeAndResetTheEnd(currentFilledIndex);</span>
+<span class="nc" id="L709">        return changed;</span>
+    }
+
+    private void wipeAndResetTheEnd(int newCurrentFilledIndex)
+    {
+<span class="nc bnc" id="L714" title="All 2 branches missed.">        for (int i = newCurrentFilledIndex; i &lt; this.size; i++)</span>
+        {
+<span class="nc" id="L716">            this.items[i] = null;</span>
+        }
+<span class="nc" id="L718">        this.size = newCurrentFilledIndex;</span>
+<span class="nc" id="L719">    }</span>
+
+    @Override
+    public &lt;P&gt; boolean removeIfWith(Predicate2&lt;? super T, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc" id="L724">        int currentFilledIndex = 0;</span>
+<span class="nc bnc" id="L725" title="All 2 branches missed.">        for (int i = 0; i &lt; this.size; i++)</span>
+        {
+<span class="nc" id="L727">            T item = this.items[i];</span>
+<span class="nc bnc" id="L728" title="All 2 branches missed.">            if (!predicate.accept(item, parameter))</span>
+            {
+                // keep it
+<span class="nc bnc" id="L731" title="All 2 branches missed.">                if (currentFilledIndex != i)</span>
+                {
+<span class="nc" id="L733">                    this.items[currentFilledIndex] = item;</span>
+                }
+<span class="nc" id="L735">                currentFilledIndex++;</span>
+            }
+        }
+<span class="nc bnc" id="L738" title="All 2 branches missed.">        boolean changed = currentFilledIndex &lt; this.size;</span>
+<span class="nc" id="L739">        this.wipeAndResetTheEnd(currentFilledIndex);</span>
+<span class="nc" id="L740">        return changed;</span>
+    }
+
+    @Override
+    public &lt;V&gt; FastList&lt;V&gt; collect(Function&lt;? super T, ? extends V&gt; function)
+    {
+<span class="nc" id="L746">        return this.collect(function, FastList.newList(this.size()));</span>
+    }
+
+    @Override
+    public MutableBooleanList collectBoolean(BooleanFunction&lt;? super T&gt; booleanFunction)
+    {
+<span class="nc" id="L752">        return this.collectBoolean(booleanFunction, new BooleanArrayList(this.size));</span>
+    }
+
+    @Override
+    public &lt;R extends MutableBooleanCollection&gt; R collectBoolean(BooleanFunction&lt;? super T&gt; booleanFunction, R target)
+    {
+<span class="nc bnc" id="L758" title="All 2 branches missed.">        for (int i = 0; i &lt; this.size; i++)</span>
+        {
+<span class="nc" id="L760">            target.add(booleanFunction.booleanValueOf(this.items[i]));</span>
+        }
+<span class="nc" id="L762">        return target;</span>
+    }
+
+    @Override
+    public MutableByteList collectByte(ByteFunction&lt;? super T&gt; byteFunction)
+    {
+<span class="nc" id="L768">        return this.collectByte(byteFunction, new ByteArrayList(this.size));</span>
+    }
+
+    @Override
+    public &lt;R extends MutableByteCollection&gt; R collectByte(ByteFunction&lt;? super T&gt; byteFunction, R target)
+    {
+<span class="nc bnc" id="L774" title="All 2 branches missed.">        for (int i = 0; i &lt; this.size; i++)</span>
+        {
+<span class="nc" id="L776">            target.add(byteFunction.byteValueOf(this.items[i]));</span>
+        }
+<span class="nc" id="L778">        return target;</span>
+    }
+
+    @Override
+    public MutableCharList collectChar(CharFunction&lt;? super T&gt; charFunction)
+    {
+<span class="nc" id="L784">        return this.collectChar(charFunction, new CharArrayList(this.size));</span>
+    }
+
+    @Override
+    public &lt;R extends MutableCharCollection&gt; R collectChar(CharFunction&lt;? super T&gt; charFunction, R target)
+    {
+<span class="nc bnc" id="L790" title="All 2 branches missed.">        for (int i = 0; i &lt; this.size; i++)</span>
+        {
+<span class="nc" id="L792">            target.add(charFunction.charValueOf(this.items[i]));</span>
+        }
+<span class="nc" id="L794">        return target;</span>
+    }
+
+    @Override
+    public MutableDoubleList collectDouble(DoubleFunction&lt;? super T&gt; doubleFunction)
+    {
+<span class="nc" id="L800">        return this.collectDouble(doubleFunction, new DoubleArrayList(this.size));</span>
+    }
+
+    @Override
+    public &lt;R extends MutableDoubleCollection&gt; R collectDouble(DoubleFunction&lt;? super T&gt; doubleFunction, R target)
+    {
+<span class="nc bnc" id="L806" title="All 2 branches missed.">        for (int i = 0; i &lt; this.size; i++)</span>
+        {
+<span class="nc" id="L808">            target.add(doubleFunction.doubleValueOf(this.items[i]));</span>
+        }
+<span class="nc" id="L810">        return target;</span>
+    }
+
+    @Override
+    public MutableFloatList collectFloat(FloatFunction&lt;? super T&gt; floatFunction)
+    {
+<span class="nc" id="L816">        return this.collectFloat(floatFunction, new FloatArrayList(this.size));</span>
+    }
+
+    @Override
+    public &lt;R extends MutableFloatCollection&gt; R collectFloat(FloatFunction&lt;? super T&gt; floatFunction, R target)
+    {
+<span class="nc bnc" id="L822" title="All 2 branches missed.">        for (int i = 0; i &lt; this.size; i++)</span>
+        {
+<span class="nc" id="L824">            target.add(floatFunction.floatValueOf(this.items[i]));</span>
+        }
+<span class="nc" id="L826">        return target;</span>
+    }
+
+    @Override
+    public MutableIntList collectInt(IntFunction&lt;? super T&gt; intFunction)
+    {
+<span class="nc" id="L832">        return this.collectInt(intFunction, new IntArrayList(this.size));</span>
+    }
+
+    @Override
+    public &lt;R extends MutableIntCollection&gt; R collectInt(IntFunction&lt;? super T&gt; intFunction, R target)
+    {
+<span class="nc bnc" id="L838" title="All 2 branches missed.">        for (int i = 0; i &lt; this.size; i++)</span>
+        {
+<span class="nc" id="L840">            target.add(intFunction.intValueOf(this.items[i]));</span>
+        }
+<span class="nc" id="L842">        return target;</span>
+    }
+
+    @Override
+    public MutableLongList collectLong(LongFunction&lt;? super T&gt; longFunction)
+    {
+<span class="nc" id="L848">        return this.collectLong(longFunction, new LongArrayList(this.size));</span>
+    }
+
+    @Override
+    public &lt;R extends MutableLongCollection&gt; R collectLong(LongFunction&lt;? super T&gt; longFunction, R target)
+    {
+<span class="nc bnc" id="L854" title="All 2 branches missed.">        for (int i = 0; i &lt; this.size; i++)</span>
+        {
+<span class="nc" id="L856">            target.add(longFunction.longValueOf(this.items[i]));</span>
+        }
+<span class="nc" id="L858">        return target;</span>
+    }
+
+    @Override
+    public MutableShortList collectShort(ShortFunction&lt;? super T&gt; shortFunction)
+    {
+<span class="nc" id="L864">        return this.collectShort(shortFunction, new ShortArrayList(this.size));</span>
+    }
+
+    @Override
+    public &lt;R extends MutableShortCollection&gt; R collectShort(ShortFunction&lt;? super T&gt; shortFunction, R target)
+    {
+<span class="nc bnc" id="L870" title="All 2 branches missed.">        for (int i = 0; i &lt; this.size; i++)</span>
+        {
+<span class="nc" id="L872">            target.add(shortFunction.shortValueOf(this.items[i]));</span>
+        }
+<span class="nc" id="L874">        return target;</span>
+    }
+
+    @Override
+    public &lt;V, R extends Collection&lt;V&gt;&gt; R collect(Function&lt;? super T, ? extends V&gt; function, R target)
+    {
+<span class="nc" id="L880">        return InternalArrayIterate.collect(this.items, this.size, function, target);</span>
+    }
+
+    /**
+     * @since 9.1.
+     */
+    @Override
+    public &lt;V&gt; MutableList&lt;V&gt; collectWithIndex(ObjectIntToObjectFunction&lt;? super T, ? extends V&gt; function)
+    {
+<span class="nc" id="L889">        return this.collectWithIndex(function, FastList.newList(this.size));</span>
+    }
+
+    /**
+     * @since 9.1.
+     */
+    @Override
+    public &lt;V, R extends Collection&lt;V&gt;&gt; R collectWithIndex(ObjectIntToObjectFunction&lt;? super T, ? extends V&gt; function, R target)
+    {
+<span class="nc" id="L898">        return InternalArrayIterate.collectWithIndex(this.items, this.size, function, target);</span>
+    }
+
+    @Override
+    public &lt;V&gt; FastList&lt;V&gt; flatCollect(Function&lt;? super T, ? extends Iterable&lt;V&gt;&gt; function)
+    {
+<span class="nc" id="L904">        return this.flatCollect(function, FastList.newList(this.size()));</span>
+    }
+
+    @Override
+    public &lt;V, R extends Collection&lt;V&gt;&gt; R flatCollect(
+            Function&lt;? super T, ? extends Iterable&lt;V&gt;&gt; function,
+            R target)
+    {
+<span class="nc" id="L912">        return InternalArrayIterate.flatCollect(this.items, this.size, function, target);</span>
+    }
+
+    @Override
+    public &lt;P, V&gt; FastList&lt;V&gt; collectWith(Function2&lt;? super T, ? super P, ? extends V&gt; function, P parameter)
+    {
+<span class="nc" id="L918">        return this.collectWith(function, parameter, FastList.newList(this.size()));</span>
+    }
+
+    @Override
+    public &lt;P, V, R extends Collection&lt;V&gt;&gt; R collectWith(
+            Function2&lt;? super T, ? super P, ? extends V&gt; function,
+            P parameter,
+            R target)
+    {
+<span class="nc" id="L927">        return InternalArrayIterate.collectWith(this.items, this.size, function, parameter, target);</span>
+    }
+
+    @Override
+    public &lt;V&gt; FastList&lt;V&gt; collectIf(
+            Predicate&lt;? super T&gt; predicate,
+            Function&lt;? super T, ? extends V&gt; function)
+    {
+<span class="nc" id="L935">        return this.collectIf(predicate, function, FastList.newList());</span>
+    }
+
+    @Override
+    public &lt;V, R extends Collection&lt;V&gt;&gt; R collectIf(
+            Predicate&lt;? super T&gt; predicate,
+            Function&lt;? super T, ? extends V&gt; function,
+            R target)
+    {
+<span class="nc" id="L944">        return InternalArrayIterate.collectIf(this.items, this.size, predicate, function, target);</span>
+    }
+
+    @Override
+    public T detect(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L950">        return InternalArrayIterate.detect(this.items, this.size, predicate);</span>
+    }
+
+    @Override
+    public &lt;P&gt; T detectWith(Predicate2&lt;? super T, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc" id="L956">        return InternalArrayIterate.detectWith(this.items, this.size, predicate, parameter);</span>
+    }
+
+    @Override
+    public Optional&lt;T&gt; detectOptional(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L962">        return InternalArrayIterate.detectOptional(this.items, this.size, predicate);</span>
+    }
+
+    @Override
+    public &lt;P&gt; Optional&lt;T&gt; detectWithOptional(Predicate2&lt;? super T, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc" id="L968">        return InternalArrayIterate.detectWithOptional(this.items, this.size, predicate, parameter);</span>
+    }
+
+    @Override
+    public int detectIndex(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L974">        return InternalArrayIterate.detectIndex(this.items, this.size, predicate);</span>
+    }
+
+    @Override
+    public int detectLastIndex(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L980">        return InternalArrayIterate.detectLastIndex(this.items, this.size, predicate);</span>
+    }
+
+    @Override
+    public T min(Comparator&lt;? super T&gt; comparator)
+    {
+<span class="nc" id="L986">        return InternalArrayIterate.min(this.items, this.size, comparator);</span>
+    }
+
+    @Override
+    public T max(Comparator&lt;? super T&gt; comparator)
+    {
+<span class="nc" id="L992">        return InternalArrayIterate.max(this.items, this.size, comparator);</span>
+    }
+
+    @Override
+    public T min()
+    {
+<span class="nc" id="L998">        return InternalArrayIterate.min(this.items, this.size);</span>
+    }
+
+    @Override
+    public T max()
+    {
+<span class="nc" id="L1004">        return InternalArrayIterate.max(this.items, this.size);</span>
+    }
+
+    @Override
+    public &lt;V extends Comparable&lt;? super V&gt;&gt; T minBy(Function&lt;? super T, ? extends V&gt; function)
+    {
+<span class="nc" id="L1010">        return InternalArrayIterate.minBy(this.items, this.size, function);</span>
+    }
+
+    @Override
+    public &lt;V extends Comparable&lt;? super V&gt;&gt; T maxBy(Function&lt;? super T, ? extends V&gt; function)
+    {
+<span class="nc" id="L1016">        return InternalArrayIterate.maxBy(this.items, this.size, function);</span>
+    }
+
+    @Override
+    public T get(int index)
+    {
+<span class="nc bnc" id="L1022" title="All 2 branches missed.">        if (index &lt; this.size)</span>
+        {
+<span class="nc" id="L1024">            return this.items[index];</span>
+        }
+<span class="nc" id="L1026">        throw this.newIndexOutOfBoundsException(index);</span>
+    }
+
+    private IndexOutOfBoundsException newIndexOutOfBoundsException(int index)
+    {
+<span class="nc" id="L1031">        return new IndexOutOfBoundsException(&quot;Index: &quot; + index + &quot; Size: &quot; + this.size);</span>
+    }
+
+    @Override
+    public boolean add(T newItem)
+    {
+<span class="nc bnc" id="L1037" title="All 2 branches missed.">        if (this.items.length == this.size)</span>
+        {
+<span class="nc" id="L1039">            this.ensureCapacityForAdd();</span>
+        }
+<span class="nc" id="L1041">        this.items[this.size++] = newItem;</span>
+<span class="nc" id="L1042">        return true;</span>
+    }
+
+    @Override
+    public void add(int index, T element)
+    {
+<span class="nc bnc" id="L1048" title="All 4 branches missed.">        if (index &gt; -1 &amp;&amp; index &lt; this.size)</span>
+        {
+<span class="nc" id="L1050">            this.addAtIndex(index, element);</span>
+        }
+<span class="nc bnc" id="L1052" title="All 2 branches missed.">        else if (index == this.size)</span>
+        {
+<span class="nc" id="L1054">            this.add(element);</span>
+        }
+        else
+        {
+<span class="nc" id="L1058">            this.throwOutOfBounds(index);</span>
+        }
+<span class="nc" id="L1060">    }</span>
+
+    private void addAtIndex(int index, T element)
+    {
+<span class="nc" id="L1064">        int oldSize = this.size++;</span>
+<span class="nc bnc" id="L1065" title="All 2 branches missed.">        if (this.items.length == oldSize)</span>
+        {
+<span class="nc" id="L1067">            T[] newItems = (T[]) new Object[this.sizePlusFiftyPercent(oldSize)];</span>
+<span class="nc bnc" id="L1068" title="All 2 branches missed.">            if (index &gt; 0)</span>
+            {
+<span class="nc" id="L1070">                System.arraycopy(this.items, 0, newItems, 0, index);</span>
+            }
+<span class="nc" id="L1072">            System.arraycopy(this.items, index, newItems, index + 1, oldSize - index);</span>
+<span class="nc" id="L1073">            this.items = newItems;</span>
+<span class="nc" id="L1074">        }</span>
+        else
+        {
+<span class="nc" id="L1077">            System.arraycopy(this.items, index, this.items, index + 1, oldSize - index);</span>
+        }
+<span class="nc" id="L1079">        this.items[index] = element;</span>
+<span class="nc" id="L1080">    }</span>
+
+    private int sizePlusFiftyPercent(int oldSize)
+    {
+<span class="nc" id="L1084">        int result = oldSize + (oldSize &gt;&gt; 1) + 1;</span>
+<span class="nc bnc" id="L1085" title="All 2 branches missed.">        return result &lt; oldSize ? MAXIMUM_ARRAY_SIZE : result;</span>
+    }
+
+    @Override
+    public T remove(int index)
+    {
+<span class="nc" id="L1091">        T previous = this.get(index);</span>
+<span class="nc" id="L1092">        int totalOffset = this.size - index - 1;</span>
+<span class="nc bnc" id="L1093" title="All 2 branches missed.">        if (totalOffset &gt; 0)</span>
+        {
+<span class="nc" id="L1095">            System.arraycopy(this.items, index + 1, this.items, index, totalOffset);</span>
+        }
+<span class="nc" id="L1097">        this.items[--this.size] = null;</span>
+<span class="nc" id="L1098">        return previous;</span>
+    }
+
+    @Override
+    public boolean remove(Object object)
+    {
+<span class="nc" id="L1104">        int index = this.indexOf(object);</span>
+<span class="nc bnc" id="L1105" title="All 2 branches missed.">        if (index &gt;= 0)</span>
+        {
+<span class="nc" id="L1107">            this.remove(index);</span>
+<span class="nc" id="L1108">            return true;</span>
+        }
+<span class="nc" id="L1110">        return false;</span>
+    }
+
+    @Override
+    public boolean addAll(int index, Collection&lt;? extends T&gt; source)
+    {
+<span class="nc bnc" id="L1116" title="All 4 branches missed.">        if (index &gt; this.size || index &lt; 0)</span>
+        {
+<span class="nc" id="L1118">            this.throwOutOfBounds(index);</span>
+        }
+<span class="nc bnc" id="L1120" title="All 2 branches missed.">        if (source.isEmpty())</span>
+        {
+<span class="nc" id="L1122">            return false;</span>
+        }
+
+<span class="nc bnc" id="L1125" title="All 2 branches missed.">        if (source.getClass() == FastList.class)</span>
+        {
+<span class="nc" id="L1127">            this.addAllFastListAtIndex((FastList&lt;T&gt;) source, index);</span>
+        }
+<span class="nc bnc" id="L1129" title="All 2 branches missed.">        else if (source.getClass() == ArrayList.class)</span>
+        {
+<span class="nc" id="L1131">            this.addAllArrayListAtIndex((ArrayList&lt;T&gt;) source, index);</span>
+        }
+<span class="nc bnc" id="L1133" title="All 4 branches missed.">        else if (source instanceof List &amp;&amp; source instanceof RandomAccess)</span>
+        {
+<span class="nc" id="L1135">            this.addAllRandomAccessListAtIndex((List&lt;T&gt;) source, index);</span>
+        }
+        else
+        {
+<span class="nc" id="L1139">            this.addAllCollectionAtIndex(source, index);</span>
+        }
+<span class="nc" id="L1141">        return true;</span>
+    }
+
+    private void addAllFastListAtIndex(FastList&lt;T&gt; source, int index)
+    {
+<span class="nc" id="L1146">        int sourceSize = source.size();</span>
+<span class="nc" id="L1147">        int newSize = this.size + sourceSize;</span>
+<span class="nc" id="L1148">        this.ensureCapacity(newSize);</span>
+<span class="nc" id="L1149">        this.shiftElementsAtIndex(index, sourceSize);</span>
+<span class="nc" id="L1150">        System.arraycopy(source.items, 0, this.items, index, sourceSize);</span>
+<span class="nc" id="L1151">        this.size = newSize;</span>
+<span class="nc" id="L1152">    }</span>
+
+    private void addAllArrayListAtIndex(ArrayList&lt;T&gt; source, int index)
+    {
+<span class="nc" id="L1156">        int sourceSize = source.size();</span>
+<span class="nc" id="L1157">        int newSize = this.size + sourceSize;</span>
+<span class="nc" id="L1158">        this.ensureCapacity(newSize);</span>
+<span class="nc" id="L1159">        this.shiftElementsAtIndex(index, sourceSize);</span>
+<span class="nc" id="L1160">        ArrayListIterate.toArray(source, this.items, index, sourceSize);</span>
+<span class="nc" id="L1161">        this.size = newSize;</span>
+<span class="nc" id="L1162">    }</span>
+
+    private void addAllRandomAccessListAtIndex(List&lt;T&gt; source, int index)
+    {
+<span class="nc" id="L1166">        int sourceSize = source.size();</span>
+<span class="nc" id="L1167">        int newSize = this.size + sourceSize;</span>
+<span class="nc" id="L1168">        this.ensureCapacity(newSize);</span>
+<span class="nc" id="L1169">        this.shiftElementsAtIndex(index, sourceSize);</span>
+<span class="nc" id="L1170">        RandomAccessListIterate.toArray(source, this.items, index, sourceSize);</span>
+<span class="nc" id="L1171">        this.size = newSize;</span>
+<span class="nc" id="L1172">    }</span>
+
+    private void addAllCollectionAtIndex(Collection&lt;? extends T&gt; source, int index)
+    {
+<span class="nc" id="L1176">        Object[] newItems = source.toArray();</span>
+<span class="nc" id="L1177">        int sourceSize = newItems.length;</span>
+<span class="nc" id="L1178">        int newSize = this.size + sourceSize;</span>
+<span class="nc" id="L1179">        this.ensureCapacity(newSize);</span>
+<span class="nc" id="L1180">        this.shiftElementsAtIndex(index, sourceSize);</span>
+<span class="nc" id="L1181">        this.size = newSize;</span>
+<span class="nc" id="L1182">        System.arraycopy(newItems, 0, this.items, index, sourceSize);</span>
+<span class="nc" id="L1183">    }</span>
+
+    private void shiftElementsAtIndex(int index, int sourceSize)
+    {
+<span class="nc" id="L1187">        int numberToMove = this.size - index;</span>
+<span class="nc bnc" id="L1188" title="All 2 branches missed.">        if (numberToMove &gt; 0)</span>
+        {
+<span class="nc" id="L1190">            System.arraycopy(this.items, index, this.items, index + sourceSize, numberToMove);</span>
+        }
+<span class="nc" id="L1192">    }</span>
+
+    @Override
+    public int size()
+    {
+<span class="nc" id="L1197">        return this.size;</span>
+    }
+
+    @Override
+    public int count(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L1203">        return InternalArrayIterate.count(this.items, this.size, predicate);</span>
+    }
+
+    @Override
+    public &lt;P&gt; int countWith(Predicate2&lt;? super T, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc" id="L1209">        return InternalArrayIterate.countWith(this.items, this.size, predicate, parameter);</span>
+    }
+
+    @Override
+    public &lt;S&gt; boolean corresponds(OrderedIterable&lt;S&gt; other, Predicate2&lt;? super T, ? super S&gt; predicate)
+    {
+<span class="nc" id="L1215">        return InternalArrayIterate.corresponds(this.items, this.size, other, predicate);</span>
+    }
+
+    @Override
+    public boolean anySatisfy(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L1221">        return InternalArrayIterate.anySatisfy(this.items, this.size, predicate);</span>
+    }
+
+    @Override
+    public &lt;P&gt; boolean anySatisfyWith(Predicate2&lt;? super T, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc" id="L1227">        return InternalArrayIterate.anySatisfyWith(this.items, this.size, predicate, parameter);</span>
+    }
+
+    @Override
+    public boolean allSatisfy(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L1233">        return InternalArrayIterate.allSatisfy(this.items, this.size, predicate);</span>
+    }
+
+    @Override
+    public &lt;P&gt; boolean allSatisfyWith(Predicate2&lt;? super T, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc" id="L1239">        return InternalArrayIterate.allSatisfyWith(this.items, this.size, predicate, parameter);</span>
+    }
+
+    @Override
+    public boolean noneSatisfy(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L1245">        return InternalArrayIterate.noneSatisfy(this.items, this.size, predicate);</span>
+    }
+
+    @Override
+    public &lt;P&gt; boolean noneSatisfyWith(Predicate2&lt;? super T, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc" id="L1251">        return InternalArrayIterate.noneSatisfyWith(this.items, this.size, predicate, parameter);</span>
+    }
+
+    @Override
+    public &lt;IV&gt; IV injectInto(IV injectedValue, Function2&lt;? super IV, ? super T, ? extends IV&gt; function)
+    {
+<span class="nc" id="L1257">        IV result = injectedValue;</span>
+<span class="nc bnc" id="L1258" title="All 2 branches missed.">        for (int i = 0; i &lt; this.size; i++)</span>
+        {
+<span class="nc" id="L1260">            result = function.value(result, this.items[i]);</span>
+        }
+<span class="nc" id="L1262">        return result;</span>
+    }
+
+    @Override
+    public int injectInto(int injectedValue, IntObjectToIntFunction&lt;? super T&gt; function)
+    {
+<span class="nc" id="L1268">        int result = injectedValue;</span>
+<span class="nc bnc" id="L1269" title="All 2 branches missed.">        for (int i = 0; i &lt; this.size; i++)</span>
+        {
+<span class="nc" id="L1271">            result = function.intValueOf(result, this.items[i]);</span>
+        }
+<span class="nc" id="L1273">        return result;</span>
+    }
+
+    @Override
+    public long injectInto(long injectedValue, LongObjectToLongFunction&lt;? super T&gt; function)
+    {
+<span class="nc" id="L1279">        long result = injectedValue;</span>
+<span class="nc bnc" id="L1280" title="All 2 branches missed.">        for (int i = 0; i &lt; this.size; i++)</span>
+        {
+<span class="nc" id="L1282">            result = function.longValueOf(result, this.items[i]);</span>
+        }
+<span class="nc" id="L1284">        return result;</span>
+    }
+
+    @Override
+    public double injectInto(double injectedValue, DoubleObjectToDoubleFunction&lt;? super T&gt; function)
+    {
+<span class="nc" id="L1290">        double result = injectedValue;</span>
+<span class="nc bnc" id="L1291" title="All 2 branches missed.">        for (int i = 0; i &lt; this.size; i++)</span>
+        {
+<span class="nc" id="L1293">            result = function.doubleValueOf(result, this.items[i]);</span>
+        }
+<span class="nc" id="L1295">        return result;</span>
+    }
+
+    @Override
+    public float injectInto(float injectedValue, FloatObjectToFloatFunction&lt;? super T&gt; function)
+    {
+<span class="nc" id="L1301">        float result = injectedValue;</span>
+<span class="nc bnc" id="L1302" title="All 2 branches missed.">        for (int i = 0; i &lt; this.size; i++)</span>
+        {
+<span class="nc" id="L1304">            result = function.floatValueOf(result, this.items[i]);</span>
+        }
+<span class="nc" id="L1306">        return result;</span>
+    }
+
+    @Override
+    public MutableList&lt;T&gt; distinct()
+    {
+<span class="nc" id="L1312">        return InternalArrayIterate.distinct(this.items, this.size);</span>
+    }
+
+    @Override
+    public MutableList&lt;T&gt; distinct(HashingStrategy&lt;? super T&gt; hashingStrategy)
+    {
+<span class="nc" id="L1318">        return InternalArrayIterate.distinct(this.items, this.size, hashingStrategy);</span>
+    }
+
+    /**
+     * @since 8.0
+     */
+    @Override
+    public IntSummaryStatistics summarizeInt(IntFunction&lt;? super T&gt; function)
+    {
+<span class="nc" id="L1327">        return InternalArrayIterate.summarizeInt(this.items, this.size, function);</span>
+    }
+
+    /**
+     * @since 8.0
+     */
+    @Override
+    public DoubleSummaryStatistics summarizeFloat(FloatFunction&lt;? super T&gt; function)
+    {
+<span class="nc" id="L1336">        return InternalArrayIterate.summarizeFloat(this.items, this.size, function);</span>
+    }
+
+    /**
+     * @since 8.0
+     */
+    @Override
+    public LongSummaryStatistics summarizeLong(LongFunction&lt;? super T&gt; function)
+    {
+<span class="nc" id="L1345">        return InternalArrayIterate.summarizeLong(this.items, this.size, function);</span>
+    }
+
+    /**
+     * @since 8.0
+     */
+    @Override
+    public DoubleSummaryStatistics summarizeDouble(DoubleFunction&lt;? super T&gt; function)
+    {
+<span class="nc" id="L1354">        return InternalArrayIterate.summarizeDouble(this.items, this.size, function);</span>
+    }
+
+    /**
+     * @since 8.0
+     */
+    @Override
+    public Optional&lt;T&gt; reduce(BinaryOperator&lt;T&gt; accumulator)
+    {
+<span class="nc" id="L1363">        return InternalArrayIterate.reduce(this.items, this.size, accumulator);</span>
+    }
+
+    /**
+     * @since 8.0
+     */
+    @Override
+    public &lt;R, A&gt; R reduceInPlace(Collector&lt;? super T, A, R&gt; collector)
+    {
+<span class="nc" id="L1372">        return InternalArrayIterate.reduceInPlace(this.items, this.size, collector);</span>
+    }
+
+    /**
+     * @since 8.0
+     */
+    @Override
+    public &lt;R&gt; R reduceInPlace(Supplier&lt;R&gt; supplier, BiConsumer&lt;R, ? super T&gt; accumulator)
+    {
+<span class="nc" id="L1381">        return InternalArrayIterate.reduceInPlace(this.items, this.size, supplier, accumulator);</span>
+    }
+
+    @Override
+    public long sumOfInt(IntFunction&lt;? super T&gt; function)
+    {
+<span class="nc" id="L1387">        return InternalArrayIterate.sumOfInt(this.items, this.size, function);</span>
+    }
+
+    @Override
+    public long sumOfLong(LongFunction&lt;? super T&gt; function)
+    {
+<span class="nc" id="L1393">        return InternalArrayIterate.sumOfLong(this.items, this.size, function);</span>
+    }
+
+    @Override
+    public double sumOfFloat(FloatFunction&lt;? super T&gt; function)
+    {
+<span class="nc" id="L1399">        return InternalArrayIterate.sumOfFloat(this.items, this.size, function);</span>
+    }
+
+    @Override
+    public double sumOfDouble(DoubleFunction&lt;? super T&gt; function)
+    {
+<span class="nc" id="L1405">        return InternalArrayIterate.sumOfDouble(this.items, this.size, function);</span>
+    }
+
+    @Override
+    public &lt;V&gt; MutableObjectLongMap&lt;V&gt; sumByInt(Function&lt;? super T, ? extends V&gt; groupBy, IntFunction&lt;? super T&gt; function)
+    {
+<span class="nc" id="L1411">        return InternalArrayIterate.sumByInt(this.items, this.size, groupBy, function);</span>
+    }
+
+    @Override
+    public &lt;V&gt; MutableObjectLongMap&lt;V&gt; sumByLong(Function&lt;? super T, ? extends V&gt; groupBy, LongFunction&lt;? super T&gt; function)
+    {
+<span class="nc" id="L1417">        return InternalArrayIterate.sumByLong(this.items, this.size, groupBy, function);</span>
+    }
+
+    @Override
+    public &lt;V&gt; MutableObjectDoubleMap&lt;V&gt; sumByFloat(Function&lt;? super T, ? extends V&gt; groupBy, FloatFunction&lt;? super T&gt; function)
+    {
+<span class="nc" id="L1423">        return InternalArrayIterate.sumByFloat(this.items, this.size, groupBy, function);</span>
+    }
+
+    @Override
+    public &lt;V&gt; MutableObjectDoubleMap&lt;V&gt; sumByDouble(Function&lt;? super T, ? extends V&gt; groupBy, DoubleFunction&lt;? super T&gt; function)
+    {
+<span class="nc" id="L1429">        return InternalArrayIterate.sumByDouble(this.items, this.size, groupBy, function);</span>
+    }
+
+    @Override
+    public &lt;IV, P&gt; IV injectIntoWith(
+            IV injectValue,
+            Function3&lt;? super IV, ? super T, ? super P, ? extends IV&gt; function,
+            P parameter)
+    {
+<span class="nc" id="L1438">        IV result = injectValue;</span>
+<span class="nc bnc" id="L1439" title="All 2 branches missed.">        for (int i = 0; i &lt; this.size; i++)</span>
+        {
+<span class="nc" id="L1441">            result = function.value(result, this.items[i], parameter);</span>
+        }
+<span class="nc" id="L1443">        return result;</span>
+    }
+
+    @Override
+    public FastList&lt;T&gt; toList()
+    {
+<span class="nc" id="L1449">        return FastList.newList(this);</span>
+    }
+
+    @Override
+    public FastList&lt;T&gt; toSortedList()
+    {
+<span class="nc" id="L1455">        return this.toSortedList(Comparators.naturalOrder());</span>
+    }
+
+    @Override
+    public FastList&lt;T&gt; toSortedList(Comparator&lt;? super T&gt; comparator)
+    {
+<span class="nc" id="L1461">        return FastList.newList(this).sortThis(comparator);</span>
+    }
+
+    @Override
+    public MutableList&lt;T&gt; takeWhile(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L1467">        int endIndex = this.detectNotIndex(predicate);</span>
+<span class="nc" id="L1468">        T[] result = (T[]) new Object[endIndex];</span>
+<span class="nc" id="L1469">        System.arraycopy(this.items, 0, result, 0, endIndex);</span>
+<span class="nc" id="L1470">        return FastList.newListWith(result);</span>
+    }
+
+    @Override
+    public MutableList&lt;T&gt; dropWhile(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L1476">        int startIndex = this.detectNotIndex(predicate);</span>
+<span class="nc" id="L1477">        int resultSize = this.size() - startIndex;</span>
+<span class="nc" id="L1478">        T[] result = (T[]) new Object[resultSize];</span>
+<span class="nc" id="L1479">        System.arraycopy(this.items, startIndex, result, 0, resultSize);</span>
+<span class="nc" id="L1480">        return FastList.newListWith(result);</span>
+    }
+
+    @Override
+    public PartitionMutableList&lt;T&gt; partitionWhile(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L1486">        PartitionMutableList&lt;T&gt; result = new PartitionFastList&lt;&gt;();</span>
+<span class="nc" id="L1487">        FastList&lt;T&gt; selected = (FastList&lt;T&gt;) result.getSelected();</span>
+<span class="nc" id="L1488">        FastList&lt;T&gt; rejected = (FastList&lt;T&gt;) result.getRejected();</span>
+<span class="nc" id="L1489">        int partitionIndex = this.detectNotIndex(predicate);</span>
+<span class="nc" id="L1490">        int rejectedSize = this.size() - partitionIndex;</span>
+<span class="nc" id="L1491">        selected.withArrayCopy(this.items, 0, partitionIndex);</span>
+<span class="nc" id="L1492">        rejected.withArrayCopy(this.items, partitionIndex, rejectedSize);</span>
+<span class="nc" id="L1493">        return result;</span>
+    }
+
+    private int detectNotIndex(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc bnc" id="L1498" title="All 2 branches missed.">        for (int index = 0; index &lt; this.size; index++)</span>
+        {
+<span class="nc bnc" id="L1500" title="All 2 branches missed.">            if (!predicate.accept(this.items[index]))</span>
+            {
+<span class="nc" id="L1502">                return index;</span>
+            }
+        }
+<span class="nc" id="L1505">        return this.size;</span>
+    }
+
+    @Override
+    public boolean equals(Object that)
+    {
+<span class="nc bnc" id="L1511" title="All 2 branches missed.">        if (that == this)</span>
+        {
+<span class="nc" id="L1513">            return true;</span>
+        }
+<span class="nc bnc" id="L1515" title="All 2 branches missed.">        if (!(that instanceof List))</span>
+        {
+<span class="nc" id="L1517">            return false;</span>
+        }
+<span class="nc bnc" id="L1519" title="All 2 branches missed.">        if (that instanceof FastList)</span>
+        {
+<span class="nc" id="L1521">            return this.fastListEquals((FastList&lt;?&gt;) that);</span>
+        }
+<span class="nc" id="L1523">        return InternalArrayIterate.arrayEqualsList(this.items, this.size, (List&lt;?&gt;) that);</span>
+    }
+
+    public boolean fastListEquals(FastList&lt;?&gt; that)
+    {
+<span class="nc bnc" id="L1528" title="All 2 branches missed.">        if (this.size != that.size)</span>
+        {
+<span class="nc" id="L1530">            return false;</span>
+        }
+<span class="nc bnc" id="L1532" title="All 2 branches missed.">        for (int i = 0; i &lt; this.size; i++)</span>
+        {
+<span class="nc bnc" id="L1534" title="All 2 branches missed.">            if (!Comparators.nullSafeEquals(this.items[i], that.items[i]))</span>
+            {
+<span class="nc" id="L1536">                return false;</span>
+            }
+        }
+<span class="nc" id="L1539">        return true;</span>
+    }
+
+    @Override
+    public int hashCode()
+    {
+<span class="nc" id="L1545">        int hashCode = 1;</span>
+<span class="nc bnc" id="L1546" title="All 2 branches missed.">        for (int i = 0; i &lt; this.size; i++)</span>
+        {
+<span class="nc" id="L1548">            T item = this.items[i];</span>
+<span class="nc bnc" id="L1549" title="All 2 branches missed.">            hashCode = 31 * hashCode + (item == null ? 0 : item.hashCode());</span>
+        }
+<span class="nc" id="L1551">        return hashCode;</span>
+    }
+
+    @Override
+    public void writeExternal(ObjectOutput out) throws IOException
+    {
+<span class="nc" id="L1557">        out.writeInt(this.size());</span>
+<span class="nc bnc" id="L1558" title="All 2 branches missed.">        for (int i = 0; i &lt; this.size; i++)</span>
+        {
+<span class="nc" id="L1560">            out.writeObject(this.items[i]);</span>
+        }
+<span class="nc" id="L1562">    }</span>
+
+    @Override
+    public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException
+    {
+<span class="nc" id="L1567">        this.size = in.readInt();</span>
+<span class="nc" id="L1568">        this.items = (T[]) new Object[this.size];</span>
+<span class="nc bnc" id="L1569" title="All 2 branches missed.">        for (int i = 0; i &lt; this.size; i++)</span>
+        {
+<span class="nc" id="L1571">            this.items[i] = (T) in.readObject();</span>
+        }
+<span class="nc" id="L1573">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.0.201801022044</span></div></body></html>

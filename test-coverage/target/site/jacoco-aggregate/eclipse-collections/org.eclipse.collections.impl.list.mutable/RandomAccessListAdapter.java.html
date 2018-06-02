@@ -1,0 +1,515 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>RandomAccessListAdapter.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Eclipse Collections Test Coverage Aggregation</a> &gt; <a href="../index.html" class="el_bundle">eclipse-collections</a> &gt; <a href="index.source.html" class="el_package">org.eclipse.collections.impl.list.mutable</a> &gt; <span class="el_source">RandomAccessListAdapter.java</span></div><h1>RandomAccessListAdapter.java</h1><pre class="source lang-java linenums">/*
+ * Copyright (c) 2016 Goldman Sachs.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * and Eclipse Distribution License v. 1.0 which accompany this distribution.
+ * The Eclipse Public License is available at http://www.eclipse.org/legal/epl-v10.html
+ * and the Eclipse Distribution License is available at
+ * http://www.eclipse.org/org/documents/edl-v10.php.
+ */
+
+package org.eclipse.collections.impl.list.mutable;
+
+import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+import java.util.RandomAccess;
+
+import org.eclipse.collections.api.block.HashingStrategy;
+import org.eclipse.collections.api.block.function.Function;
+import org.eclipse.collections.api.block.function.Function0;
+import org.eclipse.collections.api.block.function.Function2;
+import org.eclipse.collections.api.block.function.primitive.BooleanFunction;
+import org.eclipse.collections.api.block.function.primitive.ByteFunction;
+import org.eclipse.collections.api.block.function.primitive.CharFunction;
+import org.eclipse.collections.api.block.function.primitive.DoubleFunction;
+import org.eclipse.collections.api.block.function.primitive.FloatFunction;
+import org.eclipse.collections.api.block.function.primitive.IntFunction;
+import org.eclipse.collections.api.block.function.primitive.LongFunction;
+import org.eclipse.collections.api.block.function.primitive.ShortFunction;
+import org.eclipse.collections.api.block.predicate.Predicate;
+import org.eclipse.collections.api.block.predicate.Predicate2;
+import org.eclipse.collections.api.block.procedure.Procedure;
+import org.eclipse.collections.api.block.procedure.primitive.ObjectIntProcedure;
+import org.eclipse.collections.api.list.ImmutableList;
+import org.eclipse.collections.api.list.MutableList;
+import org.eclipse.collections.api.list.primitive.MutableBooleanList;
+import org.eclipse.collections.api.list.primitive.MutableByteList;
+import org.eclipse.collections.api.list.primitive.MutableCharList;
+import org.eclipse.collections.api.list.primitive.MutableDoubleList;
+import org.eclipse.collections.api.list.primitive.MutableFloatList;
+import org.eclipse.collections.api.list.primitive.MutableIntList;
+import org.eclipse.collections.api.list.primitive.MutableLongList;
+import org.eclipse.collections.api.list.primitive.MutableShortList;
+import org.eclipse.collections.api.ordered.OrderedIterable;
+import org.eclipse.collections.api.partition.list.PartitionMutableList;
+import org.eclipse.collections.api.tuple.Pair;
+import org.eclipse.collections.impl.block.factory.Comparators;
+import org.eclipse.collections.impl.block.procedure.CollectionAddProcedure;
+import org.eclipse.collections.impl.block.procedure.primitive.CollectBooleanProcedure;
+import org.eclipse.collections.impl.block.procedure.primitive.CollectByteProcedure;
+import org.eclipse.collections.impl.block.procedure.primitive.CollectCharProcedure;
+import org.eclipse.collections.impl.block.procedure.primitive.CollectDoubleProcedure;
+import org.eclipse.collections.impl.block.procedure.primitive.CollectFloatProcedure;
+import org.eclipse.collections.impl.block.procedure.primitive.CollectIntProcedure;
+import org.eclipse.collections.impl.block.procedure.primitive.CollectLongProcedure;
+import org.eclipse.collections.impl.block.procedure.primitive.CollectShortProcedure;
+import org.eclipse.collections.impl.factory.Lists;
+import org.eclipse.collections.impl.list.mutable.primitive.BooleanArrayList;
+import org.eclipse.collections.impl.list.mutable.primitive.ByteArrayList;
+import org.eclipse.collections.impl.list.mutable.primitive.CharArrayList;
+import org.eclipse.collections.impl.list.mutable.primitive.DoubleArrayList;
+import org.eclipse.collections.impl.list.mutable.primitive.FloatArrayList;
+import org.eclipse.collections.impl.list.mutable.primitive.IntArrayList;
+import org.eclipse.collections.impl.list.mutable.primitive.LongArrayList;
+import org.eclipse.collections.impl.list.mutable.primitive.ShortArrayList;
+import org.eclipse.collections.impl.multimap.list.FastListMultimap;
+import org.eclipse.collections.impl.utility.ArrayIterate;
+import org.eclipse.collections.impl.utility.Iterate;
+import org.eclipse.collections.impl.utility.ListIterate;
+import org.eclipse.collections.impl.utility.internal.RandomAccessListIterate;
+
+/**
+ * This class provides a MutableList wrapper around a JDK Collections List interface instance.  All of the MutableList
+ * interface methods are supported in addition to the JDK List interface methods.
+ * &lt;p&gt;
+ * To create a new wrapper around an existing List instance, use the {@link #adapt(List)} factory method.
+ */
+public final class RandomAccessListAdapter&lt;T&gt;
+        extends AbstractListAdapter&lt;T&gt;
+        implements RandomAccess, Serializable
+{
+    private static final long serialVersionUID = 1L;
+    private final List&lt;T&gt; delegate;
+
+    RandomAccessListAdapter(List&lt;T&gt; newDelegate)
+<span class="nc" id="L87">    {</span>
+<span class="nc bnc" id="L88" title="All 2 branches missed.">        if (newDelegate == null)</span>
+        {
+<span class="nc" id="L90">            throw new NullPointerException(&quot;RandomAccessListAdapter may not wrap null&quot;);</span>
+        }
+<span class="nc bnc" id="L92" title="All 2 branches missed.">        if (!(newDelegate instanceof RandomAccess))</span>
+        {
+<span class="nc" id="L94">            throw new IllegalArgumentException(&quot;RandomAccessListAdapter may not wrap a non RandomAccess list&quot;);</span>
+        }
+<span class="nc" id="L96">        this.delegate = newDelegate;</span>
+<span class="nc" id="L97">    }</span>
+
+    @Override
+    protected List&lt;T&gt; getDelegate()
+    {
+<span class="nc" id="L102">        return this.delegate;</span>
+    }
+
+    public static &lt;E&gt; MutableList&lt;E&gt; adapt(List&lt;E&gt; list)
+    {
+<span class="nc bnc" id="L107" title="All 2 branches missed.">        if (list instanceof MutableList)</span>
+        {
+<span class="nc" id="L109">            return (MutableList&lt;E&gt;) list;</span>
+        }
+<span class="nc bnc" id="L111" title="All 2 branches missed.">        if (list instanceof ArrayList)</span>
+        {
+<span class="nc" id="L113">            return ArrayListAdapter.adapt((ArrayList&lt;E&gt;) list);</span>
+        }
+<span class="nc" id="L115">        return new RandomAccessListAdapter&lt;&gt;(list);</span>
+    }
+
+    @Override
+    public ImmutableList&lt;T&gt; toImmutable()
+    {
+<span class="nc" id="L121">        return Lists.immutable.withAll(this.delegate);</span>
+    }
+
+    @Override
+    public MutableList&lt;T&gt; asUnmodifiable()
+    {
+<span class="nc" id="L127">        return UnmodifiableMutableList.of(this);</span>
+    }
+
+    @Override
+    public MutableList&lt;T&gt; asSynchronized()
+    {
+<span class="nc" id="L133">        return SynchronizedMutableList.of(this);</span>
+    }
+
+    @Override
+    public MutableList&lt;T&gt; clone()
+    {
+<span class="nc" id="L139">        return FastList.newList(this.delegate);</span>
+    }
+
+    /**
+     * @deprecated use {@link FastList#newList()} instead (inlineable)
+     */
+    @Override
+    @Deprecated
+    public MutableList&lt;T&gt; newEmpty()
+    {
+<span class="nc" id="L149">        return Lists.mutable.empty();</span>
+    }
+
+    @Override
+    public void forEach(Procedure&lt;? super T&gt; procedure)
+    {
+<span class="nc" id="L155">        this.each(procedure);</span>
+<span class="nc" id="L156">    }</span>
+
+    @Override
+    public void each(Procedure&lt;? super T&gt; procedure)
+    {
+<span class="nc" id="L161">        RandomAccessListIterate.forEach(this.delegate, procedure);</span>
+<span class="nc" id="L162">    }</span>
+
+    @Override
+    public void reverseForEach(Procedure&lt;? super T&gt; procedure)
+    {
+<span class="nc" id="L167">        ListIterate.reverseForEach(this.delegate, procedure);</span>
+<span class="nc" id="L168">    }</span>
+
+    @Override
+    public void reverseForEachWithIndex(ObjectIntProcedure&lt;? super T&gt; procedure)
+    {
+<span class="nc" id="L173">        ListIterate.reverseForEachWithIndex(this.delegate, procedure);</span>
+<span class="nc" id="L174">    }</span>
+
+    @Override
+    public void forEachWithIndex(ObjectIntProcedure&lt;? super T&gt; objectIntProcedure)
+    {
+<span class="nc" id="L179">        RandomAccessListIterate.forEachWithIndex(this.delegate, objectIntProcedure);</span>
+<span class="nc" id="L180">    }</span>
+
+    @Override
+    public void forEachWithIndex(int fromIndex, int toIndex, ObjectIntProcedure&lt;? super T&gt; objectIntProcedure)
+    {
+<span class="nc" id="L185">        RandomAccessListIterate.forEachWithIndex(this.delegate, fromIndex, toIndex, objectIntProcedure);</span>
+<span class="nc" id="L186">    }</span>
+
+    @Override
+    public T detect(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L191">        return RandomAccessListIterate.detect(this.delegate, predicate);</span>
+    }
+
+    @Override
+    public T detectIfNone(Predicate&lt;? super T&gt; predicate, Function0&lt;? extends T&gt; function)
+    {
+<span class="nc" id="L197">        T result = this.detect(predicate);</span>
+<span class="nc bnc" id="L198" title="All 2 branches missed.">        return result == null ? function.value() : result;</span>
+    }
+
+    @Override
+    public int detectIndex(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L204">        return RandomAccessListIterate.detectIndex(this.delegate, predicate);</span>
+    }
+
+    @Override
+    public int detectLastIndex(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L210">        return RandomAccessListIterate.detectLastIndex(this.delegate, predicate);</span>
+    }
+
+    @Override
+    public int count(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L216">        return RandomAccessListIterate.count(this.delegate, predicate);</span>
+    }
+
+    @Override
+    public &lt;S&gt; boolean corresponds(OrderedIterable&lt;S&gt; other, Predicate2&lt;? super T, ? super S&gt; predicate)
+    {
+<span class="nc" id="L222">        return RandomAccessListIterate.corresponds(this.delegate, other, predicate);</span>
+    }
+
+    @Override
+    public boolean anySatisfy(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L228">        return RandomAccessListIterate.anySatisfy(this.delegate, predicate);</span>
+    }
+
+    @Override
+    public boolean allSatisfy(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L234">        return RandomAccessListIterate.allSatisfy(this.delegate, predicate);</span>
+    }
+
+    @Override
+    public boolean noneSatisfy(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L240">        return RandomAccessListIterate.noneSatisfy(this.delegate, predicate);</span>
+    }
+
+    @Override
+    public &lt;IV&gt; IV injectInto(IV injectedValue, Function2&lt;? super IV, ? super T, ? extends IV&gt; function)
+    {
+<span class="nc" id="L246">        return RandomAccessListIterate.injectInto(injectedValue, this.delegate, function);</span>
+    }
+
+    @Override
+    public void forEach(int fromIndex, int toIndex, Procedure&lt;? super T&gt; procedure)
+    {
+<span class="nc" id="L252">        RandomAccessListIterate.forEach(this.delegate, fromIndex, toIndex, procedure);</span>
+<span class="nc" id="L253">    }</span>
+
+    @Override
+    public RandomAccessListAdapter&lt;T&gt; sortThis(Comparator&lt;? super T&gt; comparator)
+    {
+<span class="nc" id="L258">        Iterate.sortThis(this.delegate, comparator);</span>
+<span class="nc" id="L259">        return this;</span>
+    }
+
+    @Override
+    public RandomAccessListAdapter&lt;T&gt; sortThis()
+    {
+<span class="nc" id="L265">        return this.sortThis(Comparators.naturalOrder());</span>
+    }
+
+    @Override
+    public RandomAccessListAdapter&lt;T&gt; with(T element)
+    {
+<span class="nc" id="L271">        this.add(element);</span>
+<span class="nc" id="L272">        return this;</span>
+    }
+
+    public RandomAccessListAdapter&lt;T&gt; with(T element1, T element2)
+    {
+<span class="nc" id="L277">        this.add(element1);</span>
+<span class="nc" id="L278">        this.add(element2);</span>
+<span class="nc" id="L279">        return this;</span>
+    }
+
+    public RandomAccessListAdapter&lt;T&gt; with(T element1, T element2, T element3)
+    {
+<span class="nc" id="L284">        this.add(element1);</span>
+<span class="nc" id="L285">        this.add(element2);</span>
+<span class="nc" id="L286">        this.add(element3);</span>
+<span class="nc" id="L287">        return this;</span>
+    }
+
+    public RandomAccessListAdapter&lt;T&gt; with(T... elements)
+    {
+<span class="nc" id="L292">        ArrayIterate.forEach(elements, CollectionAddProcedure.on(this.delegate));</span>
+<span class="nc" id="L293">        return this;</span>
+    }
+
+    @Override
+    public RandomAccessListAdapter&lt;T&gt; without(T element)
+    {
+<span class="nc" id="L299">        this.remove(element);</span>
+<span class="nc" id="L300">        return this;</span>
+    }
+
+    @Override
+    public RandomAccessListAdapter&lt;T&gt; withAll(Iterable&lt;? extends T&gt; elements)
+    {
+<span class="nc" id="L306">        this.addAllIterable(elements);</span>
+<span class="nc" id="L307">        return this;</span>
+    }
+
+    @Override
+    public RandomAccessListAdapter&lt;T&gt; withoutAll(Iterable&lt;? extends T&gt; elements)
+    {
+<span class="nc" id="L313">        this.removeAllIterable(elements);</span>
+<span class="nc" id="L314">        return this;</span>
+    }
+
+    @Override
+    public MutableList&lt;T&gt; select(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L320">        return RandomAccessListIterate.select(this.delegate, predicate, FastList.newList());</span>
+    }
+
+    @Override
+    public MutableList&lt;T&gt; reject(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L326">        return RandomAccessListIterate.reject(this.delegate, predicate, FastList.newList());</span>
+    }
+
+    @Override
+    public PartitionMutableList&lt;T&gt; partition(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L332">        return RandomAccessListIterate.partition(this.delegate, predicate);</span>
+    }
+
+    @Override
+    public &lt;P&gt; PartitionMutableList&lt;T&gt; partitionWith(Predicate2&lt;? super T, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc" id="L338">        return RandomAccessListIterate.partitionWith(this.delegate, predicate, parameter);</span>
+    }
+
+    @Override
+    public &lt;S&gt; MutableList&lt;S&gt; selectInstancesOf(Class&lt;S&gt; clazz)
+    {
+<span class="nc" id="L344">        return RandomAccessListIterate.selectInstancesOf(this.delegate, clazz);</span>
+    }
+
+    @Override
+    public &lt;V&gt; MutableList&lt;V&gt; collect(Function&lt;? super T, ? extends V&gt; function)
+    {
+<span class="nc" id="L350">        return RandomAccessListIterate.collect(this.delegate, function, FastList.newList(this.delegate.size()));</span>
+    }
+
+    @Override
+    public MutableBooleanList collectBoolean(BooleanFunction&lt;? super T&gt; booleanFunction)
+    {
+<span class="nc" id="L356">        BooleanArrayList result = new BooleanArrayList(this.size());</span>
+<span class="nc" id="L357">        this.forEach(new CollectBooleanProcedure&lt;&gt;(booleanFunction, result));</span>
+<span class="nc" id="L358">        return result;</span>
+    }
+
+    @Override
+    public MutableByteList collectByte(ByteFunction&lt;? super T&gt; byteFunction)
+    {
+<span class="nc" id="L364">        ByteArrayList result = new ByteArrayList(this.size());</span>
+<span class="nc" id="L365">        this.forEach(new CollectByteProcedure&lt;&gt;(byteFunction, result));</span>
+<span class="nc" id="L366">        return result;</span>
+    }
+
+    @Override
+    public MutableCharList collectChar(CharFunction&lt;? super T&gt; charFunction)
+    {
+<span class="nc" id="L372">        CharArrayList result = new CharArrayList(this.size());</span>
+<span class="nc" id="L373">        this.forEach(new CollectCharProcedure&lt;&gt;(charFunction, result));</span>
+<span class="nc" id="L374">        return result;</span>
+    }
+
+    @Override
+    public MutableDoubleList collectDouble(DoubleFunction&lt;? super T&gt; doubleFunction)
+    {
+<span class="nc" id="L380">        DoubleArrayList result = new DoubleArrayList(this.size());</span>
+<span class="nc" id="L381">        this.forEach(new CollectDoubleProcedure&lt;&gt;(doubleFunction, result));</span>
+<span class="nc" id="L382">        return result;</span>
+    }
+
+    @Override
+    public MutableFloatList collectFloat(FloatFunction&lt;? super T&gt; floatFunction)
+    {
+<span class="nc" id="L388">        FloatArrayList result = new FloatArrayList(this.size());</span>
+<span class="nc" id="L389">        this.forEach(new CollectFloatProcedure&lt;&gt;(floatFunction, result));</span>
+<span class="nc" id="L390">        return result;</span>
+    }
+
+    @Override
+    public MutableIntList collectInt(IntFunction&lt;? super T&gt; intFunction)
+    {
+<span class="nc" id="L396">        IntArrayList result = new IntArrayList(this.size());</span>
+<span class="nc" id="L397">        this.forEach(new CollectIntProcedure&lt;&gt;(intFunction, result));</span>
+<span class="nc" id="L398">        return result;</span>
+    }
+
+    @Override
+    public MutableLongList collectLong(LongFunction&lt;? super T&gt; longFunction)
+    {
+<span class="nc" id="L404">        LongArrayList result = new LongArrayList(this.size());</span>
+<span class="nc" id="L405">        this.forEach(new CollectLongProcedure&lt;&gt;(longFunction, result));</span>
+<span class="nc" id="L406">        return result;</span>
+    }
+
+    @Override
+    public MutableShortList collectShort(ShortFunction&lt;? super T&gt; shortFunction)
+    {
+<span class="nc" id="L412">        ShortArrayList result = new ShortArrayList(this.size());</span>
+<span class="nc" id="L413">        this.forEach(new CollectShortProcedure&lt;&gt;(shortFunction, result));</span>
+<span class="nc" id="L414">        return result;</span>
+    }
+
+    @Override
+    public &lt;V&gt; MutableList&lt;V&gt; flatCollect(Function&lt;? super T, ? extends Iterable&lt;V&gt;&gt; function)
+    {
+<span class="nc" id="L420">        return RandomAccessListIterate.flatCollect(this.delegate, function, FastList.newList(this.delegate.size()));</span>
+    }
+
+    @Override
+    public &lt;V&gt; MutableList&lt;V&gt; collectIf(
+            Predicate&lt;? super T&gt; predicate,
+            Function&lt;? super T, ? extends V&gt; function)
+    {
+<span class="nc" id="L428">        return RandomAccessListIterate.collectIf(this.delegate, predicate, function, FastList.newList());</span>
+    }
+
+    @Override
+    public &lt;V&gt; FastListMultimap&lt;V, T&gt; groupBy(Function&lt;? super T, ? extends V&gt; function)
+    {
+<span class="nc" id="L434">        return RandomAccessListIterate.groupBy(this.delegate, function, FastListMultimap.newMultimap());</span>
+    }
+
+    @Override
+    public &lt;V&gt; FastListMultimap&lt;V, T&gt; groupByEach(Function&lt;? super T, ? extends Iterable&lt;V&gt;&gt; function)
+    {
+<span class="nc" id="L440">        return RandomAccessListIterate.groupByEach(this.delegate, function, FastListMultimap.newMultimap());</span>
+    }
+
+    @Override
+    public &lt;P&gt; MutableList&lt;T&gt; selectWith(Predicate2&lt;? super T, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc" id="L446">        return RandomAccessListIterate.selectWith(this.delegate, predicate, parameter, FastList.newList());</span>
+    }
+
+    @Override
+    public &lt;P&gt; MutableList&lt;T&gt; rejectWith(Predicate2&lt;? super T, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc" id="L452">        return RandomAccessListIterate.rejectWith(this.delegate, predicate, parameter, FastList.newList());</span>
+    }
+
+    @Override
+    public &lt;P, V&gt; MutableList&lt;V&gt; collectWith(Function2&lt;? super T, ? super P, ? extends V&gt; function, P parameter)
+    {
+<span class="nc" id="L458">        return RandomAccessListIterate.collectWith(this.delegate, function, parameter, FastList.newList(this.delegate.size()));</span>
+    }
+
+    @Override
+    public MutableList&lt;T&gt; distinct()
+    {
+<span class="nc" id="L464">        return RandomAccessListIterate.distinct(this.delegate);</span>
+    }
+
+    @Override
+    public MutableList&lt;T&gt; distinct(HashingStrategy&lt;? super T&gt; hashingStrategy)
+    {
+<span class="nc" id="L470">        return RandomAccessListIterate.distinct(this.delegate, hashingStrategy);</span>
+    }
+
+    @Override
+    public &lt;S&gt; MutableList&lt;Pair&lt;T, S&gt;&gt; zip(Iterable&lt;S&gt; that)
+    {
+<span class="nc" id="L476">        return RandomAccessListIterate.zip(this.delegate, that, FastList.newList(this.delegate.size()));</span>
+    }
+
+    @Override
+    public MutableList&lt;Pair&lt;T, Integer&gt;&gt; zipWithIndex()
+    {
+<span class="nc" id="L482">        return RandomAccessListIterate.zipWithIndex(this.delegate, FastList.newList(this.delegate.size()));</span>
+    }
+
+    @Override
+    public MutableList&lt;T&gt; take(int count)
+    {
+<span class="nc" id="L488">        return RandomAccessListIterate.take(this.delegate, count);</span>
+    }
+
+    @Override
+    public MutableList&lt;T&gt; takeWhile(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L494">        return RandomAccessListIterate.takeWhile(this.delegate, predicate);</span>
+    }
+
+    @Override
+    public MutableList&lt;T&gt; drop(int count)
+    {
+<span class="nc" id="L500">        return RandomAccessListIterate.drop(this.delegate, count);</span>
+    }
+
+    @Override
+    public MutableList&lt;T&gt; dropWhile(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L506">        return RandomAccessListIterate.dropWhile(this.delegate, predicate);</span>
+    }
+
+    @Override
+    public PartitionMutableList&lt;T&gt; partitionWhile(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L512">        return RandomAccessListIterate.partitionWhile(this.delegate, predicate);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.0.201801022044</span></div></body></html>

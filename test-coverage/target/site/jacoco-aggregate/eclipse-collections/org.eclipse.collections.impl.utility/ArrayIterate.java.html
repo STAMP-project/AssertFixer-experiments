@@ -1,0 +1,1771 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>ArrayIterate.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Eclipse Collections Test Coverage Aggregation</a> &gt; <a href="../index.html" class="el_bundle">eclipse-collections</a> &gt; <a href="index.source.html" class="el_package">org.eclipse.collections.impl.utility</a> &gt; <span class="el_source">ArrayIterate.java</span></div><h1>ArrayIterate.java</h1><pre class="source lang-java linenums">/*
+ * Copyright (c) 2016 Goldman Sachs.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * and Eclipse Distribution License v. 1.0 which accompany this distribution.
+ * The Eclipse Public License is available at http://www.eclipse.org/legal/epl-v10.html
+ * and the Eclipse Distribution License is available at
+ * http://www.eclipse.org/org/documents/edl-v10.php.
+ */
+
+package org.eclipse.collections.impl.utility;
+
+import java.io.IOException;
+import java.math.BigDecimal;
+import java.math.BigInteger;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Optional;
+
+import org.eclipse.collections.api.RichIterable;
+import org.eclipse.collections.api.block.HashingStrategy;
+import org.eclipse.collections.api.block.function.Function;
+import org.eclipse.collections.api.block.function.Function2;
+import org.eclipse.collections.api.block.function.Function3;
+import org.eclipse.collections.api.block.function.primitive.BooleanFunction;
+import org.eclipse.collections.api.block.function.primitive.ByteFunction;
+import org.eclipse.collections.api.block.function.primitive.CharFunction;
+import org.eclipse.collections.api.block.function.primitive.DoubleFunction;
+import org.eclipse.collections.api.block.function.primitive.DoubleObjectToDoubleFunction;
+import org.eclipse.collections.api.block.function.primitive.FloatFunction;
+import org.eclipse.collections.api.block.function.primitive.FloatObjectToFloatFunction;
+import org.eclipse.collections.api.block.function.primitive.IntFunction;
+import org.eclipse.collections.api.block.function.primitive.IntObjectToIntFunction;
+import org.eclipse.collections.api.block.function.primitive.LongFunction;
+import org.eclipse.collections.api.block.function.primitive.LongObjectToLongFunction;
+import org.eclipse.collections.api.block.function.primitive.ShortFunction;
+import org.eclipse.collections.api.block.predicate.Predicate;
+import org.eclipse.collections.api.block.predicate.Predicate2;
+import org.eclipse.collections.api.block.procedure.Procedure;
+import org.eclipse.collections.api.block.procedure.Procedure2;
+import org.eclipse.collections.api.block.procedure.primitive.ObjectIntProcedure;
+import org.eclipse.collections.api.collection.primitive.MutableBooleanCollection;
+import org.eclipse.collections.api.collection.primitive.MutableByteCollection;
+import org.eclipse.collections.api.collection.primitive.MutableCharCollection;
+import org.eclipse.collections.api.collection.primitive.MutableDoubleCollection;
+import org.eclipse.collections.api.collection.primitive.MutableFloatCollection;
+import org.eclipse.collections.api.collection.primitive.MutableIntCollection;
+import org.eclipse.collections.api.collection.primitive.MutableLongCollection;
+import org.eclipse.collections.api.collection.primitive.MutableShortCollection;
+import org.eclipse.collections.api.list.MutableList;
+import org.eclipse.collections.api.list.primitive.MutableBooleanList;
+import org.eclipse.collections.api.list.primitive.MutableByteList;
+import org.eclipse.collections.api.list.primitive.MutableCharList;
+import org.eclipse.collections.api.list.primitive.MutableDoubleList;
+import org.eclipse.collections.api.list.primitive.MutableFloatList;
+import org.eclipse.collections.api.list.primitive.MutableIntList;
+import org.eclipse.collections.api.list.primitive.MutableLongList;
+import org.eclipse.collections.api.list.primitive.MutableShortList;
+import org.eclipse.collections.api.map.MutableMap;
+import org.eclipse.collections.api.map.primitive.ObjectDoubleMap;
+import org.eclipse.collections.api.map.primitive.ObjectLongMap;
+import org.eclipse.collections.api.multimap.MutableMultimap;
+import org.eclipse.collections.api.tuple.Pair;
+import org.eclipse.collections.api.tuple.Twin;
+import org.eclipse.collections.impl.block.factory.Functions0;
+import org.eclipse.collections.impl.block.factory.Predicates2;
+import org.eclipse.collections.impl.block.factory.Procedures2;
+import org.eclipse.collections.impl.block.procedure.MapCollectProcedure;
+import org.eclipse.collections.impl.factory.Lists;
+import org.eclipse.collections.impl.list.mutable.FastList;
+import org.eclipse.collections.impl.list.mutable.primitive.BooleanArrayList;
+import org.eclipse.collections.impl.list.mutable.primitive.ByteArrayList;
+import org.eclipse.collections.impl.list.mutable.primitive.CharArrayList;
+import org.eclipse.collections.impl.list.mutable.primitive.DoubleArrayList;
+import org.eclipse.collections.impl.list.mutable.primitive.FloatArrayList;
+import org.eclipse.collections.impl.list.mutable.primitive.IntArrayList;
+import org.eclipse.collections.impl.list.mutable.primitive.LongArrayList;
+import org.eclipse.collections.impl.list.mutable.primitive.ShortArrayList;
+import org.eclipse.collections.impl.map.mutable.UnifiedMap;
+import org.eclipse.collections.impl.multimap.list.FastListMultimap;
+import org.eclipse.collections.impl.partition.list.PartitionFastList;
+import org.eclipse.collections.impl.tuple.Tuples;
+import org.eclipse.collections.impl.utility.internal.InternalArrayIterate;
+
+/**
+ * This utility class provides iteration pattern implementations that work with Java arrays.
+ *
+ * @since 1.0
+ */
+public final class ArrayIterate
+{
+    private ArrayIterate()
+<span class="nc" id="L95">    {</span>
+<span class="nc" id="L96">        throw new AssertionError(&quot;Suppress default constructor for noninstantiability&quot;);</span>
+    }
+
+    public static &lt;T&gt; void reverse(T[] array, int size)
+    {
+<span class="nc" id="L101">        int mid = size / 2;</span>
+<span class="nc" id="L102">        int j = size - 1;</span>
+<span class="nc bnc" id="L103" title="All 2 branches missed.">        for (int i = 0; i &lt; mid; i++, j--)</span>
+        {
+<span class="nc" id="L105">            T one = array[i];</span>
+<span class="nc" id="L106">            T two = array[j];</span>
+<span class="nc" id="L107">            array[i] = two;</span>
+<span class="nc" id="L108">            array[j] = one;</span>
+        }
+<span class="nc" id="L110">    }</span>
+
+    /**
+     * Inline calls to appropriate Arrays.sort() method which now uses TimSort by default since Java 8.
+     *
+     * @deprecated in 7.0. Use {@link Arrays#sort(Object[], int, int)} or {@link Arrays#sort(Object[], int, int, Comparator)} instead.
+     */
+    @Deprecated
+    public static &lt;T&gt; void sort(T[] array, int size, Comparator&lt;? super T&gt; comparator)
+    {
+<span class="nc bnc" id="L120" title="All 2 branches missed.">        if (comparator == null)</span>
+        {
+<span class="nc" id="L122">            Arrays.sort(array, 0, size); // handles case size &lt; 2 in Java 8 ComparableTimSort</span>
+        }
+        else
+        {
+<span class="nc" id="L126">            Arrays.sort(array, 0, size, comparator); // handles case size &lt; 2 in Java 8 TimSort</span>
+        }
+<span class="nc" id="L128">    }</span>
+
+    public static &lt;T, V extends Comparable&lt;? super V&gt;&gt; T minBy(T[] array, Function&lt;? super T, ? extends V&gt; function)
+    {
+<span class="nc" id="L132">        return InternalArrayIterate.minBy(array, array.length, function);</span>
+    }
+
+    public static &lt;T, V extends Comparable&lt;? super V&gt;&gt; T maxBy(T[] array, Function&lt;? super T, ? extends V&gt; function)
+    {
+<span class="nc" id="L137">        return InternalArrayIterate.maxBy(array, array.length, function);</span>
+    }
+
+    /**
+     * @see Iterate#min(Iterable, Comparator)
+     */
+    public static &lt;T&gt; T min(T[] array, Comparator&lt;? super T&gt; comparator)
+    {
+<span class="nc" id="L145">        return InternalArrayIterate.min(array, array.length, comparator);</span>
+    }
+
+    /**
+     * @see Iterate#max(Iterable, Comparator)
+     */
+    public static &lt;T&gt; T max(T[] array, Comparator&lt;? super T&gt; comparator)
+    {
+<span class="nc" id="L153">        return InternalArrayIterate.max(array, array.length, comparator);</span>
+    }
+
+    /**
+     * @see Iterate#min(Iterable)
+     */
+    public static &lt;T&gt; T min(T... array)
+    {
+<span class="nc" id="L161">        return InternalArrayIterate.min(array, array.length);</span>
+    }
+
+    /**
+     * @see Iterate#max(Iterable)
+     */
+    public static &lt;T&gt; T max(T... array)
+    {
+<span class="nc" id="L169">        return InternalArrayIterate.max(array, array.length);</span>
+    }
+
+    /**
+     * @see Iterate#select(Iterable, Predicate)
+     */
+    public static &lt;T&gt; MutableList&lt;T&gt; select(T[] objectArray, Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc bnc" id="L177" title="All 2 branches missed.">        if (objectArray == null)</span>
+        {
+<span class="nc" id="L179">            throw new IllegalArgumentException(&quot;Cannot perform a select on null&quot;);</span>
+        }
+
+<span class="nc" id="L182">        return ArrayIterate.select(objectArray, predicate, FastList.newList());</span>
+    }
+
+    /**
+     * @see Iterate#selectWith(Iterable, Predicate2, Object)
+     */
+    public static &lt;T, P&gt; MutableList&lt;T&gt; selectWith(
+            T[] objectArray,
+            Predicate2&lt;? super T, P&gt; predicate,
+            P parameter)
+    {
+<span class="nc bnc" id="L193" title="All 2 branches missed.">        if (objectArray == null)</span>
+        {
+<span class="nc" id="L195">            throw new IllegalArgumentException(&quot;Cannot perform a selectWith on null&quot;);</span>
+        }
+<span class="nc" id="L197">        return ArrayIterate.selectWith(objectArray, predicate, parameter, FastList.newList());</span>
+    }
+
+    /**
+     * @see Iterate#selectInstancesOf(Iterable, Class)
+     */
+    public static &lt;T&gt; FastList&lt;T&gt; selectInstancesOf(Object[] objectArray, Class&lt;T&gt; clazz)
+    {
+<span class="nc bnc" id="L205" title="All 2 branches missed.">        if (objectArray == null)</span>
+        {
+<span class="nc" id="L207">            throw new IllegalArgumentException(&quot;Cannot perform a selectInstancesOf on null&quot;);</span>
+        }
+
+<span class="nc" id="L210">        return InternalArrayIterate.selectInstancesOf(objectArray, objectArray.length, clazz);</span>
+    }
+
+    /**
+     * @see Iterate#count(Iterable, Predicate)
+     */
+    public static &lt;T&gt; int count(T[] objectArray, Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc bnc" id="L218" title="All 2 branches missed.">        if (objectArray == null)</span>
+        {
+<span class="nc" id="L220">            return 0;</span>
+        }
+<span class="nc" id="L222">        return InternalArrayIterate.count(objectArray, objectArray.length, predicate);</span>
+    }
+
+    /**
+     * @see Iterate#countWith(Iterable, Predicate2, Object)
+     */
+    public static &lt;T, P&gt; int countWith(
+            T[] objectArray,
+            Predicate2&lt;? super T, ? super P&gt; predicate,
+            P parameter)
+    {
+<span class="nc bnc" id="L233" title="All 2 branches missed.">        if (objectArray == null)</span>
+        {
+<span class="nc" id="L235">            return 0;</span>
+        }
+<span class="nc" id="L237">        return InternalArrayIterate.countWith(objectArray, objectArray.length, predicate, parameter);</span>
+    }
+
+    /**
+     * @see Iterate#selectAndRejectWith(Iterable, Predicate2, Object)
+     * @deprecated since 6.0 use {@link RichIterable#partitionWith(Predicate2, Object)} instead.
+     */
+    @Deprecated
+    public static &lt;T, P&gt; Twin&lt;MutableList&lt;T&gt;&gt; selectAndRejectWith(
+            T[] objectArray,
+            Predicate2&lt;? super T, ? super P&gt; predicate,
+            P parameter)
+    {
+<span class="nc bnc" id="L250" title="All 2 branches missed.">        if (objectArray == null)</span>
+        {
+<span class="nc" id="L252">            throw new IllegalArgumentException(&quot;Cannot perform a selectAndRejectWith on null&quot;);</span>
+        }
+
+<span class="nc" id="L255">        return InternalArrayIterate.selectAndRejectWith(objectArray, objectArray.length, predicate, parameter);</span>
+    }
+
+    /**
+     * @see Iterate#partition(Iterable, Predicate)
+     */
+    public static &lt;T&gt; PartitionFastList&lt;T&gt; partition(T[] array, Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc bnc" id="L263" title="All 2 branches missed.">        if (array == null)</span>
+        {
+<span class="nc" id="L265">            throw new IllegalArgumentException(&quot;Cannot perform a partition on null&quot;);</span>
+        }
+<span class="nc" id="L267">        return InternalArrayIterate.partition(array, array.length, predicate);</span>
+    }
+
+    public static &lt;T, P&gt; PartitionFastList&lt;T&gt; partitionWith(T[] array, Predicate2&lt;? super T, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc bnc" id="L272" title="All 2 branches missed.">        if (array == null)</span>
+        {
+<span class="nc" id="L274">            throw new IllegalArgumentException(&quot;Cannot perform a partitionWith on null&quot;);</span>
+        }
+<span class="nc" id="L276">        return InternalArrayIterate.partitionWith(array, array.length, predicate, parameter);</span>
+    }
+
+    /**
+     * @see Iterate#collectIf(Iterable, Predicate, Function)
+     */
+    public static &lt;T, V&gt; MutableList&lt;V&gt; collectIf(
+            T[] objectArray,
+            Predicate&lt;? super T&gt; predicate,
+            Function&lt;? super T, ? extends V&gt; function)
+    {
+<span class="nc bnc" id="L287" title="All 2 branches missed.">        if (objectArray == null)</span>
+        {
+<span class="nc" id="L289">            throw new IllegalArgumentException(&quot;Cannot perform a collectIf on null&quot;);</span>
+        }
+
+<span class="nc" id="L292">        return ArrayIterate.collectIf(</span>
+                objectArray,
+                predicate,
+                function,
+<span class="nc" id="L296">                FastList.newList(objectArray.length));</span>
+    }
+
+    /**
+     * @see Iterate#select(Iterable, Predicate, Collection)
+     */
+    public static &lt;T, R extends Collection&lt;T&gt;&gt; R select(
+            T[] objectArray,
+            Predicate&lt;? super T&gt; predicate,
+            R targetCollection)
+    {
+<span class="nc bnc" id="L307" title="All 2 branches missed.">        if (objectArray == null)</span>
+        {
+<span class="nc" id="L309">            throw new IllegalArgumentException(&quot;Cannot perform a select on null&quot;);</span>
+        }
+<span class="nc" id="L311">        return InternalArrayIterate.select(objectArray, objectArray.length, predicate, targetCollection);</span>
+    }
+
+    /**
+     * @see Iterate#selectWith(Iterable, Predicate2, Object, Collection)
+     */
+    public static &lt;T, P, R extends Collection&lt;T&gt;&gt; R selectWith(
+            T[] objectArray,
+            Predicate2&lt;? super T, ? super P&gt; predicate,
+            P parameter,
+            R targetCollection)
+    {
+<span class="nc bnc" id="L323" title="All 2 branches missed.">        if (objectArray == null)</span>
+        {
+<span class="nc" id="L325">            throw new IllegalArgumentException(&quot;Cannot perform a selectWith on null&quot;);</span>
+        }
+<span class="nc" id="L327">        return InternalArrayIterate.selectWith(objectArray, objectArray.length, predicate, parameter, targetCollection);</span>
+    }
+
+    /**
+     * @see Iterate#collectIf(Iterable, Predicate, Function, Collection)
+     */
+    public static &lt;T, V, R extends Collection&lt;V&gt;&gt; R collectIf(
+            T[] objectArray,
+            Predicate&lt;? super T&gt; predicate,
+            Function&lt;? super T, ? extends V&gt; function,
+            R targetCollection)
+    {
+<span class="nc bnc" id="L339" title="All 2 branches missed.">        if (objectArray == null)</span>
+        {
+<span class="nc" id="L341">            throw new IllegalArgumentException(&quot;Cannot perform a collectIf on null&quot;);</span>
+        }
+<span class="nc" id="L343">        return InternalArrayIterate.collectIf(objectArray, objectArray.length, predicate, function, targetCollection);</span>
+    }
+
+    /**
+     * @see Iterate#reject(Iterable, Predicate)
+     */
+    public static &lt;T&gt; MutableList&lt;T&gt; reject(T[] objectArray, Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L351">        return ArrayIterate.reject(objectArray, predicate, FastList.newList());</span>
+    }
+
+    /**
+     * @see Iterate#rejectWith(Iterable, Predicate2, Object)
+     */
+    public static &lt;T, P&gt; MutableList&lt;T&gt; rejectWith(
+            T[] objectArray,
+            Predicate2&lt;? super T, P&gt; predicate,
+            P parameter)
+    {
+<span class="nc bnc" id="L362" title="All 2 branches missed.">        if (objectArray == null)</span>
+        {
+<span class="nc" id="L364">            throw new IllegalArgumentException(&quot;Cannot perform a rejectWith on null&quot;);</span>
+        }
+<span class="nc" id="L366">        return ArrayIterate.rejectWith(</span>
+                objectArray,
+                predicate,
+                parameter,
+<span class="nc" id="L370">                FastList.newList());</span>
+    }
+
+    /**
+     * @see Iterate#reject(Iterable, Predicate, Collection)
+     */
+    public static &lt;T, R extends Collection&lt;T&gt;&gt; R reject(
+            T[] objectArray,
+            Predicate&lt;? super T&gt; predicate,
+            R targetCollection)
+    {
+<span class="nc bnc" id="L381" title="All 2 branches missed.">        if (objectArray == null)</span>
+        {
+<span class="nc" id="L383">            throw new IllegalArgumentException(&quot;Cannot perform a reject on null&quot;);</span>
+        }
+<span class="nc" id="L385">        return InternalArrayIterate.reject(objectArray, objectArray.length, predicate, targetCollection);</span>
+    }
+
+    /**
+     * @see Iterate#rejectWith(Iterable, Predicate2, Object, Collection)
+     */
+    public static &lt;T, P, R extends Collection&lt;T&gt;&gt; R rejectWith(
+            T[] objectArray,
+            Predicate2&lt;? super T, ? super P&gt; predicate,
+            P parameter,
+            R targetCollection)
+    {
+<span class="nc bnc" id="L397" title="All 2 branches missed.">        if (objectArray == null)</span>
+        {
+<span class="nc" id="L399">            throw new IllegalArgumentException(&quot;Cannot perform a rejectWith on null&quot;);</span>
+        }
+<span class="nc" id="L401">        return InternalArrayIterate.rejectWith(objectArray, objectArray.length, predicate, parameter, targetCollection);</span>
+    }
+
+    /**
+     * @see Iterate#addAllTo(Iterable, Collection)
+     */
+    public static &lt;T, R extends Collection&lt;T&gt;&gt; R addAllTo(T[] objectArray, R targetCollection)
+    {
+<span class="nc" id="L409">        ArrayIterate.forEachWith(objectArray, Procedures2.addToCollection(), targetCollection);</span>
+<span class="nc" id="L410">        return targetCollection;</span>
+    }
+
+    /**
+     * @see Iterate#collect(Iterable, Function)
+     */
+    public static &lt;T, V&gt; MutableList&lt;V&gt; collect(
+            T[] objectArray,
+            Function&lt;? super T, ? extends V&gt; function)
+    {
+<span class="nc bnc" id="L420" title="All 2 branches missed.">        if (objectArray == null)</span>
+        {
+<span class="nc" id="L422">            throw new IllegalArgumentException(&quot;Cannot perform a collect on null&quot;);</span>
+        }
+<span class="nc" id="L424">        return ArrayIterate.collect(objectArray, function, FastList.newList(objectArray.length));</span>
+    }
+
+    /**
+     * @see Iterate#collect(Iterable, Function, Collection)
+     */
+    public static &lt;T, V, R extends Collection&lt;V&gt;&gt; R collect(
+            T[] objectArray,
+            Function&lt;? super T, ? extends V&gt; function,
+            R targetCollection)
+    {
+<span class="nc bnc" id="L435" title="All 2 branches missed.">        if (objectArray == null)</span>
+        {
+<span class="nc" id="L437">            throw new IllegalArgumentException(&quot;Cannot perform a collect on null&quot;);</span>
+        }
+<span class="nc" id="L439">        return InternalArrayIterate.collect(objectArray, objectArray.length, function, targetCollection);</span>
+    }
+
+    /**
+     * @see Iterate#collectBoolean(Iterable, BooleanFunction)
+     */
+    public static &lt;T&gt; MutableBooleanList collectBoolean(T[] objectArray, BooleanFunction&lt;? super T&gt; booleanFunction)
+    {
+<span class="nc bnc" id="L447" title="All 2 branches missed.">        if (objectArray == null)</span>
+        {
+<span class="nc" id="L449">            throw new IllegalArgumentException(&quot;Cannot perform a collectBoolean on null&quot;);</span>
+        }
+<span class="nc" id="L451">        return ArrayIterate.collectBoolean(objectArray, booleanFunction, new BooleanArrayList(objectArray.length));</span>
+    }
+
+    /**
+     * @see Iterate#collectBoolean(Iterable, BooleanFunction, MutableBooleanCollection)
+     */
+    public static &lt;T, R extends MutableBooleanCollection&gt; R collectBoolean(
+            T[] objectArray,
+            BooleanFunction&lt;? super T&gt; booleanFunction,
+            R target)
+    {
+<span class="nc bnc" id="L462" title="All 2 branches missed.">        if (objectArray == null)</span>
+        {
+<span class="nc" id="L464">            throw new IllegalArgumentException(&quot;Cannot perform a collectBoolean on null&quot;);</span>
+        }
+<span class="nc bnc" id="L466" title="All 2 branches missed.">        for (T each : objectArray)</span>
+        {
+<span class="nc" id="L468">            target.add(booleanFunction.booleanValueOf(each));</span>
+        }
+<span class="nc" id="L470">        return target;</span>
+    }
+
+    /**
+     * @see Iterate#collectByte(Iterable, ByteFunction)
+     */
+    public static &lt;T&gt; MutableByteList collectByte(T[] objectArray, ByteFunction&lt;? super T&gt; byteFunction)
+    {
+<span class="nc bnc" id="L478" title="All 2 branches missed.">        if (objectArray == null)</span>
+        {
+<span class="nc" id="L480">            throw new IllegalArgumentException(&quot;Cannot perform a collectByte on null&quot;);</span>
+        }
+<span class="nc" id="L482">        return ArrayIterate.collectByte(objectArray, byteFunction, new ByteArrayList(objectArray.length));</span>
+    }
+
+    /**
+     * @see Iterate#collectByte(Iterable, ByteFunction, MutableByteCollection)
+     */
+    public static &lt;T, R extends MutableByteCollection&gt; R collectByte(
+            T[] objectArray,
+            ByteFunction&lt;? super T&gt; byteFunction,
+            R target)
+    {
+<span class="nc bnc" id="L493" title="All 2 branches missed.">        if (objectArray == null)</span>
+        {
+<span class="nc" id="L495">            throw new IllegalArgumentException(&quot;Cannot perform a collectByte on null&quot;);</span>
+        }
+<span class="nc bnc" id="L497" title="All 2 branches missed.">        for (T each : objectArray)</span>
+        {
+<span class="nc" id="L499">            target.add(byteFunction.byteValueOf(each));</span>
+        }
+<span class="nc" id="L501">        return target;</span>
+    }
+
+    /**
+     * @see Iterate#collectChar(Iterable, CharFunction)
+     */
+    public static &lt;T&gt; MutableCharList collectChar(T[] objectArray, CharFunction&lt;? super T&gt; charFunction)
+    {
+<span class="nc bnc" id="L509" title="All 2 branches missed.">        if (objectArray == null)</span>
+        {
+<span class="nc" id="L511">            throw new IllegalArgumentException(&quot;Cannot perform a collectChar on null&quot;);</span>
+        }
+<span class="nc" id="L513">        return ArrayIterate.collectChar(objectArray, charFunction, new CharArrayList(objectArray.length));</span>
+    }
+
+    /**
+     * @see Iterate#collectChar(Iterable, CharFunction, MutableCharCollection)
+     */
+    public static &lt;T, R extends MutableCharCollection&gt; R collectChar(
+            T[] objectArray,
+            CharFunction&lt;? super T&gt; charFunction,
+            R target)
+    {
+<span class="nc bnc" id="L524" title="All 2 branches missed.">        if (objectArray == null)</span>
+        {
+<span class="nc" id="L526">            throw new IllegalArgumentException(&quot;Cannot perform a collectChar on null&quot;);</span>
+        }
+<span class="nc bnc" id="L528" title="All 2 branches missed.">        for (T each : objectArray)</span>
+        {
+<span class="nc" id="L530">            target.add(charFunction.charValueOf(each));</span>
+        }
+<span class="nc" id="L532">        return target;</span>
+    }
+
+    /**
+     * @see Iterate#collectDouble(Iterable, DoubleFunction)
+     */
+    public static &lt;T&gt; MutableDoubleList collectDouble(T[] objectArray, DoubleFunction&lt;? super T&gt; doubleFunction)
+    {
+<span class="nc bnc" id="L540" title="All 2 branches missed.">        if (objectArray == null)</span>
+        {
+<span class="nc" id="L542">            throw new IllegalArgumentException(&quot;Cannot perform a collectDouble on null&quot;);</span>
+        }
+<span class="nc" id="L544">        return ArrayIterate.collectDouble(objectArray, doubleFunction, new DoubleArrayList(objectArray.length));</span>
+    }
+
+    /**
+     * @see Iterate#collectDouble(Iterable, DoubleFunction, MutableDoubleCollection)
+     */
+    public static &lt;T, R extends MutableDoubleCollection&gt; R collectDouble(
+            T[] objectArray,
+            DoubleFunction&lt;? super T&gt; doubleFunction,
+            R target)
+    {
+<span class="nc bnc" id="L555" title="All 2 branches missed.">        if (objectArray == null)</span>
+        {
+<span class="nc" id="L557">            throw new IllegalArgumentException(&quot;Cannot perform a collectDouble on null&quot;);</span>
+        }
+<span class="nc bnc" id="L559" title="All 2 branches missed.">        for (T each : objectArray)</span>
+        {
+<span class="nc" id="L561">            target.add(doubleFunction.doubleValueOf(each));</span>
+        }
+<span class="nc" id="L563">        return target;</span>
+    }
+
+    /**
+     * @see Iterate#collectFloat(Iterable, FloatFunction)
+     */
+    public static &lt;T&gt; MutableFloatList collectFloat(T[] objectArray, FloatFunction&lt;? super T&gt; floatFunction)
+    {
+<span class="nc bnc" id="L571" title="All 2 branches missed.">        if (objectArray == null)</span>
+        {
+<span class="nc" id="L573">            throw new IllegalArgumentException(&quot;Cannot perform a collectFloat on null&quot;);</span>
+        }
+<span class="nc" id="L575">        return ArrayIterate.collectFloat(objectArray, floatFunction, new FloatArrayList(objectArray.length));</span>
+    }
+
+    /**
+     * @see Iterate#collectFloat(Iterable, FloatFunction, MutableFloatCollection)
+     */
+    public static &lt;T, R extends MutableFloatCollection&gt; R collectFloat(
+            T[] objectArray,
+            FloatFunction&lt;? super T&gt; floatFunction,
+            R target)
+    {
+<span class="nc bnc" id="L586" title="All 2 branches missed.">        if (objectArray == null)</span>
+        {
+<span class="nc" id="L588">            throw new IllegalArgumentException(&quot;Cannot perform a collectFloat on null&quot;);</span>
+        }
+<span class="nc bnc" id="L590" title="All 2 branches missed.">        for (T each : objectArray)</span>
+        {
+<span class="nc" id="L592">            target.add(floatFunction.floatValueOf(each));</span>
+        }
+<span class="nc" id="L594">        return target;</span>
+    }
+
+    /**
+     * @see Iterate#collectInt(Iterable, IntFunction)
+     */
+    public static &lt;T&gt; MutableIntList collectInt(
+            T[] objectArray,
+            IntFunction&lt;? super T&gt; intFunction)
+    {
+<span class="nc bnc" id="L604" title="All 2 branches missed.">        if (objectArray == null)</span>
+        {
+<span class="nc" id="L606">            throw new IllegalArgumentException(&quot;Cannot perform a collectInt on null&quot;);</span>
+        }
+<span class="nc" id="L608">        return ArrayIterate.collectInt(objectArray, intFunction, new IntArrayList(objectArray.length));</span>
+    }
+
+    /**
+     * @see Iterate#collectInt(Iterable, IntFunction, MutableIntCollection)
+     */
+    public static &lt;T, R extends MutableIntCollection&gt; R collectInt(
+            T[] objectArray,
+            IntFunction&lt;? super T&gt; intFunction,
+            R target)
+    {
+<span class="nc bnc" id="L619" title="All 2 branches missed.">        if (objectArray == null)</span>
+        {
+<span class="nc" id="L621">            throw new IllegalArgumentException(&quot;Cannot perform a collectInt on null&quot;);</span>
+        }
+<span class="nc bnc" id="L623" title="All 2 branches missed.">        for (T each : objectArray)</span>
+        {
+<span class="nc" id="L625">            target.add(intFunction.intValueOf(each));</span>
+        }
+<span class="nc" id="L627">        return target;</span>
+    }
+
+    /**
+     * @see Iterate#collectLong(Iterable, LongFunction)
+     */
+    public static &lt;T&gt; MutableLongList collectLong(
+            T[] objectArray,
+            LongFunction&lt;? super T&gt; longFunction)
+    {
+<span class="nc bnc" id="L637" title="All 2 branches missed.">        if (objectArray == null)</span>
+        {
+<span class="nc" id="L639">            throw new IllegalArgumentException(&quot;Cannot perform a collectLong on null&quot;);</span>
+        }
+<span class="nc" id="L641">        return ArrayIterate.collectLong(objectArray, longFunction, new LongArrayList(objectArray.length));</span>
+    }
+
+    /**
+     * @see Iterate#collectLong(Iterable, LongFunction, MutableLongCollection)
+     */
+    public static &lt;T, R extends MutableLongCollection&gt; R collectLong(
+            T[] objectArray,
+            LongFunction&lt;? super T&gt; longFunction,
+            R target)
+    {
+<span class="nc bnc" id="L652" title="All 2 branches missed.">        if (objectArray == null)</span>
+        {
+<span class="nc" id="L654">            throw new IllegalArgumentException(&quot;Cannot perform a collectLong on null&quot;);</span>
+        }
+<span class="nc bnc" id="L656" title="All 2 branches missed.">        for (T each : objectArray)</span>
+        {
+<span class="nc" id="L658">            target.add(longFunction.longValueOf(each));</span>
+        }
+<span class="nc" id="L660">        return target;</span>
+    }
+
+    /**
+     * @see Iterate#collectShort(Iterable, ShortFunction)
+     */
+    public static &lt;T&gt; MutableShortList collectShort(
+            T[] objectArray,
+            ShortFunction&lt;? super T&gt; shortFunction)
+    {
+<span class="nc bnc" id="L670" title="All 2 branches missed.">        if (objectArray == null)</span>
+        {
+<span class="nc" id="L672">            throw new IllegalArgumentException(&quot;Cannot perform a collectShort on null&quot;);</span>
+        }
+<span class="nc" id="L674">        return ArrayIterate.collectShort(objectArray, shortFunction, new ShortArrayList(objectArray.length));</span>
+    }
+
+    /**
+     * @see Iterate#collectShort(Iterable, ShortFunction, MutableShortCollection)
+     */
+    public static &lt;T, R extends MutableShortCollection&gt; R collectShort(
+            T[] objectArray,
+            ShortFunction&lt;? super T&gt; shortFunction,
+            R target)
+    {
+<span class="nc bnc" id="L685" title="All 2 branches missed.">        if (objectArray == null)</span>
+        {
+<span class="nc" id="L687">            throw new IllegalArgumentException(&quot;Cannot perform a collectShort on null&quot;);</span>
+        }
+<span class="nc bnc" id="L689" title="All 2 branches missed.">        for (T each : objectArray)</span>
+        {
+<span class="nc" id="L691">            target.add(shortFunction.shortValueOf(each));</span>
+        }
+<span class="nc" id="L693">        return target;</span>
+    }
+
+    /**
+     * @see Iterate#flatCollect(Iterable, Function)
+     */
+
+    public static &lt;T, V&gt; MutableList&lt;V&gt; flatCollect(
+            T[] objectArray,
+            Function&lt;? super T, ? extends Iterable&lt;V&gt;&gt; function)
+    {
+<span class="nc bnc" id="L704" title="All 2 branches missed.">        if (objectArray == null)</span>
+        {
+<span class="nc" id="L706">            throw new IllegalArgumentException(&quot;Cannot perform a flatCollect on null&quot;);</span>
+        }
+<span class="nc" id="L708">        return ArrayIterate.flatCollect(objectArray, function, FastList.newList(objectArray.length));</span>
+    }
+
+    public static &lt;T, V, R extends Collection&lt;V&gt;&gt; R flatCollect(
+            T[] objectArray,
+            Function&lt;? super T, ? extends Iterable&lt;V&gt;&gt; function,
+            R targetCollection)
+    {
+<span class="nc bnc" id="L716" title="All 2 branches missed.">        if (objectArray == null)</span>
+        {
+<span class="nc" id="L718">            throw new IllegalArgumentException(&quot;Cannot perform a flatCollect on null&quot;);</span>
+        }
+<span class="nc" id="L720">        return InternalArrayIterate.flatCollect(objectArray, objectArray.length, function, targetCollection);</span>
+    }
+
+    /**
+     * Returns the first element of an array.  This method is null safe.
+     */
+    public static &lt;T&gt; T getFirst(T[] objectArray)
+    {
+<span class="nc bnc" id="L728" title="All 2 branches missed.">        if (ArrayIterate.notEmpty(objectArray))</span>
+        {
+<span class="nc" id="L730">            return objectArray[0];</span>
+        }
+<span class="nc" id="L732">        return null;</span>
+    }
+
+    /**
+     * Returns the last element of an Array.  This method is null safe.
+     */
+    public static &lt;T&gt; T getLast(T[] objectArray)
+    {
+<span class="nc bnc" id="L740" title="All 2 branches missed.">        if (ArrayIterate.notEmpty(objectArray))</span>
+        {
+<span class="nc" id="L742">            return objectArray[objectArray.length - 1];</span>
+        }
+<span class="nc" id="L744">        return null;</span>
+    }
+
+    /**
+     * @see Iterate#forEach(Iterable, Procedure)
+     */
+    public static &lt;T&gt; void forEach(T[] objectArray, Procedure&lt;? super T&gt; procedure)
+    {
+<span class="nc bnc" id="L752" title="All 2 branches missed.">        if (objectArray == null)</span>
+        {
+<span class="nc" id="L754">            throw new IllegalArgumentException(&quot;Cannot perform a forEach on null&quot;);</span>
+        }
+<span class="nc bnc" id="L756" title="All 2 branches missed.">        if (ArrayIterate.notEmpty(objectArray))</span>
+        {
+<span class="nc bnc" id="L758" title="All 2 branches missed.">            for (T each : objectArray)</span>
+            {
+<span class="nc" id="L760">                procedure.value(each);</span>
+            }
+        }
+<span class="nc" id="L763">    }</span>
+
+    /**
+     * Iterates over the section of the list covered by the specified inclusive indexes.  The indexes are
+     * both inclusive.
+     */
+    public static &lt;T&gt; void forEach(T[] objectArray, int from, int to, Procedure&lt;? super T&gt; procedure)
+    {
+<span class="nc bnc" id="L771" title="All 2 branches missed.">        if (objectArray == null)</span>
+        {
+<span class="nc" id="L773">            throw new IllegalArgumentException(&quot;Cannot perform a forEach on null&quot;);</span>
+        }
+
+<span class="nc" id="L776">        ListIterate.rangeCheck(from, to, objectArray.length);</span>
+<span class="nc" id="L777">        InternalArrayIterate.forEachWithoutChecks(objectArray, from, to, procedure);</span>
+<span class="nc" id="L778">    }</span>
+
+    /**
+     * @see ListIterate#forEachInBoth(List, List, Procedure2)
+     */
+    public static &lt;T1, T2&gt; void forEachInBoth(
+            T1[] objectArray1,
+            T2[] objectArray2,
+            Procedure2&lt;T1, T2&gt; procedure)
+    {
+<span class="nc bnc" id="L788" title="All 4 branches missed.">        if (objectArray1 != null &amp;&amp; objectArray2 != null)</span>
+        {
+<span class="nc bnc" id="L790" title="All 2 branches missed.">            if (objectArray1.length == objectArray2.length)</span>
+            {
+<span class="nc" id="L792">                int size = objectArray1.length;</span>
+<span class="nc bnc" id="L793" title="All 2 branches missed.">                for (int i = 0; i &lt; size; i++)</span>
+                {
+<span class="nc" id="L795">                    procedure.value(objectArray1[i], objectArray2[i]);</span>
+                }
+<span class="nc" id="L797">            }</span>
+            else
+            {
+<span class="nc" id="L800">                throw new RuntimeException(&quot;Attempt to call forEachInBoth with two arrays of different sizes :&quot;</span>
+                        + objectArray1.length + ':' + objectArray2.length);
+            }
+        }
+<span class="nc" id="L804">    }</span>
+
+    /**
+     * @see Iterate#forEachWithIndex(Iterable, ObjectIntProcedure)
+     */
+    public static &lt;T&gt; void forEachWithIndex(T[] objectArray, ObjectIntProcedure&lt;? super T&gt; objectIntProcedure)
+    {
+<span class="nc bnc" id="L811" title="All 2 branches missed.">        if (objectArray == null)</span>
+        {
+<span class="nc" id="L813">            throw new IllegalArgumentException(&quot;Cannot perform a forEachWithIndex on null&quot;);</span>
+        }
+
+<span class="nc" id="L816">        InternalArrayIterate.forEachWithIndex(objectArray, objectArray.length, objectIntProcedure);</span>
+<span class="nc" id="L817">    }</span>
+
+    /**
+     * Iterates over the section of the list covered by the specified inclusive indexes.  The indexes are
+     * both inclusive.
+     */
+    public static &lt;T&gt; void forEachWithIndex(
+            T[] objectArray,
+            int from, int to,
+            ObjectIntProcedure&lt;? super T&gt; objectIntProcedure)
+    {
+<span class="nc bnc" id="L828" title="All 2 branches missed.">        if (objectArray == null)</span>
+        {
+<span class="nc" id="L830">            throw new IllegalArgumentException(&quot;Cannot perform a forEachWithIndex on null&quot;);</span>
+        }
+
+<span class="nc" id="L833">        ListIterate.rangeCheck(from, to, objectArray.length);</span>
+<span class="nc" id="L834">        InternalArrayIterate.forEachWithIndexWithoutChecks(objectArray, from, to, objectIntProcedure);</span>
+<span class="nc" id="L835">    }</span>
+
+    /**
+     * @see Iterate#detect(Iterable, Predicate)
+     */
+    public static &lt;T&gt; T detect(T[] objectArray, Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc bnc" id="L842" title="All 2 branches missed.">        if (objectArray == null)</span>
+        {
+<span class="nc" id="L844">            throw new IllegalArgumentException(&quot;Cannot perform a detect on null&quot;);</span>
+        }
+<span class="nc" id="L846">        return InternalArrayIterate.detect(objectArray, objectArray.length, predicate);</span>
+    }
+
+    /**
+     * @see Iterate#detectWith(Iterable, Predicate2, Object)
+     */
+    public static &lt;T, P&gt; T detectWith(
+            T[] objectArray,
+            Predicate2&lt;? super T, ? super P&gt; predicate,
+            P parameter)
+    {
+<span class="nc bnc" id="L857" title="All 2 branches missed.">        if (objectArray == null)</span>
+        {
+<span class="nc" id="L859">            throw new IllegalArgumentException(&quot;Cannot perform a detectWith on null&quot;);</span>
+        }
+<span class="nc" id="L861">        return InternalArrayIterate.detectWith(objectArray, objectArray.length, predicate, parameter);</span>
+    }
+
+    /**
+     * @see Iterate#detectOptional(Iterable, Predicate)
+     */
+    public static &lt;T&gt; Optional&lt;T&gt; detectOptional(T[] objectArray, Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc bnc" id="L869" title="All 2 branches missed.">        if (objectArray == null)</span>
+        {
+<span class="nc" id="L871">            throw new IllegalArgumentException(&quot;Cannot perform a detect on null&quot;);</span>
+        }
+<span class="nc" id="L873">        return InternalArrayIterate.detectOptional(objectArray, objectArray.length, predicate);</span>
+    }
+
+    /**
+     * @see Iterate#detectWithOptional(Iterable, Predicate2, Object)
+     */
+    public static &lt;T, P&gt; Optional&lt;T&gt; detectWithOptional(
+            T[] objectArray,
+            Predicate2&lt;? super T, ? super P&gt; predicate,
+            P parameter)
+    {
+<span class="nc bnc" id="L884" title="All 2 branches missed.">        if (objectArray == null)</span>
+        {
+<span class="nc" id="L886">            throw new IllegalArgumentException(&quot;Cannot perform a detectWith on null&quot;);</span>
+        }
+<span class="nc" id="L888">        return InternalArrayIterate.detectWithOptional(objectArray, objectArray.length, predicate, parameter);</span>
+    }
+
+    /**
+     * @see Iterate#detectIfNone(Iterable, Predicate, Object)
+     */
+    public static &lt;T&gt; T detectIfNone(
+            T[] objectArray,
+            Predicate&lt;? super T&gt; predicate,
+            T ifNone)
+    {
+<span class="nc" id="L899">        T result = ArrayIterate.detect(objectArray, predicate);</span>
+<span class="nc bnc" id="L900" title="All 2 branches missed.">        return result == null ? ifNone : result;</span>
+    }
+
+    /**
+     * @see Iterate#detectWithIfNone(Iterable, Predicate2, Object, Object)
+     */
+    public static &lt;T, P&gt; T detectWithIfNone(
+            T[] objectArray,
+            Predicate2&lt;? super T, P&gt; predicate,
+            P parameter,
+            T ifNone)
+    {
+<span class="nc" id="L912">        T result = ArrayIterate.detectWith(objectArray, predicate, parameter);</span>
+<span class="nc bnc" id="L913" title="All 2 branches missed.">        return result == null ? ifNone : result;</span>
+    }
+
+    /**
+     * @see Iterate#injectInto(Object, Iterable, Function2)
+     */
+    public static &lt;T, IV&gt; IV injectInto(
+            IV injectValue,
+            T[] objectArray,
+            Function2&lt;? super IV, ? super T, ? extends IV&gt; function)
+    {
+<span class="nc bnc" id="L924" title="All 2 branches missed.">        if (objectArray == null)</span>
+        {
+<span class="nc" id="L926">            throw new IllegalArgumentException(&quot;Cannot perform an injectInto on null&quot;);</span>
+        }
+<span class="nc" id="L928">        IV result = injectValue;</span>
+<span class="nc bnc" id="L929" title="All 2 branches missed.">        for (T each : objectArray)</span>
+        {
+<span class="nc" id="L931">            result = function.value(result, each);</span>
+        }
+<span class="nc" id="L933">        return result;</span>
+    }
+
+    /**
+     * @see Iterate#injectInto(int, Iterable, IntObjectToIntFunction)
+     */
+    public static &lt;T&gt; int injectInto(
+            int injectValue,
+            T[] objectArray,
+            IntObjectToIntFunction&lt;? super T&gt; function)
+    {
+<span class="nc bnc" id="L944" title="All 2 branches missed.">        if (objectArray == null)</span>
+        {
+<span class="nc" id="L946">            throw new IllegalArgumentException(&quot;Cannot perform an injectInto on null&quot;);</span>
+        }
+<span class="nc" id="L948">        int result = injectValue;</span>
+<span class="nc bnc" id="L949" title="All 2 branches missed.">        if (ArrayIterate.notEmpty(objectArray))</span>
+        {
+<span class="nc bnc" id="L951" title="All 2 branches missed.">            for (T each : objectArray)</span>
+            {
+<span class="nc" id="L953">                result = function.intValueOf(result, each);</span>
+            }
+        }
+<span class="nc" id="L956">        return result;</span>
+    }
+
+    /**
+     * @see Iterate#injectInto(long, Iterable, LongObjectToLongFunction)
+     */
+    public static &lt;T&gt; long injectInto(
+            long injectValue,
+            T[] objectArray,
+            LongObjectToLongFunction&lt;? super T&gt; function)
+    {
+<span class="nc bnc" id="L967" title="All 2 branches missed.">        if (objectArray == null)</span>
+        {
+<span class="nc" id="L969">            throw new IllegalArgumentException(&quot;Cannot perform an injectInto on null&quot;);</span>
+        }
+<span class="nc" id="L971">        long result = injectValue;</span>
+<span class="nc bnc" id="L972" title="All 2 branches missed.">        if (ArrayIterate.notEmpty(objectArray))</span>
+        {
+<span class="nc bnc" id="L974" title="All 2 branches missed.">            for (T each : objectArray)</span>
+            {
+<span class="nc" id="L976">                result = function.longValueOf(result, each);</span>
+            }
+        }
+<span class="nc" id="L979">        return result;</span>
+    }
+
+    /**
+     * @see Iterate#injectInto(float, Iterable, FloatObjectToFloatFunction)
+     * @since 6.0
+     */
+    public static &lt;T&gt; float injectInto(float injectValue, T[] objectArray, FloatObjectToFloatFunction&lt;? super T&gt; function)
+    {
+<span class="nc bnc" id="L988" title="All 2 branches missed.">        if (objectArray == null)</span>
+        {
+<span class="nc" id="L990">            throw new IllegalArgumentException(&quot;Cannot perform an injectInto on null&quot;);</span>
+        }
+<span class="nc" id="L992">        float result = injectValue;</span>
+<span class="nc bnc" id="L993" title="All 2 branches missed.">        if (ArrayIterate.notEmpty(objectArray))</span>
+        {
+<span class="nc bnc" id="L995" title="All 2 branches missed.">            for (T each : objectArray)</span>
+            {
+<span class="nc" id="L997">                result = function.floatValueOf(result, each);</span>
+            }
+        }
+<span class="nc" id="L1000">        return result;</span>
+    }
+
+    /**
+     * @see Iterate#injectInto(double, Iterable, DoubleObjectToDoubleFunction)
+     */
+    public static &lt;T&gt; double injectInto(
+            double injectValue,
+            T[] objectArray,
+            DoubleObjectToDoubleFunction&lt;? super T&gt; function)
+    {
+<span class="nc bnc" id="L1011" title="All 2 branches missed.">        if (objectArray == null)</span>
+        {
+<span class="nc" id="L1013">            throw new IllegalArgumentException(&quot;Cannot perform an injectInto on null&quot;);</span>
+        }
+<span class="nc" id="L1015">        double result = injectValue;</span>
+<span class="nc bnc" id="L1016" title="All 2 branches missed.">        if (ArrayIterate.notEmpty(objectArray))</span>
+        {
+<span class="nc bnc" id="L1018" title="All 2 branches missed.">            for (T each : objectArray)</span>
+            {
+<span class="nc" id="L1020">                result = function.doubleValueOf(result, each);</span>
+            }
+        }
+<span class="nc" id="L1023">        return result;</span>
+    }
+
+    /**
+     * @deprecated in 7.0.
+     */
+    @Deprecated
+    public static &lt;T, R extends List&lt;T&gt;&gt; R distinct(T[] objectArray, R targetList)
+    {
+<span class="nc bnc" id="L1032" title="All 2 branches missed.">        if (objectArray == null)</span>
+        {
+<span class="nc" id="L1034">            throw new IllegalArgumentException(&quot;Cannot perform a distinct on null&quot;);</span>
+        }
+<span class="nc" id="L1036">        return InternalArrayIterate.distinct(objectArray, objectArray.length, targetList);</span>
+    }
+
+    /**
+     * @since 7.0.
+     */
+    public static &lt;T&gt; MutableList&lt;T&gt; distinct(T[] objectArray)
+    {
+<span class="nc" id="L1044">        return ArrayIterate.distinct(objectArray, FastList.newList());</span>
+    }
+
+    /**
+     * @since 7.0.
+     */
+    public static &lt;T&gt; MutableList&lt;T&gt; distinct(T[] objectArray, HashingStrategy&lt;? super T&gt; hashingStrategy)
+    {
+<span class="nc bnc" id="L1052" title="All 2 branches missed.">        if (objectArray == null)</span>
+        {
+<span class="nc" id="L1054">            throw new IllegalArgumentException(&quot;Cannot perform a distinct on null&quot;);</span>
+        }
+<span class="nc" id="L1056">        return InternalArrayIterate.distinct(objectArray, objectArray.length, hashingStrategy);</span>
+    }
+
+    /**
+     * Returns {@code true} if the specified array contains the specified element.
+     */
+    public static &lt;T&gt; boolean contains(T[] objectArray, T value)
+    {
+<span class="nc" id="L1064">        return ArrayIterate.anySatisfyWith(objectArray, Predicates2.equal(), value);</span>
+    }
+
+    /**
+     * Returns {@code true} if the specified int array contains the specified int element.
+     */
+    public static boolean contains(int[] intArray, int value)
+    {
+<span class="nc bnc" id="L1072" title="All 2 branches missed.">        for (int each : intArray)</span>
+        {
+<span class="nc bnc" id="L1074" title="All 2 branches missed.">            if (each == value)</span>
+            {
+<span class="nc" id="L1076">                return true;</span>
+            }
+        }
+<span class="nc" id="L1079">        return false;</span>
+    }
+
+    /**
+     * Returns {@code true} if the specified double array contains the specified double element.
+     */
+    public static boolean contains(double[] doubleArray, double value)
+    {
+<span class="nc bnc" id="L1087" title="All 2 branches missed.">        for (double each : doubleArray)</span>
+        {
+<span class="nc bnc" id="L1089" title="All 2 branches missed.">            if (Double.doubleToLongBits(each) == Double.doubleToLongBits(value))</span>
+            {
+<span class="nc" id="L1091">                return true;</span>
+            }
+        }
+<span class="nc" id="L1094">        return false;</span>
+    }
+
+    /**
+     * Returns {@code true} if the specified long array contains the specified long element.
+     */
+    public static boolean contains(long[] longArray, long value)
+    {
+<span class="nc bnc" id="L1102" title="All 2 branches missed.">        for (long each : longArray)</span>
+        {
+<span class="nc bnc" id="L1104" title="All 2 branches missed.">            if (each == value)</span>
+            {
+<span class="nc" id="L1106">                return true;</span>
+            }
+        }
+<span class="nc" id="L1109">        return false;</span>
+    }
+
+    /**
+     * Searches for the first occurrence of the given argument, testing
+     * for equality using the {@code equals} method.
+     */
+    public static &lt;T&gt; int indexOf(T[] objectArray, T elem)
+    {
+<span class="nc" id="L1118">        return InternalArrayIterate.indexOf(objectArray, objectArray.length, elem);</span>
+    }
+
+    /**
+     * Returns the first index where the predicate evaluates to {@code true}.  Returns -1 for no matches.
+     */
+    public static &lt;T&gt; int detectIndex(T[] objectArray, Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc bnc" id="L1126" title="All 2 branches missed.">        if (objectArray == null)</span>
+        {
+<span class="nc" id="L1128">            throw new IllegalArgumentException(&quot;Cannot perform a detectIndex on null&quot;);</span>
+        }
+<span class="nc" id="L1130">        return InternalArrayIterate.detectIndex(objectArray, objectArray.length, predicate);</span>
+    }
+
+    /**
+     * Searches for the first index where the predicate evaluates to {@code true}.  Returns -1 for no matches.
+     */
+    public static &lt;T, IV&gt; int detectIndexWith(
+            T[] objectArray,
+            Predicate2&lt;? super T, IV&gt; predicate,
+            IV injectedValue)
+    {
+<span class="nc bnc" id="L1141" title="All 2 branches missed.">        if (objectArray == null)</span>
+        {
+<span class="nc" id="L1143">            throw new IllegalArgumentException(&quot;Cannot perform a detectIndexWith on null&quot;);</span>
+        }
+<span class="nc bnc" id="L1145" title="All 2 branches missed.">        for (int i = 0; i &lt; objectArray.length; i++)</span>
+        {
+<span class="nc bnc" id="L1147" title="All 2 branches missed.">            if (predicate.accept(objectArray[i], injectedValue))</span>
+            {
+<span class="nc" id="L1149">                return i;</span>
+            }
+        }
+<span class="nc" id="L1152">        return -1;</span>
+    }
+
+    /**
+     * Returns the last index where the predicate evaluates to {@code true}.
+     * Returns -1 for no matches.
+     */
+    public static &lt;T&gt; int detectLastIndex(T[] objectArray, Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc bnc" id="L1161" title="All 2 branches missed.">        if (objectArray == null)</span>
+        {
+<span class="nc" id="L1163">            throw new IllegalArgumentException(&quot;Cannot perform a detectLastIndex on null&quot;);</span>
+        }
+<span class="nc" id="L1165">        return InternalArrayIterate.detectLastIndex(objectArray, objectArray.length, predicate);</span>
+    }
+
+    /**
+     * A null safe form of isEmpty.  Null or length of zero returns {@code true}.
+     */
+    public static boolean isEmpty(Object[] array)
+    {
+<span class="nc bnc" id="L1173" title="All 4 branches missed.">        return array == null || array.length == 0;</span>
+    }
+
+    /**
+     * A null safe form of notEmpty.  The opposite of isEmpty is returned.
+     */
+    public static boolean notEmpty(Object[] array)
+    {
+<span class="nc bnc" id="L1181" title="All 4 branches missed.">        return array != null &amp;&amp; array.length &gt; 0;</span>
+    }
+
+    /**
+     * Return the size of the array.
+     */
+    public static int size(Object[] array)
+    {
+<span class="nc bnc" id="L1189" title="All 2 branches missed.">        return array == null ? 0 : array.length;</span>
+    }
+
+    /**
+     * @see Iterate#anySatisfy(Iterable, Predicate)
+     */
+    public static &lt;T&gt; boolean anySatisfy(T[] objectArray, Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc bnc" id="L1197" title="All 2 branches missed.">        if (objectArray == null)</span>
+        {
+<span class="nc" id="L1199">            throw new IllegalArgumentException(&quot;Cannot perform a anySatisfy on null&quot;);</span>
+        }
+<span class="nc" id="L1201">        return InternalArrayIterate.anySatisfy(objectArray, objectArray.length, predicate);</span>
+    }
+
+    /**
+     * @see Iterate#anySatisfyWith(Iterable, Predicate2, Object)
+     */
+    public static &lt;T, P&gt; boolean anySatisfyWith(
+            T[] objectArray,
+            Predicate2&lt;? super T, ? super P&gt; predicate,
+            P parameter)
+    {
+<span class="nc bnc" id="L1212" title="All 2 branches missed.">        if (objectArray == null)</span>
+        {
+<span class="nc" id="L1214">            throw new IllegalArgumentException(&quot;Cannot perform a anySatisfyWith on null&quot;);</span>
+        }
+<span class="nc" id="L1216">        return InternalArrayIterate.anySatisfyWith(objectArray, objectArray.length, predicate, parameter);</span>
+    }
+
+    /**
+     * @see Iterate#allSatisfy(Iterable, Predicate)
+     */
+    public static &lt;T&gt; boolean allSatisfy(T[] objectArray, Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc bnc" id="L1224" title="All 2 branches missed.">        if (objectArray == null)</span>
+        {
+<span class="nc" id="L1226">            throw new IllegalArgumentException(&quot;Cannot perform a allSatisfy on null&quot;);</span>
+        }
+<span class="nc" id="L1228">        return InternalArrayIterate.allSatisfy(objectArray, objectArray.length, predicate);</span>
+    }
+
+    /**
+     * @see Iterate#allSatisfyWith(Iterable, Predicate2, Object)
+     */
+    public static &lt;T, P&gt; boolean allSatisfyWith(
+            T[] objectArray,
+            Predicate2&lt;? super T, ? super P&gt; predicate,
+            P parameter)
+    {
+<span class="nc bnc" id="L1239" title="All 2 branches missed.">        if (objectArray == null)</span>
+        {
+<span class="nc" id="L1241">            throw new IllegalArgumentException(&quot;Cannot perform a allSatisfyWith on null&quot;);</span>
+        }
+<span class="nc" id="L1243">        return InternalArrayIterate.allSatisfyWith(objectArray, objectArray.length, predicate, parameter);</span>
+    }
+
+    /**
+     * @see Iterate#noneSatisfy(Iterable, Predicate)
+     */
+    public static &lt;T&gt; boolean noneSatisfy(T[] objectArray, Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc bnc" id="L1251" title="All 2 branches missed.">        if (objectArray == null)</span>
+        {
+<span class="nc" id="L1253">            throw new IllegalArgumentException(&quot;Cannot perform a noneSatisfy on null&quot;);</span>
+        }
+<span class="nc" id="L1255">        return InternalArrayIterate.noneSatisfy(objectArray, objectArray.length, predicate);</span>
+    }
+
+    /**
+     * @see Iterate#noneSatisfyWith(Iterable, Predicate2, Object)
+     */
+    public static &lt;T, P&gt; boolean noneSatisfyWith(
+            T[] objectArray,
+            Predicate2&lt;? super T, ? super P&gt; predicate,
+            P parameter)
+    {
+<span class="nc bnc" id="L1266" title="All 2 branches missed.">        if (objectArray == null)</span>
+        {
+<span class="nc" id="L1268">            throw new IllegalArgumentException(&quot;Cannot perform a noneSatisfyWith on null&quot;);</span>
+        }
+<span class="nc" id="L1270">        return InternalArrayIterate.noneSatisfyWith(objectArray, objectArray.length, predicate, parameter);</span>
+    }
+
+    /**
+     * Iterate over the specified array applying the specified Function to each element to calculate a key
+     * and return the results as a HashMap.
+     */
+    public static &lt;K, V&gt; MutableMap&lt;K, V&gt; toMap(
+            V[] objectArray,
+            Function&lt;? super V, ? extends K&gt; keyFunction)
+    {
+<span class="nc" id="L1281">        MutableMap&lt;K, V&gt; map = UnifiedMap.newMap();</span>
+<span class="nc" id="L1282">        Procedure&lt;V&gt; procedure = new MapCollectProcedure&lt;&gt;(map, keyFunction);</span>
+<span class="nc" id="L1283">        ArrayIterate.forEach(objectArray, procedure);</span>
+<span class="nc" id="L1284">        return map;</span>
+    }
+
+    /**
+     * Iterate over the specified array applying the specified Functions to each element to calculate a key
+     * and value, and return the results as a Map.
+     */
+    public static &lt;T, K, V&gt; MutableMap&lt;K, V&gt; toMap(
+            T[] objectArray,
+            Function&lt;? super T, ? extends K&gt; keyFunction,
+            Function&lt;? super T, ? extends V&gt; valueFunction)
+    {
+<span class="nc" id="L1296">        MutableMap&lt;K, V&gt; map = UnifiedMap.newMap();</span>
+<span class="nc" id="L1297">        Procedure&lt;T&gt; procedure = new MapCollectProcedure&lt;&gt;(map, keyFunction, valueFunction);</span>
+<span class="nc" id="L1298">        ArrayIterate.forEach(objectArray, procedure);</span>
+<span class="nc" id="L1299">        return map;</span>
+    }
+
+    /**
+     * @see Iterate#forEachWith(Iterable, Procedure2, Object)
+     */
+    public static &lt;T, P&gt; void forEachWith(
+            T[] objectArray,
+            Procedure2&lt;? super T, ? super P&gt; procedure,
+            P parameter)
+    {
+<span class="nc bnc" id="L1310" title="All 2 branches missed.">        if (objectArray == null)</span>
+        {
+<span class="nc" id="L1312">            throw new IllegalArgumentException(&quot;Cannot perform a forEachWith on null&quot;);</span>
+        }
+<span class="nc bnc" id="L1314" title="All 2 branches missed.">        if (ArrayIterate.notEmpty(objectArray))</span>
+        {
+<span class="nc bnc" id="L1316" title="All 2 branches missed.">            for (T each : objectArray)</span>
+            {
+<span class="nc" id="L1318">                procedure.value(each, parameter);</span>
+            }
+        }
+<span class="nc" id="L1321">    }</span>
+
+    /**
+     * @see Iterate#collectWith(Iterable, Function2, Object)
+     */
+    public static &lt;T, P, V&gt; MutableList&lt;V&gt; collectWith(
+            T[] objectArray,
+            Function2&lt;? super T, ? super P, ? extends V&gt; function,
+            P parameter)
+    {
+<span class="nc bnc" id="L1331" title="All 2 branches missed.">        if (objectArray == null)</span>
+        {
+<span class="nc" id="L1333">            throw new IllegalArgumentException(&quot;Cannot perform a collectWith on null&quot;);</span>
+        }
+<span class="nc" id="L1335">        return ArrayIterate.collectWith(objectArray, function, parameter, FastList.newList(objectArray.length));</span>
+    }
+
+    /**
+     * @see Iterate#collectWith(Iterable, Function2, Object, Collection)
+     */
+    public static &lt;T, P, V, R extends Collection&lt;V&gt;&gt; R collectWith(
+            T[] objectArray,
+            Function2&lt;? super T, ? super P, ? extends V&gt; function,
+            P parameter,
+            R targetCollection)
+    {
+<span class="nc bnc" id="L1347" title="All 2 branches missed.">        if (objectArray == null)</span>
+        {
+<span class="nc" id="L1349">            throw new IllegalArgumentException(&quot;Cannot perform a collectWith on null&quot;);</span>
+        }
+<span class="nc" id="L1351">        return InternalArrayIterate.collectWith(objectArray, objectArray.length, function, parameter, targetCollection);</span>
+    }
+
+    /**
+     * @see Iterate#injectIntoWith(Object, Iterable, Function3, Object)
+     */
+    public static &lt;T, IV, P&gt; IV injectIntoWith(
+            IV injectValue,
+            T[] objectArray,
+            Function3&lt;? super IV, ? super T, ? super P, ? extends IV&gt; function,
+            P parameter)
+    {
+<span class="nc bnc" id="L1363" title="All 2 branches missed.">        if (objectArray == null)</span>
+        {
+<span class="nc" id="L1365">            throw new IllegalArgumentException(&quot;Cannot perform an injectIntoWith on null&quot;);</span>
+        }
+<span class="nc" id="L1367">        IV result = injectValue;</span>
+<span class="nc bnc" id="L1368" title="All 2 branches missed.">        if (ArrayIterate.notEmpty(objectArray))</span>
+        {
+<span class="nc bnc" id="L1370" title="All 2 branches missed.">            for (T each : objectArray)</span>
+            {
+<span class="nc" id="L1372">                result = function.value(result, each, parameter);</span>
+            }
+        }
+<span class="nc" id="L1375">        return result;</span>
+    }
+
+    /**
+     * @see Iterate#take(Iterable, int)
+     */
+    public static &lt;T&gt; MutableList&lt;T&gt; take(T[] array, int count)
+    {
+<span class="nc bnc" id="L1383" title="All 2 branches missed.">        if (count &lt; 0)</span>
+        {
+<span class="nc" id="L1385">            throw new IllegalArgumentException(&quot;Count must be greater than zero, but was: &quot; + count);</span>
+        }
+<span class="nc" id="L1387">        return ArrayIterate.take(array, count, FastList.newList(Math.min(array.length, count)));</span>
+    }
+
+    /**
+     * @see Iterate#take(Iterable, int)
+     */
+    public static &lt;T, R extends Collection&lt;T&gt;&gt; R take(T[] array, int count, R target)
+    {
+<span class="nc bnc" id="L1395" title="All 2 branches missed.">        if (count &lt; 0)</span>
+        {
+<span class="nc" id="L1397">            throw new IllegalArgumentException(&quot;Count must be greater than zero, but was: &quot; + count);</span>
+        }
+<span class="nc" id="L1399">        int end = Math.min(array.length, count);</span>
+<span class="nc bnc" id="L1400" title="All 2 branches missed.">        for (int i = 0; i &lt; end; i++)</span>
+        {
+<span class="nc" id="L1402">            target.add(array[i]);</span>
+        }
+<span class="nc" id="L1404">        return target;</span>
+    }
+
+    /**
+     * @see Iterate#drop(Iterable, int)
+     */
+    public static &lt;T&gt; MutableList&lt;T&gt; drop(T[] array, int count)
+    {
+<span class="nc bnc" id="L1412" title="All 2 branches missed.">        if (count &lt; 0)</span>
+        {
+<span class="nc" id="L1414">            throw new IllegalArgumentException(&quot;Count must be greater than zero, but was: &quot; + count);</span>
+        }
+<span class="nc" id="L1416">        return ArrayIterate.drop(array, count, FastList.newList(array.length - Math.min(array.length, count)));</span>
+    }
+
+    /**
+     * @see Iterate#drop(Iterable, int)
+     */
+    public static &lt;T, R extends Collection&lt;T&gt;&gt; R drop(T[] array, int count, R target)
+    {
+<span class="nc bnc" id="L1424" title="All 2 branches missed.">        if (count &lt; 0)</span>
+        {
+<span class="nc" id="L1426">            throw new IllegalArgumentException(&quot;Count must be greater than zero, but was: &quot; + count);</span>
+        }
+<span class="nc bnc" id="L1428" title="All 2 branches missed.">        for (int i = count; i &lt; array.length; i++)</span>
+        {
+<span class="nc" id="L1430">            target.add(array[i]);</span>
+        }
+<span class="nc" id="L1432">        return target;</span>
+    }
+
+    /**
+     * @see Iterate#groupBy(Iterable, Function)
+     */
+    public static &lt;T, V&gt; FastListMultimap&lt;V, T&gt; groupBy(
+            T[] array,
+            Function&lt;? super T, ? extends V&gt; function)
+    {
+<span class="nc" id="L1442">        return ArrayIterate.groupBy(array, function, FastListMultimap.newMultimap());</span>
+    }
+
+    /**
+     * @see Iterate#groupBy(Iterable, Function, MutableMultimap)
+     */
+    public static &lt;T, V, R extends MutableMultimap&lt;V, T&gt;&gt; R groupBy(
+            T[] array,
+            Function&lt;? super T, ? extends V&gt; function,
+            R target)
+    {
+<span class="nc" id="L1453">        return InternalArrayIterate.groupBy(array, array.length, function, target);</span>
+    }
+
+    /**
+     * @see Iterate#groupByEach(Iterable, Function)
+     */
+    public static &lt;T, V&gt; FastListMultimap&lt;V, T&gt; groupByEach(
+            T[] array,
+            Function&lt;? super T, ? extends Iterable&lt;V&gt;&gt; function)
+    {
+<span class="nc" id="L1463">        return ArrayIterate.groupByEach(array, function, FastListMultimap.newMultimap());</span>
+    }
+
+    /**
+     * @see Iterate#groupByEach(Iterable, Function, MutableMultimap)
+     */
+    public static &lt;T, V, R extends MutableMultimap&lt;V, T&gt;&gt; R groupByEach(
+            T[] array,
+            Function&lt;? super T, ? extends Iterable&lt;V&gt;&gt; function,
+            R target)
+    {
+<span class="nc" id="L1474">        return InternalArrayIterate.groupByEach(array, array.length, function, target);</span>
+    }
+
+    /**
+     * @see Iterate#groupByUniqueKey(Iterable, Function)
+     */
+    public static &lt;T, V&gt; MutableMap&lt;V, T&gt; groupByUniqueKey(
+            T[] array,
+            Function&lt;? super T, ? extends V&gt; function)
+    {
+<span class="nc" id="L1484">        return ArrayIterate.groupByUniqueKey(array, function, UnifiedMap.newMap());</span>
+    }
+
+    /**
+     * @see Iterate#groupByUniqueKey(Iterable, Function, MutableMap)
+     */
+    public static &lt;T, V, R extends MutableMap&lt;V, T&gt;&gt; R groupByUniqueKey(
+            T[] array,
+            Function&lt;? super T, ? extends V&gt; function,
+            R target)
+    {
+<span class="nc bnc" id="L1495" title="All 2 branches missed.">        if (array == null)</span>
+        {
+<span class="nc" id="L1497">            throw new IllegalArgumentException(&quot;Cannot perform a groupByUniqueKey on null&quot;);</span>
+        }
+<span class="nc" id="L1499">        return InternalArrayIterate.groupByUniqueKey(array, array.length, function, target);</span>
+    }
+
+    /**
+     * @see Iterate#chunk(Iterable, int)
+     */
+    public static &lt;T&gt; RichIterable&lt;RichIterable&lt;T&gt;&gt; chunk(T[] array, int size)
+    {
+<span class="nc bnc" id="L1507" title="All 2 branches missed.">        if (size &lt;= 0)</span>
+        {
+<span class="nc" id="L1509">            throw new IllegalArgumentException(&quot;Size for groups must be positive but was: &quot; + size);</span>
+        }
+<span class="nc" id="L1511">        int index = 0;</span>
+<span class="nc" id="L1512">        MutableList&lt;RichIterable&lt;T&gt;&gt; result = Lists.mutable.empty();</span>
+<span class="nc bnc" id="L1513" title="All 2 branches missed.">        while (index &lt; array.length)</span>
+        {
+<span class="nc" id="L1515">            MutableList&lt;T&gt; batch = Lists.mutable.empty();</span>
+<span class="nc bnc" id="L1516" title="All 4 branches missed.">            for (int i = 0; i &lt; size &amp;&amp; index &lt; array.length; i++)</span>
+            {
+<span class="nc" id="L1518">                batch.add(array[index]);</span>
+<span class="nc" id="L1519">                index++;</span>
+            }
+<span class="nc" id="L1521">            result.add(batch);</span>
+<span class="nc" id="L1522">        }</span>
+<span class="nc" id="L1523">        return result;</span>
+    }
+
+    /**
+     * @see Iterate#zip(Iterable, Iterable)
+     */
+    public static &lt;X, Y&gt; MutableList&lt;Pair&lt;X, Y&gt;&gt; zip(X[] xs, Y[] ys)
+    {
+<span class="nc" id="L1531">        return ArrayIterate.zip(xs, ys, FastList.newList());</span>
+    }
+
+    /**
+     * @see Iterate#zip(Iterable, Iterable, Collection)
+     */
+    public static &lt;X, Y, R extends Collection&lt;Pair&lt;X, Y&gt;&gt;&gt; R zip(X[] xs, Y[] ys, R targetCollection)
+    {
+<span class="nc" id="L1539">        int size = Math.min(xs.length, ys.length);</span>
+<span class="nc bnc" id="L1540" title="All 2 branches missed.">        for (int i = 0; i &lt; size; i++)</span>
+        {
+<span class="nc" id="L1542">            targetCollection.add(Tuples.pair(xs[i], ys[i]));</span>
+        }
+<span class="nc" id="L1544">        return targetCollection;</span>
+    }
+
+    /**
+     * @see Iterate#zipWithIndex(Iterable)
+     */
+    public static &lt;T&gt; MutableList&lt;Pair&lt;T, Integer&gt;&gt; zipWithIndex(T... array)
+    {
+<span class="nc" id="L1552">        return ArrayIterate.zipWithIndex(array, FastList.newList());</span>
+    }
+
+    /**
+     * @see Iterate#zipWithIndex(Iterable, Collection)
+     */
+    public static &lt;T, R extends Collection&lt;Pair&lt;T, Integer&gt;&gt;&gt; R zipWithIndex(T[] array, R targetCollection)
+    {
+<span class="nc bnc" id="L1560" title="All 2 branches missed.">        for (int i = 0; i &lt; array.length; i++)</span>
+        {
+<span class="nc" id="L1562">            targetCollection.add(Tuples.pair(array[i], i));</span>
+        }
+<span class="nc" id="L1564">        return targetCollection;</span>
+    }
+
+    /**
+     * @see Iterate#makeString(Iterable)
+     */
+    public static &lt;T&gt; String makeString(T... array)
+    {
+<span class="nc" id="L1572">        return ArrayIterate.makeString(array, &quot;, &quot;);</span>
+    }
+
+    /**
+     * @see Iterate#makeString(Iterable, String)
+     */
+    public static &lt;T&gt; String makeString(T[] array, String separator)
+    {
+<span class="nc" id="L1580">        return ArrayIterate.makeString(array, &quot;&quot;, separator, &quot;&quot;);</span>
+    }
+
+    /**
+     * @see Iterate#makeString(Iterable, String, String, String)
+     */
+    public static &lt;T&gt; String makeString(T[] array, String start, String separator, String end)
+    {
+<span class="nc" id="L1588">        Appendable stringBuilder = new StringBuilder();</span>
+<span class="nc" id="L1589">        ArrayIterate.appendString(array, stringBuilder, start, separator, end);</span>
+<span class="nc" id="L1590">        return stringBuilder.toString();</span>
+    }
+
+    /**
+     * @see Iterate#appendString(Iterable, Appendable)
+     */
+    public static &lt;T&gt; void appendString(T[] array, Appendable appendable)
+    {
+<span class="nc" id="L1598">        ArrayIterate.appendString(array, appendable, &quot;, &quot;);</span>
+<span class="nc" id="L1599">    }</span>
+
+    /**
+     * @see Iterate#appendString(Iterable, Appendable, String)
+     */
+    public static &lt;T&gt; void appendString(T[] array, Appendable appendable, String separator)
+    {
+<span class="nc" id="L1606">        ArrayIterate.appendString(array, appendable, &quot;&quot;, separator, &quot;&quot;);</span>
+<span class="nc" id="L1607">    }</span>
+
+    /**
+     * @see Iterate#appendString(Iterable, Appendable, String, String, String)
+     */
+    public static &lt;T&gt; void appendString(
+            T[] array,
+            Appendable appendable,
+            String start,
+            String separator,
+            String end)
+    {
+        try
+        {
+<span class="nc" id="L1621">            appendable.append(start);</span>
+
+<span class="nc bnc" id="L1623" title="All 2 branches missed.">            if (array.length &gt; 0)</span>
+            {
+<span class="nc" id="L1625">                appendable.append(String.valueOf(array[0]));</span>
+
+<span class="nc" id="L1627">                int size = array.length;</span>
+<span class="nc bnc" id="L1628" title="All 2 branches missed.">                for (int i = 1; i &lt; size; i++)</span>
+                {
+<span class="nc" id="L1630">                    appendable.append(separator);</span>
+<span class="nc" id="L1631">                    appendable.append(String.valueOf(array[i]));</span>
+                }
+            }
+
+<span class="nc" id="L1635">            appendable.append(end);</span>
+        }
+<span class="nc" id="L1637">        catch (IOException e)</span>
+        {
+<span class="nc" id="L1639">            throw new RuntimeException(e);</span>
+<span class="nc" id="L1640">        }</span>
+<span class="nc" id="L1641">    }</span>
+
+    /**
+     * @see Iterate#sumOfInt(Iterable, IntFunction)
+     * @since 6.0
+     */
+    public static &lt;T&gt; long sumOfInt(T[] array, IntFunction&lt;? super T&gt; function)
+    {
+<span class="nc" id="L1649">        return InternalArrayIterate.sumOfInt(array, array.length, function);</span>
+    }
+
+    /**
+     * @see Iterate#sumOfLong(Iterable, LongFunction)
+     * @since 6.0
+     */
+    public static &lt;T&gt; long sumOfLong(T[] array, LongFunction&lt;? super T&gt; function)
+    {
+<span class="nc" id="L1658">        return InternalArrayIterate.sumOfLong(array, array.length, function);</span>
+    }
+
+    /**
+     * @see Iterate#sumOfFloat(Iterable, FloatFunction)
+     * @since 6.0
+     */
+    public static &lt;T&gt; double sumOfFloat(T[] array, FloatFunction&lt;? super T&gt; function)
+    {
+<span class="nc" id="L1667">        return InternalArrayIterate.sumOfFloat(array, array.length, function);</span>
+    }
+
+    /**
+     * @see Iterate#sumOfDouble(Iterable, DoubleFunction)
+     * @since 6.0
+     */
+    public static &lt;T&gt; double sumOfDouble(T[] array, DoubleFunction&lt;? super T&gt; function)
+    {
+<span class="nc" id="L1676">        return InternalArrayIterate.sumOfDouble(array, array.length, function);</span>
+    }
+
+    /**
+     * @see Iterate#sumOfBigDecimal(Iterable, Function)
+     * @since 6.0
+     */
+    public static &lt;T&gt; BigDecimal sumOfBigDecimal(T[] array, Function&lt;? super T, BigDecimal&gt; function)
+    {
+<span class="nc" id="L1685">        BigDecimal result = BigDecimal.ZERO;</span>
+<span class="nc bnc" id="L1686" title="All 2 branches missed.">        for (T each : array)</span>
+        {
+<span class="nc" id="L1688">            result = result.add(function.valueOf(each));</span>
+        }
+<span class="nc" id="L1690">        return result;</span>
+    }
+
+    /**
+     * @see Iterate#sumOfBigInteger(Iterable, Function)
+     * @since 6.0
+     */
+    public static &lt;T&gt; BigInteger sumOfBigInteger(T[] array, Function&lt;? super T, BigInteger&gt; function)
+    {
+<span class="nc" id="L1699">        BigInteger result = BigInteger.ZERO;</span>
+<span class="nc bnc" id="L1700" title="All 2 branches missed.">        for (T each : array)</span>
+        {
+<span class="nc" id="L1702">            result = result.add(function.valueOf(each));</span>
+        }
+<span class="nc" id="L1704">        return result;</span>
+    }
+
+    /**
+     * @see Iterate#sumByBigDecimal(Iterable, Function, Function)
+     * @since 6.0
+     */
+    public static &lt;V, T&gt; MutableMap&lt;V, BigDecimal&gt; sumByBigDecimal(T[] array, Function&lt;T, V&gt; groupBy, Function&lt;? super T, BigDecimal&gt; function)
+    {
+<span class="nc" id="L1713">        MutableMap&lt;V, BigDecimal&gt; result = UnifiedMap.newMap();</span>
+<span class="nc bnc" id="L1714" title="All 2 branches missed.">        for (T each : array)</span>
+        {
+<span class="nc" id="L1716">            result.updateValue(groupBy.valueOf(each), Functions0.zeroBigDecimal(), original -&gt; original.add(function.valueOf(each)));</span>
+        }
+<span class="nc" id="L1718">        return result;</span>
+    }
+
+    /**
+     * @see Iterate#sumByBigInteger(Iterable, Function, Function)
+     * @since 6.0
+     */
+    public static &lt;V, T&gt; MutableMap&lt;V, BigInteger&gt; sumByBigInteger(T[] array, Function&lt;T, V&gt; groupBy, Function&lt;? super T, BigInteger&gt; function)
+    {
+<span class="nc" id="L1727">        MutableMap&lt;V, BigInteger&gt; result = UnifiedMap.newMap();</span>
+<span class="nc bnc" id="L1728" title="All 2 branches missed.">        for (T each : array)</span>
+        {
+<span class="nc" id="L1730">            result.updateValue(groupBy.valueOf(each), Functions0.zeroBigInteger(), original -&gt; original.add(function.valueOf(each)));</span>
+        }
+<span class="nc" id="L1732">        return result;</span>
+    }
+
+    /**
+     * @see Iterate#sumByInt(Iterable, Function, IntFunction)
+     * @since 6.0
+     */
+    public static &lt;V, T&gt; ObjectLongMap&lt;V&gt; sumByInt(T[] array, Function&lt;T, V&gt; groupBy, IntFunction&lt;? super T&gt; function)
+    {
+<span class="nc" id="L1741">        return InternalArrayIterate.sumByInt(array, array.length, groupBy, function);</span>
+    }
+
+    /**
+     * @see Iterate#sumByLong(Iterable, Function, LongFunction)
+     * @since 6.0
+     */
+    public static &lt;V, T&gt; ObjectLongMap&lt;V&gt; sumByLong(T[] array, Function&lt;T, V&gt; groupBy, LongFunction&lt;? super T&gt; function)
+    {
+<span class="nc" id="L1750">        return InternalArrayIterate.sumByLong(array, array.length, groupBy, function);</span>
+    }
+
+    /**
+     * @see Iterate#sumByFloat(Iterable, Function, FloatFunction)
+     * @since 6.0
+     */
+    public static &lt;V, T&gt; ObjectDoubleMap&lt;V&gt; sumByFloat(T[] array, Function&lt;T, V&gt; groupBy, FloatFunction&lt;? super T&gt; function)
+    {
+<span class="nc" id="L1759">        return InternalArrayIterate.sumByFloat(array, array.length, groupBy, function);</span>
+    }
+
+    /**
+     * @see Iterate#sumByDouble(Iterable, Function, DoubleFunction)
+     * @since 6.0
+     */
+    public static &lt;V, T&gt; ObjectDoubleMap&lt;V&gt; sumByDouble(T[] array, Function&lt;T, V&gt; groupBy, DoubleFunction&lt;? super T&gt; function)
+    {
+<span class="nc" id="L1768">        return InternalArrayIterate.sumByDouble(array, array.length, groupBy, function);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.0.201801022044</span></div></body></html>

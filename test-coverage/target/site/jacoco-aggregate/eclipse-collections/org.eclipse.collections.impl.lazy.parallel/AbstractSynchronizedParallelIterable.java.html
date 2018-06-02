@@ -1,0 +1,532 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>AbstractSynchronizedParallelIterable.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Eclipse Collections Test Coverage Aggregation</a> &gt; <a href="../index.html" class="el_bundle">eclipse-collections</a> &gt; <a href="index.source.html" class="el_package">org.eclipse.collections.impl.lazy.parallel</a> &gt; <span class="el_source">AbstractSynchronizedParallelIterable.java</span></div><h1>AbstractSynchronizedParallelIterable.java</h1><pre class="source lang-java linenums">/*
+ * Copyright (c) 2016 Goldman Sachs.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * and Eclipse Distribution License v. 1.0 which accompany this distribution.
+ * The Eclipse Public License is available at http://www.eclipse.org/legal/epl-v10.html
+ * and the Eclipse Distribution License is available at
+ * http://www.eclipse.org/org/documents/edl-v10.php.
+ */
+
+package org.eclipse.collections.impl.lazy.parallel;
+
+import java.util.Comparator;
+
+import org.eclipse.collections.api.ParallelIterable;
+import org.eclipse.collections.api.bag.MutableBag;
+import org.eclipse.collections.api.bag.sorted.MutableSortedBag;
+import org.eclipse.collections.api.block.function.Function;
+import org.eclipse.collections.api.block.function.Function0;
+import org.eclipse.collections.api.block.function.Function2;
+import org.eclipse.collections.api.block.function.primitive.DoubleFunction;
+import org.eclipse.collections.api.block.function.primitive.FloatFunction;
+import org.eclipse.collections.api.block.function.primitive.IntFunction;
+import org.eclipse.collections.api.block.function.primitive.LongFunction;
+import org.eclipse.collections.api.block.predicate.Predicate;
+import org.eclipse.collections.api.block.predicate.Predicate2;
+import org.eclipse.collections.api.block.procedure.Procedure;
+import org.eclipse.collections.api.block.procedure.Procedure2;
+import org.eclipse.collections.api.list.MutableList;
+import org.eclipse.collections.api.list.ParallelListIterable;
+import org.eclipse.collections.api.map.MapIterable;
+import org.eclipse.collections.api.map.MutableMap;
+import org.eclipse.collections.api.map.sorted.MutableSortedMap;
+import org.eclipse.collections.api.set.MutableSet;
+import org.eclipse.collections.api.set.ParallelUnsortedSetIterable;
+import org.eclipse.collections.api.set.sorted.MutableSortedSet;
+import org.eclipse.collections.api.set.sorted.ParallelSortedSetIterable;
+import org.eclipse.collections.impl.lazy.parallel.list.SynchronizedParallelListIterable;
+import org.eclipse.collections.impl.lazy.parallel.set.SynchronizedParallelUnsortedSetIterable;
+import org.eclipse.collections.impl.lazy.parallel.set.sorted.SynchronizedParallelSortedSetIterable;
+
+public abstract class AbstractSynchronizedParallelIterable&lt;T, PI extends ParallelIterable&lt;T&gt;&gt; implements ParallelIterable&lt;T&gt;
+{
+    protected final PI delegate;
+    protected final Object lock;
+
+    protected AbstractSynchronizedParallelIterable(PI delegate, Object lock)
+<span class="nc" id="L48">    {</span>
+<span class="nc" id="L49">        this.delegate = delegate;</span>
+<span class="nc" id="L50">        this.lock = lock;</span>
+<span class="nc" id="L51">    }</span>
+
+    protected &lt;A&gt; ParallelListIterable&lt;A&gt; wrap(ParallelListIterable&lt;A&gt; wrapped)
+    {
+<span class="nc" id="L55">        return new SynchronizedParallelListIterable&lt;&gt;(wrapped, this.lock);</span>
+    }
+
+    protected &lt;A&gt; ParallelUnsortedSetIterable&lt;A&gt; wrap(ParallelUnsortedSetIterable&lt;A&gt; wrapped)
+    {
+<span class="nc" id="L60">        return new SynchronizedParallelUnsortedSetIterable&lt;&gt;(wrapped, this.lock);</span>
+    }
+
+    protected &lt;A&gt; ParallelSortedSetIterable&lt;A&gt; wrap(ParallelSortedSetIterable&lt;A&gt; wrapped)
+    {
+<span class="nc" id="L65">        return new SynchronizedParallelSortedSetIterable&lt;&gt;(wrapped, this.lock);</span>
+    }
+
+    protected &lt;A&gt; ParallelIterable&lt;A&gt; wrap(ParallelIterable&lt;A&gt; wrapped)
+    {
+<span class="nc" id="L70">        return new SynchronizedParallelIterable&lt;&gt;(wrapped, this.lock);</span>
+    }
+
+    @Override
+    public void forEach(Procedure&lt;? super T&gt; procedure)
+    {
+<span class="nc" id="L76">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L78">            this.delegate.forEach(procedure);</span>
+<span class="nc" id="L79">        }</span>
+<span class="nc" id="L80">    }</span>
+
+    @Override
+    public &lt;P&gt; void forEachWith(Procedure2&lt;? super T, ? super P&gt; procedure, P parameter)
+    {
+<span class="nc" id="L85">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L87">            this.delegate.forEachWith(procedure, parameter);</span>
+<span class="nc" id="L88">        }</span>
+<span class="nc" id="L89">    }</span>
+
+    @Override
+    public T detect(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L94">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L96">            return this.delegate.detect(predicate);</span>
+        }
+    }
+
+    @Override
+    public &lt;P&gt; T detectWith(Predicate2&lt;? super T, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc" id="L103">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L105">            return this.delegate.detectWith(predicate, parameter);</span>
+        }
+    }
+
+    @Override
+    public T detectIfNone(Predicate&lt;? super T&gt; predicate, Function0&lt;? extends T&gt; function)
+    {
+<span class="nc" id="L112">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L114">            return this.delegate.detectIfNone(predicate, function);</span>
+        }
+    }
+
+    @Override
+    public &lt;P&gt; T detectWithIfNone(Predicate2&lt;? super T, ? super P&gt; predicate, P parameter, Function0&lt;? extends T&gt; function)
+    {
+<span class="nc" id="L121">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L123">            return this.delegate.detectWithIfNone(predicate, parameter, function);</span>
+        }
+    }
+
+    @Override
+    public int count(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L130">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L132">            return this.delegate.count(predicate);</span>
+        }
+    }
+
+    @Override
+    public &lt;P&gt; int countWith(Predicate2&lt;? super T, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc" id="L139">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L141">            return this.delegate.countWith(predicate, parameter);</span>
+        }
+    }
+
+    @Override
+    public boolean anySatisfy(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L148">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L150">            return this.delegate.anySatisfy(predicate);</span>
+        }
+    }
+
+    @Override
+    public &lt;P&gt; boolean anySatisfyWith(Predicate2&lt;? super T, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc" id="L157">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L159">            return this.delegate.anySatisfyWith(predicate, parameter);</span>
+        }
+    }
+
+    @Override
+    public boolean allSatisfy(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L166">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L168">            return this.delegate.allSatisfy(predicate);</span>
+        }
+    }
+
+    @Override
+    public &lt;P&gt; boolean allSatisfyWith(Predicate2&lt;? super T, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc" id="L175">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L177">            return this.delegate.allSatisfyWith(predicate, parameter);</span>
+        }
+    }
+
+    @Override
+    public boolean noneSatisfy(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L184">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L186">            return this.delegate.noneSatisfy(predicate);</span>
+        }
+    }
+
+    @Override
+    public &lt;P&gt; boolean noneSatisfyWith(Predicate2&lt;? super T, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc" id="L193">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L195">            return this.delegate.noneSatisfyWith(predicate, parameter);</span>
+        }
+    }
+
+    @Override
+    public MutableList&lt;T&gt; toList()
+    {
+<span class="nc" id="L202">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L204">            return this.delegate.toList();</span>
+        }
+    }
+
+    @Override
+    public MutableList&lt;T&gt; toSortedList()
+    {
+<span class="nc" id="L211">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L213">            return this.delegate.toSortedList();</span>
+        }
+    }
+
+    @Override
+    public MutableList&lt;T&gt; toSortedList(Comparator&lt;? super T&gt; comparator)
+    {
+<span class="nc" id="L220">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L222">            return this.delegate.toSortedList(comparator);</span>
+        }
+    }
+
+    @Override
+    public &lt;V extends Comparable&lt;? super V&gt;&gt; MutableList&lt;T&gt; toSortedListBy(Function&lt;? super T, ? extends V&gt; function)
+    {
+<span class="nc" id="L229">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L231">            return this.delegate.toSortedListBy(function);</span>
+        }
+    }
+
+    @Override
+    public MutableSet&lt;T&gt; toSet()
+    {
+<span class="nc" id="L238">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L240">            return this.delegate.toSet();</span>
+        }
+    }
+
+    @Override
+    public MutableSortedSet&lt;T&gt; toSortedSet()
+    {
+<span class="nc" id="L247">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L249">            return this.delegate.toSortedSet();</span>
+        }
+    }
+
+    @Override
+    public MutableSortedSet&lt;T&gt; toSortedSet(Comparator&lt;? super T&gt; comparator)
+    {
+<span class="nc" id="L256">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L258">            return this.delegate.toSortedSet(comparator);</span>
+        }
+    }
+
+    @Override
+    public &lt;V extends Comparable&lt;? super V&gt;&gt; MutableSortedSet&lt;T&gt; toSortedSetBy(Function&lt;? super T, ? extends V&gt; function)
+    {
+<span class="nc" id="L265">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L267">            return this.delegate.toSortedSetBy(function);</span>
+        }
+    }
+
+    @Override
+    public MutableBag&lt;T&gt; toBag()
+    {
+<span class="nc" id="L274">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L276">            return this.delegate.toBag();</span>
+        }
+    }
+
+    @Override
+    public MutableSortedBag&lt;T&gt; toSortedBag()
+    {
+<span class="nc" id="L283">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L285">            return this.delegate.toSortedBag();</span>
+        }
+    }
+
+    @Override
+    public MutableSortedBag&lt;T&gt; toSortedBag(Comparator&lt;? super T&gt; comparator)
+    {
+<span class="nc" id="L292">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L294">            return this.delegate.toSortedBag(comparator);</span>
+        }
+    }
+
+    @Override
+    public &lt;V extends Comparable&lt;? super V&gt;&gt; MutableSortedBag&lt;T&gt; toSortedBagBy(Function&lt;? super T, ? extends V&gt; function)
+    {
+<span class="nc" id="L301">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L303">            return this.delegate.toSortedBagBy(function);</span>
+        }
+    }
+
+    @Override
+    public &lt;NK, NV&gt; MutableMap&lt;NK, NV&gt; toMap(Function&lt;? super T, ? extends NK&gt; keyFunction, Function&lt;? super T, ? extends NV&gt; valueFunction)
+    {
+<span class="nc" id="L310">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L312">            return this.delegate.toMap(keyFunction, valueFunction);</span>
+        }
+    }
+
+    @Override
+    public &lt;NK, NV&gt; MutableSortedMap&lt;NK, NV&gt; toSortedMap(Function&lt;? super T, ? extends NK&gt; keyFunction, Function&lt;? super T, ? extends NV&gt; valueFunction)
+    {
+<span class="nc" id="L319">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L321">            return this.delegate.toSortedMap(keyFunction, valueFunction);</span>
+        }
+    }
+
+    @Override
+    public &lt;NK, NV&gt; MutableSortedMap&lt;NK, NV&gt; toSortedMap(Comparator&lt;? super NK&gt; comparator, Function&lt;? super T, ? extends NK&gt; keyFunction, Function&lt;? super T, ? extends NV&gt; valueFunction)
+    {
+<span class="nc" id="L328">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L330">            return this.delegate.toSortedMap(comparator, keyFunction, valueFunction);</span>
+        }
+    }
+
+    @Override
+    public Object[] toArray()
+    {
+<span class="nc" id="L337">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L339">            return this.delegate.toArray();</span>
+        }
+    }
+
+    @Override
+    public &lt;T1&gt; T1[] toArray(T1[] target)
+    {
+<span class="nc" id="L346">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L348">            return this.delegate.toArray(target);</span>
+        }
+    }
+
+    @Override
+    public T min(Comparator&lt;? super T&gt; comparator)
+    {
+<span class="nc" id="L355">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L357">            return this.delegate.min(comparator);</span>
+        }
+    }
+
+    @Override
+    public T max(Comparator&lt;? super T&gt; comparator)
+    {
+<span class="nc" id="L364">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L366">            return this.delegate.max(comparator);</span>
+        }
+    }
+
+    @Override
+    public T min()
+    {
+<span class="nc" id="L373">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L375">            return this.delegate.min();</span>
+        }
+    }
+
+    @Override
+    public T max()
+    {
+<span class="nc" id="L382">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L384">            return this.delegate.max();</span>
+        }
+    }
+
+    @Override
+    public &lt;V extends Comparable&lt;? super V&gt;&gt; T minBy(Function&lt;? super T, ? extends V&gt; function)
+    {
+<span class="nc" id="L391">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L393">            return this.delegate.minBy(function);</span>
+        }
+    }
+
+    @Override
+    public &lt;V extends Comparable&lt;? super V&gt;&gt; T maxBy(Function&lt;? super T, ? extends V&gt; function)
+    {
+<span class="nc" id="L400">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L402">            return this.delegate.maxBy(function);</span>
+        }
+    }
+
+    @Override
+    public long sumOfInt(IntFunction&lt;? super T&gt; function)
+    {
+<span class="nc" id="L409">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L411">            return this.delegate.sumOfInt(function);</span>
+        }
+    }
+
+    @Override
+    public double sumOfFloat(FloatFunction&lt;? super T&gt; function)
+    {
+<span class="nc" id="L418">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L420">            return this.delegate.sumOfFloat(function);</span>
+        }
+    }
+
+    @Override
+    public long sumOfLong(LongFunction&lt;? super T&gt; function)
+    {
+<span class="nc" id="L427">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L429">            return this.delegate.sumOfLong(function);</span>
+        }
+    }
+
+    @Override
+    public double sumOfDouble(DoubleFunction&lt;? super T&gt; function)
+    {
+<span class="nc" id="L436">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L438">            return this.delegate.sumOfDouble(function);</span>
+        }
+    }
+
+    @Override
+    public String makeString()
+    {
+<span class="nc" id="L445">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L447">            return this.delegate.makeString();</span>
+        }
+    }
+
+    @Override
+    public String makeString(String separator)
+    {
+<span class="nc" id="L454">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L456">            return this.delegate.makeString(separator);</span>
+        }
+    }
+
+    @Override
+    public String makeString(String start, String separator, String end)
+    {
+<span class="nc" id="L463">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L465">            return this.delegate.makeString(start, separator, end);</span>
+        }
+    }
+
+    @Override
+    public void appendString(Appendable appendable)
+    {
+<span class="nc" id="L472">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L474">            this.delegate.appendString(appendable);</span>
+<span class="nc" id="L475">        }</span>
+<span class="nc" id="L476">    }</span>
+
+    @Override
+    public void appendString(Appendable appendable, String separator)
+    {
+<span class="nc" id="L481">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L483">            this.delegate.appendString(appendable, separator);</span>
+<span class="nc" id="L484">        }</span>
+<span class="nc" id="L485">    }</span>
+
+    @Override
+    public void appendString(Appendable appendable, String start, String separator, String end)
+    {
+<span class="nc" id="L490">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L492">            this.delegate.appendString(appendable, start, separator, end);</span>
+<span class="nc" id="L493">        }</span>
+<span class="nc" id="L494">    }</span>
+
+    @Override
+    public &lt;V&gt; MapIterable&lt;V, T&gt; groupByUniqueKey(Function&lt;? super T, ? extends V&gt; function)
+    {
+<span class="nc" id="L499">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L501">            return this.delegate.groupByUniqueKey(function);</span>
+        }
+    }
+
+    @Override
+    public &lt;K, V&gt; MapIterable&lt;K, V&gt; aggregateInPlaceBy(Function&lt;? super T, ? extends K&gt; groupBy, Function0&lt;? extends V&gt; zeroValueFactory, Procedure2&lt;? super V, ? super T&gt; mutatingAggregator)
+    {
+<span class="nc" id="L508">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L510">            return this.delegate.aggregateInPlaceBy(groupBy, zeroValueFactory, mutatingAggregator);</span>
+        }
+    }
+
+    @Override
+    public &lt;K, V&gt; MapIterable&lt;K, V&gt; aggregateBy(Function&lt;? super T, ? extends K&gt; groupBy, Function0&lt;? extends V&gt; zeroValueFactory, Function2&lt;? super V, ? super T, ? extends V&gt; nonMutatingAggregator)
+    {
+<span class="nc" id="L517">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L519">            return this.delegate.aggregateBy(groupBy, zeroValueFactory, nonMutatingAggregator);</span>
+        }
+    }
+
+    @Override
+    public String toString()
+    {
+<span class="nc" id="L526">        synchronized (this.lock)</span>
+        {
+<span class="nc" id="L528">            return this.delegate.toString();</span>
+        }
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.0.201801022044</span></div></body></html>

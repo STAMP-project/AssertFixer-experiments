@@ -1,0 +1,541 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>AbstractImmutableSortedSet.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Eclipse Collections Test Coverage Aggregation</a> &gt; <a href="../index.html" class="el_bundle">eclipse-collections</a> &gt; <a href="index.source.html" class="el_package">org.eclipse.collections.impl.set.sorted.immutable</a> &gt; <span class="el_source">AbstractImmutableSortedSet.java</span></div><h1>AbstractImmutableSortedSet.java</h1><pre class="source lang-java linenums">/*
+ * Copyright (c) 2018 Goldman Sachs and others.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * and Eclipse Distribution License v. 1.0 which accompany this distribution.
+ * The Eclipse Public License is available at http://www.eclipse.org/legal/epl-v10.html
+ * and the Eclipse Distribution License is available at
+ * http://www.eclipse.org/org/documents/edl-v10.php.
+ */
+
+package org.eclipse.collections.impl.set.sorted.immutable;
+
+import java.util.Collection;
+import java.util.Comparator;
+import java.util.Set;
+import java.util.SortedSet;
+import java.util.concurrent.ExecutorService;
+
+import org.eclipse.collections.api.LazyIterable;
+import org.eclipse.collections.api.RichIterable;
+import org.eclipse.collections.api.block.function.Function;
+import org.eclipse.collections.api.block.function.Function2;
+import org.eclipse.collections.api.block.function.primitive.BooleanFunction;
+import org.eclipse.collections.api.block.function.primitive.ByteFunction;
+import org.eclipse.collections.api.block.function.primitive.CharFunction;
+import org.eclipse.collections.api.block.function.primitive.DoubleFunction;
+import org.eclipse.collections.api.block.function.primitive.FloatFunction;
+import org.eclipse.collections.api.block.function.primitive.IntFunction;
+import org.eclipse.collections.api.block.function.primitive.LongFunction;
+import org.eclipse.collections.api.block.function.primitive.ShortFunction;
+import org.eclipse.collections.api.block.predicate.Predicate;
+import org.eclipse.collections.api.block.predicate.Predicate2;
+import org.eclipse.collections.api.block.procedure.Procedure;
+import org.eclipse.collections.api.block.procedure.primitive.ObjectIntProcedure;
+import org.eclipse.collections.api.collection.MutableCollection;
+import org.eclipse.collections.api.list.ImmutableList;
+import org.eclipse.collections.api.list.MutableList;
+import org.eclipse.collections.api.list.primitive.ImmutableBooleanList;
+import org.eclipse.collections.api.list.primitive.ImmutableByteList;
+import org.eclipse.collections.api.list.primitive.ImmutableCharList;
+import org.eclipse.collections.api.list.primitive.ImmutableDoubleList;
+import org.eclipse.collections.api.list.primitive.ImmutableFloatList;
+import org.eclipse.collections.api.list.primitive.ImmutableIntList;
+import org.eclipse.collections.api.list.primitive.ImmutableLongList;
+import org.eclipse.collections.api.list.primitive.ImmutableShortList;
+import org.eclipse.collections.api.multimap.sortedset.ImmutableSortedSetMultimap;
+import org.eclipse.collections.api.ordered.OrderedIterable;
+import org.eclipse.collections.api.partition.set.sorted.PartitionImmutableSortedSet;
+import org.eclipse.collections.api.partition.set.sorted.PartitionMutableSortedSet;
+import org.eclipse.collections.api.set.SetIterable;
+import org.eclipse.collections.api.set.sorted.ImmutableSortedSet;
+import org.eclipse.collections.api.set.sorted.MutableSortedSet;
+import org.eclipse.collections.api.set.sorted.ParallelSortedSetIterable;
+import org.eclipse.collections.api.set.sorted.SortedSetIterable;
+import org.eclipse.collections.api.stack.MutableStack;
+import org.eclipse.collections.api.tuple.Pair;
+import org.eclipse.collections.impl.block.factory.Comparators;
+import org.eclipse.collections.impl.block.factory.Functions;
+import org.eclipse.collections.impl.block.factory.Predicates;
+import org.eclipse.collections.impl.block.procedure.CollectIfProcedure;
+import org.eclipse.collections.impl.block.procedure.CollectProcedure;
+import org.eclipse.collections.impl.block.procedure.FlatCollectProcedure;
+import org.eclipse.collections.impl.block.procedure.PartitionPredicate2Procedure;
+import org.eclipse.collections.impl.block.procedure.PartitionProcedure;
+import org.eclipse.collections.impl.block.procedure.RejectProcedure;
+import org.eclipse.collections.impl.block.procedure.SelectInstancesOfProcedure;
+import org.eclipse.collections.impl.block.procedure.SelectProcedure;
+import org.eclipse.collections.impl.block.procedure.primitive.CollectBooleanProcedure;
+import org.eclipse.collections.impl.block.procedure.primitive.CollectByteProcedure;
+import org.eclipse.collections.impl.block.procedure.primitive.CollectCharProcedure;
+import org.eclipse.collections.impl.block.procedure.primitive.CollectDoubleProcedure;
+import org.eclipse.collections.impl.block.procedure.primitive.CollectFloatProcedure;
+import org.eclipse.collections.impl.block.procedure.primitive.CollectIntProcedure;
+import org.eclipse.collections.impl.block.procedure.primitive.CollectLongProcedure;
+import org.eclipse.collections.impl.block.procedure.primitive.CollectShortProcedure;
+import org.eclipse.collections.impl.collection.immutable.AbstractImmutableCollection;
+import org.eclipse.collections.impl.factory.Lists;
+import org.eclipse.collections.impl.lazy.parallel.set.sorted.NonParallelSortedSetIterable;
+import org.eclipse.collections.impl.list.mutable.FastList;
+import org.eclipse.collections.impl.list.mutable.primitive.BooleanArrayList;
+import org.eclipse.collections.impl.list.mutable.primitive.ByteArrayList;
+import org.eclipse.collections.impl.list.mutable.primitive.CharArrayList;
+import org.eclipse.collections.impl.list.mutable.primitive.DoubleArrayList;
+import org.eclipse.collections.impl.list.mutable.primitive.FloatArrayList;
+import org.eclipse.collections.impl.list.mutable.primitive.IntArrayList;
+import org.eclipse.collections.impl.list.mutable.primitive.LongArrayList;
+import org.eclipse.collections.impl.list.mutable.primitive.ShortArrayList;
+import org.eclipse.collections.impl.multimap.set.sorted.TreeSortedSetMultimap;
+import org.eclipse.collections.impl.partition.set.sorted.PartitionTreeSortedSet;
+import org.eclipse.collections.impl.set.sorted.mutable.TreeSortedSet;
+import org.eclipse.collections.impl.stack.mutable.ArrayStack;
+import org.eclipse.collections.impl.utility.Iterate;
+import org.eclipse.collections.impl.utility.OrderedIterate;
+import org.eclipse.collections.impl.utility.internal.IterableIterate;
+import org.eclipse.collections.impl.utility.internal.SetIterables;
+import org.eclipse.collections.impl.utility.internal.SortedSetIterables;
+
+/**
+ * This class is the parent class for all ImmutableSortedSets.  All implementations of ImmutableSortedSet must implement the SortedSet
+ * interface so an TreeSet.equals(anImmutableSortedSet) can return true when the contents are the same.
+ */
+<span class="nc" id="L102">abstract class AbstractImmutableSortedSet&lt;T&gt; extends AbstractImmutableCollection&lt;T&gt;</span>
+        implements ImmutableSortedSet&lt;T&gt;, SortedSet&lt;T&gt;
+{
+    @Override
+    public SortedSet&lt;T&gt; castToSortedSet()
+    {
+<span class="nc" id="L108">        return this;</span>
+    }
+
+    @Override
+    public ImmutableSortedSet&lt;T&gt; newWith(T element)
+    {
+<span class="nc bnc" id="L114" title="All 2 branches missed.">        if (!this.contains(element))</span>
+        {
+<span class="nc" id="L116">            return TreeSortedSet.newSet(this).with(element).toImmutable();</span>
+        }
+<span class="nc" id="L118">        return this;</span>
+    }
+
+    @Override
+    public ImmutableSortedSet&lt;T&gt; newWithout(T element)
+    {
+<span class="nc bnc" id="L124" title="All 2 branches missed.">        if (this.contains(element))</span>
+        {
+<span class="nc" id="L126">            TreeSortedSet&lt;T&gt; result = TreeSortedSet.newSet(this);</span>
+<span class="nc" id="L127">            result.remove(element);</span>
+<span class="nc" id="L128">            return result.toImmutable();</span>
+        }
+<span class="nc" id="L130">        return this;</span>
+    }
+
+    @Override
+    public ImmutableSortedSet&lt;T&gt; newWithAll(Iterable&lt;? extends T&gt; elements)
+    {
+<span class="nc" id="L136">        TreeSortedSet&lt;T&gt; result = TreeSortedSet.newSet(this);</span>
+<span class="nc" id="L137">        result.addAllIterable(elements);</span>
+<span class="nc" id="L138">        return result.toImmutable();</span>
+    }
+
+    @Override
+    public ImmutableSortedSet&lt;T&gt; newWithoutAll(Iterable&lt;? extends T&gt; elements)
+    {
+<span class="nc" id="L144">        TreeSortedSet&lt;T&gt; result = TreeSortedSet.newSet(this);</span>
+<span class="nc" id="L145">        this.removeAllFrom(elements, result);</span>
+<span class="nc" id="L146">        return result.toImmutable();</span>
+    }
+
+    @Override
+    public T getFirst()
+    {
+<span class="nc" id="L152">        return this.first();</span>
+    }
+
+    @Override
+    public T getLast()
+    {
+<span class="nc" id="L158">        return this.last();</span>
+    }
+
+    @Override
+    protected MutableCollection&lt;T&gt; newMutable(int size)
+    {
+<span class="nc" id="L164">        return TreeSortedSet.newSet(this.comparator());</span>
+    }
+
+    @Override
+    public ImmutableBooleanList collectBoolean(BooleanFunction&lt;? super T&gt; booleanFunction)
+    {
+<span class="nc" id="L170">        BooleanArrayList result = new BooleanArrayList(this.size());</span>
+<span class="nc" id="L171">        this.forEach(new CollectBooleanProcedure&lt;&gt;(booleanFunction, result));</span>
+<span class="nc" id="L172">        return result.toImmutable();</span>
+    }
+
+    @Override
+    public ImmutableByteList collectByte(ByteFunction&lt;? super T&gt; byteFunction)
+    {
+<span class="nc" id="L178">        ByteArrayList result = new ByteArrayList(this.size());</span>
+<span class="nc" id="L179">        this.forEach(new CollectByteProcedure&lt;&gt;(byteFunction, result));</span>
+<span class="nc" id="L180">        return result.toImmutable();</span>
+    }
+
+    @Override
+    public ImmutableCharList collectChar(CharFunction&lt;? super T&gt; charFunction)
+    {
+<span class="nc" id="L186">        CharArrayList result = new CharArrayList(this.size());</span>
+<span class="nc" id="L187">        this.forEach(new CollectCharProcedure&lt;&gt;(charFunction, result));</span>
+<span class="nc" id="L188">        return result.toImmutable();</span>
+    }
+
+    @Override
+    public ImmutableDoubleList collectDouble(DoubleFunction&lt;? super T&gt; doubleFunction)
+    {
+<span class="nc" id="L194">        DoubleArrayList result = new DoubleArrayList(this.size());</span>
+<span class="nc" id="L195">        this.forEach(new CollectDoubleProcedure&lt;&gt;(doubleFunction, result));</span>
+<span class="nc" id="L196">        return result.toImmutable();</span>
+    }
+
+    @Override
+    public ImmutableFloatList collectFloat(FloatFunction&lt;? super T&gt; floatFunction)
+    {
+<span class="nc" id="L202">        FloatArrayList result = new FloatArrayList(this.size());</span>
+<span class="nc" id="L203">        this.forEach(new CollectFloatProcedure&lt;&gt;(floatFunction, result));</span>
+<span class="nc" id="L204">        return result.toImmutable();</span>
+    }
+
+    @Override
+    public ImmutableIntList collectInt(IntFunction&lt;? super T&gt; intFunction)
+    {
+<span class="nc" id="L210">        IntArrayList result = new IntArrayList(this.size());</span>
+<span class="nc" id="L211">        this.forEach(new CollectIntProcedure&lt;&gt;(intFunction, result));</span>
+<span class="nc" id="L212">        return result.toImmutable();</span>
+    }
+
+    @Override
+    public ImmutableLongList collectLong(LongFunction&lt;? super T&gt; longFunction)
+    {
+<span class="nc" id="L218">        LongArrayList result = new LongArrayList(this.size());</span>
+<span class="nc" id="L219">        this.forEach(new CollectLongProcedure&lt;&gt;(longFunction, result));</span>
+<span class="nc" id="L220">        return result.toImmutable();</span>
+    }
+
+    @Override
+    public ImmutableShortList collectShort(ShortFunction&lt;? super T&gt; shortFunction)
+    {
+<span class="nc" id="L226">        ShortArrayList result = new ShortArrayList(this.size());</span>
+<span class="nc" id="L227">        this.forEach(new CollectShortProcedure&lt;&gt;(shortFunction, result));</span>
+<span class="nc" id="L228">        return result.toImmutable();</span>
+    }
+
+    @Override
+    public ImmutableSortedSet&lt;T&gt; tap(Procedure&lt;? super T&gt; procedure)
+    {
+<span class="nc" id="L234">        this.forEach(procedure);</span>
+<span class="nc" id="L235">        return this;</span>
+    }
+
+    @Override
+    public &lt;S&gt; boolean corresponds(OrderedIterable&lt;S&gt; other, Predicate2&lt;? super T, ? super S&gt; predicate)
+    {
+<span class="nc" id="L241">        return OrderedIterate.corresponds(this, other, predicate);</span>
+    }
+
+    @Override
+    public ImmutableSortedSet&lt;T&gt; select(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L247">        TreeSortedSet&lt;T&gt; result = TreeSortedSet.newSet(this.comparator());</span>
+<span class="nc" id="L248">        this.forEach(new SelectProcedure&lt;&gt;(predicate, result));</span>
+<span class="nc" id="L249">        return result.toImmutable();</span>
+    }
+
+    @Override
+    public &lt;P&gt; ImmutableSortedSet&lt;T&gt; selectWith(Predicate2&lt;? super T, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc" id="L255">        return this.select(Predicates.bind(predicate, parameter));</span>
+    }
+
+    @Override
+    public ImmutableSortedSet&lt;T&gt; reject(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L261">        TreeSortedSet&lt;T&gt; result = TreeSortedSet.newSet(this.comparator());</span>
+<span class="nc" id="L262">        this.forEach(new RejectProcedure&lt;&gt;(predicate, result));</span>
+<span class="nc" id="L263">        return result.toImmutable();</span>
+    }
+
+    @Override
+    public &lt;P&gt; ImmutableSortedSet&lt;T&gt; rejectWith(Predicate2&lt;? super T, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc" id="L269">        return this.reject(Predicates.bind(predicate, parameter));</span>
+    }
+
+    @Override
+    public PartitionImmutableSortedSet&lt;T&gt; partition(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L275">        PartitionMutableSortedSet&lt;T&gt; partitionTreeSortedSet = new PartitionTreeSortedSet&lt;&gt;(this.comparator());</span>
+<span class="nc" id="L276">        this.forEach(new PartitionProcedure&lt;&gt;(predicate, partitionTreeSortedSet));</span>
+<span class="nc" id="L277">        return partitionTreeSortedSet.toImmutable();</span>
+    }
+
+    @Override
+    public &lt;P&gt; PartitionImmutableSortedSet&lt;T&gt; partitionWith(Predicate2&lt;? super T, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc" id="L283">        PartitionMutableSortedSet&lt;T&gt; partitionTreeSortedSet = new PartitionTreeSortedSet&lt;&gt;(this.comparator());</span>
+<span class="nc" id="L284">        this.forEach(new PartitionPredicate2Procedure&lt;&gt;(predicate, parameter, partitionTreeSortedSet));</span>
+<span class="nc" id="L285">        return partitionTreeSortedSet.toImmutable();</span>
+    }
+
+    @Override
+    public PartitionImmutableSortedSet&lt;T&gt; partitionWhile(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L291">        PartitionTreeSortedSet&lt;T&gt; result = new PartitionTreeSortedSet&lt;&gt;(this.comparator());</span>
+<span class="nc" id="L292">        return IterableIterate.partitionWhile(this, predicate, result).toImmutable();</span>
+    }
+
+    @Override
+    public &lt;S&gt; ImmutableSortedSet&lt;S&gt; selectInstancesOf(Class&lt;S&gt; clazz)
+    {
+<span class="nc" id="L298">        TreeSortedSet&lt;S&gt; result = TreeSortedSet.newSet((Comparator&lt;? super S&gt;) this.comparator());</span>
+<span class="nc" id="L299">        this.forEach(new SelectInstancesOfProcedure&lt;&gt;(clazz, result));</span>
+<span class="nc" id="L300">        return result.toImmutable();</span>
+    }
+
+    @Override
+    public &lt;V&gt; ImmutableList&lt;V&gt; collect(Function&lt;? super T, ? extends V&gt; function)
+    {
+<span class="nc" id="L306">        MutableList&lt;V&gt; result = Lists.mutable.empty();</span>
+<span class="nc" id="L307">        this.forEach(new CollectProcedure&lt;&gt;(function, result));</span>
+<span class="nc" id="L308">        return result.toImmutable();</span>
+    }
+
+    @Override
+    public &lt;P, V&gt; ImmutableList&lt;V&gt; collectWith(Function2&lt;? super T, ? super P, ? extends V&gt; function, P parameter)
+    {
+<span class="nc" id="L314">        return this.collect(Functions.bind(function, parameter));</span>
+    }
+
+    @Override
+    public &lt;V&gt; ImmutableList&lt;V&gt; collectIf(Predicate&lt;? super T&gt; predicate, Function&lt;? super T, ? extends V&gt; function)
+    {
+<span class="nc" id="L320">        MutableList&lt;V&gt; result = Lists.mutable.empty();</span>
+<span class="nc" id="L321">        this.forEach(new CollectIfProcedure&lt;&gt;(result, function, predicate));</span>
+<span class="nc" id="L322">        return result.toImmutable();</span>
+    }
+
+    @Override
+    public &lt;V&gt; ImmutableList&lt;V&gt; flatCollect(Function&lt;? super T, ? extends Iterable&lt;V&gt;&gt; function)
+    {
+<span class="nc" id="L328">        MutableList&lt;V&gt; result = Lists.mutable.empty();</span>
+<span class="nc" id="L329">        this.forEach(new FlatCollectProcedure&lt;&gt;(function, result));</span>
+<span class="nc" id="L330">        return result.toImmutable();</span>
+    }
+
+    @Override
+    public int detectIndex(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L336">        return Iterate.detectIndex(this, predicate);</span>
+    }
+
+    @Override
+    public &lt;V&gt; ImmutableSortedSetMultimap&lt;V, T&gt; groupBy(Function&lt;? super T, ? extends V&gt; function)
+    {
+<span class="nc" id="L342">        return this.groupBy(function, TreeSortedSetMultimap.&lt;V, T&gt;newMultimap(this.comparator())).toImmutable();</span>
+    }
+
+    @Override
+    public &lt;V&gt; ImmutableSortedSetMultimap&lt;V, T&gt; groupByEach(Function&lt;? super T, ? extends Iterable&lt;V&gt;&gt; function)
+    {
+<span class="nc" id="L348">        return this.groupByEach(function, TreeSortedSetMultimap.newMultimap(this.comparator())).toImmutable();</span>
+    }
+
+    @Override
+    public &lt;S&gt; ImmutableList&lt;Pair&lt;T, S&gt;&gt; zip(Iterable&lt;S&gt; that)
+    {
+<span class="nc bnc" id="L354" title="All 4 branches missed.">        if (that instanceof Collection || that instanceof RichIterable)</span>
+        {
+<span class="nc" id="L356">            int thatSize = Iterate.sizeOf(that);</span>
+<span class="nc" id="L357">            FastList&lt;Pair&lt;T, S&gt;&gt; target = FastList.newList(Math.min(this.size(), thatSize));</span>
+<span class="nc" id="L358">            return Iterate.zip(this, that, target).toImmutable();</span>
+        }
+<span class="nc" id="L360">        return Iterate.zip(this, that, FastList.newList()).toImmutable();</span>
+    }
+
+    @Override
+    public ImmutableSortedSet&lt;Pair&lt;T, Integer&gt;&gt; zipWithIndex()
+    {
+<span class="nc" id="L366">        Comparator&lt;? super T&gt; comparator = this.comparator();</span>
+<span class="nc bnc" id="L367" title="All 2 branches missed.">        if (comparator == null)</span>
+        {
+<span class="nc" id="L369">            TreeSortedSet&lt;Pair&lt;T, Integer&gt;&gt; pairs = TreeSortedSet.newSet(Comparators.byFunction(Functions.firstOfPair(), Comparators.naturalOrder()));</span>
+<span class="nc" id="L370">            return Iterate.zipWithIndex(this, pairs).toImmutable();</span>
+        }
+<span class="nc" id="L372">        return Iterate.zipWithIndex(this, TreeSortedSet.newSet(Comparators.byFirstOfPair(comparator))).toImmutable();</span>
+    }
+
+    @Override
+    public ImmutableSortedSet&lt;T&gt; distinct()
+    {
+<span class="nc" id="L378">        return this;</span>
+    }
+
+    @Override
+    public ImmutableSortedSet&lt;T&gt; takeWhile(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L384">        MutableSortedSet&lt;T&gt; result = TreeSortedSet.newSet(this.comparator());</span>
+<span class="nc" id="L385">        return IterableIterate.takeWhile(this, predicate, result).toImmutable();</span>
+    }
+
+    @Override
+    public ImmutableSortedSet&lt;T&gt; dropWhile(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L391">        MutableSortedSet&lt;T&gt; result = TreeSortedSet.newSet(this.comparator());</span>
+<span class="nc" id="L392">        return IterableIterate.dropWhile(this, predicate, result).toImmutable();</span>
+    }
+
+    @Override
+    public MutableStack&lt;T&gt; toStack()
+    {
+<span class="nc" id="L398">        return ArrayStack.newStack(this);</span>
+    }
+
+    @Override
+    public ImmutableSortedSet&lt;T&gt; union(SetIterable&lt;? extends T&gt; set)
+    {
+<span class="nc" id="L404">        return SetIterables.unionInto(this, set, TreeSortedSet.newSet(this.comparator())).toImmutable();</span>
+    }
+
+    @Override
+    public &lt;R extends Set&lt;T&gt;&gt; R unionInto(SetIterable&lt;? extends T&gt; set, R targetSet)
+    {
+<span class="nc" id="L410">        return SetIterables.unionInto(this, set, targetSet);</span>
+    }
+
+    @Override
+    public ImmutableSortedSet&lt;T&gt; intersect(SetIterable&lt;? extends T&gt; set)
+    {
+<span class="nc" id="L416">        return SetIterables.intersectInto(this, set, TreeSortedSet.newSet(this.comparator())).toImmutable();</span>
+    }
+
+    @Override
+    public &lt;R extends Set&lt;T&gt;&gt; R intersectInto(SetIterable&lt;? extends T&gt; set, R targetSet)
+    {
+<span class="nc" id="L422">        return SetIterables.intersectInto(this, set, targetSet);</span>
+    }
+
+    @Override
+    public ImmutableSortedSet&lt;T&gt; difference(SetIterable&lt;? extends T&gt; subtrahendSet)
+    {
+<span class="nc" id="L428">        return SetIterables.differenceInto(this, subtrahendSet, TreeSortedSet.newSet(this.comparator())).toImmutable();</span>
+    }
+
+    @Override
+    public &lt;R extends Set&lt;T&gt;&gt; R differenceInto(SetIterable&lt;? extends T&gt; subtrahendSet, R targetSet)
+    {
+<span class="nc" id="L434">        return SetIterables.differenceInto(this, subtrahendSet, targetSet);</span>
+    }
+
+    @Override
+    public ImmutableSortedSet&lt;T&gt; symmetricDifference(SetIterable&lt;? extends T&gt; setB)
+    {
+<span class="nc" id="L440">        return SetIterables.symmetricDifferenceInto(this, setB, TreeSortedSet.newSet(this.comparator())).toImmutable();</span>
+    }
+
+    @Override
+    public &lt;R extends Set&lt;T&gt;&gt; R symmetricDifferenceInto(SetIterable&lt;? extends T&gt; set, R targetSet)
+    {
+<span class="nc" id="L446">        return SetIterables.symmetricDifferenceInto(this, set, targetSet);</span>
+    }
+
+    @Override
+    public boolean isSubsetOf(SetIterable&lt;? extends T&gt; candidateSuperset)
+    {
+<span class="nc" id="L452">        return SetIterables.isSubsetOf(this, candidateSuperset);</span>
+    }
+
+    @Override
+    public boolean isProperSubsetOf(SetIterable&lt;? extends T&gt; candidateSuperset)
+    {
+<span class="nc" id="L458">        return SetIterables.isProperSubsetOf(this, candidateSuperset);</span>
+    }
+
+    @Override
+    public ImmutableSortedSet&lt;SortedSetIterable&lt;T&gt;&gt; powerSet()
+    {
+<span class="nc" id="L464">        return (ImmutableSortedSet&lt;SortedSetIterable&lt;T&gt;&gt;) (ImmutableSortedSet&lt;?&gt;) SortedSetIterables.immutablePowerSet(this);</span>
+    }
+
+    @Override
+    public &lt;B&gt; LazyIterable&lt;Pair&lt;T, B&gt;&gt; cartesianProduct(SetIterable&lt;B&gt; set)
+    {
+<span class="nc" id="L470">        return SetIterables.cartesianProduct(this, set);</span>
+    }
+
+    @Override
+    public SortedSet&lt;T&gt; subSet(T fromElement, T toElement)
+    {
+<span class="nc" id="L476">        throw new UnsupportedOperationException(this.getClass().getSimpleName() + &quot;.subSet() not implemented yet&quot;);</span>
+    }
+
+    @Override
+    public SortedSet&lt;T&gt; headSet(T toElement)
+    {
+<span class="nc" id="L482">        throw new UnsupportedOperationException(this.getClass().getSimpleName() + &quot;.headSet() not implemented yet&quot;);</span>
+    }
+
+    @Override
+    public SortedSet&lt;T&gt; tailSet(T fromElement)
+    {
+<span class="nc" id="L488">        throw new UnsupportedOperationException(this.getClass().getSimpleName() + &quot;.tailSet() not implemented yet&quot;);</span>
+    }
+
+    @Override
+    public ImmutableSortedSet&lt;T&gt; toImmutable()
+    {
+<span class="nc" id="L494">        return this;</span>
+    }
+
+    @Override
+    public ParallelSortedSetIterable&lt;T&gt; asParallel(ExecutorService executorService, int batchSize)
+    {
+<span class="nc bnc" id="L500" title="All 2 branches missed.">        if (executorService == null)</span>
+        {
+<span class="nc" id="L502">            throw new NullPointerException();</span>
+        }
+<span class="nc bnc" id="L504" title="All 2 branches missed.">        if (batchSize &lt; 1)</span>
+        {
+<span class="nc" id="L506">            throw new IllegalArgumentException();</span>
+        }
+<span class="nc" id="L508">        return new NonParallelSortedSetIterable&lt;&gt;(this);</span>
+    }
+
+    @Override
+    public void reverseForEach(Procedure&lt;? super T&gt; procedure)
+    {
+<span class="nc" id="L514">        throw new UnsupportedOperationException(this.getClass().getSimpleName() + &quot;.reverseForEach() not implemented yet&quot;);</span>
+    }
+
+    @Override
+    public void reverseForEachWithIndex(ObjectIntProcedure&lt;? super T&gt; procedure)
+    {
+<span class="nc" id="L520">        throw new UnsupportedOperationException(this.getClass().getSimpleName() + &quot;.reverseForEachWithIndex() not implemented yet&quot;);</span>
+    }
+
+    @Override
+    public LazyIterable&lt;T&gt; asReversed()
+    {
+<span class="nc" id="L526">        throw new UnsupportedOperationException(this.getClass().getSimpleName() + &quot;.asReversed() not implemented yet&quot;);</span>
+    }
+
+    @Override
+    public ImmutableSortedSet&lt;T&gt; toReversed()
+    {
+<span class="nc" id="L532">        throw new UnsupportedOperationException(this.getClass().getSimpleName() + &quot;.toReversed() not implemented yet&quot;);</span>
+    }
+
+    @Override
+    public int detectLastIndex(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L538">        throw new UnsupportedOperationException(this.getClass().getSimpleName() + &quot;.detectLastIndex() not implemented yet&quot;);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.0.201801022044</span></div></body></html>

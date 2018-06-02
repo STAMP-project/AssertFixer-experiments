@@ -1,0 +1,366 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>AbstractMutableMultimap.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Eclipse Collections Test Coverage Aggregation</a> &gt; <a href="../index.html" class="el_bundle">eclipse-collections</a> &gt; <a href="index.source.html" class="el_package">org.eclipse.collections.impl.multimap</a> &gt; <span class="el_source">AbstractMutableMultimap.java</span></div><h1>AbstractMutableMultimap.java</h1><pre class="source lang-java linenums">/*
+ * Copyright (c) 2016 Goldman Sachs.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * and Eclipse Distribution License v. 1.0 which accompany this distribution.
+ * The Eclipse Public License is available at http://www.eclipse.org/legal/epl-v10.html
+ * and the Eclipse Distribution License is available at
+ * http://www.eclipse.org/org/documents/edl-v10.php.
+ */
+
+package org.eclipse.collections.impl.multimap;
+
+import java.io.IOException;
+import java.io.ObjectInput;
+import java.io.ObjectOutput;
+import java.util.Collection;
+
+import org.eclipse.collections.api.RichIterable;
+import org.eclipse.collections.api.block.function.Function0;
+import org.eclipse.collections.api.block.procedure.Procedure;
+import org.eclipse.collections.api.block.procedure.Procedure2;
+import org.eclipse.collections.api.collection.MutableCollection;
+import org.eclipse.collections.api.map.MutableMap;
+import org.eclipse.collections.api.multimap.Multimap;
+import org.eclipse.collections.api.multimap.MutableMultimap;
+import org.eclipse.collections.api.set.SetIterable;
+import org.eclipse.collections.api.tuple.Pair;
+import org.eclipse.collections.impl.block.procedure.checked.MultimapKeyValuesSerializingProcedure;
+import org.eclipse.collections.impl.set.mutable.UnmodifiableMutableSet;
+import org.eclipse.collections.impl.utility.Iterate;
+
+public abstract class AbstractMutableMultimap&lt;K, V, C extends MutableCollection&lt;V&gt;&gt;
+        extends AbstractMultimap&lt;K, V, C&gt;
+        implements MutableMultimap&lt;K, V&gt;
+{
+    protected MutableMap&lt;K, C&gt; map;
+
+    protected int totalSize;
+
+    protected AbstractMutableMultimap()
+<span class="nc" id="L41">    {</span>
+<span class="nc" id="L42">        this.map = this.createMap();</span>
+<span class="nc" id="L43">    }</span>
+
+    protected AbstractMutableMultimap(MutableMap&lt;K, C&gt; newMap)
+<span class="nc" id="L46">    {</span>
+<span class="nc" id="L47">        this.map = newMap;</span>
+<span class="nc" id="L48">    }</span>
+
+    protected AbstractMutableMultimap(int size)
+<span class="nc" id="L51">    {</span>
+<span class="nc" id="L52">        this.map = this.createMapWithKeyCount(size);</span>
+<span class="nc" id="L53">    }</span>
+
+    /**
+     * Constructs a {@link Multimap} containing all the {@link Pair}s.
+     *
+     * @param pairs the mappings to initialize the multimap.
+     */
+    protected AbstractMutableMultimap(Pair&lt;K, V&gt;... pairs)
+    {
+<span class="nc" id="L62">        this(pairs.length);</span>
+<span class="nc" id="L63">        this.putAllPairs(pairs);</span>
+<span class="nc" id="L64">    }</span>
+
+    /**
+     * Constructs a {@link Multimap} containing  {@link Iterable}.
+     *
+     * @param inputIterable the mappings to initialize the multimap.
+     */
+    protected AbstractMutableMultimap(Iterable&lt;Pair&lt;K, V&gt;&gt; inputIterable)
+    {
+<span class="nc" id="L73">        this();</span>
+<span class="nc bnc" id="L74" title="All 2 branches missed.">        for (Pair&lt;K, V&gt; single : inputIterable)</span>
+        {
+<span class="nc" id="L76">            this.put(single.getOne(), single.getTwo());</span>
+<span class="nc" id="L77">        }</span>
+<span class="nc" id="L78">    }</span>
+
+    protected abstract MutableMap&lt;K, C&gt; createMap();
+
+    protected abstract MutableMap&lt;K, C&gt; createMapWithKeyCount(int keyCount);
+
+    @Override
+    protected MutableMap&lt;K, C&gt; getMap()
+    {
+<span class="nc" id="L87">        return this.map;</span>
+    }
+
+    // Query Operations
+
+    /**
+     * Use the size method directly instead of totalSize internally so subclasses can override if necessary.
+     */
+    @Override
+    public int size()
+    {
+<span class="nc" id="L98">        return this.totalSize;</span>
+    }
+
+    /**
+     * This method is provided to allow for subclasses to provide the behavior.  It should add 1 to the value that is
+     * returned by calling size().
+     */
+    protected void incrementTotalSize()
+    {
+<span class="nc" id="L107">        this.totalSize++;</span>
+<span class="nc" id="L108">    }</span>
+
+    /**
+     * This method is provided to allow for subclasses to provide the behavior.  It should remove 1 from the value that is
+     * returned by calling size().
+     */
+    protected void decrementTotalSize()
+    {
+<span class="nc" id="L116">        this.totalSize--;</span>
+<span class="nc" id="L117">    }</span>
+
+    /**
+     * This method is provided to allow for subclasses to provide the behavior.  It should add the specified amount to
+     * the value that is returned by calling size().
+     */
+    protected void addToTotalSize(int value)
+    {
+<span class="nc" id="L125">        this.totalSize += value;</span>
+<span class="nc" id="L126">    }</span>
+
+    /**
+     * This method is provided to allow for subclasses to provide the behavior.  It should subtract the specified amount from
+     * the value that is returned by calling size().
+     */
+    protected void subtractFromTotalSize(int value)
+    {
+<span class="nc" id="L134">        this.totalSize -= value;</span>
+<span class="nc" id="L135">    }</span>
+
+    /**
+     * This method is provided to allow for subclasses to provide the behavior.  It should set the value returned by
+     * size() to 0.
+     */
+    protected void clearTotalSize()
+    {
+<span class="nc" id="L143">        this.totalSize = 0;</span>
+<span class="nc" id="L144">    }</span>
+
+    @Override
+    public int sizeDistinct()
+    {
+<span class="nc" id="L149">        return this.map.size();</span>
+    }
+
+    @Override
+    public boolean isEmpty()
+    {
+<span class="nc bnc" id="L155" title="All 2 branches missed.">        return this.size() == 0;</span>
+    }
+
+    // Modification Operations
+
+    @Override
+    public boolean put(K key, V value)
+    {
+<span class="nc" id="L163">        C collection = this.getIfAbsentPutCollection(key);</span>
+
+<span class="nc bnc" id="L165" title="All 2 branches missed.">        if (collection.add(value))</span>
+        {
+<span class="nc" id="L167">            this.incrementTotalSize();</span>
+<span class="nc" id="L168">            return true;</span>
+        }
+<span class="nc" id="L170">        return false;</span>
+    }
+
+    @Override
+    public boolean remove(Object key, Object value)
+    {
+<span class="nc" id="L176">        C collection = this.map.get(key);</span>
+<span class="nc bnc" id="L177" title="All 2 branches missed.">        if (collection == null)</span>
+        {
+<span class="nc" id="L179">            return false;</span>
+        }
+
+<span class="nc" id="L182">        boolean changed = collection.remove(value);</span>
+<span class="nc bnc" id="L183" title="All 2 branches missed.">        if (changed)</span>
+        {
+<span class="nc" id="L185">            this.decrementTotalSize();</span>
+<span class="nc bnc" id="L186" title="All 2 branches missed.">            if (collection.isEmpty())</span>
+            {
+<span class="nc" id="L188">                this.map.remove(key);</span>
+            }
+        }
+<span class="nc" id="L191">        return changed;</span>
+    }
+
+    @Override
+    public boolean putAll(K key, Iterable&lt;? extends V&gt; values)
+    {
+<span class="nc bnc" id="L197" title="All 4 branches missed.">        return Iterate.notEmpty(values) &amp;&amp; this.putAllNotEmpty(key, values);</span>
+    }
+
+    private boolean putAllNotEmpty(K key, Iterable&lt;? extends V&gt; values)
+    {
+<span class="nc" id="L202">        C collection = this.getIfAbsentPutCollection(key);</span>
+<span class="nc" id="L203">        int oldSize = collection.size();</span>
+<span class="nc" id="L204">        int newSize = Iterate.addAllTo(values, collection).size();</span>
+<span class="nc" id="L205">        this.addToTotalSize(newSize - oldSize);</span>
+<span class="nc bnc" id="L206" title="All 2 branches missed.">        return newSize &gt; oldSize;</span>
+    }
+
+    @Override
+    public &lt;KK extends K, VV extends V&gt; boolean putAll(Multimap&lt;KK, VV&gt; multimap)
+    {
+<span class="nc bnc" id="L212" title="All 2 branches missed.">        if (multimap instanceof AbstractMutableMultimap)</span>
+        {
+<span class="nc" id="L214">            return this.putAllAbstractMutableMultimap((AbstractMutableMultimap&lt;KK, VV, MutableCollection&lt;VV&gt;&gt;) multimap);</span>
+        }
+<span class="nc" id="L216">        return this.putAllReadOnlyMultimap(multimap);</span>
+    }
+
+    private &lt;KK extends K, VV extends V&gt; boolean putAllReadOnlyMultimap(Multimap&lt;KK, VV&gt; multimap)
+    {
+<span class="nc" id="L221">        class PutProcedure implements Procedure&lt;Pair&lt;KK, RichIterable&lt;VV&gt;&gt;&gt;</span>
+        {
+            private static final long serialVersionUID = 1L;
+            private boolean changed;
+
+            @Override
+            public void value(Pair&lt;KK, RichIterable&lt;VV&gt;&gt; each)
+            {
+<span class="nc" id="L229">                this.changed |= AbstractMutableMultimap.this.putAll(each.getOne(), each.getTwo());</span>
+<span class="nc" id="L230">            }</span>
+        }
+
+<span class="nc" id="L233">        PutProcedure putProcedure = new PutProcedure();</span>
+<span class="nc" id="L234">        multimap.keyMultiValuePairsView().forEach(putProcedure);</span>
+<span class="nc" id="L235">        return putProcedure.changed;</span>
+    }
+
+    private &lt;KK extends K, VV extends V&gt; boolean putAllAbstractMutableMultimap(AbstractMutableMultimap&lt;KK, VV, MutableCollection&lt;VV&gt;&gt; other)
+    {
+<span class="nc" id="L240">        class PutProcedure implements Procedure2&lt;KK, MutableCollection&lt;VV&gt;&gt;</span>
+        {
+            private static final long serialVersionUID = 1L;
+
+            private boolean changed;
+
+            @Override
+            public void value(KK key, MutableCollection&lt;VV&gt; value)
+            {
+<span class="nc" id="L249">                this.changed |= AbstractMutableMultimap.this.putAll(key, value);</span>
+<span class="nc" id="L250">            }</span>
+        }
+
+<span class="nc" id="L253">        PutProcedure putProcedure = new PutProcedure();</span>
+<span class="nc" id="L254">        other.map.forEachKeyValue(putProcedure);</span>
+<span class="nc" id="L255">        return putProcedure.changed;</span>
+    }
+
+    @Override
+    public C replaceValues(K key, Iterable&lt;? extends V&gt; values)
+    {
+<span class="nc bnc" id="L261" title="All 2 branches missed.">        if (Iterate.isEmpty(values))</span>
+        {
+<span class="nc" id="L263">            return this.removeAll(key);</span>
+        }
+
+<span class="nc" id="L266">        C newValues = Iterate.addAllTo(values, this.createCollection());</span>
+<span class="nc" id="L267">        C oldValues = this.map.put(key, newValues);</span>
+<span class="nc bnc" id="L268" title="All 2 branches missed.">        oldValues = oldValues == null ? this.createCollection() : oldValues;</span>
+<span class="nc" id="L269">        this.addToTotalSize(newValues.size() - oldValues.size());</span>
+<span class="nc" id="L270">        return (C) oldValues.asUnmodifiable();</span>
+    }
+
+    @Override
+    public C removeAll(Object key)
+    {
+<span class="nc" id="L276">        C collection = this.map.remove(key);</span>
+<span class="nc bnc" id="L277" title="All 2 branches missed.">        collection = collection == null ? this.createCollection() : collection;</span>
+<span class="nc" id="L278">        this.subtractFromTotalSize(collection.size());</span>
+<span class="nc" id="L279">        return (C) collection.asUnmodifiable();</span>
+    }
+
+    @Override
+    public void clear()
+    {
+        // Clear each collection, to make previously returned collections empty.
+<span class="nc bnc" id="L286" title="All 2 branches missed.">        for (C collection : this.map.values())</span>
+        {
+<span class="nc" id="L288">            collection.clear();</span>
+<span class="nc" id="L289">        }</span>
+<span class="nc" id="L290">        this.map.clear();</span>
+<span class="nc" id="L291">        this.clearTotalSize();</span>
+<span class="nc" id="L292">    }</span>
+
+    // Views
+
+    @Override
+    public SetIterable&lt;K&gt; keySet()
+    {
+<span class="nc" id="L299">        return UnmodifiableMutableSet.of(this.getMap().keySet());</span>
+    }
+
+    @Override
+    public C get(K key)
+    {
+<span class="nc" id="L305">        return (C) this.map.getIfAbsentWith(key, this.createCollectionBlock(), this).asUnmodifiable();</span>
+    }
+
+    private C getIfAbsentPutCollection(K key)
+    {
+<span class="nc" id="L310">        return this.map.getIfAbsentPutWith(key, this.createCollectionBlock(), this);</span>
+    }
+
+    @Override
+    public MutableMap&lt;K, RichIterable&lt;V&gt;&gt; toMap()
+    {
+<span class="nc" id="L316">        MutableMap&lt;K, RichIterable&lt;V&gt;&gt; result = (MutableMap&lt;K, RichIterable&lt;V&gt;&gt;) (MutableMap&lt;?, ?&gt;) this.map.newEmpty();</span>
+<span class="nc" id="L317">        this.map.forEachKeyValue((key, collection) -&gt; {</span>
+<span class="nc" id="L318">            MutableCollection&lt;V&gt; mutableCollection = collection.newEmpty();</span>
+<span class="nc" id="L319">            mutableCollection.addAll(collection);</span>
+<span class="nc" id="L320">            result.put(key, mutableCollection);</span>
+<span class="nc" id="L321">        });</span>
+<span class="nc" id="L322">        return result;</span>
+    }
+
+    @Override
+    public &lt;R extends Collection&lt;V&gt;&gt; MutableMap&lt;K, R&gt; toMap(Function0&lt;R&gt; collectionFactory)
+    {
+<span class="nc" id="L328">        MutableMap&lt;K, R&gt; result = (MutableMap&lt;K, R&gt;) this.createMapWithKeyCount(this.map.size());</span>
+<span class="nc" id="L329">        this.map.forEachKeyValue((key, collection) -&gt; {</span>
+<span class="nc" id="L330">            R mutableCollection = collectionFactory.value();</span>
+<span class="nc" id="L331">            mutableCollection.addAll(collection);</span>
+<span class="nc" id="L332">            result.put(key, mutableCollection);</span>
+<span class="nc" id="L333">        });</span>
+<span class="nc" id="L334">        return result;</span>
+    }
+
+    public void writeExternal(ObjectOutput out) throws IOException
+    {
+<span class="nc" id="L339">        out.writeInt(this.map.size());</span>
+<span class="nc" id="L340">        this.map.forEachKeyValue(new MultimapKeyValuesSerializingProcedure&lt;&gt;(out));</span>
+<span class="nc" id="L341">    }</span>
+
+    public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException
+    {
+<span class="nc" id="L345">        this.readValuesFrom(in);</span>
+<span class="nc" id="L346">    }</span>
+
+    void readValuesFrom(ObjectInput in) throws IOException, ClassNotFoundException
+    {
+<span class="nc" id="L350">        int keyCount = in.readInt();</span>
+<span class="nc" id="L351">        this.map = this.createMapWithKeyCount(keyCount);</span>
+<span class="nc bnc" id="L352" title="All 2 branches missed.">        for (int k = 0; k &lt; keyCount; k++)</span>
+        {
+<span class="nc" id="L354">            K key = (K) in.readObject();</span>
+<span class="nc" id="L355">            int valuesSize = in.readInt();</span>
+<span class="nc" id="L356">            C values = this.createCollection();</span>
+<span class="nc bnc" id="L357" title="All 2 branches missed.">            for (int v = 0; v &lt; valuesSize; v++)</span>
+            {
+<span class="nc" id="L359">                values.add((V) in.readObject());</span>
+            }
+<span class="nc" id="L361">            this.addToTotalSize(valuesSize);</span>
+<span class="nc" id="L362">            this.map.put(key, values);</span>
+        }
+<span class="nc" id="L364">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.0.201801022044</span></div></body></html>

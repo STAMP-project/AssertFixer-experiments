@@ -1,0 +1,1737 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>ParallelIterate.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Eclipse Collections Test Coverage Aggregation</a> &gt; <a href="../index.html" class="el_bundle">eclipse-collections</a> &gt; <a href="index.source.html" class="el_package">org.eclipse.collections.impl.parallel</a> &gt; <span class="el_source">ParallelIterate.java</span></div><h1>ParallelIterate.java</h1><pre class="source lang-java linenums">/*
+ * Copyright (c) 2016 Goldman Sachs.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * and Eclipse Distribution License v. 1.0 which accompany this distribution.
+ * The Eclipse Public License is available at http://www.eclipse.org/legal/epl-v10.html
+ * and the Eclipse Distribution License is available at
+ * http://www.eclipse.org/org/documents/edl-v10.php.
+ */
+
+package org.eclipse.collections.impl.parallel;
+
+import java.math.BigDecimal;
+import java.math.BigInteger;
+import java.util.Collection;
+import java.util.List;
+import java.util.RandomAccess;
+import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.SynchronousQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
+
+import org.eclipse.collections.api.block.function.Function;
+import org.eclipse.collections.api.block.function.Function0;
+import org.eclipse.collections.api.block.function.Function2;
+import org.eclipse.collections.api.block.function.primitive.DoubleFunction;
+import org.eclipse.collections.api.block.function.primitive.FloatFunction;
+import org.eclipse.collections.api.block.function.primitive.IntFunction;
+import org.eclipse.collections.api.block.function.primitive.LongFunction;
+import org.eclipse.collections.api.block.predicate.Predicate;
+import org.eclipse.collections.api.block.procedure.Procedure;
+import org.eclipse.collections.api.block.procedure.Procedure2;
+import org.eclipse.collections.api.block.procedure.primitive.ObjectIntProcedure;
+import org.eclipse.collections.api.list.ListIterable;
+import org.eclipse.collections.api.map.MutableMap;
+import org.eclipse.collections.api.map.primitive.ObjectDoubleMap;
+import org.eclipse.collections.api.map.primitive.ObjectLongMap;
+import org.eclipse.collections.api.multimap.MutableMultimap;
+import org.eclipse.collections.api.tuple.primitive.DoubleDoublePair;
+import org.eclipse.collections.impl.block.factory.Functions0;
+import org.eclipse.collections.impl.block.procedure.MultimapPutProcedure;
+import org.eclipse.collections.impl.block.procedure.MutatingAggregationProcedure;
+import org.eclipse.collections.impl.block.procedure.NonMutatingAggregationProcedure;
+import org.eclipse.collections.impl.factory.Maps;
+import org.eclipse.collections.impl.list.fixed.ArrayAdapter;
+import org.eclipse.collections.impl.map.mutable.ConcurrentHashMap;
+import org.eclipse.collections.impl.map.mutable.UnifiedMap;
+import org.eclipse.collections.impl.map.mutable.primitive.ObjectDoubleHashMap;
+import org.eclipse.collections.impl.map.mutable.primitive.ObjectLongHashMap;
+import org.eclipse.collections.impl.multimap.list.SynchronizedPutFastListMultimap;
+import org.eclipse.collections.impl.tuple.primitive.PrimitiveTuples;
+import org.eclipse.collections.impl.utility.Iterate;
+
+import static org.eclipse.collections.impl.factory.Iterables.iList;
+
+/**
+ * The ParallelIterate class contains several parallel algorithms that work with Collections.  All of the higher
+ * level parallel algorithms depend on the basic parallel algorithm named {@code forEach}.  The forEach algorithm employs
+ * a batching fork and join approach.
+ * &lt;p&gt;
+ * All Collections that are not either a {@link RandomAccess} or {@link List} are first converted to a Java array
+ * using {@link Iterate#toArray(Iterable)}, and then run with one of the {@code ParallelArrayIterate.forEach} methods.
+ *
+ * @see ParallelArrayIterate
+ */
+public final class ParallelIterate
+{
+    static final int DEFAULT_MIN_FORK_SIZE = 10000;
+<span class="nc" id="L70">    static final int AVAILABLE_PROCESSORS = Runtime.getRuntime().availableProcessors();</span>
+    static final int TASK_RATIO = 2;
+<span class="nc" id="L72">    static final int DEFAULT_PARALLEL_TASK_COUNT = ParallelIterate.getDefaultTaskCount();</span>
+<span class="nc" id="L73">    static final ExecutorService EXECUTOR_SERVICE = ParallelIterate.newPooledExecutor(ParallelIterate.class.getSimpleName(), true);</span>
+
+    private ParallelIterate()
+<span class="nc" id="L76">    {</span>
+<span class="nc" id="L77">        throw new AssertionError(&quot;Suppress default constructor for noninstantiability&quot;);</span>
+    }
+
+    static boolean isExecutorShutdown()
+    {
+<span class="nc" id="L82">        return ParallelIterate.EXECUTOR_SERVICE.isShutdown();</span>
+    }
+
+    static void shutdownExecutor()
+    {
+<span class="nc" id="L87">        ParallelIterate.EXECUTOR_SERVICE.shutdown();</span>
+<span class="nc" id="L88">    }</span>
+
+    /**
+     * Iterate over the collection specified, in parallel batches using default runtime parameter values.  The
+     * {@code ObjectIntProcedure} used must be stateless, or use concurrent aware objects if they are to be shared.
+     * &lt;p&gt;
+     * e.g.
+     * &lt;pre&gt;
+     * {@code final Map&lt;Integer, Object&gt; chm = new ConcurrentHashMap&lt;Integer, Object&gt;();}
+     * ParallelIterate.&lt;b&gt;forEachWithIndex&lt;/b&gt;(collection, new ObjectIntProcedure()
+     * {
+     *     public void value(Object object, int index)
+     *     {
+     *         chm.put(index, object);
+     *     }
+     * });
+     * &lt;/pre&gt;
+     */
+    public static &lt;T&gt; void forEachWithIndex(
+            Iterable&lt;T&gt; iterable,
+            ObjectIntProcedure&lt;? super T&gt; objectIntProcedure)
+    {
+<span class="nc" id="L110">        ParallelIterate.forEachWithIndex(iterable, objectIntProcedure, ParallelIterate.EXECUTOR_SERVICE);</span>
+<span class="nc" id="L111">    }</span>
+
+    /**
+     * Iterate over the collection specified in parallel batches using the default runtime parameters.  The
+     * ObjectIntProcedure used must be stateless, or use concurrent aware objects if they are to be shared.  The code
+     * is executed against the specified executor.
+     * &lt;p&gt;
+     * &lt;pre&gt;e.g.
+     * {@code final Map&lt;Integer, Object&gt; chm = new ConcurrentHashMap&lt;Integer, Object&gt;();}
+     * ParallelIterate.&lt;b&gt;forEachWithIndex&lt;/b&gt;(collection, new ObjectIntProcedure()
+     * {
+     *     public void value(Object object, int index)
+     *     {
+     *         chm.put(index, object);
+     *     }
+     * }, executor);
+     * &lt;/pre&gt;
+     *
+     * @param executor Use this executor for all execution.
+     */
+    public static &lt;T, BT extends ObjectIntProcedure&lt;? super T&gt;&gt; void forEachWithIndex(
+            Iterable&lt;T&gt; iterable,
+            BT procedure,
+            Executor executor)
+    {
+<span class="nc" id="L136">        ParallelIterate.forEachWithIndex(</span>
+                iterable,
+                new PassThruObjectIntProcedureFactory&lt;&gt;(procedure),
+                new PassThruCombiner&lt;&gt;(), executor);
+<span class="nc" id="L140">    }</span>
+
+    /**
+     * Iterate over the collection specified in parallel batches.  The
+     * ObjectIntProcedure used must be stateless, or use concurrent aware objects if they are to be shared.  The
+     * specified minimum fork size and task count are used instead of the default values.
+     *
+     * @param minForkSize Only run in parallel if input collection is longer than this.
+     * @param taskCount   How many parallel tasks to submit to the executor.
+     * @see #forEachWithIndex(Iterable, ObjectIntProcedure)
+     */
+    public static &lt;T, BT extends ObjectIntProcedure&lt;? super T&gt;&gt; void forEachWithIndex(
+            Iterable&lt;T&gt; iterable,
+            BT procedure,
+            int minForkSize,
+            int taskCount)
+    {
+<span class="nc" id="L157">        ParallelIterate.forEachWithIndex(</span>
+                iterable,
+                new PassThruObjectIntProcedureFactory&lt;&gt;(procedure),
+                new PassThruCombiner&lt;&gt;(),
+                minForkSize,
+                taskCount);
+<span class="nc" id="L163">    }</span>
+
+    public static &lt;T, BT extends ObjectIntProcedure&lt;? super T&gt;&gt; void forEachWithIndex(
+            Iterable&lt;T&gt; iterable,
+            ObjectIntProcedureFactory&lt;BT&gt; procedureFactory,
+            Combiner&lt;BT&gt; combiner,
+            Executor executor)
+    {
+<span class="nc" id="L171">        int taskCount = Math.max(</span>
+                ParallelIterate.DEFAULT_PARALLEL_TASK_COUNT,
+<span class="nc" id="L173">                Iterate.sizeOf(iterable) / ParallelIterate.DEFAULT_MIN_FORK_SIZE);</span>
+<span class="nc" id="L174">        ParallelIterate.forEachWithIndex(</span>
+                iterable,
+                procedureFactory,
+                combiner,
+                ParallelIterate.DEFAULT_MIN_FORK_SIZE,
+                taskCount,
+                executor);
+<span class="nc" id="L181">    }</span>
+
+    public static &lt;T, BT extends ObjectIntProcedure&lt;? super T&gt;&gt; void forEachWithIndex(
+            Iterable&lt;T&gt; iterable,
+            ObjectIntProcedureFactory&lt;BT&gt; procedureFactory,
+            Combiner&lt;BT&gt; combiner,
+            int minForkSize,
+            int taskCount)
+    {
+<span class="nc" id="L190">        ParallelIterate.forEachWithIndex(iterable, procedureFactory, combiner, minForkSize, taskCount, ParallelIterate.EXECUTOR_SERVICE);</span>
+<span class="nc" id="L191">    }</span>
+
+    public static &lt;T, BT extends ObjectIntProcedure&lt;? super T&gt;&gt; void forEachWithIndex(
+            Iterable&lt;T&gt; iterable,
+            ObjectIntProcedureFactory&lt;BT&gt; procedureFactory,
+            Combiner&lt;BT&gt; combiner,
+            int minForkSize,
+            int taskCount,
+            Executor executor)
+    {
+<span class="nc bnc" id="L201" title="All 2 branches missed.">        if (Iterate.notEmpty(iterable))</span>
+        {
+<span class="nc bnc" id="L203" title="All 6 branches missed.">            if (iterable instanceof RandomAccess || iterable instanceof ListIterable</span>
+                    &amp;&amp; iterable instanceof List)
+            {
+<span class="nc" id="L206">                ParallelIterate.forEachWithIndexInListOnExecutor(</span>
+                        (List&lt;T&gt;) iterable,
+                        procedureFactory,
+                        combiner,
+                        minForkSize,
+                        taskCount,
+                        executor);
+            }
+            else
+            {
+<span class="nc" id="L216">                ParallelIterate.forEachWithIndexInListOnExecutor(</span>
+<span class="nc" id="L217">                        ArrayAdapter.adapt((T[]) Iterate.toArray(iterable)),</span>
+                        procedureFactory,
+                        combiner,
+                        minForkSize,
+                        taskCount,
+                        executor);
+            }
+        }
+<span class="nc" id="L225">    }</span>
+
+    public static &lt;T, BT extends ObjectIntProcedure&lt;? super T&gt;&gt; void forEachWithIndexInListOnExecutor(
+            List&lt;T&gt; list,
+            ObjectIntProcedureFactory&lt;BT&gt; procedureFactory,
+            Combiner&lt;BT&gt; combiner,
+            int minForkSize,
+            int taskCount,
+            Executor executor)
+    {
+<span class="nc" id="L235">        int size = list.size();</span>
+<span class="nc bnc" id="L236" title="All 2 branches missed.">        if (size &lt; minForkSize)</span>
+        {
+<span class="nc" id="L238">            BT procedure = procedureFactory.create();</span>
+<span class="nc" id="L239">            Iterate.forEachWithIndex(list, procedure);</span>
+<span class="nc bnc" id="L240" title="All 2 branches missed.">            if (combiner.useCombineOne())</span>
+            {
+<span class="nc" id="L242">                combiner.combineOne(procedure);</span>
+            }
+            else
+            {
+<span class="nc" id="L246">                combiner.combineAll(iList(procedure));</span>
+            }
+<span class="nc" id="L248">        }</span>
+        else
+        {
+<span class="nc" id="L251">            int threadCount = Math.min(size, taskCount);</span>
+<span class="nc" id="L252">            ObjectIntProcedureFJTaskRunner&lt;T, BT&gt; runner =</span>
+                    new ObjectIntProcedureFJTaskRunner&lt;&gt;(combiner, threadCount);
+<span class="nc" id="L254">            runner.executeAndCombine(executor, procedureFactory, list);</span>
+        }
+<span class="nc" id="L256">    }</span>
+
+    /**
+     * Iterate over the collection specified in parallel batches using default runtime parameter values.  The
+     * {@code Procedure} used must be stateless, or use concurrent aware objects if they are to be shared.
+     * &lt;p&gt;
+     * e.g.
+     * &lt;pre&gt;
+     * {@code final Map&lt;Object, Boolean&gt; chm = new ConcurrentHashMap&lt;Object, Boolean&gt;();}
+     * ParallelIterate.&lt;b&gt;forEach&lt;/b&gt;(collection, new Procedure()
+     * {
+     *     public void value(Object object)
+     *     {
+     *         chm.put(object, Boolean.TRUE);
+     *     }
+     * });
+     * &lt;/pre&gt;
+     */
+    public static &lt;T&gt; void forEach(Iterable&lt;T&gt; iterable, Procedure&lt;? super T&gt; procedure)
+    {
+<span class="nc" id="L276">        ParallelIterate.forEach(iterable, procedure, ParallelIterate.EXECUTOR_SERVICE);</span>
+<span class="nc" id="L277">    }</span>
+
+    /**
+     * Iterate over the collection specified in parallel batches using default runtime parameter values.  The
+     * {@code Procedure} used must be stateless, or use concurrent aware objects if they are to be shared.
+     * &lt;p&gt;
+     * e.g.
+     * &lt;pre&gt;
+     * {@code final Map&lt;Object, Boolean&gt; chm = new ConcurrentHashMap&lt;Object, Boolean&gt;();}
+     * ParallelIterate.&lt;b&gt;forEachBatchSize&lt;/b&gt;(collection, new Procedure()
+     * {
+     *     public void value(Object object)
+     *     {
+     *         chm.put(object, Boolean.TRUE);
+     *     }
+     * }, 100);
+     * &lt;/pre&gt;
+     */
+    public static &lt;T&gt; void forEach(Iterable&lt;T&gt; iterable, Procedure&lt;? super T&gt; procedure, int batchSize)
+    {
+<span class="nc" id="L297">        ParallelIterate.forEach(iterable, procedure, batchSize, ParallelIterate.EXECUTOR_SERVICE);</span>
+<span class="nc" id="L298">    }</span>
+
+    public static &lt;T&gt; void forEach(Iterable&lt;T&gt; iterable, Procedure&lt;? super T&gt; procedure, int batchSize, Executor executor)
+    {
+<span class="nc" id="L302">        ParallelIterate.forEach(iterable, procedure, batchSize, ParallelIterate.calculateTaskCount(iterable, batchSize), executor);</span>
+<span class="nc" id="L303">    }</span>
+
+    /**
+     * Iterate over the collection specified in parallel batches using default runtime parameter values
+     * and the specified executor.
+     * The {@code Procedure} used must be stateless, or use concurrent aware objects if they are to be shared.
+     *
+     * @param executor Use this executor for all execution.
+     * @see #forEach(Iterable, Procedure)
+     */
+    public static &lt;T, BT extends Procedure&lt;? super T&gt;&gt; void forEach(
+            Iterable&lt;T&gt; iterable,
+            BT procedure,
+            Executor executor)
+    {
+<span class="nc" id="L318">        ParallelIterate.forEach(</span>
+                iterable,
+                new PassThruProcedureFactory&lt;&gt;(procedure),
+                new PassThruCombiner&lt;&gt;(),
+                executor);
+<span class="nc" id="L323">    }</span>
+
+    /**
+     * Iterate over the collection specified in parallel batches using the specified minimum fork and task count sizes.
+     * The {@code Procedure} used must be stateless, or use concurrent aware objects if they are to be shared.
+     *
+     * @param minForkSize Only run in parallel if input collection is longer than this.
+     * @param taskCount   How many parallel tasks to submit to the executor.
+     *                    TODO: How does the taskCount relate to the number of threads in the executor?
+     * @see #forEach(Iterable, Procedure)
+     */
+    public static &lt;T, BT extends Procedure&lt;? super T&gt;&gt; void forEach(
+            Iterable&lt;T&gt; iterable,
+            BT procedure,
+            int minForkSize,
+            int taskCount)
+    {
+<span class="nc" id="L340">        ParallelIterate.forEach(iterable, procedure, minForkSize, taskCount, ParallelIterate.EXECUTOR_SERVICE);</span>
+<span class="nc" id="L341">    }</span>
+
+    public static &lt;T, BT extends Procedure&lt;? super T&gt;&gt; void forEach(
+            Iterable&lt;T&gt; iterable,
+            BT procedure,
+            int minForkSize,
+            int taskCount,
+            Executor executor)
+    {
+<span class="nc" id="L350">        ParallelIterate.forEach(</span>
+                iterable,
+                new PassThruProcedureFactory&lt;&gt;(procedure),
+                new PassThruCombiner&lt;&gt;(),
+                minForkSize,
+                taskCount,
+                executor);
+<span class="nc" id="L357">    }</span>
+
+    public static &lt;T, BT extends Procedure&lt;? super T&gt;&gt; void forEach(
+            Iterable&lt;T&gt; iterable,
+            ProcedureFactory&lt;BT&gt; procedureFactory,
+            Combiner&lt;BT&gt; combiner,
+            Executor executor)
+    {
+<span class="nc" id="L365">        ParallelIterate.forEach(iterable, procedureFactory, combiner, ParallelIterate.DEFAULT_MIN_FORK_SIZE, executor);</span>
+<span class="nc" id="L366">    }</span>
+
+    public static &lt;T, BT extends Procedure&lt;? super T&gt;&gt; void forEach(
+            Iterable&lt;T&gt; iterable,
+            ProcedureFactory&lt;BT&gt; procedureFactory,
+            Combiner&lt;BT&gt; combiner)
+    {
+<span class="nc" id="L373">        ParallelIterate.forEach(iterable, procedureFactory, combiner, ParallelIterate.EXECUTOR_SERVICE);</span>
+<span class="nc" id="L374">    }</span>
+
+    /**
+     * Iterate over the collection specified in parallel batches using the default values for the task size.  The
+     * ProcedureFactory can create stateful closures that will be collected and combined using the specified Combiner.
+     * &lt;p&gt;
+     * &lt;pre&gt;e.g. The &lt;b&gt;ParallelIterate.select()&lt;/b&gt; implementation
+     * &lt;p&gt;
+     * {@code CollectionCombiner&lt;T, SelectProcedure&lt;T&gt;&gt; combiner = CollectionCombiner.forSelect(collection);}
+     * ParallelIterate.&lt;b&gt;forEach&lt;/b&gt;(collection,{@code new SelectProcedureFactory&lt;T&gt;(predicate, taskSize), combiner, 1000);}
+     * &lt;/pre&gt;
+     */
+    @SuppressWarnings(&quot;JavaDoc&quot;)
+    public static &lt;T, BT extends Procedure&lt;? super T&gt;&gt; void forEach(
+            Iterable&lt;T&gt; iterable,
+            ProcedureFactory&lt;BT&gt; procedureFactory,
+            Combiner&lt;BT&gt; combiner,
+            int batchSize)
+    {
+<span class="nc" id="L393">        ParallelIterate.forEach(iterable, procedureFactory, combiner, batchSize, ParallelIterate.EXECUTOR_SERVICE);</span>
+<span class="nc" id="L394">    }</span>
+
+    public static &lt;T, BT extends Procedure&lt;? super T&gt;&gt; void forEach(
+            Iterable&lt;T&gt; iterable,
+            ProcedureFactory&lt;BT&gt; procedureFactory,
+            Combiner&lt;BT&gt; combiner,
+            int batchSize,
+            Executor executor)
+    {
+<span class="nc" id="L403">        ParallelIterate.forEach(iterable, procedureFactory, combiner, batchSize, ParallelIterate.calculateTaskCount(iterable, batchSize), executor);</span>
+<span class="nc" id="L404">    }</span>
+
+    /**
+     * Iterate over the collection specified in parallel batches using the default values for the task size.  The
+     * ProcedureFactory can create stateful closures that will be collected and combined using the specified Combiner.
+     * &lt;p&gt;
+     * &lt;pre&gt;e.g. The &lt;b&gt;ParallelIterate.select()&lt;/b&gt; implementation
+     * &lt;p&gt;
+     * int taskCount = Math.max(DEFAULT_PARALLEL_TASK_COUNT, collection.size() / DEFAULT_MIN_FORK_SIZE);
+     * final int taskSize = collection.size() / taskCount / 2;
+     * {@code CollectionCombiner&lt;T, SelectProcedure&lt;T&gt;&gt; combiner = CollectionCombiner.forSelect(collection);}
+     * ParallelIterate.&lt;b&gt;forEach&lt;/b&gt;(collection,{@code new SelectProcedureFactory&lt;T&gt;(predicate, taskSize), combiner, DEFAULT_MIN_FORK_SIZE, taskCount);}
+     * &lt;/pre&gt;
+     */
+    @SuppressWarnings(&quot;JavaDoc&quot;)
+    public static &lt;T, BT extends Procedure&lt;? super T&gt;&gt; void forEach(
+            Iterable&lt;T&gt; iterable,
+            ProcedureFactory&lt;BT&gt; procedureFactory,
+            Combiner&lt;BT&gt; combiner,
+            int minForkSize,
+            int taskCount)
+    {
+<span class="nc" id="L426">        ParallelIterate.forEach(iterable, procedureFactory, combiner, minForkSize, taskCount, ParallelIterate.EXECUTOR_SERVICE);</span>
+<span class="nc" id="L427">    }</span>
+
+    public static &lt;T, BT extends Procedure&lt;? super T&gt;&gt; void forEach(
+            Iterable&lt;T&gt; iterable,
+            ProcedureFactory&lt;BT&gt; procedureFactory,
+            Combiner&lt;BT&gt; combiner,
+            int minForkSize,
+            int taskCount,
+            Executor executor)
+    {
+<span class="nc bnc" id="L437" title="All 2 branches missed.">        if (Iterate.notEmpty(iterable))</span>
+        {
+<span class="nc bnc" id="L439" title="All 2 branches missed.">            if (iterable instanceof BatchIterable)</span>
+            {
+<span class="nc" id="L441">                ParallelIterate.forEachInBatchWithExecutor(</span>
+                        (BatchIterable&lt;T&gt;) iterable,
+                        procedureFactory,
+                        combiner,
+                        minForkSize,
+                        taskCount,
+                        executor);
+            }
+<span class="nc bnc" id="L449" title="All 6 branches missed.">            else if ((iterable instanceof RandomAccess || iterable instanceof ListIterable)</span>
+                    &amp;&amp; iterable instanceof List)
+            {
+<span class="nc" id="L452">                ParallelIterate.forEachInListOnExecutor(</span>
+                        (List&lt;T&gt;) iterable,
+                        procedureFactory,
+                        combiner,
+                        minForkSize,
+                        taskCount,
+                        executor);
+            }
+            else
+            {
+<span class="nc" id="L462">                ParallelArrayIterate.forEachOn(</span>
+<span class="nc" id="L463">                        (T[]) Iterate.toArray(iterable),</span>
+                        procedureFactory,
+                        combiner,
+                        minForkSize,
+                        taskCount,
+                        executor);
+            }
+        }
+<span class="nc" id="L471">    }</span>
+
+    public static &lt;T, BT extends Procedure&lt;? super T&gt;&gt; void forEachInListOnExecutor(
+            List&lt;T&gt; list,
+            ProcedureFactory&lt;BT&gt; procedureFactory,
+            Combiner&lt;BT&gt; combiner,
+            int minForkSize,
+            int taskCount,
+            Executor executor)
+    {
+<span class="nc" id="L481">        int size = list.size();</span>
+<span class="nc bnc" id="L482" title="All 2 branches missed.">        if (size &lt; minForkSize)</span>
+        {
+<span class="nc" id="L484">            BT procedure = procedureFactory.create();</span>
+<span class="nc" id="L485">            Iterate.forEach(list, procedure);</span>
+<span class="nc bnc" id="L486" title="All 2 branches missed.">            if (combiner.useCombineOne())</span>
+            {
+<span class="nc" id="L488">                combiner.combineOne(procedure);</span>
+            }
+            else
+            {
+<span class="nc" id="L492">                combiner.combineAll(iList(procedure));</span>
+            }
+<span class="nc" id="L494">        }</span>
+        else
+        {
+<span class="nc" id="L497">            int threadCount = Math.min(size, taskCount);</span>
+<span class="nc" id="L498">            ProcedureFJTaskRunner&lt;T, BT&gt; runner =</span>
+                    new ProcedureFJTaskRunner&lt;&gt;(combiner, threadCount);
+<span class="nc" id="L500">            runner.executeAndCombine(executor, procedureFactory, list);</span>
+        }
+<span class="nc" id="L502">    }</span>
+
+    public static &lt;T, BT extends Procedure&lt;? super T&gt;&gt; void forEachInBatchWithExecutor(
+            BatchIterable&lt;T&gt; set,
+            ProcedureFactory&lt;BT&gt; procedureFactory,
+            Combiner&lt;BT&gt; combiner,
+            int minForkSize,
+            int taskCount,
+            Executor executor)
+    {
+<span class="nc" id="L512">        int size = set.size();</span>
+<span class="nc bnc" id="L513" title="All 2 branches missed.">        if (size &lt; minForkSize)</span>
+        {
+<span class="nc" id="L515">            BT procedure = procedureFactory.create();</span>
+<span class="nc" id="L516">            set.forEach(procedure);</span>
+<span class="nc bnc" id="L517" title="All 2 branches missed.">            if (combiner.useCombineOne())</span>
+            {
+<span class="nc" id="L519">                combiner.combineOne(procedure);</span>
+            }
+            else
+            {
+<span class="nc" id="L523">                combiner.combineAll(iList(procedure));</span>
+            }
+<span class="nc" id="L525">        }</span>
+        else
+        {
+<span class="nc" id="L528">            int threadCount = Math.min(size, Math.min(taskCount, set.getBatchCount((int) Math.ceil((double) size / (double) taskCount))));</span>
+<span class="nc" id="L529">            BatchIterableProcedureFJTaskRunner&lt;T, BT&gt; runner =</span>
+                    new BatchIterableProcedureFJTaskRunner&lt;&gt;(combiner, threadCount);
+<span class="nc" id="L531">            runner.executeAndCombine(executor, procedureFactory, set);</span>
+        }
+<span class="nc" id="L533">    }</span>
+
+    /**
+     * Same effect as {@link Iterate#select(Iterable, Predicate)}, but executed in parallel batches.
+     *
+     * @return The selected elements. The Collection will be of the same type as the input (List or Set)
+     * and will be in the same order as the input (if it is an ordered collection).
+     * @see ParallelIterate#select(Iterable, Predicate, boolean)
+     */
+    public static &lt;T&gt; Collection&lt;T&gt; select(
+            Iterable&lt;T&gt; iterable,
+            Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L546">        return ParallelIterate.select(iterable, predicate, false);</span>
+    }
+
+    /**
+     * Same effect as {@link Iterate#select(Iterable, Predicate)}, but executed in parallel batches,
+     * and with a potentially reordered result.
+     *
+     * @param allowReorderedResult If the result can be in a different order.
+     *                             Allowing reordering may yield faster execution.
+     * @return The selected elements. The Collection will be of the same type (List or Set) as the input.
+     */
+    public static &lt;T&gt; Collection&lt;T&gt; select(
+            Iterable&lt;T&gt; iterable,
+            Predicate&lt;? super T&gt; predicate,
+            boolean allowReorderedResult)
+    {
+<span class="nc" id="L562">        return ParallelIterate.select(iterable, predicate, null, allowReorderedResult);</span>
+    }
+
+    /**
+     * Same effect as {@link Iterate#select(Iterable, Predicate)}, but executed in parallel batches,
+     * and writing output into the specified collection.
+     *
+     * @param target               Where to write the output.
+     * @param allowReorderedResult If the result can be in a different order.
+     *                             Allowing reordering may yield faster execution.
+     * @return The 'target' collection, with the selected elements added.
+     */
+    public static &lt;T, R extends Collection&lt;T&gt;&gt; R select(
+            Iterable&lt;T&gt; iterable,
+            Predicate&lt;? super T&gt; predicate,
+            R target,
+            boolean allowReorderedResult)
+    {
+<span class="nc" id="L580">        return ParallelIterate.select(</span>
+                iterable,
+                predicate,
+                target,
+                ParallelIterate.DEFAULT_MIN_FORK_SIZE,
+                ParallelIterate.EXECUTOR_SERVICE,
+                allowReorderedResult);
+    }
+
+    /**
+     * Same effect as {@link Iterate#select(Iterable, Predicate)}, but executed in parallel batches,
+     * and writing output into the specified collection.
+     *
+     * @param target               Where to write the output.
+     * @param allowReorderedResult If the result can be in a different order.
+     *                             Allowing reordering may yield faster execution.
+     * @return The 'target' collection, with the selected elements added.
+     */
+    public static &lt;T, R extends Collection&lt;T&gt;&gt; R select(
+            Iterable&lt;T&gt; iterable,
+            Predicate&lt;? super T&gt; predicate,
+            R target,
+            int batchSize,
+            Executor executor,
+            boolean allowReorderedResult)
+    {
+<span class="nc" id="L606">        FastListSelectProcedureCombiner&lt;T&gt; combiner = new FastListSelectProcedureCombiner&lt;&gt;(iterable, target, 10, allowReorderedResult);</span>
+<span class="nc" id="L607">        FastListSelectProcedureFactory&lt;T&gt; procedureFactory = new FastListSelectProcedureFactory&lt;&gt;(predicate, batchSize);</span>
+<span class="nc" id="L608">        ParallelIterate.forEach(</span>
+                iterable,
+                procedureFactory,
+                combiner,
+                batchSize,
+<span class="nc" id="L613">                ParallelIterate.calculateTaskCount(iterable, batchSize),</span>
+                executor);
+<span class="nc" id="L615">        return (R) combiner.getResult();</span>
+    }
+
+    private static &lt;T&gt; int calculateTaskCount(Iterable&lt;T&gt; iterable, int batchSize)
+    {
+<span class="nc bnc" id="L620" title="All 2 branches missed.">        if (iterable instanceof BatchIterable&lt;?&gt;)</span>
+        {
+<span class="nc" id="L622">            return ParallelIterate.calculateTaskCount((BatchIterable&lt;?&gt;) iterable, batchSize);</span>
+        }
+<span class="nc" id="L624">        return ParallelIterate.calculateTaskCount(Iterate.sizeOf(iterable), batchSize);</span>
+    }
+
+    private static &lt;T&gt; int calculateTaskCount(BatchIterable&lt;T&gt; batchIterable, int batchSize)
+    {
+<span class="nc" id="L629">        return Math.max(2, batchIterable.getBatchCount(batchSize));</span>
+    }
+
+    private static int calculateTaskCount(int size, int batchSize)
+    {
+<span class="nc" id="L634">        return Math.max(2, size / batchSize);</span>
+    }
+
+    /**
+     * Same effect as {@link Iterate#reject(Iterable, Predicate)}, but executed in parallel batches.
+     *
+     * @return The rejected elements. The Collection will be of the same type as the input (List or Set)
+     * and will be in the same order as the input (if it is an ordered collection).
+     * @see ParallelIterate#reject(Iterable, Predicate, boolean)
+     */
+    public static &lt;T&gt; Collection&lt;T&gt; reject(
+            Iterable&lt;T&gt; iterable,
+            Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L648">        return ParallelIterate.reject(iterable, predicate, false);</span>
+    }
+
+    /**
+     * Same effect as {@link Iterate#reject(Iterable, Predicate)}, but executed in parallel batches,
+     * and with a potentially reordered result.
+     *
+     * @param allowReorderedResult If the result can be in a different order.
+     *                             Allowing reordering may yield faster execution.
+     * @return The rejected elements. The Collection will be of the same type (List or Set) as the input.
+     */
+    public static &lt;T&gt; Collection&lt;T&gt; reject(
+            Iterable&lt;T&gt; iterable,
+            Predicate&lt;? super T&gt; predicate,
+            boolean allowReorderedResult)
+    {
+<span class="nc" id="L664">        return ParallelIterate.reject(iterable, predicate, null, allowReorderedResult);</span>
+    }
+
+    /**
+     * Same effect as {@link Iterate#reject(Iterable, Predicate)}, but executed in parallel batches,
+     * and writing output into the specified collection.
+     *
+     * @param target               Where to write the output.
+     * @param allowReorderedResult If the result can be in a different order.
+     *                             Allowing reordering may yield faster execution.
+     * @return The 'target' collection, with the rejected elements added.
+     */
+    public static &lt;T, R extends Collection&lt;T&gt;&gt; R reject(
+            Iterable&lt;T&gt; iterable,
+            Predicate&lt;? super T&gt; predicate,
+            R target,
+            boolean allowReorderedResult)
+    {
+<span class="nc" id="L682">        return ParallelIterate.reject(</span>
+                iterable,
+                predicate,
+                target,
+                ParallelIterate.DEFAULT_MIN_FORK_SIZE,
+                ParallelIterate.EXECUTOR_SERVICE,
+                allowReorderedResult);
+    }
+
+    public static &lt;T, R extends Collection&lt;T&gt;&gt; R reject(
+            Iterable&lt;T&gt; iterable,
+            Predicate&lt;? super T&gt; predicate,
+            R target,
+            int batchSize,
+            Executor executor,
+            boolean allowReorderedResult)
+    {
+<span class="nc" id="L699">        FastListRejectProcedureCombiner&lt;T&gt; combiner = new FastListRejectProcedureCombiner&lt;&gt;(iterable, target, 10, allowReorderedResult);</span>
+<span class="nc" id="L700">        FastListRejectProcedureFactory&lt;T&gt; procedureFactory = new FastListRejectProcedureFactory&lt;&gt;(predicate, batchSize);</span>
+<span class="nc" id="L701">        ParallelIterate.forEach(</span>
+                iterable,
+                procedureFactory,
+                combiner,
+                batchSize,
+<span class="nc" id="L706">                ParallelIterate.calculateTaskCount(iterable, batchSize),</span>
+                executor);
+<span class="nc" id="L708">        return (R) combiner.getResult();</span>
+    }
+
+    /**
+     * Same effect as {@link Iterate#count(Iterable, Predicate)}, but executed in parallel batches.
+     *
+     * @return The number of elements which satisfy the predicate.
+     */
+    public static &lt;T&gt; int count(Iterable&lt;T&gt; iterable, Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L718">        return ParallelIterate.count(iterable, predicate, ParallelIterate.DEFAULT_MIN_FORK_SIZE, ParallelIterate.EXECUTOR_SERVICE);</span>
+    }
+
+    /**
+     * Same effect as {@link Iterate#count(Iterable, Predicate)}, but executed in parallel batches.
+     *
+     * @return The number of elements which satisfy the predicate.
+     */
+    public static &lt;T&gt; int count(Iterable&lt;T&gt; iterable, Predicate&lt;? super T&gt; predicate, int batchSize, Executor executor)
+    {
+<span class="nc" id="L728">        CountCombiner&lt;T&gt; combiner = new CountCombiner&lt;&gt;();</span>
+<span class="nc" id="L729">        CountProcedureFactory&lt;T&gt; procedureFactory = new CountProcedureFactory&lt;&gt;(predicate);</span>
+<span class="nc" id="L730">        ParallelIterate.forEach(</span>
+                iterable,
+                procedureFactory,
+                combiner,
+                batchSize,
+                executor);
+<span class="nc" id="L736">        return combiner.getCount();</span>
+    }
+
+    /**
+     * Same effect as {@link Iterate#collect(Iterable, Function)},
+     * but executed in parallel batches.
+     *
+     * @return The collected elements. The Collection will be of the same type as the input (List or Set)
+     * and will be in the same order as the input (if it is an ordered collection).
+     * @see ParallelIterate#collect(Iterable, Function, boolean)
+     */
+    public static &lt;T, V&gt; Collection&lt;V&gt; collect(
+            Iterable&lt;T&gt; iterable,
+            Function&lt;? super T, V&gt; function)
+    {
+<span class="nc" id="L751">        return ParallelIterate.collect(iterable, function, false);</span>
+    }
+
+    /**
+     * Same effect as {@link Iterate#collect(Iterable, Function)}, but executed in parallel batches,
+     * and with potentially reordered result.
+     *
+     * @param allowReorderedResult If the result can be in a different order.
+     *                             Allowing reordering may yield faster execution.
+     * @return The collected elements. The Collection will be of the same type
+     * (List or Set) as the input.
+     */
+    public static &lt;T, V&gt; Collection&lt;V&gt; collect(
+            Iterable&lt;T&gt; iterable,
+            Function&lt;? super T, V&gt; function,
+            boolean allowReorderedResult)
+    {
+<span class="nc" id="L768">        return ParallelIterate.collect(iterable, function, null, allowReorderedResult);</span>
+    }
+
+    /**
+     * Same effect as {@link Iterate#collect(Iterable, Function)}, but executed in parallel batches,
+     * and writing output into the specified collection.
+     *
+     * @param target               Where to write the output.
+     * @param allowReorderedResult If the result can be in a different order.
+     *                             Allowing reordering may yield faster execution.
+     * @return The 'target' collection, with the collected elements added.
+     */
+    public static &lt;T, V, R extends Collection&lt;V&gt;&gt; R collect(
+            Iterable&lt;T&gt; iterable,
+            Function&lt;? super T, V&gt; function,
+            R target,
+            boolean allowReorderedResult)
+    {
+<span class="nc" id="L786">        return ParallelIterate.collect(</span>
+                iterable,
+                function,
+                target,
+                ParallelIterate.DEFAULT_MIN_FORK_SIZE,
+                ParallelIterate.EXECUTOR_SERVICE,
+                allowReorderedResult);
+    }
+
+    public static &lt;T, V, R extends Collection&lt;V&gt;&gt; R collect(
+            Iterable&lt;T&gt; iterable,
+            Function&lt;? super T, V&gt; function,
+            R target,
+            int batchSize,
+            Executor executor,
+            boolean allowReorderedResult)
+    {
+<span class="nc" id="L803">        int size = Iterate.sizeOf(iterable);</span>
+<span class="nc" id="L804">        FastListCollectProcedureCombiner&lt;T, V&gt; combiner = new FastListCollectProcedureCombiner&lt;&gt;(iterable, target, size, allowReorderedResult);</span>
+<span class="nc" id="L805">        int taskCount = ParallelIterate.calculateTaskCount(iterable, batchSize);</span>
+<span class="nc" id="L806">        FastListCollectProcedureFactory&lt;T, V&gt; procedureFactory = new FastListCollectProcedureFactory&lt;&gt;(function, size / taskCount);</span>
+<span class="nc" id="L807">        ParallelIterate.forEach(</span>
+                iterable,
+                procedureFactory,
+                combiner,
+                batchSize,
+                taskCount,
+                executor);
+<span class="nc" id="L814">        return (R) combiner.getResult();</span>
+    }
+
+    public static &lt;T, V&gt; Collection&lt;V&gt; flatCollect(
+            Iterable&lt;T&gt; iterable,
+            Function&lt;? super T, Collection&lt;V&gt;&gt; function)
+    {
+<span class="nc" id="L821">        return ParallelIterate.flatCollect(iterable, function, false);</span>
+    }
+
+    public static &lt;T, V&gt; Collection&lt;V&gt; flatCollect(
+            Iterable&lt;T&gt; iterable,
+            Function&lt;? super T, Collection&lt;V&gt;&gt; function,
+            boolean allowReorderedResult)
+    {
+<span class="nc" id="L829">        return ParallelIterate.flatCollect(iterable, function, null, allowReorderedResult);</span>
+    }
+
+    public static &lt;T, V, R extends Collection&lt;V&gt;&gt; R flatCollect(
+            Iterable&lt;T&gt; iterable,
+            Function&lt;? super T, Collection&lt;V&gt;&gt; function,
+            R target,
+            boolean allowReorderedResult)
+    {
+<span class="nc" id="L838">        return ParallelIterate.flatCollect(</span>
+                iterable,
+                function,
+                target,
+                ParallelIterate.DEFAULT_MIN_FORK_SIZE,
+                ParallelIterate.EXECUTOR_SERVICE,
+                allowReorderedResult);
+    }
+
+    public static &lt;T, V, R extends Collection&lt;V&gt;&gt; R flatCollect(
+            Iterable&lt;T&gt; iterable,
+            Function&lt;? super T, Collection&lt;V&gt;&gt; function,
+            R target,
+            int batchSize,
+            Executor executor,
+            boolean allowReorderedResult)
+    {
+<span class="nc" id="L855">        int size = Iterate.sizeOf(iterable);</span>
+<span class="nc" id="L856">        int taskCount = ParallelIterate.calculateTaskCount(iterable, batchSize);</span>
+<span class="nc" id="L857">        int taskSize = size / taskCount;</span>
+<span class="nc" id="L858">        FlatCollectProcedureCombiner&lt;T, V&gt; combiner =</span>
+                new FlatCollectProcedureCombiner&lt;&gt;(iterable, target, size, allowReorderedResult);
+<span class="nc" id="L860">        FlatCollectProcedureFactory&lt;T, V&gt; procedureFactory = new FlatCollectProcedureFactory&lt;&gt;(function, taskSize);</span>
+<span class="nc" id="L861">        ParallelIterate.forEach(</span>
+                iterable,
+                procedureFactory,
+                combiner,
+                batchSize,
+                taskCount,
+                executor);
+<span class="nc" id="L868">        return (R) combiner.getResult();</span>
+    }
+
+    /**
+     * Same effect as {@link Iterate#collectIf(Iterable, Predicate, Function)},
+     * but executed in parallel batches.
+     *
+     * @return The collected elements. The Collection will be of the same type as the input (List or Set)
+     * and will be in the same order as the input (if it is an ordered collection).
+     * @see ParallelIterate#collectIf(Iterable, Predicate, Function, boolean)
+     */
+    public static &lt;T, V&gt; Collection&lt;V&gt; collectIf(
+            Iterable&lt;T&gt; iterable,
+            Predicate&lt;? super T&gt; predicate,
+            Function&lt;? super T, V&gt; function)
+    {
+<span class="nc" id="L884">        return ParallelIterate.collectIf(iterable, predicate, function, false);</span>
+    }
+
+    /**
+     * Same effect as {@link Iterate#collectIf(Iterable, Predicate, Function)},
+     * but executed in parallel batches, and with potentially reordered results.
+     *
+     * @param allowReorderedResult If the result can be in a different order.
+     *                             Allowing reordering may yield faster execution.
+     * @return The collected elements. The Collection will be of the same type
+     * as the input (List or Set)
+     */
+    public static &lt;T, V&gt; Collection&lt;V&gt; collectIf(
+            Iterable&lt;T&gt; iterable,
+            Predicate&lt;? super T&gt; predicate,
+            Function&lt;? super T, V&gt; function,
+            boolean allowReorderedResult)
+    {
+<span class="nc" id="L902">        return ParallelIterate.collectIf(iterable, predicate, function, null, allowReorderedResult);</span>
+    }
+
+    /**
+     * Same effect as {@link Iterate#collectIf(Iterable, Predicate, Function)},
+     * but executed in parallel batches, and writing output into the specified collection.
+     *
+     * @param target               Where to write the output.
+     * @param allowReorderedResult If the result can be in a different order.
+     *                             Allowing reordering may yield faster execution.
+     * @return The 'target' collection, with the collected elements added.
+     */
+    public static &lt;T, V, R extends Collection&lt;V&gt;&gt; R collectIf(
+            Iterable&lt;T&gt; iterable,
+            Predicate&lt;? super T&gt; predicate,
+            Function&lt;? super T, V&gt; function,
+            R target,
+            boolean allowReorderedResult)
+    {
+<span class="nc" id="L921">        return ParallelIterate.collectIf(</span>
+                iterable,
+                predicate,
+                function,
+                target,
+                ParallelIterate.DEFAULT_MIN_FORK_SIZE,
+                ParallelIterate.EXECUTOR_SERVICE,
+                allowReorderedResult);
+    }
+
+    public static &lt;T, V, R extends Collection&lt;V&gt;&gt; R collectIf(
+            Iterable&lt;T&gt; iterable,
+            Predicate&lt;? super T&gt; predicate,
+            Function&lt;? super T, V&gt; function,
+            R target,
+            int batchSize,
+            Executor executor,
+            boolean allowReorderedResult)
+    {
+<span class="nc" id="L940">        FastListCollectIfProcedureCombiner&lt;T, V&gt; combiner = new FastListCollectIfProcedureCombiner&lt;&gt;(iterable, target, 10, allowReorderedResult);</span>
+<span class="nc" id="L941">        FastListCollectIfProcedureFactory&lt;T, V&gt; procedureFactory = new FastListCollectIfProcedureFactory&lt;&gt;(function, predicate, batchSize);</span>
+<span class="nc" id="L942">        ParallelIterate.forEach(</span>
+                iterable,
+                procedureFactory,
+                combiner,
+                batchSize,
+<span class="nc" id="L947">                ParallelIterate.calculateTaskCount(iterable, batchSize),</span>
+                executor);
+<span class="nc" id="L949">        return (R) combiner.getResult();</span>
+    }
+
+    /**
+     * Same effect as {@link Iterate#groupBy(Iterable, Function)},
+     * but executed in parallel batches, and writing output into a SynchronizedPutFastListMultimap.
+     */
+    public static &lt;K, V&gt; MutableMultimap&lt;K, V&gt; groupBy(
+            Iterable&lt;V&gt; iterable,
+            Function&lt;? super V, ? extends K&gt; function)
+    {
+<span class="nc" id="L960">        return ParallelIterate.groupBy(iterable, function, ParallelIterate.DEFAULT_MIN_FORK_SIZE, ParallelIterate.EXECUTOR_SERVICE);</span>
+    }
+
+    public static &lt;T, K, V&gt; MutableMap&lt;K, V&gt; aggregateBy(
+            Iterable&lt;T&gt; iterable,
+            Function&lt;? super T, ? extends K&gt; groupBy,
+            Function0&lt;? extends V&gt; zeroValueFactory,
+            Function2&lt;? super V, ? super T, ? extends V&gt; nonMutatingAggregator)
+    {
+<span class="nc" id="L969">        return ParallelIterate.aggregateBy(</span>
+                iterable,
+                groupBy,
+                zeroValueFactory,
+                nonMutatingAggregator,
+                ParallelIterate.DEFAULT_MIN_FORK_SIZE);
+    }
+
+    public static &lt;T, K, V, R extends MutableMap&lt;K, V&gt;&gt; R aggregateBy(
+            Iterable&lt;T&gt; iterable,
+            Function&lt;? super T, ? extends K&gt; groupBy,
+            Function0&lt;? extends V&gt; zeroValueFactory,
+            Function2&lt;? super V, ? super T, ? extends V&gt; nonMutatingAggregator,
+            R mutableMap)
+    {
+<span class="nc" id="L984">        return ParallelIterate.aggregateBy(</span>
+                iterable,
+                groupBy,
+                zeroValueFactory,
+                nonMutatingAggregator,
+                mutableMap,
+                ParallelIterate.DEFAULT_MIN_FORK_SIZE);
+    }
+
+    public static &lt;T, K, V&gt; MutableMap&lt;K, V&gt; aggregateBy(
+            Iterable&lt;T&gt; iterable,
+            Function&lt;? super T, ? extends K&gt; groupBy,
+            Function0&lt;? extends V&gt; zeroValueFactory,
+            Function2&lt;? super V, ? super T, ? extends V&gt; nonMutatingAggregator,
+            int batchSize)
+    {
+<span class="nc" id="L1000">        return ParallelIterate.aggregateBy(</span>
+                iterable,
+                groupBy,
+                zeroValueFactory,
+                nonMutatingAggregator,
+                batchSize,
+                ParallelIterate.EXECUTOR_SERVICE);
+    }
+
+    public static &lt;T, K, V, R extends MutableMap&lt;K, V&gt;&gt; R aggregateBy(
+            Iterable&lt;T&gt; iterable,
+            Function&lt;? super T, ? extends K&gt; groupBy,
+            Function0&lt;? extends V&gt; zeroValueFactory,
+            Function2&lt;? super V, ? super T, ? extends V&gt; nonMutatingAggregator,
+            R mutableMap,
+            int batchSize)
+    {
+<span class="nc" id="L1017">        return ParallelIterate.aggregateBy(</span>
+                iterable,
+                groupBy,
+                zeroValueFactory,
+                nonMutatingAggregator,
+                mutableMap,
+                batchSize,
+                ParallelIterate.EXECUTOR_SERVICE);
+    }
+
+    public static &lt;T, K, V&gt; MutableMap&lt;K, V&gt; aggregateBy(
+            Iterable&lt;T&gt; iterable,
+            Function&lt;? super T, ? extends K&gt; groupBy,
+            Function0&lt;? extends V&gt; zeroValueFactory,
+            Function2&lt;? super V, ? super T, ? extends V&gt; nonMutatingAggregator,
+            int batchSize,
+            Executor executor)
+    {
+<span class="nc" id="L1035">        return ParallelIterate.aggregateBy(</span>
+                iterable,
+                groupBy,
+                zeroValueFactory,
+                nonMutatingAggregator,
+<span class="nc" id="L1040">                ConcurrentHashMap.newMap(),</span>
+                batchSize,
+                executor);
+    }
+
+    public static &lt;T, K, V, R extends MutableMap&lt;K, V&gt;&gt; R aggregateBy(
+            Iterable&lt;T&gt; iterable,
+            Function&lt;? super T, ? extends K&gt; groupBy,
+            Function0&lt;? extends V&gt; zeroValueFactory,
+            Function2&lt;? super V, ? super T, ? extends V&gt; nonMutatingAggregator,
+            R mutableMap,
+            int batchSize,
+            Executor executor)
+    {
+<span class="nc" id="L1054">        NonMutatingAggregationProcedure&lt;T, K, V&gt; nonMutatingAggregationProcedure =</span>
+                new NonMutatingAggregationProcedure&lt;&gt;(mutableMap, groupBy, zeroValueFactory, nonMutatingAggregator);
+<span class="nc" id="L1056">        ParallelIterate.forEach(</span>
+                iterable,
+                new PassThruProcedureFactory&lt;&gt;(nonMutatingAggregationProcedure),
+<span class="nc" id="L1059">                Combiners.&lt;Procedure&lt;T&gt;&gt;passThru(),</span>
+                batchSize,
+                executor);
+<span class="nc" id="L1062">        return mutableMap;</span>
+    }
+
+    public static &lt;T, K, V&gt; MutableMap&lt;K, V&gt; aggregateInPlaceBy(
+            Iterable&lt;T&gt; iterable,
+            Function&lt;? super T, ? extends K&gt; groupBy,
+            Function0&lt;? extends V&gt; zeroValueFactory,
+            Procedure2&lt;? super V, ? super T&gt; mutatingAggregator)
+    {
+<span class="nc" id="L1071">        return ParallelIterate.aggregateInPlaceBy(</span>
+                iterable,
+                groupBy,
+                zeroValueFactory,
+                mutatingAggregator,
+                ParallelIterate.DEFAULT_MIN_FORK_SIZE);
+    }
+
+    public static &lt;T, K, V, R extends MutableMap&lt;K, V&gt;&gt; R aggregateInPlaceBy(
+            Iterable&lt;T&gt; iterable,
+            Function&lt;? super T, ? extends K&gt; groupBy,
+            Function0&lt;? extends V&gt; zeroValueFactory,
+            Procedure2&lt;? super V, ? super T&gt; mutatingAggregator,
+            R mutableMap)
+    {
+<span class="nc" id="L1086">        return ParallelIterate.aggregateInPlaceBy(</span>
+                iterable,
+                groupBy,
+                zeroValueFactory,
+                mutatingAggregator,
+                mutableMap,
+                ParallelIterate.DEFAULT_MIN_FORK_SIZE);
+    }
+
+    public static &lt;T, K, V&gt; MutableMap&lt;K, V&gt; aggregateInPlaceBy(
+            Iterable&lt;T&gt; iterable,
+            Function&lt;? super T, ? extends K&gt; groupBy,
+            Function0&lt;? extends V&gt; zeroValueFactory,
+            Procedure2&lt;? super V, ? super T&gt; mutatingAggregator,
+            int batchSize)
+    {
+<span class="nc" id="L1102">        return ParallelIterate.aggregateInPlaceBy(</span>
+                iterable,
+                groupBy,
+                zeroValueFactory,
+                mutatingAggregator,
+                batchSize,
+                ParallelIterate.EXECUTOR_SERVICE);
+    }
+
+    public static &lt;T, K, V, R extends MutableMap&lt;K, V&gt;&gt; R aggregateInPlaceBy(
+            Iterable&lt;T&gt; iterable,
+            Function&lt;? super T, ? extends K&gt; groupBy,
+            Function0&lt;? extends V&gt; zeroValueFactory,
+            Procedure2&lt;? super V, ? super T&gt; mutatingAggregator,
+            R mutableMap,
+            int batchSize)
+    {
+<span class="nc" id="L1119">        return ParallelIterate.aggregateInPlaceBy(</span>
+                iterable,
+                groupBy,
+                zeroValueFactory,
+                mutatingAggregator,
+                mutableMap,
+                batchSize,
+                ParallelIterate.EXECUTOR_SERVICE);
+    }
+
+    public static &lt;T, K, V&gt; MutableMap&lt;K, V&gt; aggregateInPlaceBy(
+            Iterable&lt;T&gt; iterable,
+            Function&lt;? super T, ? extends K&gt; groupBy,
+            Function0&lt;? extends V&gt; zeroValueFactory,
+            Procedure2&lt;? super V, ? super T&gt; mutatingAggregator,
+            int batchSize,
+            Executor executor)
+    {
+<span class="nc" id="L1137">        MutableMap&lt;K, V&gt; map = ConcurrentHashMap.newMap();</span>
+<span class="nc" id="L1138">        MutatingAggregationProcedure&lt;T, K, V&gt; mutatingAggregationProcedure =</span>
+                new MutatingAggregationProcedure&lt;&gt;(map, groupBy, zeroValueFactory, mutatingAggregator);
+<span class="nc" id="L1140">        ParallelIterate.forEach(</span>
+                iterable,
+                new PassThruProcedureFactory&lt;&gt;(mutatingAggregationProcedure),
+<span class="nc" id="L1143">                Combiners.&lt;Procedure&lt;T&gt;&gt;passThru(),</span>
+                batchSize,
+                executor);
+<span class="nc" id="L1146">        return map;</span>
+    }
+
+    public static &lt;T, K, V, R extends MutableMap&lt;K, V&gt;&gt; R aggregateInPlaceBy(
+            Iterable&lt;T&gt; iterable,
+            Function&lt;? super T, ? extends K&gt; groupBy,
+            Function0&lt;? extends V&gt; zeroValueFactory,
+            Procedure2&lt;? super V, ? super T&gt; mutatingAggregator,
+            R mutableMap,
+            int batchSize,
+            Executor executor)
+    {
+<span class="nc" id="L1158">        MutatingAggregationProcedure&lt;T, K, V&gt; mutatingAggregationProcedure =</span>
+                new MutatingAggregationProcedure&lt;&gt;(mutableMap, groupBy, zeroValueFactory, mutatingAggregator);
+<span class="nc" id="L1160">        ParallelIterate.forEach(</span>
+                iterable,
+                new PassThruProcedureFactory&lt;&gt;(mutatingAggregationProcedure),
+<span class="nc" id="L1163">                Combiners.&lt;Procedure&lt;T&gt;&gt;passThru(),</span>
+                batchSize,
+                executor);
+<span class="nc" id="L1166">        return mutableMap;</span>
+    }
+
+    /**
+     * Same effect as {@link Iterate#groupBy(Iterable, Function)},
+     * but executed in parallel batches, and writing output into a SynchronizedPutFastListMultimap.
+     */
+    public static &lt;K, V, R extends MutableMultimap&lt;K, V&gt;&gt; MutableMultimap&lt;K, V&gt; groupBy(
+            Iterable&lt;V&gt; iterable,
+            Function&lt;? super V, ? extends K&gt; function,
+            R concurrentMultimap)
+    {
+<span class="nc" id="L1178">        return ParallelIterate.groupBy(iterable, function, concurrentMultimap, ParallelIterate.DEFAULT_MIN_FORK_SIZE);</span>
+    }
+
+    /**
+     * Same effect as {@link Iterate#groupBy(Iterable, Function)},
+     * but executed in parallel batches, and writing output into a SynchronizedPutFastListMultimap.
+     */
+    public static &lt;K, V, R extends MutableMultimap&lt;K, V&gt;&gt; MutableMultimap&lt;K, V&gt; groupBy(
+            Iterable&lt;V&gt; iterable,
+            Function&lt;? super V, ? extends K&gt; function,
+            R concurrentMultimap,
+            int batchSize)
+    {
+<span class="nc" id="L1191">        return ParallelIterate.groupBy(iterable, function, concurrentMultimap, batchSize, ParallelIterate.EXECUTOR_SERVICE);</span>
+    }
+
+    /**
+     * Same effect as {@link Iterate#groupBy(Iterable, Function)},
+     * but executed in parallel batches, and writing output into a SynchronizedPutFastListMultimap.
+     */
+    public static &lt;K, V&gt; MutableMultimap&lt;K, V&gt; groupBy(
+            Iterable&lt;V&gt; iterable,
+            Function&lt;? super V, ? extends K&gt; function,
+            int batchSize)
+    {
+<span class="nc" id="L1203">        return ParallelIterate.groupBy(iterable, function, batchSize, ParallelIterate.EXECUTOR_SERVICE);</span>
+    }
+
+    /**
+     * Same effect as {@link Iterate#groupBy(Iterable, Function)},
+     * but executed in parallel batches, and writing output into a SynchronizedPutFastListMultimap.
+     */
+    public static &lt;K, V&gt; MutableMultimap&lt;K, V&gt; groupBy(
+            Iterable&lt;V&gt; iterable,
+            Function&lt;? super V, ? extends K&gt; function,
+            int batchSize,
+            Executor executor)
+    {
+<span class="nc" id="L1216">        return ParallelIterate.groupBy(iterable, function, SynchronizedPutFastListMultimap.newMultimap(), batchSize, executor);</span>
+    }
+
+    /**
+     * Same effect as {@link Iterate#groupBy(Iterable, Function)},
+     * but executed in parallel batches, and writing output into a SynchronizedPutFastListMultimap.
+     */
+    public static &lt;K, V, R extends MutableMultimap&lt;K, V&gt;&gt; MutableMultimap&lt;K, V&gt; groupBy(
+            Iterable&lt;V&gt; iterable,
+            Function&lt;? super V, ? extends K&gt; function,
+            R concurrentMultimap,
+            int batchSize,
+            Executor executor)
+    {
+<span class="nc" id="L1230">        ParallelIterate.forEach(</span>
+                iterable,
+                new PassThruProcedureFactory&lt;&gt;(new MultimapPutProcedure&lt;&gt;(concurrentMultimap, function)),
+<span class="nc" id="L1233">                Combiners.&lt;Procedure&lt;V&gt;&gt;passThru(),</span>
+                batchSize,
+                executor);
+<span class="nc" id="L1236">        return concurrentMultimap;</span>
+    }
+
+    public static &lt;T, V&gt; ObjectDoubleMap&lt;V&gt; sumByDouble(
+            Iterable&lt;T&gt; iterable,
+            Function&lt;T, V&gt; groupBy,
+            DoubleFunction&lt;? super T&gt; function)
+    {
+<span class="nc" id="L1244">        ObjectDoubleHashMap&lt;V&gt; result = ObjectDoubleHashMap.newMap();</span>
+<span class="nc" id="L1245">        ParallelIterate.forEach(</span>
+                iterable,
+                new SumByDoubleProcedure&lt;&gt;(groupBy, function),
+                new SumByDoubleCombiner&lt;&gt;(result),
+                ParallelIterate.DEFAULT_MIN_FORK_SIZE,
+                ParallelIterate.EXECUTOR_SERVICE);
+<span class="nc" id="L1251">        return result;</span>
+    }
+
+    public static &lt;T, V&gt; ObjectDoubleMap&lt;V&gt; sumByFloat(
+            Iterable&lt;T&gt; iterable,
+            Function&lt;T, V&gt; groupBy,
+            FloatFunction&lt;? super T&gt; function)
+    {
+<span class="nc" id="L1259">        ObjectDoubleHashMap&lt;V&gt; result = ObjectDoubleHashMap.newMap();</span>
+<span class="nc" id="L1260">        ParallelIterate.forEach(</span>
+                iterable,
+                new SumByFloatProcedure&lt;&gt;(groupBy, function),
+                new SumByFloatCombiner&lt;&gt;(result),
+                ParallelIterate.DEFAULT_MIN_FORK_SIZE,
+                ParallelIterate.EXECUTOR_SERVICE);
+<span class="nc" id="L1266">        return result;</span>
+    }
+
+    public static &lt;T, V&gt; ObjectLongMap&lt;V&gt; sumByLong(
+            Iterable&lt;T&gt; iterable,
+            Function&lt;T, V&gt; groupBy,
+            LongFunction&lt;? super T&gt; function)
+    {
+<span class="nc" id="L1274">        ObjectLongHashMap&lt;V&gt; result = ObjectLongHashMap.newMap();</span>
+<span class="nc" id="L1275">        ParallelIterate.forEach(</span>
+                iterable,
+                new SumByLongProcedure&lt;&gt;(groupBy, function),
+                new SumByLongCombiner&lt;&gt;(result),
+                ParallelIterate.DEFAULT_MIN_FORK_SIZE,
+                ParallelIterate.EXECUTOR_SERVICE);
+<span class="nc" id="L1281">        return result;</span>
+    }
+
+    public static &lt;T, V&gt; ObjectLongMap&lt;V&gt; sumByInt(
+            Iterable&lt;T&gt; iterable,
+            Function&lt;T, V&gt; groupBy,
+            IntFunction&lt;? super T&gt; function)
+    {
+<span class="nc" id="L1289">        ObjectLongHashMap&lt;V&gt; result = ObjectLongHashMap.newMap();</span>
+<span class="nc" id="L1290">        ParallelIterate.forEach(</span>
+                iterable,
+                new SumByIntProcedure&lt;&gt;(groupBy, function),
+                new SumByIntCombiner&lt;&gt;(result),
+                ParallelIterate.DEFAULT_MIN_FORK_SIZE,
+                ParallelIterate.EXECUTOR_SERVICE);
+<span class="nc" id="L1296">        return result;</span>
+    }
+
+    /**
+     * @since 6.0
+     */
+    public static &lt;V, T&gt; MutableMap&lt;V, BigDecimal&gt; sumByBigDecimal(Iterable&lt;T&gt; iterable, Function&lt;T, V&gt; groupBy, Function&lt;? super T, BigDecimal&gt; function)
+    {
+<span class="nc" id="L1304">        MutableMap&lt;V, BigDecimal&gt; result = UnifiedMap.newMap();</span>
+<span class="nc" id="L1305">        ParallelIterate.forEach(</span>
+                iterable,
+                new SumByBigDecimalProcedure&lt;&gt;(groupBy, function),
+                new SumByBigDecimalCombiner&lt;&gt;(result),
+                ParallelIterate.DEFAULT_MIN_FORK_SIZE,
+                ParallelIterate.EXECUTOR_SERVICE);
+<span class="nc" id="L1311">        return result;</span>
+    }
+
+    /**
+     * @since 6.0
+     */
+    public static &lt;V, T&gt; MutableMap&lt;V, BigInteger&gt; sumByBigInteger(Iterable&lt;T&gt; iterable, Function&lt;T, V&gt; groupBy, Function&lt;? super T, BigInteger&gt; function)
+    {
+<span class="nc" id="L1319">        MutableMap&lt;V, BigInteger&gt; result = UnifiedMap.newMap();</span>
+<span class="nc" id="L1320">        ParallelIterate.forEach(</span>
+                iterable,
+                new SumByBigIntegerProcedure&lt;&gt;(groupBy, function),
+                new SumByBigIntegerCombiner&lt;&gt;(result),
+                ParallelIterate.DEFAULT_MIN_FORK_SIZE,
+                ParallelIterate.EXECUTOR_SERVICE);
+<span class="nc" id="L1326">        return result;</span>
+    }
+
+    /**
+     * Returns a brand new ExecutorService using the specified poolName with the specified maximum thread pool size. The
+     * same poolName may be used more than once resulting in multiple pools with the same name.
+     * &lt;p&gt;
+     * The pool will be initialised with newPoolSize threads.  If that number of threads are in use and another thread
+     * is requested, the pool will reject execution and the submitting thread will execute the task.
+     */
+    public static ExecutorService newPooledExecutor(int newPoolSize, String poolName, boolean useDaemonThreads)
+    {
+<span class="nc" id="L1338">        return new ThreadPoolExecutor(</span>
+                newPoolSize,
+                newPoolSize,
+                0L,
+                TimeUnit.MILLISECONDS,
+                new SynchronousQueue&lt;&gt;(),
+                new CollectionsThreadFactory(poolName, useDaemonThreads),
+                new ThreadPoolExecutor.CallerRunsPolicy());
+    }
+
+    /**
+     * Returns a brand new ExecutorService using the specified poolName and uses the optional property named
+     * to set the maximum thread pool size.  The same poolName may be used more than
+     * once resulting in multiple pools with the same name.
+     */
+    public static ExecutorService newPooledExecutor(String poolName, boolean useDaemonThreads)
+    {
+<span class="nc" id="L1355">        return ParallelIterate.newPooledExecutor(ParallelIterate.getDefaultMaxThreadPoolSize(), poolName, useDaemonThreads);</span>
+    }
+
+    public static int getDefaultTaskCount()
+    {
+<span class="nc" id="L1360">        return ParallelIterate.getDefaultMaxThreadPoolSize() * ParallelIterate.getTaskRatio();</span>
+    }
+
+    public static int getDefaultMaxThreadPoolSize()
+    {
+<span class="nc" id="L1365">        return Math.min(AVAILABLE_PROCESSORS + 1, 100);</span>
+    }
+
+    public static int getTaskRatio()
+    {
+<span class="nc" id="L1370">        return TASK_RATIO;</span>
+    }
+
+    private static final class SumByDoubleProcedure&lt;T, V&gt; implements Procedure&lt;T&gt;, ProcedureFactory&lt;SumByDoubleProcedure&lt;T, V&gt;&gt;
+    {
+<span class="nc" id="L1375">        private final MutableMap&lt;V, DoubleDoublePair&gt; map = Maps.mutable.of();</span>
+        private final Function&lt;T, V&gt; groupBy;
+        private final DoubleFunction&lt;? super T&gt; function;
+
+        private SumByDoubleProcedure(Function&lt;T, V&gt; groupBy, DoubleFunction&lt;? super T&gt; function)
+<span class="nc" id="L1380">        {</span>
+<span class="nc" id="L1381">            this.groupBy = groupBy;</span>
+<span class="nc" id="L1382">            this.function = function;</span>
+<span class="nc" id="L1383">        }</span>
+
+        @Override
+        public void value(T each)
+        {
+<span class="nc" id="L1388">            V groupKey = this.groupBy.valueOf(each);</span>
+<span class="nc" id="L1389">            DoubleDoublePair sumCompensation = this.map.getIfAbsentPut(groupKey, () -&gt; PrimitiveTuples.pair(0.0d, 0.0d));</span>
+<span class="nc" id="L1390">            double sum = sumCompensation.getOne();</span>
+<span class="nc" id="L1391">            double compensation = sumCompensation.getTwo();</span>
+<span class="nc" id="L1392">            double adjustedValue = this.function.doubleValueOf(each) - compensation;</span>
+<span class="nc" id="L1393">            double nextSum = sum + adjustedValue;</span>
+<span class="nc" id="L1394">            compensation = nextSum - sum - adjustedValue;</span>
+<span class="nc" id="L1395">            sum = nextSum;</span>
+<span class="nc" id="L1396">            this.map.put(groupKey, PrimitiveTuples.pair(sum, compensation));</span>
+<span class="nc" id="L1397">        }</span>
+
+        public MutableMap&lt;V, DoubleDoublePair&gt; getResult()
+        {
+<span class="nc" id="L1401">            return this.map;</span>
+        }
+
+        @Override
+        public SumByDoubleProcedure&lt;T, V&gt; create()
+        {
+<span class="nc" id="L1407">            return new SumByDoubleProcedure&lt;&gt;(this.groupBy, this.function);</span>
+        }
+    }
+
+    private static final class SumByDoubleCombiner&lt;T, V&gt; extends AbstractProcedureCombiner&lt;SumByDoubleProcedure&lt;T, V&gt;&gt;
+    {
+        private final ObjectDoubleHashMap&lt;V&gt; result;
+<span class="nc" id="L1414">        private final ObjectDoubleHashMap&lt;V&gt; compensation = ObjectDoubleHashMap.newMap();</span>
+
+        private SumByDoubleCombiner(ObjectDoubleHashMap&lt;V&gt; result)
+        {
+<span class="nc" id="L1418">            super(true);</span>
+<span class="nc" id="L1419">            this.result = result;</span>
+<span class="nc" id="L1420">        }</span>
+
+        @Override
+        public void combineOne(SumByDoubleProcedure&lt;T, V&gt; thingToCombine)
+        {
+<span class="nc bnc" id="L1425" title="All 2 branches missed.">            if (this.result.isEmpty())</span>
+            {
+<span class="nc" id="L1427">                thingToCombine.getResult().forEachKeyValue((each, sumCompensation) -&gt; {</span>
+<span class="nc" id="L1428">                    this.result.put(each, sumCompensation.getOne());</span>
+<span class="nc" id="L1429">                    this.compensation.put(each, sumCompensation.getTwo());</span>
+<span class="nc" id="L1430">                });</span>
+            }
+            else
+            {
+<span class="nc" id="L1434">                thingToCombine.getResult().forEachKeyValue((each, sumCompensation) -&gt; {</span>
+<span class="nc" id="L1435">                    double sum = this.result.get(each);</span>
+<span class="nc" id="L1436">                    double currentCompensation = this.compensation.getIfAbsentPut(each, () -&gt; 0.0d) + sumCompensation.getTwo();</span>
+
+<span class="nc" id="L1438">                    double adjustedValue = sumCompensation.getOne() - currentCompensation;</span>
+<span class="nc" id="L1439">                    double nextSum = sum + adjustedValue;</span>
+<span class="nc" id="L1440">                    this.compensation.put(each, nextSum - sum - adjustedValue);</span>
+<span class="nc" id="L1441">                    this.result.put(each, nextSum);</span>
+<span class="nc" id="L1442">                });</span>
+            }
+<span class="nc" id="L1444">        }</span>
+    }
+
+    private static final class SumByFloatProcedure&lt;T, V&gt; implements Procedure&lt;T&gt;, ProcedureFactory&lt;SumByFloatProcedure&lt;T, V&gt;&gt;
+    {
+<span class="nc" id="L1449">        private final MutableMap&lt;V, DoubleDoublePair&gt; map = Maps.mutable.of();</span>
+        private final Function&lt;T, V&gt; groupBy;
+        private final FloatFunction&lt;? super T&gt; function;
+
+        private SumByFloatProcedure(Function&lt;T, V&gt; groupBy, FloatFunction&lt;? super T&gt; function)
+<span class="nc" id="L1454">        {</span>
+<span class="nc" id="L1455">            this.groupBy = groupBy;</span>
+<span class="nc" id="L1456">            this.function = function;</span>
+<span class="nc" id="L1457">        }</span>
+
+        @Override
+        public void value(T each)
+        {
+<span class="nc" id="L1462">            V groupKey = this.groupBy.valueOf(each);</span>
+<span class="nc" id="L1463">            DoubleDoublePair sumCompensation = this.map.getIfAbsentPut(groupKey, () -&gt; PrimitiveTuples.pair(0.0d, 0.0d));</span>
+<span class="nc" id="L1464">            double sum = sumCompensation.getOne();</span>
+<span class="nc" id="L1465">            double compensation = sumCompensation.getTwo();</span>
+<span class="nc" id="L1466">            double adjustedValue = this.function.floatValueOf(each) - compensation;</span>
+<span class="nc" id="L1467">            double nextSum = sum + adjustedValue;</span>
+<span class="nc" id="L1468">            compensation = nextSum - sum - adjustedValue;</span>
+<span class="nc" id="L1469">            sum = nextSum;</span>
+<span class="nc" id="L1470">            this.map.put(groupKey, PrimitiveTuples.pair(sum, compensation));</span>
+<span class="nc" id="L1471">        }</span>
+
+        public MutableMap&lt;V, DoubleDoublePair&gt; getResult()
+        {
+<span class="nc" id="L1475">            return this.map;</span>
+        }
+
+        @Override
+        public SumByFloatProcedure&lt;T, V&gt; create()
+        {
+<span class="nc" id="L1481">            return new SumByFloatProcedure&lt;&gt;(this.groupBy, this.function);</span>
+        }
+    }
+
+    private static final class SumByFloatCombiner&lt;T, V&gt; extends AbstractProcedureCombiner&lt;SumByFloatProcedure&lt;T, V&gt;&gt;
+    {
+        private final ObjectDoubleHashMap&lt;V&gt; result;
+<span class="nc" id="L1488">        private final ObjectDoubleHashMap&lt;V&gt; compensation = ObjectDoubleHashMap.newMap();</span>
+
+        private SumByFloatCombiner(ObjectDoubleHashMap&lt;V&gt; result)
+        {
+<span class="nc" id="L1492">            super(true);</span>
+<span class="nc" id="L1493">            this.result = result;</span>
+<span class="nc" id="L1494">        }</span>
+
+        @Override
+        public void combineOne(SumByFloatProcedure&lt;T, V&gt; thingToCombine)
+        {
+<span class="nc bnc" id="L1499" title="All 2 branches missed.">            if (this.result.isEmpty())</span>
+            {
+<span class="nc" id="L1501">                thingToCombine.getResult().forEachKeyValue((each, sumCompensation) -&gt; {</span>
+<span class="nc" id="L1502">                    this.result.put(each, sumCompensation.getOne());</span>
+<span class="nc" id="L1503">                    this.compensation.put(each, sumCompensation.getTwo());</span>
+<span class="nc" id="L1504">                });</span>
+            }
+            else
+            {
+<span class="nc" id="L1508">                thingToCombine.getResult().forEachKeyValue((each, sumCompensation) -&gt; {</span>
+<span class="nc" id="L1509">                    double sum = this.result.get(each);</span>
+<span class="nc" id="L1510">                    double currentCompensation = this.compensation.getIfAbsentPut(each, () -&gt; 0.0d) + sumCompensation.getTwo();</span>
+
+<span class="nc" id="L1512">                    double adjustedValue = sumCompensation.getOne() - currentCompensation;</span>
+<span class="nc" id="L1513">                    double nextSum = sum + adjustedValue;</span>
+<span class="nc" id="L1514">                    this.compensation.put(each, nextSum - sum - adjustedValue);</span>
+<span class="nc" id="L1515">                    this.result.put(each, nextSum);</span>
+<span class="nc" id="L1516">                });</span>
+            }
+<span class="nc" id="L1518">        }</span>
+    }
+
+    private static final class SumByLongProcedure&lt;T, V&gt; implements Procedure&lt;T&gt;, ProcedureFactory&lt;SumByLongProcedure&lt;T, V&gt;&gt;
+    {
+<span class="nc" id="L1523">        private final ObjectLongHashMap&lt;V&gt; map = ObjectLongHashMap.newMap();</span>
+        private final Function&lt;T, V&gt; groupBy;
+        private final LongFunction&lt;? super T&gt; function;
+
+        private SumByLongProcedure(Function&lt;T, V&gt; groupBy, LongFunction&lt;? super T&gt; function)
+<span class="nc" id="L1528">        {</span>
+<span class="nc" id="L1529">            this.groupBy = groupBy;</span>
+<span class="nc" id="L1530">            this.function = function;</span>
+<span class="nc" id="L1531">        }</span>
+
+        @Override
+        public void value(T each)
+        {
+<span class="nc" id="L1536">            this.map.addToValue(this.groupBy.valueOf(each), this.function.longValueOf(each));</span>
+<span class="nc" id="L1537">        }</span>
+
+        public ObjectLongHashMap&lt;V&gt; getResult()
+        {
+<span class="nc" id="L1541">            return this.map;</span>
+        }
+
+        @Override
+        public SumByLongProcedure&lt;T, V&gt; create()
+        {
+<span class="nc" id="L1547">            return new SumByLongProcedure&lt;&gt;(this.groupBy, this.function);</span>
+        }
+    }
+
+    private static final class SumByLongCombiner&lt;T, V&gt; extends AbstractProcedureCombiner&lt;SumByLongProcedure&lt;T, V&gt;&gt;
+    {
+        private final ObjectLongHashMap&lt;V&gt; result;
+
+        private SumByLongCombiner(ObjectLongHashMap&lt;V&gt; result)
+        {
+<span class="nc" id="L1557">            super(true);</span>
+<span class="nc" id="L1558">            this.result = result;</span>
+<span class="nc" id="L1559">        }</span>
+
+        @Override
+        public void combineOne(SumByLongProcedure&lt;T, V&gt; thingToCombine)
+        {
+<span class="nc bnc" id="L1564" title="All 2 branches missed.">            if (this.result.isEmpty())</span>
+            {
+<span class="nc" id="L1566">                this.result.putAll(thingToCombine.getResult());</span>
+            }
+            else
+            {
+<span class="nc" id="L1570">                thingToCombine.getResult().forEachKeyValue(this.result::addToValue);</span>
+            }
+<span class="nc" id="L1572">        }</span>
+    }
+
+    private static final class SumByIntProcedure&lt;T, V&gt; implements Procedure&lt;T&gt;, ProcedureFactory&lt;SumByIntProcedure&lt;T, V&gt;&gt;
+    {
+<span class="nc" id="L1577">        private final ObjectLongHashMap&lt;V&gt; map = ObjectLongHashMap.newMap();</span>
+        private final Function&lt;T, V&gt; groupBy;
+        private final IntFunction&lt;? super T&gt; function;
+
+        private SumByIntProcedure(Function&lt;T, V&gt; groupBy, IntFunction&lt;? super T&gt; function)
+<span class="nc" id="L1582">        {</span>
+<span class="nc" id="L1583">            this.groupBy = groupBy;</span>
+<span class="nc" id="L1584">            this.function = function;</span>
+<span class="nc" id="L1585">        }</span>
+
+        @Override
+        public void value(T each)
+        {
+<span class="nc" id="L1590">            this.map.addToValue(this.groupBy.valueOf(each), (long) this.function.intValueOf(each));</span>
+<span class="nc" id="L1591">        }</span>
+
+        public ObjectLongHashMap&lt;V&gt; getResult()
+        {
+<span class="nc" id="L1595">            return this.map;</span>
+        }
+
+        @Override
+        public SumByIntProcedure&lt;T, V&gt; create()
+        {
+<span class="nc" id="L1601">            return new SumByIntProcedure&lt;&gt;(this.groupBy, this.function);</span>
+        }
+    }
+
+    private static final class SumByIntCombiner&lt;T, V&gt; extends AbstractProcedureCombiner&lt;SumByIntProcedure&lt;T, V&gt;&gt;
+    {
+        private final ObjectLongHashMap&lt;V&gt; result;
+
+        private SumByIntCombiner(ObjectLongHashMap&lt;V&gt; result)
+        {
+<span class="nc" id="L1611">            super(true);</span>
+<span class="nc" id="L1612">            this.result = result;</span>
+<span class="nc" id="L1613">        }</span>
+
+        @Override
+        public void combineOne(SumByIntProcedure&lt;T, V&gt; thingToCombine)
+        {
+<span class="nc bnc" id="L1618" title="All 2 branches missed.">            if (this.result.isEmpty())</span>
+            {
+<span class="nc" id="L1620">                this.result.putAll(thingToCombine.getResult());</span>
+            }
+            else
+            {
+<span class="nc" id="L1624">                thingToCombine.getResult().forEachKeyValue(this.result::addToValue);</span>
+            }
+<span class="nc" id="L1626">        }</span>
+    }
+
+    private static final class SumByBigDecimalProcedure&lt;T, V&gt; implements Procedure&lt;T&gt;, ProcedureFactory&lt;SumByBigDecimalProcedure&lt;T, V&gt;&gt;
+    {
+<span class="nc" id="L1631">        private final MutableMap&lt;V, BigDecimal&gt; map = UnifiedMap.newMap();</span>
+        private final Function&lt;T, V&gt; groupBy;
+        private final Function&lt;? super T, BigDecimal&gt; function;
+
+        private SumByBigDecimalProcedure(Function&lt;T, V&gt; groupBy, Function&lt;? super T, BigDecimal&gt; function)
+<span class="nc" id="L1636">        {</span>
+<span class="nc" id="L1637">            this.groupBy = groupBy;</span>
+<span class="nc" id="L1638">            this.function = function;</span>
+<span class="nc" id="L1639">        }</span>
+
+        @Override
+        public void value(T each)
+        {
+<span class="nc" id="L1644">            this.map.updateValue(this.groupBy.valueOf(each), Functions0.zeroBigDecimal(), original -&gt; original.add(this.function.valueOf(each)));</span>
+<span class="nc" id="L1645">        }</span>
+
+        public MutableMap&lt;V, BigDecimal&gt; getResult()
+        {
+<span class="nc" id="L1649">            return this.map;</span>
+        }
+
+        @Override
+        public SumByBigDecimalProcedure&lt;T, V&gt; create()
+        {
+<span class="nc" id="L1655">            return new SumByBigDecimalProcedure&lt;&gt;(this.groupBy, this.function);</span>
+        }
+    }
+
+    private static final class SumByBigDecimalCombiner&lt;T, V&gt; extends AbstractProcedureCombiner&lt;SumByBigDecimalProcedure&lt;T, V&gt;&gt;
+    {
+        private final MutableMap&lt;V, BigDecimal&gt; result;
+
+        private SumByBigDecimalCombiner(MutableMap&lt;V, BigDecimal&gt; result)
+        {
+<span class="nc" id="L1665">            super(true);</span>
+<span class="nc" id="L1666">            this.result = result;</span>
+<span class="nc" id="L1667">        }</span>
+
+        @Override
+        public void combineOne(SumByBigDecimalProcedure&lt;T, V&gt; thingToCombine)
+        {
+<span class="nc bnc" id="L1672" title="All 2 branches missed.">            if (this.result.isEmpty())</span>
+            {
+<span class="nc" id="L1674">                this.result.putAll(thingToCombine.getResult());</span>
+            }
+            else
+            {
+<span class="nc" id="L1678">                thingToCombine.getResult().forEachKeyValue((key, value) -&gt; this.result.updateValue(key, Functions0.zeroBigDecimal(), original -&gt; original.add(value)));</span>
+            }
+<span class="nc" id="L1680">        }</span>
+    }
+
+    private static final class SumByBigIntegerProcedure&lt;T, V&gt; implements Procedure&lt;T&gt;, ProcedureFactory&lt;SumByBigIntegerProcedure&lt;T, V&gt;&gt;
+    {
+<span class="nc" id="L1685">        private final MutableMap&lt;V, BigInteger&gt; map = UnifiedMap.newMap();</span>
+        private final Function&lt;T, V&gt; groupBy;
+        private final Function&lt;? super T, BigInteger&gt; function;
+
+        private SumByBigIntegerProcedure(Function&lt;T, V&gt; groupBy, Function&lt;? super T, BigInteger&gt; function)
+<span class="nc" id="L1690">        {</span>
+<span class="nc" id="L1691">            this.groupBy = groupBy;</span>
+<span class="nc" id="L1692">            this.function = function;</span>
+<span class="nc" id="L1693">        }</span>
+
+        @Override
+        public void value(T each)
+        {
+<span class="nc" id="L1698">            this.map.updateValue(this.groupBy.valueOf(each), Functions0.zeroBigInteger(), original -&gt; original.add(this.function.valueOf(each)));</span>
+<span class="nc" id="L1699">        }</span>
+
+        public MutableMap&lt;V, BigInteger&gt; getResult()
+        {
+<span class="nc" id="L1703">            return this.map;</span>
+        }
+
+        @Override
+        public SumByBigIntegerProcedure&lt;T, V&gt; create()
+        {
+<span class="nc" id="L1709">            return new SumByBigIntegerProcedure&lt;&gt;(this.groupBy, this.function);</span>
+        }
+    }
+
+    private static final class SumByBigIntegerCombiner&lt;T, V&gt; extends AbstractProcedureCombiner&lt;SumByBigIntegerProcedure&lt;T, V&gt;&gt;
+    {
+        private final MutableMap&lt;V, BigInteger&gt; result;
+
+        private SumByBigIntegerCombiner(MutableMap&lt;V, BigInteger&gt; result)
+        {
+<span class="nc" id="L1719">            super(true);</span>
+<span class="nc" id="L1720">            this.result = result;</span>
+<span class="nc" id="L1721">        }</span>
+
+        @Override
+        public void combineOne(SumByBigIntegerProcedure&lt;T, V&gt; thingToCombine)
+        {
+<span class="nc bnc" id="L1726" title="All 2 branches missed.">            if (this.result.isEmpty())</span>
+            {
+<span class="nc" id="L1728">                this.result.putAll(thingToCombine.getResult());</span>
+            }
+            else
+            {
+<span class="nc" id="L1732">                thingToCombine.getResult().forEachKeyValue((key, value) -&gt; this.result.updateValue(key, Functions0.zeroBigInteger(), original -&gt; original.add(value)));</span>
+            }
+<span class="nc" id="L1734">        }</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.0.201801022044</span></div></body></html>

@@ -1,0 +1,438 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>SynchronizedBag.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Eclipse Collections Test Coverage Aggregation</a> &gt; <a href="../index.html" class="el_bundle">eclipse-collections</a> &gt; <a href="index.source.html" class="el_package">org.eclipse.collections.impl.bag.mutable</a> &gt; <span class="el_source">SynchronizedBag.java</span></div><h1>SynchronizedBag.java</h1><pre class="source lang-java linenums">/*
+ * Copyright (c) 2017 Goldman Sachs and others.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * and Eclipse Distribution License v. 1.0 which accompany this distribution.
+ * The Eclipse Public License is available at http://www.eclipse.org/legal/epl-v10.html
+ * and the Eclipse Distribution License is available at
+ * http://www.eclipse.org/org/documents/edl-v10.php.
+ */
+
+package org.eclipse.collections.impl.bag.mutable;
+
+import java.io.Serializable;
+import java.util.Collection;
+import java.util.Collections;
+
+import org.eclipse.collections.api.bag.ImmutableBag;
+import org.eclipse.collections.api.bag.MutableBag;
+import org.eclipse.collections.api.bag.primitive.MutableBooleanBag;
+import org.eclipse.collections.api.bag.primitive.MutableByteBag;
+import org.eclipse.collections.api.bag.primitive.MutableCharBag;
+import org.eclipse.collections.api.bag.primitive.MutableDoubleBag;
+import org.eclipse.collections.api.bag.primitive.MutableFloatBag;
+import org.eclipse.collections.api.bag.primitive.MutableIntBag;
+import org.eclipse.collections.api.bag.primitive.MutableLongBag;
+import org.eclipse.collections.api.bag.primitive.MutableShortBag;
+import org.eclipse.collections.api.block.function.Function;
+import org.eclipse.collections.api.block.function.Function2;
+import org.eclipse.collections.api.block.function.primitive.BooleanFunction;
+import org.eclipse.collections.api.block.function.primitive.ByteFunction;
+import org.eclipse.collections.api.block.function.primitive.CharFunction;
+import org.eclipse.collections.api.block.function.primitive.DoubleFunction;
+import org.eclipse.collections.api.block.function.primitive.FloatFunction;
+import org.eclipse.collections.api.block.function.primitive.IntFunction;
+import org.eclipse.collections.api.block.function.primitive.LongFunction;
+import org.eclipse.collections.api.block.function.primitive.ObjectIntToObjectFunction;
+import org.eclipse.collections.api.block.function.primitive.ShortFunction;
+import org.eclipse.collections.api.block.predicate.Predicate;
+import org.eclipse.collections.api.block.predicate.Predicate2;
+import org.eclipse.collections.api.block.predicate.primitive.IntPredicate;
+import org.eclipse.collections.api.block.procedure.Procedure;
+import org.eclipse.collections.api.block.procedure.primitive.ObjectIntProcedure;
+import org.eclipse.collections.api.list.MutableList;
+import org.eclipse.collections.api.map.MutableMap;
+import org.eclipse.collections.api.multimap.bag.MutableBagMultimap;
+import org.eclipse.collections.api.ordered.OrderedIterable;
+import org.eclipse.collections.api.partition.bag.PartitionMutableBag;
+import org.eclipse.collections.api.set.MutableSet;
+import org.eclipse.collections.api.tuple.Pair;
+import org.eclipse.collections.api.tuple.primitive.ObjectIntPair;
+import org.eclipse.collections.impl.collection.mutable.AbstractSynchronizedMutableCollection;
+import org.eclipse.collections.impl.collection.mutable.SynchronizedCollectionSerializationProxy;
+import org.eclipse.collections.impl.factory.Bags;
+
+/**
+ * A synchronized view of a {@link MutableBag}. It is imperative that the user manually synchronize on the collection when iterating over it using the
+ * standard JDK iterator or JDK 5 for loop, as per {@link Collections#synchronizedCollection(Collection)}.
+ *
+ * @see MutableBag#asSynchronized()
+ * @since 1.0
+ */
+public class SynchronizedBag&lt;T&gt;
+        extends AbstractSynchronizedMutableCollection&lt;T&gt;
+        implements MutableBag&lt;T&gt;, Serializable
+{
+    private static final long serialVersionUID = 2L;
+
+    SynchronizedBag(MutableBag&lt;T&gt; bag)
+    {
+<span class="nc" id="L70">        super(bag);</span>
+<span class="nc" id="L71">    }</span>
+
+    public SynchronizedBag(MutableBag&lt;T&gt; bag, Object newLock)
+    {
+<span class="nc" id="L75">        super(bag, newLock);</span>
+<span class="nc" id="L76">    }</span>
+
+    /**
+     * This method will take a MutableBag and wrap it directly in a SynchronizedBag.
+     */
+    public static &lt;E, B extends MutableBag&lt;E&gt;&gt; SynchronizedBag&lt;E&gt; of(B bag)
+    {
+<span class="nc" id="L83">        return new SynchronizedBag&lt;&gt;(bag);</span>
+    }
+
+    /**
+     * This method will take a MutableBag and wrap it directly in a SynchronizedBag. Additionally,
+     * a developer specifies which lock to use with the collection.
+     */
+    public static &lt;E, B extends MutableBag&lt;E&gt;&gt; SynchronizedBag&lt;E&gt; of(B bag, Object lock)
+    {
+<span class="nc" id="L92">        return new SynchronizedBag&lt;&gt;(bag, lock);</span>
+    }
+
+    @Override
+    protected MutableBag&lt;T&gt; getDelegate()
+    {
+<span class="nc" id="L98">        return (MutableBag&lt;T&gt;) super.getDelegate();</span>
+    }
+
+    @Override
+    public MutableBag&lt;T&gt; with(T element)
+    {
+<span class="nc" id="L104">        this.add(element);</span>
+<span class="nc" id="L105">        return this;</span>
+    }
+
+    @Override
+    public MutableBag&lt;T&gt; without(T element)
+    {
+<span class="nc" id="L111">        this.remove(element);</span>
+<span class="nc" id="L112">        return this;</span>
+    }
+
+    @Override
+    public MutableBag&lt;T&gt; withAll(Iterable&lt;? extends T&gt; elements)
+    {
+<span class="nc" id="L118">        this.addAllIterable(elements);</span>
+<span class="nc" id="L119">        return this;</span>
+    }
+
+    @Override
+    public MutableBag&lt;T&gt; withoutAll(Iterable&lt;? extends T&gt; elements)
+    {
+<span class="nc" id="L125">        this.removeAllIterable(elements);</span>
+<span class="nc" id="L126">        return this;</span>
+    }
+
+    @Override
+    public MutableBag&lt;T&gt; newEmpty()
+    {
+<span class="nc" id="L132">        synchronized (this.getLock())</span>
+        {
+<span class="nc" id="L134">            return this.getDelegate().newEmpty().asSynchronized();</span>
+        }
+    }
+
+    protected Object writeReplace()
+    {
+<span class="nc" id="L140">        return new SynchronizedCollectionSerializationProxy&lt;&gt;(this.getDelegate());</span>
+    }
+
+    @Override
+    public int addOccurrences(T item, int occurrences)
+    {
+<span class="nc" id="L146">        synchronized (this.getLock())</span>
+        {
+<span class="nc" id="L148">            return this.getDelegate().addOccurrences(item, occurrences);</span>
+        }
+    }
+
+    @Override
+    public boolean removeOccurrences(Object item, int occurrences)
+    {
+<span class="nc" id="L155">        synchronized (this.getLock())</span>
+        {
+<span class="nc" id="L157">            return this.getDelegate().removeOccurrences(item, occurrences);</span>
+        }
+    }
+
+    @Override
+    public boolean setOccurrences(T item, int occurrences)
+    {
+<span class="nc" id="L164">        synchronized (this.getLock())</span>
+        {
+<span class="nc" id="L166">            return this.getDelegate().setOccurrences(item, occurrences);</span>
+        }
+    }
+
+    @Override
+    public MutableMap&lt;T, Integer&gt; toMapOfItemToCount()
+    {
+<span class="nc" id="L173">        synchronized (this.getLock())</span>
+        {
+<span class="nc" id="L175">            return this.getDelegate().toMapOfItemToCount();</span>
+        }
+    }
+
+    @Override
+    public MutableBag&lt;T&gt; selectByOccurrences(IntPredicate predicate)
+    {
+<span class="nc" id="L182">        synchronized (this.getLock())</span>
+        {
+<span class="nc" id="L184">            return this.getDelegate().selectByOccurrences(predicate);</span>
+        }
+    }
+
+    @Override
+    public MutableList&lt;ObjectIntPair&lt;T&gt;&gt; topOccurrences(int count)
+    {
+<span class="nc" id="L191">        synchronized (this.getLock())</span>
+        {
+<span class="nc" id="L193">            return this.getDelegate().topOccurrences(count);</span>
+        }
+    }
+
+    @Override
+    public MutableList&lt;ObjectIntPair&lt;T&gt;&gt; bottomOccurrences(int count)
+    {
+<span class="nc" id="L200">        synchronized (this.getLock())</span>
+        {
+<span class="nc" id="L202">            return this.getDelegate().bottomOccurrences(count);</span>
+        }
+    }
+
+    @Override
+    public void forEachWithOccurrences(ObjectIntProcedure&lt;? super T&gt; objectIntProcedure)
+    {
+<span class="nc" id="L209">        synchronized (this.getLock())</span>
+        {
+<span class="nc" id="L211">            this.getDelegate().forEachWithOccurrences(objectIntProcedure);</span>
+<span class="nc" id="L212">        }</span>
+<span class="nc" id="L213">    }</span>
+
+    /**
+     * @since 9.1.
+     */
+    @Override
+    public &lt;V, R extends Collection&lt;V&gt;&gt; R collectWithOccurrences(ObjectIntToObjectFunction&lt;? super T, ? extends V&gt; function, R target)
+    {
+<span class="nc" id="L221">        synchronized (this.getLock())</span>
+        {
+<span class="nc" id="L223">            return this.getDelegate().collectWithOccurrences(function, target);</span>
+        }
+    }
+
+    @Override
+    public int occurrencesOf(Object item)
+    {
+<span class="nc" id="L230">        synchronized (this.getLock())</span>
+        {
+<span class="nc" id="L232">            return this.getDelegate().occurrencesOf(item);</span>
+        }
+    }
+
+    @Override
+    public int sizeDistinct()
+    {
+<span class="nc" id="L239">        synchronized (this.getLock())</span>
+        {
+<span class="nc" id="L241">            return this.getDelegate().sizeDistinct();</span>
+        }
+    }
+
+    @Override
+    public String toStringOfItemToCount()
+    {
+<span class="nc" id="L248">        synchronized (this.getLock())</span>
+        {
+<span class="nc" id="L250">            return this.getDelegate().toStringOfItemToCount();</span>
+        }
+    }
+
+    @Override
+    public MutableBag&lt;T&gt; tap(Procedure&lt;? super T&gt; procedure)
+    {
+<span class="nc" id="L257">        return (MutableBag&lt;T&gt;) super.tap(procedure);</span>
+    }
+
+    @Override
+    public MutableBag&lt;T&gt; select(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L263">        return (MutableBag&lt;T&gt;) super.select(predicate);</span>
+    }
+
+    @Override
+    public &lt;P&gt; MutableBag&lt;T&gt; selectWith(Predicate2&lt;? super T, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc" id="L269">        return (MutableBag&lt;T&gt;) super.selectWith(predicate, parameter);</span>
+    }
+
+    @Override
+    public MutableBag&lt;T&gt; reject(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L275">        return (MutableBag&lt;T&gt;) super.reject(predicate);</span>
+    }
+
+    @Override
+    public &lt;P&gt; MutableBag&lt;T&gt; rejectWith(Predicate2&lt;? super T, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc" id="L281">        return (MutableBag&lt;T&gt;) super.rejectWith(predicate, parameter);</span>
+    }
+
+    @Override
+    public PartitionMutableBag&lt;T&gt; partition(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L287">        return (PartitionMutableBag&lt;T&gt;) super.partition(predicate);</span>
+    }
+
+    @Override
+    public &lt;P&gt; PartitionMutableBag&lt;T&gt; partitionWith(Predicate2&lt;? super T, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc" id="L293">        return (PartitionMutableBag&lt;T&gt;) super.partitionWith(predicate, parameter);</span>
+    }
+
+    @Override
+    public MutableBooleanBag collectBoolean(BooleanFunction&lt;? super T&gt; booleanFunction)
+    {
+<span class="nc" id="L299">        return (MutableBooleanBag) super.collectBoolean(booleanFunction);</span>
+    }
+
+    @Override
+    public MutableByteBag collectByte(ByteFunction&lt;? super T&gt; byteFunction)
+    {
+<span class="nc" id="L305">        return (MutableByteBag) super.collectByte(byteFunction);</span>
+    }
+
+    @Override
+    public MutableCharBag collectChar(CharFunction&lt;? super T&gt; charFunction)
+    {
+<span class="nc" id="L311">        return (MutableCharBag) super.collectChar(charFunction);</span>
+    }
+
+    @Override
+    public MutableDoubleBag collectDouble(DoubleFunction&lt;? super T&gt; doubleFunction)
+    {
+<span class="nc" id="L317">        return (MutableDoubleBag) super.collectDouble(doubleFunction);</span>
+    }
+
+    @Override
+    public MutableFloatBag collectFloat(FloatFunction&lt;? super T&gt; floatFunction)
+    {
+<span class="nc" id="L323">        return (MutableFloatBag) super.collectFloat(floatFunction);</span>
+    }
+
+    @Override
+    public MutableIntBag collectInt(IntFunction&lt;? super T&gt; intFunction)
+    {
+<span class="nc" id="L329">        return (MutableIntBag) super.collectInt(intFunction);</span>
+    }
+
+    @Override
+    public MutableLongBag collectLong(LongFunction&lt;? super T&gt; longFunction)
+    {
+<span class="nc" id="L335">        return (MutableLongBag) super.collectLong(longFunction);</span>
+    }
+
+    @Override
+    public MutableShortBag collectShort(ShortFunction&lt;? super T&gt; shortFunction)
+    {
+<span class="nc" id="L341">        return (MutableShortBag) super.collectShort(shortFunction);</span>
+    }
+
+    @Override
+    public &lt;S&gt; MutableBag&lt;S&gt; selectInstancesOf(Class&lt;S&gt; clazz)
+    {
+<span class="nc" id="L347">        return (MutableBag&lt;S&gt;) super.selectInstancesOf(clazz);</span>
+    }
+
+    @Override
+    public &lt;V&gt; MutableBag&lt;V&gt; collect(Function&lt;? super T, ? extends V&gt; function)
+    {
+<span class="nc" id="L353">        return (MutableBag&lt;V&gt;) super.&lt;V&gt;collect(function);</span>
+    }
+
+    /**
+     * @deprecated in 6.0. Use {@link OrderedIterable#zipWithIndex()} instead.
+     */
+    @Override
+    @Deprecated
+    public MutableSet&lt;Pair&lt;T, Integer&gt;&gt; zipWithIndex()
+    {
+<span class="nc" id="L363">        return (MutableSet&lt;Pair&lt;T, Integer&gt;&gt;) super.zipWithIndex();</span>
+    }
+
+    @Override
+    public &lt;P, V&gt; MutableBag&lt;V&gt; collectWith(Function2&lt;? super T, ? super P, ? extends V&gt; function, P parameter)
+    {
+<span class="nc" id="L369">        return (MutableBag&lt;V&gt;) super.collectWith(function, parameter);</span>
+    }
+
+    @Override
+    public &lt;V&gt; MutableBag&lt;V&gt; collectIf(
+            Predicate&lt;? super T&gt; predicate,
+            Function&lt;? super T, ? extends V&gt; function)
+    {
+<span class="nc" id="L377">        return (MutableBag&lt;V&gt;) super.&lt;V&gt;collectIf(predicate, function);</span>
+    }
+
+    @Override
+    public &lt;V&gt; MutableBag&lt;V&gt; flatCollect(Function&lt;? super T, ? extends Iterable&lt;V&gt;&gt; function)
+    {
+<span class="nc" id="L383">        return (MutableBag&lt;V&gt;) super.flatCollect(function);</span>
+    }
+
+    @Override
+    public &lt;V&gt; MutableBagMultimap&lt;V, T&gt; groupBy(Function&lt;? super T, ? extends V&gt; function)
+    {
+<span class="nc" id="L389">        return (MutableBagMultimap&lt;V, T&gt;) super.&lt;V&gt;groupBy(function);</span>
+    }
+
+    @Override
+    public &lt;V&gt; MutableBagMultimap&lt;V, T&gt; groupByEach(Function&lt;? super T, ? extends Iterable&lt;V&gt;&gt; function)
+    {
+<span class="nc" id="L395">        return (MutableBagMultimap&lt;V, T&gt;) super.groupByEach(function);</span>
+    }
+
+    /**
+     * @deprecated in 6.0. Use {@link OrderedIterable#zip(Iterable)} instead.
+     */
+    @Override
+    @Deprecated
+    public &lt;S&gt; MutableBag&lt;Pair&lt;T, S&gt;&gt; zip(Iterable&lt;S&gt; that)
+    {
+<span class="nc" id="L405">        return (MutableBag&lt;Pair&lt;T, S&gt;&gt;) super.zip(that);</span>
+    }
+
+    @Override
+    public MutableBag&lt;T&gt; asUnmodifiable()
+    {
+<span class="nc" id="L411">        synchronized (this.getLock())</span>
+        {
+<span class="nc" id="L413">            return UnmodifiableBag.of(this);</span>
+        }
+    }
+
+    @Override
+    public MutableBag&lt;T&gt; asSynchronized()
+    {
+<span class="nc" id="L420">        return this;</span>
+    }
+
+    @Override
+    public ImmutableBag&lt;T&gt; toImmutable()
+    {
+<span class="nc" id="L426">        return Bags.immutable.withAll(this);</span>
+    }
+
+    @Override
+    public MutableSet&lt;T&gt; selectUnique()
+    {
+<span class="nc" id="L432">        synchronized (this.getLock())</span>
+        {
+<span class="nc" id="L434">            return this.getDelegate().selectUnique();</span>
+        }
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.0.201801022044</span></div></body></html>

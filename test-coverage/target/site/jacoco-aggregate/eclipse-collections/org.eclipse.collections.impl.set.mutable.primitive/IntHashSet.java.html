@@ -1,0 +1,1725 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>IntHashSet.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Eclipse Collections Test Coverage Aggregation</a> &gt; <a href="../index.html" class="el_bundle">eclipse-collections</a> &gt; <a href="index.source.html" class="el_package">org.eclipse.collections.impl.set.mutable.primitive</a> &gt; <span class="el_source">IntHashSet.java</span></div><h1>IntHashSet.java</h1><pre class="source lang-java linenums">/*
+ * Copyright (c) 2018 Goldman Sachs and others.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * and Eclipse Distribution License v. 1.0 which accompany this distribution.
+ * The Eclipse Public License is available at http://www.eclipse.org/legal/epl-v10.html
+ * and the Eclipse Distribution License is available at
+ * http://www.eclipse.org/org/documents/edl-v10.php.
+ */
+
+package org.eclipse.collections.impl.set.mutable.primitive;
+
+import java.io.Externalizable;
+import java.io.IOException;
+import java.io.ObjectInput;
+import java.io.ObjectOutput;
+import java.io.Serializable;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.NoSuchElementException;
+
+import org.eclipse.collections.api.IntIterable;
+import org.eclipse.collections.api.RichIterable;
+import org.eclipse.collections.api.block.function.primitive.IntToObjectFunction;
+import org.eclipse.collections.api.block.function.primitive.ObjectIntToObjectFunction;
+import org.eclipse.collections.api.block.predicate.primitive.IntPredicate;
+import org.eclipse.collections.api.block.procedure.primitive.IntProcedure;
+import org.eclipse.collections.api.collection.primitive.MutableIntCollection;
+import org.eclipse.collections.api.iterator.IntIterator;
+import org.eclipse.collections.api.iterator.MutableIntIterator;
+import org.eclipse.collections.api.list.MutableList;
+import org.eclipse.collections.impl.factory.Lists;
+import org.eclipse.collections.api.set.ImmutableSet;
+import org.eclipse.collections.api.set.MutableSet;
+import org.eclipse.collections.api.set.primitive.ImmutableIntSet;
+import org.eclipse.collections.api.set.primitive.MutableIntSet;
+import org.eclipse.collections.api.set.primitive.IntSet;
+import org.eclipse.collections.impl.factory.primitive.IntSets;
+import org.eclipse.collections.impl.set.immutable.primitive.ImmutableIntSetSerializationProxy;
+import org.eclipse.collections.impl.set.mutable.UnifiedSet;
+import org.eclipse.collections.impl.SpreadFunctions;
+import org.eclipse.collections.impl.set.immutable.primitive.AbstractImmutableIntSet;
+import org.eclipse.collections.impl.set.primitive.AbstractIntSet;
+
+/**
+ * This file was automatically generated from template file primitiveHashSet.stg.
+ *
+ * @since 3.0.
+ */
+public class IntHashSet extends AbstractIntSet implements MutableIntSet, Externalizable
+{
+    private static final long serialVersionUID = 1L;
+    private static final int OCCUPIED_DATA_RATIO = 2;
+    private static final int OCCUPIED_SENTINEL_RATIO = 4;
+    private static final int DEFAULT_INITIAL_CAPACITY = 16;
+    private static final int EMPTY = 0;
+    private static final int REMOVED = 1;
+    private static final int CACHE_LINE_SIZE = 64;
+    private static final int KEY_SIZE = 4;
+    private static final int INITIAL_LINEAR_PROBE = CACHE_LINE_SIZE / KEY_SIZE / 2; /* half a cache line */
+
+    private int[] table;
+    private int occupiedWithData;
+    private int occupiedWithSentinels;
+    // The 32 bits of this integer indicate whether the items 0 to 31 are present in the set.
+    private int zeroToThirtyOne;
+    private int zeroToThirtyOneOccupied;
+    private transient boolean copyOnWrite;
+
+    public IntHashSet()
+<span class="nc" id="L71">    {</span>
+<span class="nc" id="L72">        this.allocateTable(DEFAULT_INITIAL_CAPACITY);</span>
+<span class="nc" id="L73">    }</span>
+
+    public IntHashSet(int initialCapacity)
+<span class="nc" id="L76">    {</span>
+<span class="nc bnc" id="L77" title="All 2 branches missed.">        if (initialCapacity &lt; 0)</span>
+        {
+<span class="nc" id="L79">            throw new IllegalArgumentException(&quot;initial capacity cannot be less than 0&quot;);</span>
+        }
+<span class="nc" id="L81">        int capacity = this.smallestPowerOfTwoGreaterThan(this.fastCeil(initialCapacity * OCCUPIED_DATA_RATIO));</span>
+<span class="nc" id="L82">        this.allocateTable(capacity);</span>
+<span class="nc" id="L83">    }</span>
+
+    public IntHashSet(int... elements)
+    {
+<span class="nc" id="L87">        this();</span>
+<span class="nc" id="L88">        this.addAll(elements);</span>
+<span class="nc" id="L89">    }</span>
+
+    public IntHashSet(IntHashSet set)
+<span class="nc" id="L92">    {</span>
+<span class="nc" id="L93">        this.occupiedWithData = set.occupiedWithData;</span>
+<span class="nc" id="L94">        this.occupiedWithSentinels = set.occupiedWithSentinels;</span>
+<span class="nc" id="L95">        this.zeroToThirtyOneOccupied = set.zeroToThirtyOneOccupied;</span>
+<span class="nc" id="L96">        this.zeroToThirtyOne = set.zeroToThirtyOne;</span>
+<span class="nc" id="L97">        this.allocateTable(set.table.length);</span>
+
+<span class="nc" id="L99">        System.arraycopy(set.table, 0, this.table, 0, set.table.length);</span>
+<span class="nc" id="L100">    }</span>
+
+    private int smallestPowerOfTwoGreaterThan(int n)
+    {
+<span class="nc bnc" id="L104" title="All 2 branches missed.">        return n &gt; 1 ? Integer.highestOneBit(n - 1) &lt;&lt; 1 : 1;</span>
+    }
+
+    private int fastCeil(float v)
+    {
+<span class="nc" id="L109">        int possibleResult = (int) v;</span>
+<span class="nc bnc" id="L110" title="All 2 branches missed.">        if (v - possibleResult &gt; 0.0F)</span>
+        {
+<span class="nc" id="L112">            possibleResult++;</span>
+        }
+<span class="nc" id="L114">        return possibleResult;</span>
+    }
+
+    public static IntHashSet newSet(IntIterable source)
+    {
+<span class="nc bnc" id="L119" title="All 2 branches missed.">        if (source instanceof IntHashSet)</span>
+        {
+<span class="nc" id="L121">            return new IntHashSet((IntHashSet) source);</span>
+        }
+
+<span class="nc" id="L124">        return IntHashSet.newSetWith(source.toArray());</span>
+    }
+
+    public static IntHashSet newSetWith(int... source)
+    {
+<span class="nc" id="L129">        return new IntHashSet(source);</span>
+    }
+
+    private static boolean isBetweenZeroAndThirtyOne(int value)
+    {
+<span class="nc bnc" id="L134" title="All 4 branches missed.">        return value &gt;= 0 &amp;&amp; value &lt;= 31;</span>
+    }
+
+    @Override
+    public int hashCode()
+    {
+<span class="nc" id="L140">        int result = 0;</span>
+<span class="nc" id="L141">        int zeroToThirtyOne = this.zeroToThirtyOne;</span>
+<span class="nc bnc" id="L142" title="All 2 branches missed.">        while (zeroToThirtyOne != 0)</span>
+        {
+<span class="nc" id="L144">            int value = Integer.numberOfTrailingZeros(zeroToThirtyOne);</span>
+<span class="nc" id="L145">            result += value;</span>
+<span class="nc" id="L146">            zeroToThirtyOne &amp;= ~(1 &lt;&lt; value);</span>
+<span class="nc" id="L147">        }</span>
+<span class="nc bnc" id="L148" title="All 2 branches missed.">        if (this.table != null)</span>
+        {
+<span class="nc bnc" id="L150" title="All 2 branches missed.">            for (int i = 0; i &lt; this.table.length; i++)</span>
+            {
+<span class="nc bnc" id="L152" title="All 2 branches missed.">                if (isNonSentinel(this.table[i]))</span>
+                {
+<span class="nc" id="L154">                    result += this.table[i];</span>
+                }
+            }
+        }
+<span class="nc" id="L158">        return result;</span>
+    }
+
+    @Override
+    public int size()
+    {
+<span class="nc" id="L164">        return this.occupiedWithData + this.zeroToThirtyOneOccupied;</span>
+    }
+
+    @Override
+    public void appendString(Appendable appendable, String start, String separator, String end)
+    {
+        try
+        {
+<span class="nc" id="L172">            appendable.append(start);</span>
+
+<span class="nc" id="L174">            int count = 0;</span>
+<span class="nc" id="L175">            int zeroToThirtyOne = this.zeroToThirtyOne;</span>
+<span class="nc bnc" id="L176" title="All 2 branches missed.">            while (zeroToThirtyOne != 0)</span>
+            {
+<span class="nc" id="L178">                int value = Integer.numberOfTrailingZeros(zeroToThirtyOne);</span>
+<span class="nc bnc" id="L179" title="All 2 branches missed.">                if (count &gt; 0)</span>
+                {
+<span class="nc" id="L181">                    appendable.append(separator);</span>
+                }
+<span class="nc" id="L183">                count++;</span>
+<span class="nc" id="L184">                appendable.append(String.valueOf(value));</span>
+<span class="nc" id="L185">                zeroToThirtyOne &amp;= ~(1 &lt;&lt; value);</span>
+<span class="nc" id="L186">            }</span>
+
+<span class="nc bnc" id="L188" title="All 2 branches missed.">            for (int value : this.table)</span>
+            {
+<span class="nc bnc" id="L190" title="All 2 branches missed.">                if (isNonSentinel(value))</span>
+                {
+<span class="nc bnc" id="L192" title="All 2 branches missed.">                    if (count &gt; 0)</span>
+                    {
+<span class="nc" id="L194">                        appendable.append(separator);</span>
+                    }
+<span class="nc" id="L196">                    count++;</span>
+<span class="nc" id="L197">                    appendable.append(String.valueOf(value));</span>
+                }
+            }
+<span class="nc" id="L200">            appendable.append(end);</span>
+        }
+<span class="nc" id="L202">        catch (IOException e)</span>
+        {
+<span class="nc" id="L204">            throw new RuntimeException(e);</span>
+<span class="nc" id="L205">        }</span>
+<span class="nc" id="L206">    }</span>
+
+    @Override
+    public boolean add(int element)
+    {
+<span class="nc bnc" id="L211" title="All 2 branches missed.">        if (isBetweenZeroAndThirtyOne(element))</span>
+        {
+<span class="nc" id="L213">            int initial = this.zeroToThirtyOne;</span>
+<span class="nc" id="L214">            this.zeroToThirtyOne |= 1 &lt;&lt; element;</span>
+<span class="nc bnc" id="L215" title="All 2 branches missed.">            if (this.zeroToThirtyOne != initial)</span>
+            {
+<span class="nc" id="L217">                this.zeroToThirtyOneOccupied++;</span>
+<span class="nc" id="L218">                return true;</span>
+            }
+<span class="nc" id="L220">            return false;</span>
+        }
+
+<span class="nc" id="L223">        int index = this.probe(element);</span>
+
+<span class="nc bnc" id="L225" title="All 2 branches missed.">        if (this.table[index] == element)</span>
+        {
+            // element already present in set
+<span class="nc" id="L228">            return false;</span>
+        }
+
+<span class="nc bnc" id="L231" title="All 2 branches missed.">        if (this.copyOnWrite)</span>
+        {
+<span class="nc" id="L233">            this.copyTable();</span>
+        }
+<span class="nc bnc" id="L235" title="All 2 branches missed.">        if (this.table[index] == REMOVED)</span>
+        {
+<span class="nc" id="L237">            --this.occupiedWithSentinels;</span>
+        }
+<span class="nc" id="L239">        this.table[index] = element;</span>
+<span class="nc" id="L240">        ++this.occupiedWithData;</span>
+<span class="nc bnc" id="L241" title="All 2 branches missed.">        if (this.occupiedWithData &gt; this.maxOccupiedWithData())</span>
+        {
+<span class="nc" id="L243">            this.rehashAndGrow();</span>
+        }
+<span class="nc" id="L245">        return true;</span>
+    }
+
+    @Override
+    public boolean addAll(int... source)
+    {
+<span class="nc" id="L251">        int oldSize = this.size();</span>
+<span class="nc bnc" id="L252" title="All 2 branches missed.">        for (int item : source)</span>
+        {
+<span class="nc" id="L254">            this.add(item);</span>
+        }
+<span class="nc bnc" id="L256" title="All 2 branches missed.">        return this.size() != oldSize;</span>
+    }
+
+    @Override
+    public boolean addAll(IntIterable source)
+    {
+<span class="nc bnc" id="L262" title="All 2 branches missed.">        if (source.isEmpty())</span>
+        {
+<span class="nc" id="L264">            return false;</span>
+        }
+<span class="nc" id="L266">        int oldSize = this.size();</span>
+<span class="nc bnc" id="L267" title="All 2 branches missed.">        if (source instanceof IntHashSet)</span>
+        {
+<span class="nc" id="L269">            IntHashSet hashSet = (IntHashSet) source;</span>
+<span class="nc" id="L270">            this.zeroToThirtyOne |= hashSet.zeroToThirtyOne;</span>
+<span class="nc" id="L271">            this.zeroToThirtyOneOccupied = Integer.bitCount(this.zeroToThirtyOne);</span>
+<span class="nc bnc" id="L272" title="All 2 branches missed.">            for (int item : hashSet.table)</span>
+            {
+<span class="nc bnc" id="L274" title="All 2 branches missed.">                if (isNonSentinel(item))</span>
+                {
+<span class="nc" id="L276">                    this.add(item);</span>
+                }
+            }
+<span class="nc" id="L279">        }</span>
+        else
+        {
+<span class="nc" id="L282">            IntIterator iterator = source.intIterator();</span>
+<span class="nc bnc" id="L283" title="All 2 branches missed.">            while (iterator.hasNext())</span>
+            {
+<span class="nc" id="L285">                int item = iterator.next();</span>
+<span class="nc" id="L286">                this.add(item);</span>
+<span class="nc" id="L287">            }</span>
+        }
+<span class="nc bnc" id="L289" title="All 2 branches missed.">        return this.size() != oldSize;</span>
+    }
+
+    @Override
+    public boolean remove(int value)
+    {
+<span class="nc bnc" id="L295" title="All 2 branches missed.">        if (isBetweenZeroAndThirtyOne(value))</span>
+        {
+<span class="nc" id="L297">            return this.removeZeroToThirtyOne(value);</span>
+        }
+<span class="nc" id="L299">        int index = this.probe(value);</span>
+<span class="nc bnc" id="L300" title="All 2 branches missed.">        if (this.table[index] == value)</span>
+        {
+<span class="nc bnc" id="L302" title="All 2 branches missed.">            if (this.copyOnWrite)</span>
+            {
+<span class="nc" id="L304">                this.copyTable();</span>
+            }
+<span class="nc" id="L306">            this.table[index] = REMOVED;</span>
+<span class="nc" id="L307">            this.occupiedWithData--;</span>
+<span class="nc" id="L308">            this.occupiedWithSentinels++;</span>
+<span class="nc bnc" id="L309" title="All 2 branches missed.">            if (this.occupiedWithSentinels &gt; this.maxOccupiedWithSentinels())</span>
+            {
+<span class="nc" id="L311">                this.rehash();</span>
+            }
+
+<span class="nc" id="L314">            return true;</span>
+        }
+<span class="nc" id="L316">        return false;</span>
+    }
+
+    private boolean removeZeroToThirtyOne(int value)
+    {
+<span class="nc" id="L321">        int initial = this.zeroToThirtyOne;</span>
+<span class="nc" id="L322">        this.zeroToThirtyOne &amp;= ~(1 &lt;&lt; value);</span>
+<span class="nc bnc" id="L323" title="All 2 branches missed.">        if (this.zeroToThirtyOne == initial)</span>
+        {
+<span class="nc" id="L325">            return false;</span>
+        }
+<span class="nc" id="L327">        this.zeroToThirtyOneOccupied--;</span>
+<span class="nc" id="L328">        return true;</span>
+    }
+
+    @Override
+    public boolean removeAll(IntIterable source)
+    {
+<span class="nc bnc" id="L334" title="All 2 branches missed.">        if (source.isEmpty())</span>
+        {
+<span class="nc" id="L336">            return false;</span>
+        }
+<span class="nc" id="L338">        int oldSize = this.size();</span>
+<span class="nc bnc" id="L339" title="All 2 branches missed.">        if (source instanceof IntHashSet)</span>
+        {
+<span class="nc" id="L341">            IntHashSet hashSet = (IntHashSet) source;</span>
+<span class="nc" id="L342">            this.zeroToThirtyOne &amp;= ~hashSet.zeroToThirtyOne;</span>
+<span class="nc" id="L343">            this.zeroToThirtyOneOccupied = Integer.bitCount(this.zeroToThirtyOne);</span>
+<span class="nc bnc" id="L344" title="All 2 branches missed.">            for (int item : hashSet.table)</span>
+            {
+<span class="nc bnc" id="L346" title="All 2 branches missed.">                if (isNonSentinel(item))</span>
+                {
+<span class="nc" id="L348">                    this.remove(item);</span>
+                }
+            }
+<span class="nc" id="L351">        }</span>
+        else
+        {
+<span class="nc" id="L354">            IntIterator iterator = source.intIterator();</span>
+<span class="nc bnc" id="L355" title="All 2 branches missed.">            while (iterator.hasNext())</span>
+            {
+<span class="nc" id="L357">                int item = iterator.next();</span>
+<span class="nc" id="L358">                this.remove(item);</span>
+<span class="nc" id="L359">            }</span>
+        }
+<span class="nc bnc" id="L361" title="All 2 branches missed.">        return this.size() != oldSize;</span>
+    }
+
+    @Override
+    public boolean removeAll(int... source)
+    {
+<span class="nc bnc" id="L367" title="All 2 branches missed.">        if (source.length == 0)</span>
+        {
+<span class="nc" id="L369">            return false;</span>
+        }
+<span class="nc" id="L371">        int oldSize = this.size();</span>
+<span class="nc bnc" id="L372" title="All 2 branches missed.">        for (int item : source)</span>
+        {
+<span class="nc" id="L374">            this.remove(item);</span>
+        }
+<span class="nc bnc" id="L376" title="All 2 branches missed.">        return this.size() != oldSize;</span>
+    }
+
+    @Override
+    public boolean retainAll(IntIterable source)
+    {
+<span class="nc" id="L382">        int oldSize = this.size();</span>
+<span class="nc bnc" id="L383" title="All 2 branches missed.">        final IntSet sourceSet = source instanceof IntSet ? (IntSet) source : source.toSet();</span>
+<span class="nc" id="L384">        IntHashSet retained = this.select(sourceSet::contains);</span>
+<span class="nc bnc" id="L385" title="All 2 branches missed.">        if (retained.size() != oldSize)</span>
+        {
+<span class="nc" id="L387">            this.zeroToThirtyOne = retained.zeroToThirtyOne;</span>
+<span class="nc" id="L388">            this.zeroToThirtyOneOccupied = retained.zeroToThirtyOneOccupied;</span>
+<span class="nc" id="L389">            this.occupiedWithData = retained.occupiedWithData;</span>
+<span class="nc" id="L390">            this.occupiedWithSentinels = retained.occupiedWithSentinels;</span>
+<span class="nc" id="L391">            this.table = retained.table;</span>
+<span class="nc" id="L392">            return true;</span>
+        }
+<span class="nc" id="L394">        return false;</span>
+    }
+
+    @Override
+    public boolean retainAll(int... source)
+    {
+<span class="nc" id="L400">        return this.retainAll(IntHashSet.newSetWith(source));</span>
+    }
+
+    @Override
+    public void clear()
+    {
+<span class="nc" id="L406">        this.zeroToThirtyOneOccupied = 0;</span>
+<span class="nc" id="L407">        this.occupiedWithData = 0;</span>
+<span class="nc" id="L408">        this.occupiedWithSentinels = 0;</span>
+
+<span class="nc" id="L410">        this.zeroToThirtyOne = 0;</span>
+<span class="nc bnc" id="L411" title="All 2 branches missed.">        if (this.copyOnWrite)</span>
+        {
+<span class="nc" id="L413">            this.table = new int[this.table.length];</span>
+<span class="nc" id="L414">            this.copyOnWrite = false;</span>
+        }
+        else
+        {
+<span class="nc" id="L418">            Arrays.fill(this.table, EMPTY);</span>
+        }
+<span class="nc" id="L420">    }</span>
+
+    @Override
+    public IntHashSet with(int element)
+    {
+<span class="nc" id="L425">        this.add(element);</span>
+<span class="nc" id="L426">        return this;</span>
+    }
+
+    @Override
+    public IntHashSet without(int element)
+    {
+<span class="nc" id="L432">        this.remove(element);</span>
+<span class="nc" id="L433">        return this;</span>
+    }
+
+    @Override
+    public IntHashSet withAll(IntIterable elements)
+    {
+<span class="nc" id="L439">        this.addAll(elements.toArray());</span>
+<span class="nc" id="L440">        return this;</span>
+    }
+
+    @Override
+    public IntHashSet withoutAll(IntIterable elements)
+    {
+<span class="nc" id="L446">        this.removeAll(elements);</span>
+<span class="nc" id="L447">        return this;</span>
+    }
+
+    @Override
+    public MutableIntSet asUnmodifiable()
+    {
+<span class="nc" id="L453">        return new UnmodifiableIntSet(this);</span>
+    }
+
+    @Override
+    public MutableIntSet asSynchronized()
+    {
+<span class="nc" id="L459">        return new SynchronizedIntSet(this);</span>
+    }
+
+    @Override
+    public ImmutableIntSet toImmutable()
+    {
+<span class="nc bnc" id="L465" title="All 2 branches missed.">        if (this.size() == 0)</span>
+        {
+<span class="nc" id="L467">            return IntSets.immutable.with();</span>
+        }
+<span class="nc bnc" id="L469" title="All 2 branches missed.">        if (this.size() == 1)</span>
+        {
+<span class="nc" id="L471">            return IntSets.immutable.with(this.intIterator().next());</span>
+        }
+<span class="nc" id="L473">        IntHashSet mutableSet = IntHashSet.newSetWith(this.toArray());</span>
+<span class="nc" id="L474">        return new ImmutableIntHashSet(mutableSet.table, mutableSet.occupiedWithData, mutableSet.zeroToThirtyOne, mutableSet.zeroToThirtyOneOccupied);</span>
+    }
+
+    @Override
+    public MutableIntIterator intIterator()
+    {
+<span class="nc" id="L480">        return new InternalIntIterator();</span>
+    }
+
+    @Override
+    public int[] toArray()
+    {
+<span class="nc" id="L486">        int[] array = new int[this.size()];</span>
+
+<span class="nc" id="L488">        int j = 0;</span>
+<span class="nc" id="L489">        int zeroToThirtyOne = this.zeroToThirtyOne;</span>
+<span class="nc bnc" id="L490" title="All 2 branches missed.">        while (zeroToThirtyOne != 0)</span>
+        {
+<span class="nc" id="L492">            int value = Integer.numberOfTrailingZeros(zeroToThirtyOne);</span>
+<span class="nc" id="L493">            array[j] = value;</span>
+<span class="nc" id="L494">            j++;</span>
+<span class="nc" id="L495">            zeroToThirtyOne &amp;= ~(1 &lt;&lt; value);</span>
+<span class="nc" id="L496">        }</span>
+
+<span class="nc bnc" id="L498" title="All 4 branches missed.">        for (int i = 0; i &lt; this.table.length &amp;&amp; j &lt; this.size(); i++)</span>
+        {
+<span class="nc bnc" id="L500" title="All 2 branches missed.">            if (isNonSentinel(this.table[i]))</span>
+            {
+<span class="nc" id="L502">                array[j] = this.table[i];</span>
+<span class="nc" id="L503">                j++;</span>
+            }
+        }
+<span class="nc" id="L506">        return array;</span>
+    }
+
+    @Override
+    public boolean contains(int value)
+    {
+<span class="nc bnc" id="L512" title="All 2 branches missed.">        if (isBetweenZeroAndThirtyOne(value))</span>
+        {
+<span class="nc" id="L514">            int temp = this.zeroToThirtyOne;</span>
+<span class="nc bnc" id="L515" title="All 2 branches missed.">            return ((temp &gt;&gt;&gt; value) &amp; 1) != 0;</span>
+        }
+<span class="nc bnc" id="L517" title="All 2 branches missed.">        return this.table[this.probe(value)] == value;</span>
+    }
+
+    @Override
+    public void forEach(IntProcedure procedure)
+    {
+<span class="nc" id="L523">        this.each(procedure);</span>
+<span class="nc" id="L524">    }</span>
+
+    /**
+     * @since 7.0.
+     */
+    @Override
+    public void each(IntProcedure procedure)
+    {
+<span class="nc" id="L532">        int zeroToThirtyOne = this.zeroToThirtyOne;</span>
+<span class="nc bnc" id="L533" title="All 2 branches missed.">        while (zeroToThirtyOne != 0)</span>
+        {
+<span class="nc" id="L535">            int value = Integer.numberOfTrailingZeros(zeroToThirtyOne);</span>
+<span class="nc" id="L536">            procedure.value(value);</span>
+<span class="nc" id="L537">            zeroToThirtyOne &amp;= ~(1 &lt;&lt; value);</span>
+<span class="nc" id="L538">        }</span>
+
+<span class="nc bnc" id="L540" title="All 2 branches missed.">        for (int value : this.table)</span>
+        {
+<span class="nc bnc" id="L542" title="All 2 branches missed.">            if (isNonSentinel(value))</span>
+            {
+<span class="nc" id="L544">                procedure.value(value);</span>
+            }
+        }
+<span class="nc" id="L547">    }</span>
+
+    @Override
+    public IntHashSet select(IntPredicate predicate)
+    {
+<span class="nc" id="L552">        return this.select(predicate, new IntHashSet());</span>
+    }
+
+    /**
+     * @since 8.1.
+     */
+    @Override
+    public &lt;R extends MutableIntCollection&gt; R select(IntPredicate predicate, R target)
+    {
+<span class="nc" id="L561">        int zeroToThirtyOne = this.zeroToThirtyOne;</span>
+<span class="nc bnc" id="L562" title="All 2 branches missed.">        while (zeroToThirtyOne != 0)</span>
+        {
+<span class="nc" id="L564">            int value = Integer.numberOfTrailingZeros(zeroToThirtyOne);</span>
+<span class="nc bnc" id="L565" title="All 2 branches missed.">            if (predicate.accept(value))</span>
+            {
+<span class="nc" id="L567">                target.add(value);</span>
+            }
+<span class="nc" id="L569">            zeroToThirtyOne &amp;= ~(1 &lt;&lt; value);</span>
+<span class="nc" id="L570">        }</span>
+
+<span class="nc bnc" id="L572" title="All 2 branches missed.">        for (int value : this.table)</span>
+        {
+<span class="nc bnc" id="L574" title="All 2 branches missed.">            if (isNonSentinel(value))</span>
+            {
+<span class="nc bnc" id="L576" title="All 2 branches missed.">                if (predicate.accept(value))</span>
+                {
+<span class="nc" id="L578">                    target.add(value);</span>
+                }
+            }
+        }
+<span class="nc" id="L582">        return target;</span>
+    }
+
+    @Override
+    public IntHashSet reject(IntPredicate predicate)
+    {
+<span class="nc" id="L588">        return this.reject(predicate, new IntHashSet());</span>
+    }
+
+    /**
+     * @since 8.1.
+     */
+    @Override
+    public &lt;R extends MutableIntCollection&gt; R reject(IntPredicate predicate, R target)
+    {
+<span class="nc" id="L597">        int zeroToThirtyOne = this.zeroToThirtyOne;</span>
+<span class="nc bnc" id="L598" title="All 2 branches missed.">        while (zeroToThirtyOne != 0)</span>
+        {
+<span class="nc" id="L600">            int value = Integer.numberOfTrailingZeros(zeroToThirtyOne);</span>
+<span class="nc bnc" id="L601" title="All 2 branches missed.">            if (!predicate.accept(value))</span>
+            {
+<span class="nc" id="L603">                target.add(value);</span>
+            }
+<span class="nc" id="L605">            zeroToThirtyOne &amp;= ~(1 &lt;&lt; value);</span>
+<span class="nc" id="L606">        }</span>
+
+<span class="nc bnc" id="L608" title="All 2 branches missed.">        for (int value : this.table)</span>
+        {
+<span class="nc bnc" id="L610" title="All 2 branches missed.">            if (isNonSentinel(value))</span>
+            {
+<span class="nc bnc" id="L612" title="All 2 branches missed.">                if (!predicate.accept(value))</span>
+                {
+<span class="nc" id="L614">                    target.add(value);</span>
+                }
+            }
+        }
+<span class="nc" id="L618">        return target;</span>
+    }
+
+    @Override
+    public &lt;V&gt; MutableSet&lt;V&gt; collect(IntToObjectFunction&lt;? extends V&gt; function)
+    {
+<span class="nc" id="L624">        return this.collect(function, UnifiedSet.newSet(this.size()));</span>
+    }
+
+    /**
+     * @since 8.1.
+     */
+    @Override
+    public &lt;V, R extends Collection&lt;V&gt;&gt; R collect(IntToObjectFunction&lt;? extends V&gt; function, R target)
+    {
+<span class="nc" id="L633">        int zeroToThirtyOne = this.zeroToThirtyOne;</span>
+<span class="nc bnc" id="L634" title="All 2 branches missed.">        while (zeroToThirtyOne != 0)</span>
+        {
+<span class="nc" id="L636">            int value = Integer.numberOfTrailingZeros(zeroToThirtyOne);</span>
+<span class="nc" id="L637">            target.add(function.valueOf(value));</span>
+<span class="nc" id="L638">            zeroToThirtyOne &amp;= ~(1 &lt;&lt; value);</span>
+<span class="nc" id="L639">        }</span>
+
+<span class="nc bnc" id="L641" title="All 2 branches missed.">        for (int value : this.table)</span>
+        {
+<span class="nc bnc" id="L643" title="All 2 branches missed.">            if (isNonSentinel(value))</span>
+            {
+<span class="nc" id="L645">                target.add(function.valueOf(value));</span>
+            }
+        }
+<span class="nc" id="L648">        return target;</span>
+    }
+
+    @Override
+    public int detectIfNone(IntPredicate predicate, int ifNone)
+    {
+<span class="nc" id="L654">        int zeroToThirtyOne = this.zeroToThirtyOne;</span>
+<span class="nc bnc" id="L655" title="All 2 branches missed.">        while (zeroToThirtyOne != 0)</span>
+        {
+<span class="nc" id="L657">            int value = Integer.numberOfTrailingZeros(zeroToThirtyOne);</span>
+<span class="nc bnc" id="L658" title="All 2 branches missed.">            if (predicate.accept(value))</span>
+            {
+<span class="nc" id="L660">                return value;</span>
+            }
+<span class="nc" id="L662">            zeroToThirtyOne &amp;= ~(1 &lt;&lt; value);</span>
+<span class="nc" id="L663">        }</span>
+
+<span class="nc bnc" id="L665" title="All 2 branches missed.">        for (int value : this.table)</span>
+        {
+<span class="nc bnc" id="L667" title="All 2 branches missed.">            if (isNonSentinel(value))</span>
+            {
+<span class="nc bnc" id="L669" title="All 2 branches missed.">                if (predicate.accept(value))</span>
+                {
+<span class="nc" id="L671">                    return value;</span>
+                }
+            }
+        }
+<span class="nc" id="L675">        return ifNone;</span>
+    }
+
+    @Override
+    public int count(IntPredicate predicate)
+    {
+<span class="nc" id="L681">        int count = 0;</span>
+<span class="nc" id="L682">        int zeroToThirtyOne = this.zeroToThirtyOne;</span>
+<span class="nc bnc" id="L683" title="All 2 branches missed.">        while (zeroToThirtyOne != 0)</span>
+        {
+<span class="nc" id="L685">            int value = Integer.numberOfTrailingZeros(zeroToThirtyOne);</span>
+<span class="nc bnc" id="L686" title="All 2 branches missed.">            if (predicate.accept(value))</span>
+            {
+<span class="nc" id="L688">                count++;</span>
+            }
+<span class="nc" id="L690">            zeroToThirtyOne &amp;= ~(1 &lt;&lt; value);</span>
+<span class="nc" id="L691">        }</span>
+
+<span class="nc bnc" id="L693" title="All 2 branches missed.">        for (int value : this.table)</span>
+        {
+<span class="nc bnc" id="L695" title="All 2 branches missed.">            if (isNonSentinel(value))</span>
+            {
+<span class="nc bnc" id="L697" title="All 2 branches missed.">                if (predicate.accept(value))</span>
+                {
+<span class="nc" id="L699">                    count++;</span>
+                }
+            }
+        }
+<span class="nc" id="L703">        return count;</span>
+    }
+
+    @Override
+    public boolean anySatisfy(IntPredicate predicate)
+    {
+<span class="nc" id="L709">        int zeroToThirtyOne = this.zeroToThirtyOne;</span>
+<span class="nc bnc" id="L710" title="All 2 branches missed.">        while (zeroToThirtyOne != 0)</span>
+        {
+<span class="nc" id="L712">            int value = Integer.numberOfTrailingZeros(zeroToThirtyOne);</span>
+<span class="nc bnc" id="L713" title="All 2 branches missed.">            if (predicate.accept(value))</span>
+            {
+<span class="nc" id="L715">                return true;</span>
+            }
+<span class="nc" id="L717">            zeroToThirtyOne &amp;= ~(1 &lt;&lt; value);</span>
+<span class="nc" id="L718">        }</span>
+
+<span class="nc bnc" id="L720" title="All 2 branches missed.">        for (int value : this.table)</span>
+        {
+<span class="nc bnc" id="L722" title="All 2 branches missed.">            if (isNonSentinel(value))</span>
+            {
+<span class="nc bnc" id="L724" title="All 2 branches missed.">                if (predicate.accept(value))</span>
+                {
+<span class="nc" id="L726">                    return true;</span>
+                }
+            }
+        }
+<span class="nc" id="L730">        return false;</span>
+    }
+
+    @Override
+    public boolean allSatisfy(IntPredicate predicate)
+    {
+<span class="nc" id="L736">        int zeroToThirtyOne = this.zeroToThirtyOne;</span>
+<span class="nc bnc" id="L737" title="All 2 branches missed.">        while (zeroToThirtyOne != 0)</span>
+        {
+<span class="nc" id="L739">            int value = Integer.numberOfTrailingZeros(zeroToThirtyOne);</span>
+<span class="nc bnc" id="L740" title="All 2 branches missed.">            if (!predicate.accept(value))</span>
+            {
+<span class="nc" id="L742">                return false;</span>
+            }
+<span class="nc" id="L744">            zeroToThirtyOne &amp;= ~(1 &lt;&lt; value);</span>
+<span class="nc" id="L745">        }</span>
+
+<span class="nc bnc" id="L747" title="All 2 branches missed.">        for (int value : this.table)</span>
+        {
+<span class="nc bnc" id="L749" title="All 2 branches missed.">            if (isNonSentinel(value))</span>
+            {
+<span class="nc bnc" id="L751" title="All 2 branches missed.">                if (!predicate.accept(value))</span>
+                {
+<span class="nc" id="L753">                    return false;</span>
+                }
+            }
+        }
+<span class="nc" id="L757">        return true;</span>
+    }
+
+    @Override
+    public boolean noneSatisfy(IntPredicate predicate)
+    {
+<span class="nc bnc" id="L763" title="All 2 branches missed.">        return !this.anySatisfy(predicate);</span>
+    }
+
+    @Override
+    public long sum()
+    {
+<span class="nc" id="L769">        long result = 0L;</span>
+
+<span class="nc" id="L771">        int zeroToThirtyOne = this.zeroToThirtyOne;</span>
+<span class="nc bnc" id="L772" title="All 2 branches missed.">        while (zeroToThirtyOne != 0)</span>
+        {
+<span class="nc" id="L774">            int value = Integer.numberOfTrailingZeros(zeroToThirtyOne);</span>
+<span class="nc" id="L775">            result += value;</span>
+<span class="nc" id="L776">            zeroToThirtyOne &amp;= ~(1 &lt;&lt; value);</span>
+<span class="nc" id="L777">        }</span>
+
+<span class="nc bnc" id="L779" title="All 2 branches missed.">        for (int value : this.table)</span>
+        {
+<span class="nc bnc" id="L781" title="All 2 branches missed.">            if (isNonSentinel(value))</span>
+            {
+<span class="nc" id="L783">                result += value;</span>
+            }
+        }
+<span class="nc" id="L786">        return result;</span>
+    }
+
+    @Override
+    public int max()
+    {
+<span class="nc bnc" id="L792" title="All 2 branches missed.">        if (this.isEmpty())</span>
+        {
+<span class="nc" id="L794">            throw new NoSuchElementException();</span>
+        }
+<span class="nc" id="L796">        int max = 31 - Integer.numberOfLeadingZeros(this.zeroToThirtyOne);</span>
+<span class="nc bnc" id="L797" title="All 2 branches missed.">        boolean isMaxSet = this.zeroToThirtyOneOccupied != 0;</span>
+
+<span class="nc bnc" id="L799" title="All 2 branches missed.">        for (int value : this.table)</span>
+        {
+<span class="nc bnc" id="L801" title="All 6 branches missed.">            if (isNonSentinel(value) &amp;&amp; (!isMaxSet || max &lt; value))</span>
+            {
+<span class="nc" id="L803">                max = value;</span>
+<span class="nc" id="L804">                isMaxSet = true;</span>
+            }
+        }
+<span class="nc" id="L807">        return max;</span>
+    }
+
+    @Override
+    public int min()
+    {
+<span class="nc bnc" id="L813" title="All 2 branches missed.">        if (this.isEmpty())</span>
+        {
+<span class="nc" id="L815">            throw new NoSuchElementException();</span>
+        }
+<span class="nc" id="L817">        int min = Integer.numberOfTrailingZeros(this.zeroToThirtyOne);</span>
+<span class="nc bnc" id="L818" title="All 2 branches missed.">        boolean isMinSet = this.zeroToThirtyOneOccupied != 0;</span>
+
+<span class="nc bnc" id="L820" title="All 2 branches missed.">        for (int value : this.table)</span>
+        {
+<span class="nc bnc" id="L822" title="All 6 branches missed.">            if (isNonSentinel(value) &amp;&amp; (!isMinSet || value &lt; min))</span>
+            {
+<span class="nc" id="L824">                min = value;</span>
+<span class="nc" id="L825">                isMinSet = true;</span>
+            }
+        }
+<span class="nc" id="L828">        return min;</span>
+    }
+
+    @Override
+    public IntSet freeze()
+    {
+<span class="nc bnc" id="L834" title="All 2 branches missed.">        if (this.size() == 0)</span>
+        {
+<span class="nc" id="L836">            return IntSets.immutable.with();</span>
+        }
+<span class="nc bnc" id="L838" title="All 2 branches missed.">        if (this.size() == 1)</span>
+        {
+<span class="nc" id="L840">            return IntSets.immutable.with(this.intIterator().next());</span>
+        }
+<span class="nc" id="L842">        this.copyOnWrite = true;</span>
+<span class="nc" id="L843">        return new ImmutableIntHashSet(this.table, this.occupiedWithData, this.zeroToThirtyOne, this.zeroToThirtyOneOccupied);</span>
+    }
+
+    @Override
+    public void writeExternal(ObjectOutput out) throws IOException
+    {
+<span class="nc" id="L849">        out.writeInt(this.size());</span>
+
+<span class="nc" id="L851">        int zeroToThirtyOne = this.zeroToThirtyOne;</span>
+<span class="nc bnc" id="L852" title="All 2 branches missed.">        while (zeroToThirtyOne != 0)</span>
+        {
+<span class="nc" id="L854">            int value = Integer.numberOfTrailingZeros(zeroToThirtyOne);</span>
+<span class="nc" id="L855">            out.writeInt(value);</span>
+<span class="nc" id="L856">            zeroToThirtyOne &amp;= ~(1 &lt;&lt; value);</span>
+<span class="nc" id="L857">        }</span>
+
+<span class="nc bnc" id="L859" title="All 2 branches missed.">        for (int value : this.table)</span>
+        {
+<span class="nc bnc" id="L861" title="All 2 branches missed.">            if (isNonSentinel(value))</span>
+            {
+<span class="nc" id="L863">                out.writeInt(value);</span>
+            }
+        }
+<span class="nc" id="L866">    }</span>
+
+    @Override
+    public void readExternal(ObjectInput in) throws IOException
+    {
+<span class="nc" id="L871">        int size = in.readInt();</span>
+
+<span class="nc bnc" id="L873" title="All 2 branches missed.">        for (int i = 0; i &lt; size; i++)</span>
+        {
+<span class="nc" id="L875">            this.add(in.readInt());</span>
+        }
+<span class="nc" id="L877">    }</span>
+
+    @Override
+    public &lt;T&gt; T injectInto(T injectedValue, ObjectIntToObjectFunction&lt;? super T, ? extends T&gt; function)
+    {
+<span class="nc" id="L882">        T result = injectedValue;</span>
+<span class="nc" id="L883">        int zeroToThirtyOne = this.zeroToThirtyOne;</span>
+<span class="nc bnc" id="L884" title="All 2 branches missed.">        while (zeroToThirtyOne != 0)</span>
+        {
+<span class="nc" id="L886">            int value = Integer.numberOfTrailingZeros(zeroToThirtyOne);</span>
+<span class="nc" id="L887">            result = function.valueOf(result, value);</span>
+<span class="nc" id="L888">            zeroToThirtyOne &amp;= ~(1 &lt;&lt; value);</span>
+<span class="nc" id="L889">        }</span>
+
+<span class="nc bnc" id="L891" title="All 2 branches missed.">        for (int value : this.table)</span>
+        {
+<span class="nc bnc" id="L893" title="All 2 branches missed.">            if (isNonSentinel(value))</span>
+            {
+<span class="nc" id="L895">                result = function.valueOf(result, value);</span>
+            }
+        }
+<span class="nc" id="L898">        return result;</span>
+    }
+
+    @Override
+    public RichIterable&lt;IntIterable&gt; chunk(int size)
+    {
+<span class="nc bnc" id="L904" title="All 2 branches missed.">        if (size &lt;= 0)</span>
+        {
+<span class="nc" id="L906">            throw new IllegalArgumentException(&quot;Size for groups must be positive but was: &quot; + size);</span>
+        }
+<span class="nc" id="L908">        MutableList&lt;IntIterable&gt; result = Lists.mutable.empty();</span>
+<span class="nc bnc" id="L909" title="All 2 branches missed.">        if (this.notEmpty())</span>
+        {
+<span class="nc bnc" id="L911" title="All 2 branches missed.">            if (this.size() &lt;= size)</span>
+            {
+<span class="nc" id="L913">                result.add(IntSets.mutable.withAll(this));</span>
+            }
+            else
+            {
+<span class="nc" id="L917">                IntIterator iterator = this.intIterator();</span>
+<span class="nc bnc" id="L918" title="All 2 branches missed.">                while (iterator.hasNext())</span>
+                {
+<span class="nc" id="L920">                    MutableIntSet batch = IntSets.mutable.empty();</span>
+<span class="nc bnc" id="L921" title="All 4 branches missed.">                    for (int i = 0; i &lt; size &amp;&amp; iterator.hasNext(); i++)</span>
+                    {
+<span class="nc" id="L923">                        batch.add(iterator.next());</span>
+                    }
+<span class="nc" id="L925">                    result.add(batch);</span>
+<span class="nc" id="L926">                }</span>
+            }
+        }
+<span class="nc" id="L929">        return result;</span>
+    }
+
+    /**
+     * Creates a new empty IntHashSet.
+     *
+     * @since 9.2.
+     */
+    public IntHashSet newEmpty()
+    {
+<span class="nc" id="L939">        return new IntHashSet();</span>
+    }
+
+    /**
+     * Rehashes every element in the set into a new backing table of the smallest possible size and eliminating removed sentinels.
+     */
+    public void compact()
+    {
+<span class="nc" id="L947">        this.rehash(this.smallestPowerOfTwoGreaterThan(this.size()));</span>
+<span class="nc" id="L948">    }</span>
+
+    private void rehash()
+    {
+<span class="nc" id="L952">        this.rehash(this.table.length);</span>
+<span class="nc" id="L953">    }</span>
+
+    private void rehashAndGrow()
+    {
+<span class="nc" id="L957">        this.rehash(this.table.length &lt;&lt; 1);</span>
+<span class="nc" id="L958">    }</span>
+
+    private void rehash(int newCapacity)
+    {
+<span class="nc" id="L962">        int oldLength = this.table.length;</span>
+<span class="nc" id="L963">        int[] old = this.table;</span>
+<span class="nc" id="L964">        this.allocateTable(newCapacity);</span>
+<span class="nc" id="L965">        this.occupiedWithData = 0;</span>
+<span class="nc" id="L966">        this.occupiedWithSentinels = 0;</span>
+
+<span class="nc bnc" id="L968" title="All 2 branches missed.">        for (int i = 0; i &lt; oldLength; i++)</span>
+        {
+<span class="nc bnc" id="L970" title="All 2 branches missed.">            if (isNonSentinel(old[i]))</span>
+            {
+<span class="nc" id="L972">                this.add(old[i]);</span>
+            }
+        }
+<span class="nc" id="L975">    }</span>
+
+    private void allocateTable(int sizeToAllocate)
+    {
+<span class="nc" id="L979">        this.table = new int[sizeToAllocate];</span>
+<span class="nc" id="L980">    }</span>
+
+    // exposed for testing
+    int probe(int element)
+    {
+<span class="nc" id="L985">        int index = this.spreadAndMask(element);</span>
+<span class="nc" id="L986">        int valueAtIndex = this.table[index];</span>
+
+<span class="nc bnc" id="L988" title="All 4 branches missed.">        if (valueAtIndex == element || valueAtIndex == EMPTY)</span>
+        {
+<span class="nc" id="L990">            return index;</span>
+        }
+
+<span class="nc bnc" id="L993" title="All 2 branches missed.">        int removedIndex = valueAtIndex == REMOVED ? index : -1;</span>
+<span class="nc bnc" id="L994" title="All 2 branches missed.">        for (int i = 1; i &lt; INITIAL_LINEAR_PROBE; i++)</span>
+        {
+<span class="nc" id="L996">            int nextIndex = (index + i) &amp; (this.table.length - 1);</span>
+<span class="nc" id="L997">            valueAtIndex = this.table[nextIndex];</span>
+<span class="nc bnc" id="L998" title="All 2 branches missed.">            if (valueAtIndex == element)</span>
+            {
+<span class="nc" id="L1000">                return nextIndex;</span>
+            }
+<span class="nc bnc" id="L1002" title="All 2 branches missed.">            if (valueAtIndex == EMPTY)</span>
+            {
+<span class="nc bnc" id="L1004" title="All 2 branches missed.">                return removedIndex == -1 ? nextIndex : removedIndex;</span>
+            }
+<span class="nc bnc" id="L1006" title="All 4 branches missed.">            if (valueAtIndex == REMOVED &amp;&amp; removedIndex == -1)</span>
+            {
+<span class="nc" id="L1008">                removedIndex = nextIndex;</span>
+            }
+        }
+<span class="nc" id="L1011">        return this.probeTwo(element, removedIndex);</span>
+    }
+
+    int probeTwo(int element, int removedIndex)
+    {
+<span class="nc" id="L1016">        int index = this.spreadTwoAndMask(element);</span>
+<span class="nc bnc" id="L1017" title="All 2 branches missed.">        for (int i = 0; i &lt; INITIAL_LINEAR_PROBE; i++)</span>
+        {
+<span class="nc" id="L1019">            int nextIndex = (index + i) &amp; (this.table.length - 1);</span>
+<span class="nc" id="L1020">            int valueAtIndex = this.table[nextIndex];</span>
+<span class="nc bnc" id="L1021" title="All 2 branches missed.">            if (valueAtIndex == element)</span>
+            {
+<span class="nc" id="L1023">                return nextIndex;</span>
+            }
+<span class="nc bnc" id="L1025" title="All 2 branches missed.">            if (valueAtIndex == EMPTY)</span>
+            {
+<span class="nc bnc" id="L1027" title="All 2 branches missed.">                return removedIndex == -1 ? nextIndex : removedIndex;</span>
+            }
+<span class="nc bnc" id="L1029" title="All 4 branches missed.">            if (valueAtIndex == REMOVED &amp;&amp; removedIndex == -1)</span>
+            {
+<span class="nc" id="L1031">                removedIndex = nextIndex;</span>
+            }
+        }
+<span class="nc" id="L1034">        return this.probeThree(element, removedIndex);</span>
+    }
+
+    int probeThree(int element, int removedIndex)
+    {
+<span class="nc" id="L1039">        int nextIndex = Integer.reverse(SpreadFunctions.intSpreadOne(element));</span>
+<span class="nc" id="L1040">        int spreadTwo = Integer.reverse(SpreadFunctions.intSpreadTwo(element)) | 1;</span>
+
+        while (true)
+        {
+<span class="nc" id="L1044">            nextIndex = this.mask(nextIndex + spreadTwo);</span>
+<span class="nc" id="L1045">            int valueAtIndex = this.table[nextIndex];</span>
+<span class="nc bnc" id="L1046" title="All 2 branches missed.">            if (valueAtIndex == element)</span>
+            {
+<span class="nc" id="L1048">                return nextIndex;</span>
+            }
+<span class="nc bnc" id="L1050" title="All 2 branches missed.">            if (valueAtIndex == EMPTY)</span>
+            {
+<span class="nc bnc" id="L1052" title="All 2 branches missed.">                return removedIndex == -1 ? nextIndex : removedIndex;</span>
+            }
+<span class="nc bnc" id="L1054" title="All 4 branches missed.">            if (valueAtIndex == REMOVED &amp;&amp; removedIndex == -1)</span>
+            {
+<span class="nc" id="L1056">                removedIndex = nextIndex;</span>
+            }
+<span class="nc" id="L1058">        }</span>
+    }
+
+    // exposed for testing
+    int spreadAndMask(int element)
+    {
+<span class="nc" id="L1064">        int code = SpreadFunctions.intSpreadOne(element);</span>
+<span class="nc" id="L1065">        return this.mask(code);</span>
+    }
+
+    int spreadTwoAndMask(int element)
+    {
+<span class="nc" id="L1070">        int code = SpreadFunctions.intSpreadTwo(element);</span>
+<span class="nc" id="L1071">        return this.mask(code);</span>
+    }
+
+    private int mask(int spread)
+    {
+<span class="nc" id="L1076">        return spread &amp; (this.table.length - 1);</span>
+    }
+
+    private void copyTable()
+    {
+<span class="nc" id="L1081">        this.copyOnWrite = false;</span>
+<span class="nc" id="L1082">        int[] copy = new int[this.table.length];</span>
+<span class="nc" id="L1083">        System.arraycopy(this.table, 0, copy, 0, this.table.length);</span>
+<span class="nc" id="L1084">        this.table = copy;</span>
+<span class="nc" id="L1085">    }</span>
+
+    private int maxOccupiedWithData()
+    {
+<span class="nc" id="L1089">        int capacity = this.table.length;</span>
+        // need at least one free slot for open addressing
+<span class="nc" id="L1091">        return Math.min(capacity - 1, capacity / OCCUPIED_DATA_RATIO);</span>
+    }
+
+    private int maxOccupiedWithSentinels()
+    {
+<span class="nc" id="L1096">        return this.table.length / OCCUPIED_SENTINEL_RATIO;</span>
+    }
+
+    private static boolean isNonSentinel(int value)
+    {
+<span class="nc bnc" id="L1101" title="All 4 branches missed.">        return value != EMPTY &amp;&amp; value != REMOVED;</span>
+    }
+
+    private static final class ImmutableIntHashSet extends AbstractImmutableIntSet implements Serializable
+    {
+        private static final long serialVersionUID = 1L;
+        private final int[] table;
+        private final int occupied;
+        // The 32 bits of this integer indicate whether the items 0 to 31 are present in the set.
+        private final int zeroToThirtyOne;
+        private final int zeroToThirtyOneOccupied;
+
+        private ImmutableIntHashSet(int[] table, int occupied, int zeroToThirtyOne, int zeroToThirtyOneOccupied)
+<span class="nc" id="L1114">        {</span>
+<span class="nc" id="L1115">            this.checkOptimizedSize(occupied + zeroToThirtyOneOccupied);</span>
+<span class="nc" id="L1116">            this.occupied = occupied;</span>
+<span class="nc" id="L1117">            this.zeroToThirtyOneOccupied = zeroToThirtyOneOccupied;</span>
+<span class="nc" id="L1118">            this.zeroToThirtyOne = zeroToThirtyOne;</span>
+<span class="nc" id="L1119">            this.table = table;</span>
+<span class="nc" id="L1120">        }</span>
+
+        private void checkOptimizedSize(int length)
+        {
+<span class="nc bnc" id="L1124" title="All 2 branches missed.">            if (length &lt;= 1)</span>
+            {
+<span class="nc" id="L1126">                throw new IllegalArgumentException(&quot;Use IntSets.immutable.with() to instantiate an optimized collection&quot;);</span>
+            }
+<span class="nc" id="L1128">        }</span>
+
+        public static ImmutableIntSet newSetWith(int... elements)
+        {
+<span class="nc" id="L1132">            return IntHashSet.newSetWith(elements).toImmutable();</span>
+        }
+
+        @Override
+        public int hashCode()
+        {
+<span class="nc" id="L1138">            int result = 0;</span>
+<span class="nc" id="L1139">            int zeroToThirtyOne = this.zeroToThirtyOne;</span>
+<span class="nc bnc" id="L1140" title="All 2 branches missed.">            while (zeroToThirtyOne != 0)</span>
+            {
+<span class="nc" id="L1142">                int value = Integer.numberOfTrailingZeros(zeroToThirtyOne);</span>
+<span class="nc" id="L1143">                result += value;</span>
+<span class="nc" id="L1144">                zeroToThirtyOne &amp;= ~(1 &lt;&lt; value);</span>
+<span class="nc" id="L1145">            }</span>
+<span class="nc bnc" id="L1146" title="All 2 branches missed.">            if (this.table != null)</span>
+            {
+<span class="nc bnc" id="L1148" title="All 2 branches missed.">                for (int i = 0; i &lt; this.table.length; i++)</span>
+                {
+<span class="nc bnc" id="L1150" title="All 2 branches missed.">                    if (isNonSentinel(this.table[i]))</span>
+                    {
+<span class="nc" id="L1152">                        result += this.table[i];</span>
+                    }
+                }
+            }
+<span class="nc" id="L1156">            return result;</span>
+        }
+
+        @Override
+        public int size()
+        {
+<span class="nc" id="L1162">            return this.occupied + this.zeroToThirtyOneOccupied;</span>
+        }
+
+        @Override
+        public void appendString(Appendable appendable, String start, String separator, String end)
+        {
+            try
+            {
+<span class="nc" id="L1170">                appendable.append(start);</span>
+
+<span class="nc" id="L1172">                int count = 0;</span>
+<span class="nc" id="L1173">                int zeroToThirtyOne = this.zeroToThirtyOne;</span>
+<span class="nc bnc" id="L1174" title="All 2 branches missed.">                while (zeroToThirtyOne != 0)</span>
+                {
+<span class="nc" id="L1176">                    int value = Integer.numberOfTrailingZeros(zeroToThirtyOne);</span>
+<span class="nc bnc" id="L1177" title="All 2 branches missed.">                    if (count &gt; 0)</span>
+                    {
+<span class="nc" id="L1179">                        appendable.append(separator);</span>
+                    }
+<span class="nc" id="L1181">                    count++;</span>
+<span class="nc" id="L1182">                    appendable.append(String.valueOf(value));</span>
+<span class="nc" id="L1183">                    zeroToThirtyOne &amp;= ~(1 &lt;&lt; value);</span>
+<span class="nc" id="L1184">                }</span>
+
+<span class="nc bnc" id="L1186" title="All 2 branches missed.">                for (int value : this.table)</span>
+                {
+<span class="nc bnc" id="L1188" title="All 2 branches missed.">                    if (isNonSentinel(value))</span>
+                    {
+<span class="nc bnc" id="L1190" title="All 2 branches missed.">                        if (count &gt; 0)</span>
+                        {
+<span class="nc" id="L1192">                            appendable.append(separator);</span>
+                        }
+<span class="nc" id="L1194">                        count++;</span>
+<span class="nc" id="L1195">                        appendable.append(String.valueOf(value));</span>
+                    }
+                }
+<span class="nc" id="L1198">                appendable.append(end);</span>
+            }
+<span class="nc" id="L1200">            catch (IOException e)</span>
+            {
+<span class="nc" id="L1202">                throw new RuntimeException(e);</span>
+<span class="nc" id="L1203">            }</span>
+<span class="nc" id="L1204">        }</span>
+
+        @Override
+        public IntIterator intIterator()
+        {
+<span class="nc" id="L1209">            return new InternalIntIterator();</span>
+        }
+
+        @Override
+        public int[] toArray()
+        {
+<span class="nc" id="L1215">            int[] array = new int[this.size()];</span>
+
+<span class="nc" id="L1217">            int j = 0;</span>
+<span class="nc" id="L1218">            int zeroToThirtyOne = this.zeroToThirtyOne;</span>
+<span class="nc bnc" id="L1219" title="All 2 branches missed.">            while (zeroToThirtyOne != 0)</span>
+            {
+<span class="nc" id="L1221">                int value = Integer.numberOfTrailingZeros(zeroToThirtyOne);</span>
+<span class="nc" id="L1222">                array[j] = value;</span>
+<span class="nc" id="L1223">                j++;</span>
+<span class="nc" id="L1224">                zeroToThirtyOne &amp;= ~(1 &lt;&lt; value);</span>
+<span class="nc" id="L1225">            }</span>
+
+<span class="nc bnc" id="L1227" title="All 4 branches missed.">            for (int i = 0; i &lt; this.table.length &amp;&amp; j &lt; this.size(); i++)</span>
+            {
+<span class="nc bnc" id="L1229" title="All 2 branches missed.">                if (isNonSentinel(this.table[i]))</span>
+                {
+<span class="nc" id="L1231">                    array[j] = this.table[i];</span>
+<span class="nc" id="L1232">                    j++;</span>
+                }
+            }
+<span class="nc" id="L1235">            return array;</span>
+        }
+
+        @Override
+        public boolean contains(int value)
+        {
+<span class="nc bnc" id="L1241" title="All 2 branches missed.">            if (isBetweenZeroAndThirtyOne(value))</span>
+            {
+<span class="nc" id="L1243">                int temp = this.zeroToThirtyOne;</span>
+<span class="nc bnc" id="L1244" title="All 2 branches missed.">                return ((temp &gt;&gt;&gt; value) &amp; 1) != 0;</span>
+            }
+<span class="nc bnc" id="L1246" title="All 2 branches missed.">            return this.table[this.probe(value)] == value;</span>
+        }
+
+        @Override
+        public void forEach(IntProcedure procedure)
+        {
+<span class="nc" id="L1252">            this.each(procedure);</span>
+<span class="nc" id="L1253">        }</span>
+
+        @Override
+        public void each(IntProcedure procedure)
+        {
+<span class="nc" id="L1258">            int zeroToThirtyOne = this.zeroToThirtyOne;</span>
+<span class="nc bnc" id="L1259" title="All 2 branches missed.">            while (zeroToThirtyOne != 0)</span>
+            {
+<span class="nc" id="L1261">                int value = Integer.numberOfTrailingZeros(zeroToThirtyOne);</span>
+<span class="nc" id="L1262">                procedure.value(value);</span>
+<span class="nc" id="L1263">                zeroToThirtyOne &amp;= ~(1 &lt;&lt; value);</span>
+<span class="nc" id="L1264">            }</span>
+
+<span class="nc bnc" id="L1266" title="All 2 branches missed.">            for (int value : this.table)</span>
+            {
+<span class="nc bnc" id="L1268" title="All 2 branches missed.">                if (isNonSentinel(value))</span>
+                {
+<span class="nc" id="L1270">                    procedure.value(value);</span>
+                }
+            }
+<span class="nc" id="L1273">        }</span>
+
+        @Override
+        public ImmutableIntSet select(IntPredicate predicate)
+        {
+<span class="nc" id="L1278">            return this.select(predicate, new IntHashSet()).toImmutable();</span>
+        }
+
+        @Override
+        public ImmutableIntSet reject(IntPredicate predicate)
+        {
+<span class="nc" id="L1284">            return this.reject(predicate, new IntHashSet()).toImmutable();</span>
+        }
+
+        @Override
+        public &lt;V&gt; ImmutableSet&lt;V&gt; collect(IntToObjectFunction&lt;? extends V&gt; function)
+        {
+<span class="nc" id="L1290">            MutableSet&lt;V&gt; set = this.collect(function, UnifiedSet.newSet(this.size()));</span>
+<span class="nc" id="L1291">            return set.toImmutable();</span>
+        }
+
+        @Override
+        public int detectIfNone(IntPredicate predicate, int ifNone)
+        {
+<span class="nc" id="L1297">            int zeroToThirtyOne = this.zeroToThirtyOne;</span>
+<span class="nc bnc" id="L1298" title="All 2 branches missed.">            while (zeroToThirtyOne != 0)</span>
+            {
+<span class="nc" id="L1300">                int value = Integer.numberOfTrailingZeros(zeroToThirtyOne);</span>
+<span class="nc bnc" id="L1301" title="All 2 branches missed.">                if (predicate.accept(value))</span>
+                {
+<span class="nc" id="L1303">                    return value;</span>
+                }
+<span class="nc" id="L1305">                zeroToThirtyOne &amp;= ~(1 &lt;&lt; value);</span>
+<span class="nc" id="L1306">            }</span>
+
+<span class="nc bnc" id="L1308" title="All 2 branches missed.">            for (int value : this.table)</span>
+            {
+<span class="nc bnc" id="L1310" title="All 2 branches missed.">                if (isNonSentinel(value))</span>
+                {
+<span class="nc bnc" id="L1312" title="All 2 branches missed.">                    if (predicate.accept(value))</span>
+                    {
+<span class="nc" id="L1314">                        return value;</span>
+                    }
+                }
+            }
+<span class="nc" id="L1318">            return ifNone;</span>
+        }
+
+        @Override
+        public int count(IntPredicate predicate)
+        {
+<span class="nc" id="L1324">            int count = 0;</span>
+<span class="nc" id="L1325">            int zeroToThirtyOne = this.zeroToThirtyOne;</span>
+<span class="nc bnc" id="L1326" title="All 2 branches missed.">            while (zeroToThirtyOne != 0)</span>
+            {
+<span class="nc" id="L1328">                int value = Integer.numberOfTrailingZeros(zeroToThirtyOne);</span>
+<span class="nc bnc" id="L1329" title="All 2 branches missed.">                if (predicate.accept(value))</span>
+                {
+<span class="nc" id="L1331">                    count++;</span>
+                }
+<span class="nc" id="L1333">                zeroToThirtyOne &amp;= ~(1 &lt;&lt; value);</span>
+<span class="nc" id="L1334">            }</span>
+
+<span class="nc bnc" id="L1336" title="All 2 branches missed.">            for (int value : this.table)</span>
+            {
+<span class="nc bnc" id="L1338" title="All 2 branches missed.">                if (isNonSentinel(value))</span>
+                {
+<span class="nc bnc" id="L1340" title="All 2 branches missed.">                    if (predicate.accept(value))</span>
+                    {
+<span class="nc" id="L1342">                        count++;</span>
+                    }
+                }
+            }
+<span class="nc" id="L1346">            return count;</span>
+        }
+
+        @Override
+        public boolean anySatisfy(IntPredicate predicate)
+        {
+<span class="nc" id="L1352">            int zeroToThirtyOne = this.zeroToThirtyOne;</span>
+<span class="nc bnc" id="L1353" title="All 2 branches missed.">            while (zeroToThirtyOne != 0)</span>
+            {
+<span class="nc" id="L1355">                int value = Integer.numberOfTrailingZeros(zeroToThirtyOne);</span>
+<span class="nc bnc" id="L1356" title="All 2 branches missed.">                if (predicate.accept(value))</span>
+                {
+<span class="nc" id="L1358">                    return true;</span>
+                }
+<span class="nc" id="L1360">                zeroToThirtyOne &amp;= ~(1 &lt;&lt; value);</span>
+<span class="nc" id="L1361">            }</span>
+
+<span class="nc bnc" id="L1363" title="All 2 branches missed.">            for (int value : this.table)</span>
+            {
+<span class="nc bnc" id="L1365" title="All 2 branches missed.">                if (isNonSentinel(value))</span>
+                {
+<span class="nc bnc" id="L1367" title="All 2 branches missed.">                    if (predicate.accept(value))</span>
+                    {
+<span class="nc" id="L1369">                        return true;</span>
+                    }
+                }
+            }
+<span class="nc" id="L1373">            return false;</span>
+        }
+
+        @Override
+        public boolean allSatisfy(IntPredicate predicate)
+        {
+<span class="nc" id="L1379">            int zeroToThirtyOne = this.zeroToThirtyOne;</span>
+<span class="nc bnc" id="L1380" title="All 2 branches missed.">            while (zeroToThirtyOne != 0)</span>
+            {
+<span class="nc" id="L1382">                int value = Integer.numberOfTrailingZeros(zeroToThirtyOne);</span>
+<span class="nc bnc" id="L1383" title="All 2 branches missed.">                if (!predicate.accept(value))</span>
+                {
+<span class="nc" id="L1385">                    return false;</span>
+                }
+<span class="nc" id="L1387">                zeroToThirtyOne &amp;= ~(1 &lt;&lt; value);</span>
+<span class="nc" id="L1388">            }</span>
+
+<span class="nc bnc" id="L1390" title="All 2 branches missed.">            for (int value : this.table)</span>
+            {
+<span class="nc bnc" id="L1392" title="All 2 branches missed.">                if (isNonSentinel(value))</span>
+                {
+<span class="nc bnc" id="L1394" title="All 2 branches missed.">                    if (!predicate.accept(value))</span>
+                    {
+<span class="nc" id="L1396">                        return false;</span>
+                    }
+                }
+            }
+<span class="nc" id="L1400">            return true;</span>
+        }
+
+        @Override
+        public boolean noneSatisfy(IntPredicate predicate)
+        {
+<span class="nc bnc" id="L1406" title="All 2 branches missed.">            return !this.anySatisfy(predicate);</span>
+        }
+
+        @Override
+        public long sum()
+        {
+<span class="nc" id="L1412">            long result = 0L;</span>
+
+<span class="nc" id="L1414">            int zeroToThirtyOne = this.zeroToThirtyOne;</span>
+<span class="nc bnc" id="L1415" title="All 2 branches missed.">            while (zeroToThirtyOne != 0)</span>
+            {
+<span class="nc" id="L1417">                int value = Integer.numberOfTrailingZeros(zeroToThirtyOne);</span>
+<span class="nc" id="L1418">                result += value;</span>
+<span class="nc" id="L1419">                zeroToThirtyOne &amp;= ~(1 &lt;&lt; value);</span>
+<span class="nc" id="L1420">            }</span>
+
+<span class="nc bnc" id="L1422" title="All 2 branches missed.">            for (int value : this.table)</span>
+            {
+<span class="nc bnc" id="L1424" title="All 2 branches missed.">                if (isNonSentinel(value))</span>
+                {
+<span class="nc" id="L1426">                    result += value;</span>
+                }
+            }
+<span class="nc" id="L1429">            return result;</span>
+        }
+
+        @Override
+        public int max()
+        {
+<span class="nc bnc" id="L1435" title="All 2 branches missed.">            if (this.isEmpty())</span>
+            {
+<span class="nc" id="L1437">                throw new NoSuchElementException();</span>
+            }
+<span class="nc" id="L1439">            int max = 31 - Integer.numberOfLeadingZeros(this.zeroToThirtyOne);</span>
+<span class="nc bnc" id="L1440" title="All 2 branches missed.">            boolean isMaxSet = this.zeroToThirtyOneOccupied != 0;</span>
+
+<span class="nc bnc" id="L1442" title="All 2 branches missed.">            for (int value : this.table)</span>
+            {
+<span class="nc bnc" id="L1444" title="All 6 branches missed.">                if (isNonSentinel(value) &amp;&amp; (!isMaxSet || max &lt; value))</span>
+                {
+<span class="nc" id="L1446">                    max = value;</span>
+<span class="nc" id="L1447">                    isMaxSet = true;</span>
+                }
+            }
+<span class="nc" id="L1450">            return max;</span>
+        }
+
+        @Override
+        public int min()
+        {
+<span class="nc bnc" id="L1456" title="All 2 branches missed.">            if (this.isEmpty())</span>
+            {
+<span class="nc" id="L1458">                throw new NoSuchElementException();</span>
+            }
+<span class="nc" id="L1460">            int min = Integer.numberOfTrailingZeros(this.zeroToThirtyOne);</span>
+<span class="nc bnc" id="L1461" title="All 2 branches missed.">            boolean isMinSet = this.zeroToThirtyOneOccupied != 0;</span>
+
+<span class="nc bnc" id="L1463" title="All 2 branches missed.">            for (int value : this.table)</span>
+            {
+<span class="nc bnc" id="L1465" title="All 6 branches missed.">                if (isNonSentinel(value) &amp;&amp; (!isMinSet || value &lt; min))</span>
+                {
+<span class="nc" id="L1467">                    min = value;</span>
+<span class="nc" id="L1468">                    isMinSet = true;</span>
+                }
+            }
+<span class="nc" id="L1471">            return min;</span>
+        }
+
+        @Override
+        public &lt;T&gt; T injectInto(T injectedValue, ObjectIntToObjectFunction&lt;? super T, ? extends T&gt; function)
+        {
+<span class="nc" id="L1477">            T result = injectedValue;</span>
+<span class="nc" id="L1478">            int zeroToThirtyOne = this.zeroToThirtyOne;</span>
+<span class="nc bnc" id="L1479" title="All 2 branches missed.">            while (zeroToThirtyOne != 0)</span>
+            {
+<span class="nc" id="L1481">                int value = Integer.numberOfTrailingZeros(zeroToThirtyOne);</span>
+<span class="nc" id="L1482">                result = function.valueOf(result, value);</span>
+<span class="nc" id="L1483">                zeroToThirtyOne &amp;= ~(1 &lt;&lt; value);</span>
+<span class="nc" id="L1484">            }</span>
+
+<span class="nc bnc" id="L1486" title="All 2 branches missed.">            for (int value : this.table)</span>
+            {
+<span class="nc bnc" id="L1488" title="All 2 branches missed.">                if (isNonSentinel(value))</span>
+                {
+<span class="nc" id="L1490">                    result = function.valueOf(result, value);</span>
+                }
+            }
+<span class="nc" id="L1493">            return result;</span>
+        }
+
+        private Object writeReplace()
+        {
+<span class="nc" id="L1498">            return new ImmutableIntSetSerializationProxy(this);</span>
+        }
+
+        // exposed for testing
+        int probe(int element)
+        {
+<span class="nc" id="L1504">            int index = this.spreadAndMask(element);</span>
+<span class="nc" id="L1505">            int valueAtIndex = this.table[index];</span>
+
+<span class="nc bnc" id="L1507" title="All 4 branches missed.">            if (valueAtIndex == element || valueAtIndex == EMPTY)</span>
+            {
+<span class="nc" id="L1509">                return index;</span>
+            }
+
+<span class="nc bnc" id="L1512" title="All 2 branches missed.">            int removedIndex = valueAtIndex == REMOVED ? index : -1;</span>
+<span class="nc bnc" id="L1513" title="All 2 branches missed.">            for (int i = 1; i &lt; INITIAL_LINEAR_PROBE; i++)</span>
+            {
+<span class="nc" id="L1515">                int nextIndex = (index + i) &amp; (this.table.length - 1);</span>
+<span class="nc" id="L1516">                valueAtIndex = this.table[nextIndex];</span>
+<span class="nc bnc" id="L1517" title="All 2 branches missed.">                if (valueAtIndex == element)</span>
+                {
+<span class="nc" id="L1519">                    return nextIndex;</span>
+                }
+<span class="nc bnc" id="L1521" title="All 2 branches missed.">                if (valueAtIndex == EMPTY)</span>
+                {
+<span class="nc bnc" id="L1523" title="All 2 branches missed.">                    return removedIndex == -1 ? nextIndex : removedIndex;</span>
+                }
+<span class="nc bnc" id="L1525" title="All 4 branches missed.">                if (valueAtIndex == REMOVED &amp;&amp; removedIndex == -1)</span>
+                {
+<span class="nc" id="L1527">                    removedIndex = nextIndex;</span>
+                }
+            }
+<span class="nc" id="L1530">            return this.probeTwo(element, removedIndex);</span>
+        }
+
+        int probeTwo(int element, int removedIndex)
+        {
+<span class="nc" id="L1535">            int index = this.spreadTwoAndMask(element);</span>
+<span class="nc bnc" id="L1536" title="All 2 branches missed.">            for (int i = 0; i &lt; INITIAL_LINEAR_PROBE; i++)</span>
+            {
+<span class="nc" id="L1538">                int nextIndex = (index + i) &amp; (this.table.length - 1);</span>
+<span class="nc" id="L1539">                int valueAtIndex = this.table[nextIndex];</span>
+<span class="nc bnc" id="L1540" title="All 2 branches missed.">                if (valueAtIndex == element)</span>
+                {
+<span class="nc" id="L1542">                    return nextIndex;</span>
+                }
+<span class="nc bnc" id="L1544" title="All 2 branches missed.">                if (valueAtIndex == EMPTY)</span>
+                {
+<span class="nc bnc" id="L1546" title="All 2 branches missed.">                    return removedIndex == -1 ? nextIndex : removedIndex;</span>
+                }
+<span class="nc bnc" id="L1548" title="All 4 branches missed.">                if (valueAtIndex == REMOVED &amp;&amp; removedIndex == -1)</span>
+                {
+<span class="nc" id="L1550">                    removedIndex = nextIndex;</span>
+                }
+            }
+<span class="nc" id="L1553">            return this.probeThree(element, removedIndex);</span>
+        }
+
+        int probeThree(int element, int removedIndex)
+        {
+<span class="nc" id="L1558">            int nextIndex = Integer.reverse(SpreadFunctions.intSpreadOne(element));</span>
+<span class="nc" id="L1559">            int spreadTwo = Integer.reverse(SpreadFunctions.intSpreadTwo(element)) | 1;</span>
+
+            while (true)
+            {
+<span class="nc" id="L1563">                nextIndex = this.mask(nextIndex + spreadTwo);</span>
+<span class="nc" id="L1564">                int valueAtIndex = this.table[nextIndex];</span>
+<span class="nc bnc" id="L1565" title="All 2 branches missed.">                if (valueAtIndex == element)</span>
+                {
+<span class="nc" id="L1567">                    return nextIndex;</span>
+                }
+<span class="nc bnc" id="L1569" title="All 2 branches missed.">                if (valueAtIndex == EMPTY)</span>
+                {
+<span class="nc bnc" id="L1571" title="All 2 branches missed.">                    return removedIndex == -1 ? nextIndex : removedIndex;</span>
+                }
+<span class="nc bnc" id="L1573" title="All 4 branches missed.">                if (valueAtIndex == REMOVED &amp;&amp; removedIndex == -1)</span>
+                {
+<span class="nc" id="L1575">                    removedIndex = nextIndex;</span>
+                }
+<span class="nc" id="L1577">            }</span>
+        }
+
+        // exposed for testing
+        int spreadAndMask(int element)
+        {
+<span class="nc" id="L1583">            int code = SpreadFunctions.intSpreadOne(element);</span>
+<span class="nc" id="L1584">            return this.mask(code);</span>
+        }
+
+        int spreadTwoAndMask(int element)
+        {
+<span class="nc" id="L1589">            int code = SpreadFunctions.intSpreadTwo(element);</span>
+<span class="nc" id="L1590">            return this.mask(code);</span>
+        }
+
+        private int mask(int spread)
+        {
+<span class="nc" id="L1595">            return spread &amp; (this.table.length - 1);</span>
+        }
+
+<span class="nc" id="L1598">        private class InternalIntIterator implements IntIterator</span>
+        {
+            private int count;
+            private int position;
+            private int zeroToThirtyOne;
+
+            public boolean hasNext()
+            {
+<span class="nc bnc" id="L1606" title="All 2 branches missed.">                return this.count &lt; ImmutableIntHashSet.this.size();</span>
+            }
+
+            public int next()
+            {
+<span class="nc bnc" id="L1611" title="All 2 branches missed.">                if (!this.hasNext())</span>
+                {
+<span class="nc" id="L1613">                    throw new NoSuchElementException(&quot;next() called, but the iterator is exhausted&quot;);</span>
+                }
+<span class="nc" id="L1615">                this.count++;</span>
+
+<span class="nc bnc" id="L1617" title="All 2 branches missed.">                while (this.zeroToThirtyOne &lt; 32)</span>
+                {
+<span class="nc bnc" id="L1619" title="All 2 branches missed.">                    if (ImmutableIntHashSet.this.contains(this.zeroToThirtyOne))</span>
+                    {
+<span class="nc" id="L1621">                        int result = this.zeroToThirtyOne;</span>
+<span class="nc" id="L1622">                        this.zeroToThirtyOne++;</span>
+<span class="nc" id="L1623">                        return result;</span>
+                    }
+<span class="nc" id="L1625">                    this.zeroToThirtyOne++;</span>
+                }
+
+<span class="nc" id="L1628">                int[] table = ImmutableIntHashSet.this.table;</span>
+<span class="nc bnc" id="L1629" title="All 2 branches missed.">                while (!isNonSentinel(table[this.position]))</span>
+                {
+<span class="nc" id="L1631">                    this.position++;</span>
+                }
+<span class="nc" id="L1633">                int result = table[this.position];</span>
+<span class="nc" id="L1634">                this.position++;</span>
+<span class="nc" id="L1635">                return result;</span>
+            }
+        }
+    }
+
+<span class="nc" id="L1640">    private class InternalIntIterator implements MutableIntIterator</span>
+    {
+        private int count;
+        private int position;
+        private int zeroToThirtyOne;
+
+        @Override
+        public boolean hasNext()
+        {
+<span class="nc bnc" id="L1649" title="All 2 branches missed.">            return this.count &lt; IntHashSet.this.size();</span>
+        }
+
+        @Override
+        public int next()
+        {
+<span class="nc bnc" id="L1655" title="All 2 branches missed.">            if (!this.hasNext())</span>
+            {
+<span class="nc" id="L1657">                throw new NoSuchElementException(&quot;next() called, but the iterator is exhausted&quot;);</span>
+            }
+<span class="nc" id="L1659">            this.count++;</span>
+
+<span class="nc bnc" id="L1661" title="All 2 branches missed.">            while (this.zeroToThirtyOne &lt; 32)</span>
+            {
+<span class="nc bnc" id="L1663" title="All 2 branches missed.">                if (IntHashSet.this.contains(this.zeroToThirtyOne))</span>
+                {
+<span class="nc" id="L1665">                    int result = this.zeroToThirtyOne;</span>
+<span class="nc" id="L1666">                    this.zeroToThirtyOne++;</span>
+<span class="nc" id="L1667">                    return result;</span>
+                }
+<span class="nc" id="L1669">                this.zeroToThirtyOne++;</span>
+            }
+
+<span class="nc" id="L1672">            int[] table = IntHashSet.this.table;</span>
+<span class="nc bnc" id="L1673" title="All 2 branches missed.">            while (!isNonSentinel(table[this.position]))</span>
+            {
+<span class="nc" id="L1675">                this.position++;</span>
+            }
+<span class="nc" id="L1677">            int result = table[this.position];</span>
+<span class="nc" id="L1678">            this.position++;</span>
+<span class="nc" id="L1679">            return result;</span>
+        }
+
+        @Override
+        public void remove()
+        {
+<span class="nc bnc" id="L1685" title="All 2 branches missed.">            if (this.count == 0)</span>
+            {
+<span class="nc" id="L1687">                throw new IllegalStateException();</span>
+            }
+            int removeValue;
+<span class="nc bnc" id="L1690" title="All 4 branches missed.">            if (this.zeroToThirtyOne &lt;= 32 &amp;&amp; this.position == 0)</span>
+            {
+<span class="nc bnc" id="L1692" title="All 2 branches missed.">                if (IntHashSet.this.zeroToThirtyOne != (IntHashSet.this.zeroToThirtyOne | 1 &lt;&lt; (this.zeroToThirtyOne - 1)))</span>
+                {
+<span class="nc" id="L1694">                    throw new IllegalStateException();</span>
+                }
+<span class="nc" id="L1696">                removeValue = this.zeroToThirtyOne - 1;</span>
+            }
+<span class="nc bnc" id="L1698" title="All 2 branches missed.">            else if (IntHashSet.this.table[this.position - 1] == REMOVED)</span>
+            {
+<span class="nc" id="L1700">                throw new IllegalStateException();</span>
+            }
+            else
+            {
+<span class="nc" id="L1704">                removeValue = IntHashSet.this.table[this.position - 1];</span>
+            }
+<span class="nc bnc" id="L1706" title="All 2 branches missed.">            if (IntHashSet.isBetweenZeroAndThirtyOne(removeValue))</span>
+            {
+<span class="nc" id="L1708">                IntHashSet.this.removeZeroToThirtyOne(removeValue);</span>
+            }
+<span class="nc bnc" id="L1710" title="All 2 branches missed.">            else if (IntHashSet.this.table[this.position - 1] == removeValue)</span>
+            {
+<span class="nc bnc" id="L1712" title="All 2 branches missed.">                if (IntHashSet.this.copyOnWrite)</span>
+                {
+<span class="nc" id="L1714">                    IntHashSet.this.copyTable();</span>
+                }
+<span class="nc" id="L1716">                IntHashSet.this.table[position - 1] = REMOVED;</span>
+<span class="nc" id="L1717">                IntHashSet.this.occupiedWithData--;</span>
+<span class="nc" id="L1718">                IntHashSet.this.occupiedWithSentinels++;</span>
+            }
+
+<span class="nc" id="L1721">            this.count--;</span>
+<span class="nc" id="L1722">        }</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.0.201801022044</span></div></body></html>

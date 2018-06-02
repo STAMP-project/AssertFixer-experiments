@@ -1,0 +1,212 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>TreeBagMultimap.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Eclipse Collections Test Coverage Aggregation</a> &gt; <a href="../index.html" class="el_bundle">eclipse-collections</a> &gt; <a href="index.source.html" class="el_package">org.eclipse.collections.impl.multimap.bag.sorted</a> &gt; <span class="el_source">TreeBagMultimap.java</span></div><h1>TreeBagMultimap.java</h1><pre class="source lang-java linenums">/*
+ * Copyright (c) 2016 Goldman Sachs and others.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * and Eclipse Distribution License v. 1.0 which accompany this distribution.
+ * The Eclipse Public License is available at http://www.eclipse.org/legal/epl-v10.html
+ * and the Eclipse Distribution License is available at
+ * http://www.eclipse.org/org/documents/edl-v10.php.
+ */
+
+package org.eclipse.collections.impl.multimap.bag.sorted;
+
+import java.io.Externalizable;
+import java.io.IOException;
+import java.io.ObjectInput;
+import java.io.ObjectOutput;
+import java.util.Comparator;
+
+import org.eclipse.collections.api.bag.sorted.ImmutableSortedBag;
+import org.eclipse.collections.api.bag.sorted.MutableSortedBag;
+import org.eclipse.collections.api.block.function.Function;
+import org.eclipse.collections.api.block.function.Function2;
+import org.eclipse.collections.api.block.predicate.Predicate2;
+import org.eclipse.collections.api.map.MutableMap;
+import org.eclipse.collections.api.multimap.Multimap;
+import org.eclipse.collections.api.multimap.bag.MutableBagMultimap;
+import org.eclipse.collections.api.multimap.sortedbag.ImmutableSortedBagMultimap;
+import org.eclipse.collections.api.multimap.sortedbag.MutableSortedBagMultimap;
+import org.eclipse.collections.api.multimap.sortedbag.SortedBagMultimap;
+import org.eclipse.collections.api.tuple.Pair;
+import org.eclipse.collections.impl.bag.sorted.mutable.TreeBag;
+import org.eclipse.collections.impl.map.mutable.UnifiedMap;
+import org.eclipse.collections.impl.multimap.AbstractMutableMultimap;
+import org.eclipse.collections.impl.multimap.bag.HashBagMultimap;
+import org.eclipse.collections.impl.multimap.bag.sorted.immutable.ImmutableSortedBagMultimapImpl;
+import org.eclipse.collections.impl.multimap.bag.sorted.mutable.SynchronizedSortedBagMultimap;
+import org.eclipse.collections.impl.multimap.list.FastListMultimap;
+import org.eclipse.collections.impl.utility.Iterate;
+
+/**
+ * @deprecated in 7.0. Use {@link org.eclipse.collections.impl.multimap.bag.sorted.mutable.TreeBagMultimap} instead.
+ */
+@Deprecated
+public final class TreeBagMultimap&lt;K, V&gt;
+        extends AbstractMutableMultimap&lt;K, V, MutableSortedBag&lt;V&gt;&gt;
+        implements MutableSortedBagMultimap&lt;K, V&gt;, Externalizable
+{
+    private static final long serialVersionUID = 1L;
+    private Comparator&lt;? super V&gt; comparator;
+
+    public TreeBagMultimap()
+<span class="nc" id="L52">    {</span>
+<span class="nc" id="L53">        this.comparator = null;</span>
+<span class="nc" id="L54">    }</span>
+
+    public TreeBagMultimap(Comparator&lt;? super V&gt; comparator)
+<span class="nc" id="L57">    {</span>
+<span class="nc" id="L58">        this.comparator = comparator;</span>
+<span class="nc" id="L59">    }</span>
+
+    public TreeBagMultimap(Multimap&lt;? extends K, ? extends V&gt; multimap)
+    {
+<span class="nc" id="L63">        super(Math.max(multimap.keysView().size() * 2, 16));</span>
+<span class="nc bnc" id="L64" title="All 2 branches missed.">        this.comparator = multimap instanceof SortedBagMultimap&lt;?, ?&gt; ? ((SortedBagMultimap&lt;K, V&gt;) multimap).comparator() : null;</span>
+<span class="nc" id="L65">        this.putAll(multimap);</span>
+<span class="nc" id="L66">    }</span>
+
+    public TreeBagMultimap(Pair&lt;K, V&gt;... pairs)
+    {
+<span class="nc" id="L70">        super(pairs);</span>
+<span class="nc" id="L71">        this.comparator = null;</span>
+<span class="nc" id="L72">    }</span>
+
+    public TreeBagMultimap(Iterable&lt;Pair&lt;K, V&gt;&gt; inputIterable)
+    {
+<span class="nc" id="L76">        super(inputIterable);</span>
+<span class="nc" id="L77">        this.comparator = null;</span>
+<span class="nc" id="L78">    }</span>
+
+    public static &lt;K, V&gt; TreeBagMultimap&lt;K, V&gt; newMultimap()
+    {
+<span class="nc" id="L82">        return new TreeBagMultimap&lt;&gt;();</span>
+    }
+
+    public static &lt;K, V&gt; TreeBagMultimap&lt;K, V&gt; newMultimap(Multimap&lt;? extends K, ? extends V&gt; multimap)
+    {
+<span class="nc" id="L87">        return new TreeBagMultimap&lt;&gt;(multimap);</span>
+    }
+
+    public static &lt;K, V&gt; TreeBagMultimap&lt;K, V&gt; newMultimap(Comparator&lt;? super V&gt; comparator)
+    {
+<span class="nc" id="L92">        return new TreeBagMultimap&lt;&gt;(comparator);</span>
+    }
+
+    public static &lt;K, V&gt; TreeBagMultimap&lt;K, V&gt; newMultimap(Pair&lt;K, V&gt;... pairs)
+    {
+<span class="nc" id="L97">        return new TreeBagMultimap&lt;&gt;(pairs);</span>
+    }
+
+    public static &lt;K, V&gt; TreeBagMultimap&lt;K, V&gt; newMultimap(Iterable&lt;Pair&lt;K, V&gt;&gt; inputIterable)
+    {
+<span class="nc" id="L102">        return new TreeBagMultimap&lt;&gt;(inputIterable);</span>
+    }
+
+    @Override
+    protected MutableMap&lt;K, MutableSortedBag&lt;V&gt;&gt; createMap()
+    {
+<span class="nc" id="L108">        return UnifiedMap.newMap();</span>
+    }
+
+    @Override
+    protected MutableMap&lt;K, MutableSortedBag&lt;V&gt;&gt; createMapWithKeyCount(int keyCount)
+    {
+<span class="nc" id="L114">        return UnifiedMap.newMap(keyCount);</span>
+    }
+
+    @Override
+    protected MutableSortedBag&lt;V&gt; createCollection()
+    {
+<span class="nc" id="L120">        return TreeBag.newBag(this.comparator);</span>
+    }
+
+    @Override
+    public TreeBagMultimap&lt;K, V&gt; newEmpty()
+    {
+<span class="nc" id="L126">        return new TreeBagMultimap&lt;&gt;(this.comparator);</span>
+    }
+
+    @Override
+    public Comparator&lt;? super V&gt; comparator()
+    {
+<span class="nc" id="L132">        return this.comparator;</span>
+    }
+
+    @Override
+    public MutableSortedBagMultimap&lt;K, V&gt; toMutable()
+    {
+<span class="nc" id="L138">        return new TreeBagMultimap&lt;&gt;(this);</span>
+    }
+
+    @Override
+    public ImmutableSortedBagMultimap&lt;K, V&gt; toImmutable()
+    {
+<span class="nc" id="L144">        MutableMap&lt;K, ImmutableSortedBag&lt;V&gt;&gt; map = UnifiedMap.newMap();</span>
+
+<span class="nc" id="L146">        this.map.forEachKeyValue((key, bag) -&gt; map.put(key, bag.toImmutable()));</span>
+<span class="nc" id="L147">        return new ImmutableSortedBagMultimapImpl&lt;&gt;(map, this.comparator());</span>
+    }
+
+    @Override
+    public void writeExternal(ObjectOutput out) throws IOException
+    {
+<span class="nc" id="L153">        out.writeObject(this.comparator());</span>
+<span class="nc" id="L154">        super.writeExternal(out);</span>
+<span class="nc" id="L155">    }</span>
+
+    @Override
+    public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException
+    {
+<span class="nc" id="L160">        this.comparator = (Comparator&lt;? super V&gt;) in.readObject();</span>
+<span class="nc" id="L161">        super.readExternal(in);</span>
+<span class="nc" id="L162">    }</span>
+
+    @Override
+    public MutableBagMultimap&lt;V, K&gt; flip()
+    {
+<span class="nc" id="L167">        return Iterate.flip(this);</span>
+    }
+
+    @Override
+    public TreeBagMultimap&lt;K, V&gt; selectKeysValues(Predicate2&lt;? super K, ? super V&gt; predicate)
+    {
+<span class="nc" id="L173">        return this.selectKeysValues(predicate, this.newEmpty());</span>
+    }
+
+    @Override
+    public TreeBagMultimap&lt;K, V&gt; rejectKeysValues(Predicate2&lt;? super K, ? super V&gt; predicate)
+    {
+<span class="nc" id="L179">        return this.rejectKeysValues(predicate, this.newEmpty());</span>
+    }
+
+    @Override
+    public TreeBagMultimap&lt;K, V&gt; selectKeysMultiValues(Predicate2&lt;? super K, ? super Iterable&lt;V&gt;&gt; predicate)
+    {
+<span class="nc" id="L185">        return this.selectKeysMultiValues(predicate, this.newEmpty());</span>
+    }
+
+    @Override
+    public TreeBagMultimap&lt;K, V&gt; rejectKeysMultiValues(Predicate2&lt;? super K, ? super Iterable&lt;V&gt;&gt; predicate)
+    {
+<span class="nc" id="L191">        return this.rejectKeysMultiValues(predicate, this.newEmpty());</span>
+    }
+
+    @Override
+    public &lt;K2, V2&gt; HashBagMultimap&lt;K2, V2&gt; collectKeysValues(Function2&lt;? super K, ? super V, Pair&lt;K2, V2&gt;&gt; function)
+    {
+<span class="nc" id="L197">        return this.collectKeysValues(function, HashBagMultimap.newMultimap());</span>
+    }
+
+    @Override
+    public &lt;V2&gt; FastListMultimap&lt;K, V2&gt; collectValues(Function&lt;? super V, ? extends V2&gt; function)
+    {
+<span class="nc" id="L203">        return this.collectValues(function, FastListMultimap.newMultimap());</span>
+    }
+
+    @Override
+    public MutableSortedBagMultimap&lt;K, V&gt; asSynchronized()
+    {
+<span class="nc" id="L209">        return SynchronizedSortedBagMultimap.of(this);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.0.201801022044</span></div></body></html>

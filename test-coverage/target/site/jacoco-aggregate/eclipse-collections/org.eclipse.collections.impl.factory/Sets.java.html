@@ -1,0 +1,293 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>Sets.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Eclipse Collections Test Coverage Aggregation</a> &gt; <a href="../index.html" class="el_bundle">eclipse-collections</a> &gt; <a href="index.source.html" class="el_package">org.eclipse.collections.impl.factory</a> &gt; <span class="el_source">Sets.java</span></div><h1>Sets.java</h1><pre class="source lang-java linenums">/*
+ * Copyright (c) 2018 Goldman Sachs and others.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * and Eclipse Distribution License v. 1.0 which accompany this distribution.
+ * The Eclipse Public License is available at http://www.eclipse.org/legal/epl-v10.html
+ * and the Eclipse Distribution License is available at
+ * http://www.eclipse.org/org/documents/edl-v10.php.
+ */
+
+package org.eclipse.collections.impl.factory;
+
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Comparator;
+import java.util.Set;
+import java.util.SortedSet;
+import java.util.TreeSet;
+
+import org.eclipse.collections.api.LazyIterable;
+import org.eclipse.collections.api.block.function.Function2;
+import org.eclipse.collections.api.block.predicate.Predicate;
+import org.eclipse.collections.api.block.procedure.Procedure2;
+import org.eclipse.collections.api.factory.set.FixedSizeSetFactory;
+import org.eclipse.collections.api.factory.set.ImmutableSetFactory;
+import org.eclipse.collections.api.factory.set.MutableSetFactory;
+import org.eclipse.collections.api.set.MutableSet;
+import org.eclipse.collections.api.tuple.Pair;
+import org.eclipse.collections.impl.block.factory.Comparators;
+import org.eclipse.collections.impl.set.fixed.FixedSizeSetFactoryImpl;
+import org.eclipse.collections.impl.set.immutable.ImmutableSetFactoryImpl;
+import org.eclipse.collections.impl.set.mutable.MultiReaderMutableSetFactory;
+import org.eclipse.collections.impl.set.mutable.MutableSetFactoryImpl;
+import org.eclipse.collections.impl.set.mutable.SetAdapter;
+import org.eclipse.collections.impl.set.mutable.UnifiedSet;
+import org.eclipse.collections.impl.tuple.Tuples;
+import org.eclipse.collections.impl.utility.ArrayIterate;
+import org.eclipse.collections.impl.utility.Iterate;
+import org.eclipse.collections.impl.utility.LazyIterate;
+
+/**
+ * Set algebra operations are available in this class as static utility.
+ * &lt;p&gt;
+ * Most operations are non-destructive, i.e. no input sets are modified during execution.
+ * The exception is operations ending in &quot;Into.&quot; These accept the target collection of
+ * the final calculation as the first parameter.
+ * &lt;p&gt;
+ * Some effort is made to return a {@code SortedSet} if any input set is sorted, but
+ * this is not guaranteed (e.g., this will not be the case for collections proxied by
+ * Hibernate). When in doubt, specify the target collection explicitly with the &quot;Into&quot;
+ * version.
+ *
+ * This class should be used to create instances of MutableSet, ImmutableSet and FixedSizeSet
+ * &lt;p&gt;
+ * Mutable Examples:
+ *
+ * &lt;pre&gt;
+ * MutableSet&amp;lt;String&amp;gt; emptySet = Sets.mutable.empty();
+ * MutableSet&amp;lt;String&amp;gt; setWith = Sets.mutable.with(&quot;a&quot;, &quot;b&quot;, &quot;c&quot;);
+ * MutableSet&amp;lt;String&amp;gt; setOf = Sets.mutable.of(&quot;a&quot;, &quot;b&quot;, &quot;c&quot;);
+ * &lt;/pre&gt;
+ *
+ * Immutable Examples:
+ *
+ * &lt;pre&gt;
+ * ImmutableSet&amp;lt;String&amp;gt; emptySet = Sets.immutable.empty();
+ * ImmutableSet&amp;lt;String&amp;gt; setWith = Sets.immutable.with(&quot;a&quot;, &quot;b&quot;, &quot;c&quot;);
+ * ImmutableSet&amp;lt;String&amp;gt; setOf = Sets.immutable.of(&quot;a&quot;, &quot;b&quot;, &quot;c&quot;);
+ * &lt;/pre&gt;
+ *
+ * FixedSize Examples:
+ *
+ * &lt;pre&gt;
+ * FixedSizeList&amp;lt;String&amp;gt; emptySet = Sets.fixedSize.empty();
+ * FixedSizeList&amp;lt;String&amp;gt; setWith = Sets.fixedSize.with(&quot;a&quot;, &quot;b&quot;, &quot;c&quot;);
+ * FixedSizeList&amp;lt;String&amp;gt; setOf = Sets.fixedSize.of(&quot;a&quot;, &quot;b&quot;, &quot;c&quot;);
+ * &lt;/pre&gt;
+ */
+@SuppressWarnings(&quot;ConstantNamingConvention&quot;)
+public final class Sets
+{
+<span class="nc" id="L82">    public static final ImmutableSetFactory immutable = ImmutableSetFactoryImpl.INSTANCE;</span>
+<span class="nc" id="L83">    public static final FixedSizeSetFactory fixedSize = FixedSizeSetFactoryImpl.INSTANCE;</span>
+<span class="nc" id="L84">    public static final MutableSetFactory mutable = MutableSetFactoryImpl.INSTANCE;</span>
+<span class="nc" id="L85">    public static final MutableSetFactory multiReader = MultiReaderMutableSetFactory.INSTANCE;</span>
+
+<span class="nc" id="L87">    private static final Predicate&lt;Set&lt;?&gt;&gt; INSTANCE_OF_SORTED_SET_PREDICATE = SortedSet.class::isInstance;</span>
+
+<span class="nc bnc" id="L89" title="All 2 branches missed.">    private static final Predicate&lt;Set&lt;?&gt;&gt; HAS_NON_NULL_COMPARATOR = set -&gt; ((SortedSet&lt;?&gt;) set).comparator() != null;</span>
+
+    private Sets()
+<span class="nc" id="L92">    {</span>
+<span class="nc" id="L93">        throw new AssertionError(&quot;Suppress default constructor for noninstantiability&quot;);</span>
+    }
+
+    /**
+     * @since 9.0.
+     */
+    public static &lt;T&gt; MutableSet&lt;T&gt; adapt(Set&lt;T&gt; list)
+    {
+<span class="nc" id="L101">        return SetAdapter.adapt(list);</span>
+    }
+
+    public static &lt;E&gt; MutableSet&lt;E&gt; union(
+            Set&lt;? extends E&gt; setA,
+            Set&lt;? extends E&gt; setB)
+    {
+<span class="nc" id="L108">        return unionInto(newSet(setA, setB), setA, setB);</span>
+    }
+
+    public static &lt;E, R extends Set&lt;E&gt;&gt; R unionInto(
+            R targetSet,
+            Set&lt;? extends E&gt; setA,
+            Set&lt;? extends E&gt; setB)
+    {
+<span class="nc bnc" id="L116" title="All 2 branches missed.">        return setA.size() &gt; setB.size() ? fillSet(targetSet, Sets.addAllProcedure(), setA, setB)</span>
+<span class="nc" id="L117">                : fillSet(targetSet, Sets.addAllProcedure(), setB, setA);</span>
+    }
+
+    public static &lt;E&gt; MutableSet&lt;E&gt; unionAll(Set&lt;? extends E&gt;... sets)
+    {
+<span class="nc" id="L122">        return unionAllInto(newSet(sets), sets);</span>
+    }
+
+    public static &lt;E, R extends Set&lt;E&gt;&gt; R unionAllInto(
+            R targetSet,
+            Set&lt;? extends E&gt;... sets)
+    {
+<span class="nc" id="L129">        Arrays.sort(sets, 0, sets.length, Comparators.descendingCollectionSizeComparator());</span>
+<span class="nc" id="L130">        return fillSet(targetSet, Sets.addAllProcedure(), sets);</span>
+    }
+
+    public static &lt;E&gt; MutableSet&lt;E&gt; intersect(
+            Set&lt;? extends E&gt; setA,
+            Set&lt;? extends E&gt; setB)
+    {
+<span class="nc" id="L137">        return intersectInto(newSet(setA, setB), setA, setB);</span>
+    }
+
+    public static &lt;E, R extends Set&lt;E&gt;&gt; R intersectInto(
+            R targetSet,
+            Set&lt;? extends E&gt; setA,
+            Set&lt;? extends E&gt; setB)
+    {
+<span class="nc bnc" id="L145" title="All 2 branches missed.">        return setA.size() &lt; setB.size() ? fillSet(targetSet, Sets.retainAllProcedure(), setA, setB)</span>
+<span class="nc" id="L146">                : fillSet(targetSet, Sets.retainAllProcedure(), setB, setA);</span>
+    }
+
+    public static &lt;E&gt; MutableSet&lt;E&gt; intersectAll(Set&lt;? extends E&gt;... sets)
+    {
+<span class="nc" id="L151">        return intersectAllInto(newSet(sets), sets);</span>
+    }
+
+    public static &lt;E, R extends Set&lt;E&gt;&gt; R intersectAllInto(
+            R targetSet,
+            Set&lt;? extends E&gt;... sets)
+    {
+<span class="nc" id="L158">        Arrays.sort(sets, 0, sets.length, Comparators.ascendingCollectionSizeComparator());</span>
+<span class="nc" id="L159">        return fillSet(targetSet, Sets.retainAllProcedure(), sets);</span>
+    }
+
+    public static &lt;E&gt; MutableSet&lt;E&gt; difference(
+            Set&lt;? extends E&gt; minuendSet,
+            Set&lt;? extends E&gt; subtrahendSet)
+    {
+<span class="nc" id="L166">        return differenceInto(newSet(minuendSet, subtrahendSet), minuendSet, subtrahendSet);</span>
+    }
+
+    public static &lt;E, R extends Set&lt;E&gt;&gt; R differenceInto(
+            R targetSet,
+            Set&lt;? extends E&gt; minuendSet,
+            Set&lt;? extends E&gt; subtrahendSet)
+    {
+<span class="nc" id="L174">        return fillSet(targetSet, Sets.removeAllProcedure(), minuendSet, subtrahendSet);</span>
+    }
+
+    public static &lt;E&gt; MutableSet&lt;E&gt; differenceAll(Set&lt;? extends E&gt;... sets)
+    {
+<span class="nc" id="L179">        return differenceAllInto(newSet(sets), sets);</span>
+    }
+
+    public static &lt;E, R extends Set&lt;E&gt;&gt; R differenceAllInto(
+            R targetSet,
+            Set&lt;? extends E&gt;... sets)
+    {
+<span class="nc" id="L186">        return fillSet(targetSet, Sets.removeAllProcedure(), sets);</span>
+    }
+
+    public static &lt;E&gt; MutableSet&lt;E&gt; symmetricDifference(
+            Set&lt;? extends E&gt; setA,
+            Set&lt;? extends E&gt; setB)
+    {
+<span class="nc" id="L193">        return symmetricDifferenceInto(newSet(setA, setB), setA, setB);</span>
+    }
+
+    public static &lt;E, R extends Set&lt;E&gt;&gt; R symmetricDifferenceInto(
+            R targetSet,
+            Set&lt;? extends E&gt; setA,
+            Set&lt;? extends E&gt; setB)
+    {
+<span class="nc" id="L201">        return unionInto(</span>
+                targetSet,
+<span class="nc" id="L203">                differenceInto(newSet(setA, setB), setA, setB),</span>
+<span class="nc" id="L204">                differenceInto(newSet(setA, setB), setB, setA));</span>
+    }
+
+    public static &lt;E&gt; boolean isSubsetOf(
+            Set&lt;? extends E&gt; candidateSubset,
+            Set&lt;? extends E&gt; candidateSuperset)
+    {
+<span class="nc bnc" id="L211" title="All 2 branches missed.">        return candidateSubset.size() &lt;= candidateSuperset.size()</span>
+<span class="nc bnc" id="L212" title="All 2 branches missed.">                &amp;&amp; candidateSuperset.containsAll(candidateSubset);</span>
+    }
+
+    public static &lt;E&gt; boolean isProperSubsetOf(
+            Set&lt;? extends E&gt; candidateSubset,
+            Set&lt;? extends E&gt; candidateSuperset)
+    {
+<span class="nc bnc" id="L219" title="All 2 branches missed.">        return candidateSubset.size() &lt; candidateSuperset.size()</span>
+<span class="nc bnc" id="L220" title="All 2 branches missed.">                &amp;&amp; candidateSuperset.containsAll(candidateSubset);</span>
+    }
+
+    private static &lt;E&gt; MutableSet&lt;E&gt; newSet(Set&lt;? extends E&gt;... sets)
+    {
+<span class="nc" id="L225">        Comparator&lt;? super E&gt; comparator = extractComparator(sets);</span>
+<span class="nc bnc" id="L226" title="All 2 branches missed.">        if (comparator != null)</span>
+        {
+            // TODO: this should return a SortedSetAdapter once implemented
+<span class="nc" id="L229">            return SetAdapter.adapt(new TreeSet&lt;&gt;(comparator));</span>
+        }
+<span class="nc" id="L231">        return UnifiedSet.newSet();</span>
+    }
+
+    private static &lt;E&gt; Comparator&lt;? super E&gt; extractComparator(Set&lt;? extends E&gt;... sets)
+    {
+<span class="nc" id="L236">        Collection&lt;Set&lt;? extends E&gt;&gt; sortedSetCollection = ArrayIterate.select(sets, INSTANCE_OF_SORTED_SET_PREDICATE);</span>
+<span class="nc bnc" id="L237" title="All 2 branches missed.">        if (sortedSetCollection.isEmpty())</span>
+        {
+<span class="nc" id="L239">            return null;</span>
+        }
+<span class="nc" id="L241">        SortedSet&lt;E&gt; sortedSetWithComparator = (SortedSet&lt;E&gt;) Iterate.detect(sortedSetCollection, HAS_NON_NULL_COMPARATOR);</span>
+<span class="nc bnc" id="L242" title="All 2 branches missed.">        if (sortedSetWithComparator != null)</span>
+        {
+<span class="nc" id="L244">            return sortedSetWithComparator.comparator();</span>
+        }
+<span class="nc" id="L246">        return Comparators.safeNullsLow(Comparators.naturalOrder());</span>
+    }
+
+    private static &lt;E, R extends Set&lt;E&gt;&gt; R fillSet(
+            R targetSet,
+            Procedure2&lt;Set&lt;? extends E&gt;, R&gt; procedure,
+            Set&lt;? extends E&gt;... sets)
+    {
+<span class="nc" id="L254">        targetSet.addAll(sets[0]);</span>
+<span class="nc bnc" id="L255" title="All 2 branches missed.">        for (int i = 1; i &lt; sets.length; i++)</span>
+        {
+<span class="nc" id="L257">            procedure.value(sets[i], targetSet);</span>
+        }
+<span class="nc" id="L259">        return targetSet;</span>
+    }
+
+    private static &lt;E, R extends Set&lt;E&gt;&gt; Procedure2&lt;Set&lt;? extends E&gt;, R&gt; addAllProcedure()
+    {
+<span class="nc" id="L264">        return (argumentSet, targetSet) -&gt; targetSet.addAll(argumentSet);</span>
+    }
+
+    private static &lt;E, R extends Set&lt;E&gt;&gt; Procedure2&lt;Set&lt;? extends E&gt;, R&gt; retainAllProcedure()
+    {
+<span class="nc" id="L269">        return (argumentSet, targetSet) -&gt; targetSet.retainAll(argumentSet);</span>
+    }
+
+    private static &lt;E, R extends Set&lt;E&gt;&gt; Procedure2&lt;Set&lt;? extends E&gt;, R&gt; removeAllProcedure()
+    {
+<span class="nc" id="L274">        return (argumentSet, targetSet) -&gt; targetSet.removeAll(argumentSet);</span>
+    }
+
+    public static &lt;T&gt; MutableSet&lt;MutableSet&lt;T&gt;&gt; powerSet(Set&lt;T&gt; set)
+    {
+<span class="nc" id="L279">        MutableSet&lt;MutableSet&lt;T&gt;&gt; seed = UnifiedSet.newSetWith(UnifiedSet.newSet());</span>
+<span class="nc" id="L280">        return Iterate.injectInto(seed, set, (accumulator, element) -&gt; Sets.union(accumulator, accumulator.collect(innerSet -&gt; innerSet.toSet().with(element))));</span>
+    }
+
+    public static &lt;A, B&gt; LazyIterable&lt;Pair&lt;A, B&gt;&gt; cartesianProduct(Set&lt;A&gt; set1, Set&lt;B&gt; set2)
+    {
+<span class="nc" id="L285">        return Sets.cartesianProduct(set1, set2, Tuples::pair);</span>
+    }
+
+    public static &lt;A, B, C&gt; LazyIterable&lt;C&gt; cartesianProduct(Set&lt;A&gt; set1, Set&lt;B&gt; set2, Function2&lt;A, B, C&gt; function)
+    {
+<span class="nc" id="L290">        return LazyIterate.flatCollect(set1, first -&gt; LazyIterate.collect(set2, second -&gt; function.value(first, second)));</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.0.201801022044</span></div></body></html>

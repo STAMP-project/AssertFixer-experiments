@@ -1,0 +1,1389 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>IteratorIterate.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Eclipse Collections Test Coverage Aggregation</a> &gt; <a href="../index.html" class="el_bundle">eclipse-collections</a> &gt; <a href="index.source.html" class="el_package">org.eclipse.collections.impl.utility.internal</a> &gt; <span class="el_source">IteratorIterate.java</span></div><h1>IteratorIterate.java</h1><pre class="source lang-java linenums">/*
+ * Copyright (c) 2016 Goldman Sachs.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * and Eclipse Distribution License v. 1.0 which accompany this distribution.
+ * The Eclipse Public License is available at http://www.eclipse.org/legal/epl-v10.html
+ * and the Eclipse Distribution License is available at
+ * http://www.eclipse.org/org/documents/edl-v10.php.
+ */
+
+package org.eclipse.collections.impl.utility.internal;
+
+import java.math.BigDecimal;
+import java.math.BigInteger;
+import java.util.Collection;
+import java.util.Comparator;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
+
+import org.eclipse.collections.api.RichIterable;
+import org.eclipse.collections.api.block.HashingStrategy;
+import org.eclipse.collections.api.block.function.Function;
+import org.eclipse.collections.api.block.function.Function0;
+import org.eclipse.collections.api.block.function.Function2;
+import org.eclipse.collections.api.block.function.Function3;
+import org.eclipse.collections.api.block.function.primitive.BooleanFunction;
+import org.eclipse.collections.api.block.function.primitive.ByteFunction;
+import org.eclipse.collections.api.block.function.primitive.CharFunction;
+import org.eclipse.collections.api.block.function.primitive.DoubleFunction;
+import org.eclipse.collections.api.block.function.primitive.DoubleObjectToDoubleFunction;
+import org.eclipse.collections.api.block.function.primitive.FloatFunction;
+import org.eclipse.collections.api.block.function.primitive.FloatObjectToFloatFunction;
+import org.eclipse.collections.api.block.function.primitive.IntFunction;
+import org.eclipse.collections.api.block.function.primitive.IntObjectToIntFunction;
+import org.eclipse.collections.api.block.function.primitive.LongFunction;
+import org.eclipse.collections.api.block.function.primitive.LongObjectToLongFunction;
+import org.eclipse.collections.api.block.function.primitive.ShortFunction;
+import org.eclipse.collections.api.block.predicate.Predicate;
+import org.eclipse.collections.api.block.predicate.Predicate2;
+import org.eclipse.collections.api.block.procedure.Procedure;
+import org.eclipse.collections.api.block.procedure.Procedure2;
+import org.eclipse.collections.api.block.procedure.primitive.ObjectIntProcedure;
+import org.eclipse.collections.api.collection.MutableCollection;
+import org.eclipse.collections.api.collection.primitive.MutableBooleanCollection;
+import org.eclipse.collections.api.collection.primitive.MutableByteCollection;
+import org.eclipse.collections.api.collection.primitive.MutableCharCollection;
+import org.eclipse.collections.api.collection.primitive.MutableDoubleCollection;
+import org.eclipse.collections.api.collection.primitive.MutableFloatCollection;
+import org.eclipse.collections.api.collection.primitive.MutableIntCollection;
+import org.eclipse.collections.api.collection.primitive.MutableLongCollection;
+import org.eclipse.collections.api.collection.primitive.MutableShortCollection;
+import org.eclipse.collections.api.list.MutableList;
+import org.eclipse.collections.api.map.MutableMap;
+import org.eclipse.collections.api.multimap.ImmutableMultimap;
+import org.eclipse.collections.api.multimap.MutableMultimap;
+import org.eclipse.collections.api.partition.PartitionMutableCollection;
+import org.eclipse.collections.api.partition.list.PartitionMutableList;
+import org.eclipse.collections.api.tuple.Pair;
+import org.eclipse.collections.api.tuple.Twin;
+import org.eclipse.collections.impl.block.factory.Functions0;
+import org.eclipse.collections.impl.block.procedure.MutatingAggregationProcedure;
+import org.eclipse.collections.impl.block.procedure.NonMutatingAggregationProcedure;
+import org.eclipse.collections.impl.factory.Lists;
+import org.eclipse.collections.impl.list.mutable.FastList;
+import org.eclipse.collections.impl.list.mutable.primitive.BooleanArrayList;
+import org.eclipse.collections.impl.list.mutable.primitive.ByteArrayList;
+import org.eclipse.collections.impl.list.mutable.primitive.CharArrayList;
+import org.eclipse.collections.impl.list.mutable.primitive.DoubleArrayList;
+import org.eclipse.collections.impl.list.mutable.primitive.FloatArrayList;
+import org.eclipse.collections.impl.list.mutable.primitive.IntArrayList;
+import org.eclipse.collections.impl.list.mutable.primitive.LongArrayList;
+import org.eclipse.collections.impl.list.mutable.primitive.ShortArrayList;
+import org.eclipse.collections.impl.map.mutable.UnifiedMap;
+import org.eclipse.collections.impl.multimap.list.FastListMultimap;
+import org.eclipse.collections.impl.partition.list.PartitionFastList;
+import org.eclipse.collections.impl.set.mutable.UnifiedSet;
+import org.eclipse.collections.impl.set.strategy.mutable.UnifiedSetWithHashingStrategy;
+import org.eclipse.collections.impl.tuple.Tuples;
+import org.eclipse.collections.impl.utility.Iterate;
+
+/**
+ * The IteratorIterate class implementations of the various iteration patterns for use with java.util.Iterator.
+ */
+public final class IteratorIterate
+{
+    private IteratorIterate()
+<span class="nc" id="L89">    {</span>
+<span class="nc" id="L90">        throw new AssertionError(&quot;Suppress default constructor for noninstantiability&quot;);</span>
+    }
+
+    /**
+     * @see Iterate#selectAndRejectWith(Iterable, Predicate2, Object)
+     */
+    public static &lt;T, P&gt; Twin&lt;MutableList&lt;T&gt;&gt; selectAndRejectWith(
+            Iterator&lt;T&gt; iterator,
+            Predicate2&lt;? super T, ? super P&gt; predicate,
+            P parameter)
+    {
+<span class="nc" id="L101">        MutableList&lt;T&gt; positiveResult = Lists.mutable.empty();</span>
+<span class="nc" id="L102">        MutableList&lt;T&gt; negativeResult = Lists.mutable.empty();</span>
+<span class="nc bnc" id="L103" title="All 2 branches missed.">        while (iterator.hasNext())</span>
+        {
+<span class="nc" id="L105">            T item = iterator.next();</span>
+<span class="nc bnc" id="L106" title="All 2 branches missed.">            (predicate.accept(item, parameter) ? positiveResult : negativeResult).add(item);</span>
+<span class="nc" id="L107">        }</span>
+<span class="nc" id="L108">        return Tuples.twin(positiveResult, negativeResult);</span>
+    }
+
+    /**
+     * @see Iterate#partition(Iterable, Predicate)
+     */
+    public static &lt;T&gt; PartitionMutableList&lt;T&gt; partition(Iterator&lt;T&gt; iterator, Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L116">        PartitionMutableList&lt;T&gt; result = new PartitionFastList&lt;&gt;();</span>
+<span class="nc" id="L117">        MutableList&lt;T&gt; selected = result.getSelected();</span>
+<span class="nc" id="L118">        MutableList&lt;T&gt; rejected = result.getRejected();</span>
+
+<span class="nc bnc" id="L120" title="All 2 branches missed.">        while (iterator.hasNext())</span>
+        {
+<span class="nc" id="L122">            T each = iterator.next();</span>
+<span class="nc bnc" id="L123" title="All 2 branches missed.">            MutableList&lt;T&gt; bucket = predicate.accept(each) ? selected : rejected;</span>
+<span class="nc" id="L124">            bucket.add(each);</span>
+<span class="nc" id="L125">        }</span>
+<span class="nc" id="L126">        return result;</span>
+    }
+
+    /**
+     * @see Iterate#partitionWith(Iterable, Predicate2, Object)
+     * @since 5.0
+     */
+    public static &lt;T, P&gt; PartitionMutableList&lt;T&gt; partitionWith(
+            Iterator&lt;T&gt; iterator,
+            Predicate2&lt;? super T, ? super P&gt; predicate,
+            P parameter)
+    {
+<span class="nc" id="L138">        PartitionMutableList&lt;T&gt; result = new PartitionFastList&lt;&gt;();</span>
+<span class="nc" id="L139">        MutableList&lt;T&gt; selected = result.getSelected();</span>
+<span class="nc" id="L140">        MutableList&lt;T&gt; rejected = result.getRejected();</span>
+
+<span class="nc bnc" id="L142" title="All 2 branches missed.">        while (iterator.hasNext())</span>
+        {
+<span class="nc" id="L144">            T each = iterator.next();</span>
+<span class="nc bnc" id="L145" title="All 2 branches missed.">            MutableList&lt;T&gt; bucket = predicate.accept(each, parameter) ? selected : rejected;</span>
+<span class="nc" id="L146">            bucket.add(each);</span>
+<span class="nc" id="L147">        }</span>
+<span class="nc" id="L148">        return result;</span>
+    }
+
+    public static &lt;T, R extends PartitionMutableCollection&lt;T&gt;&gt; R partitionWhile(Iterator&lt;T&gt; iterator, Predicate&lt;? super T&gt; predicate, R target)
+    {
+<span class="nc" id="L153">        MutableCollection&lt;T&gt; selected = target.getSelected();</span>
+<span class="nc" id="L154">        MutableCollection&lt;T&gt; rejected = target.getRejected();</span>
+
+<span class="nc" id="L156">        boolean partitionFound = false;</span>
+<span class="nc bnc" id="L157" title="All 4 branches missed.">        while (iterator.hasNext() &amp;&amp; !partitionFound)</span>
+        {
+<span class="nc" id="L159">            T next = iterator.next();</span>
+<span class="nc bnc" id="L160" title="All 2 branches missed.">            if (predicate.accept(next))</span>
+            {
+<span class="nc" id="L162">                selected.add(next);</span>
+            }
+            else
+            {
+<span class="nc" id="L166">                rejected.add(next);</span>
+<span class="nc" id="L167">                partitionFound = true;</span>
+            }
+<span class="nc" id="L169">        }</span>
+<span class="nc bnc" id="L170" title="All 2 branches missed.">        while (iterator.hasNext())</span>
+        {
+<span class="nc" id="L172">            rejected.add(iterator.next());</span>
+        }
+<span class="nc" id="L174">        return target;</span>
+    }
+
+    public static &lt;T, R extends MutableCollection&lt;T&gt;&gt; R takeWhile(Iterator&lt;T&gt; iterator, Predicate&lt;? super T&gt; predicate, R target)
+    {
+<span class="nc bnc" id="L179" title="All 2 branches missed.">        while (iterator.hasNext())</span>
+        {
+<span class="nc" id="L181">            T next = iterator.next();</span>
+<span class="nc bnc" id="L182" title="All 2 branches missed.">            if (predicate.accept(next))</span>
+            {
+<span class="nc" id="L184">                target.add(next);</span>
+            }
+            else
+            {
+<span class="nc" id="L188">                return target;</span>
+            }
+<span class="nc" id="L190">        }</span>
+<span class="nc" id="L191">        return target;</span>
+    }
+
+    public static &lt;T, R extends MutableCollection&lt;T&gt;&gt; R dropWhile(Iterator&lt;T&gt; iterator, Predicate&lt;? super T&gt; predicate, R target)
+    {
+<span class="nc" id="L196">        boolean partitionFound = false;</span>
+<span class="nc bnc" id="L197" title="All 4 branches missed.">        while (iterator.hasNext() &amp;&amp; !partitionFound)</span>
+        {
+<span class="nc" id="L199">            T next = iterator.next();</span>
+<span class="nc bnc" id="L200" title="All 2 branches missed.">            if (!predicate.accept(next))</span>
+            {
+<span class="nc" id="L202">                target.add(next);</span>
+<span class="nc" id="L203">                partitionFound = true;</span>
+            }
+<span class="nc" id="L205">        }</span>
+<span class="nc bnc" id="L206" title="All 2 branches missed.">        while (iterator.hasNext())</span>
+        {
+<span class="nc" id="L208">            target.add(iterator.next());</span>
+        }
+<span class="nc" id="L210">        return target;</span>
+    }
+
+    /**
+     * @see Iterate#count(Iterable, Predicate)
+     */
+    public static &lt;T&gt; int count(Iterator&lt;T&gt; iterator, Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L218">        int count = 0;</span>
+<span class="nc bnc" id="L219" title="All 2 branches missed.">        while (iterator.hasNext())</span>
+        {
+<span class="nc bnc" id="L221" title="All 2 branches missed.">            if (predicate.accept(iterator.next()))</span>
+            {
+<span class="nc" id="L223">                count++;</span>
+            }
+        }
+<span class="nc" id="L226">        return count;</span>
+    }
+
+    /**
+     * @see Iterate#countWith(Iterable, Predicate2, Object)
+     */
+    public static &lt;T, P&gt; int countWith(
+            Iterator&lt;T&gt; iterator,
+            Predicate2&lt;? super T, ? super P&gt; predicate,
+            P parameter)
+    {
+<span class="nc" id="L237">        int count = 0;</span>
+<span class="nc bnc" id="L238" title="All 2 branches missed.">        while (iterator.hasNext())</span>
+        {
+<span class="nc bnc" id="L240" title="All 2 branches missed.">            if (predicate.accept(iterator.next(), parameter))</span>
+            {
+<span class="nc" id="L242">                count++;</span>
+            }
+        }
+<span class="nc" id="L245">        return count;</span>
+    }
+
+    /**
+     * @see Iterate#select(Iterable, Predicate, Collection)
+     */
+    public static &lt;T, R extends Collection&lt;T&gt;&gt; R select(
+            Iterator&lt;T&gt; iterator,
+            Predicate&lt;? super T&gt; predicate,
+            R targetCollection)
+    {
+<span class="nc bnc" id="L256" title="All 2 branches missed.">        while (iterator.hasNext())</span>
+        {
+<span class="nc" id="L258">            T item = iterator.next();</span>
+<span class="nc bnc" id="L259" title="All 2 branches missed.">            if (predicate.accept(item))</span>
+            {
+<span class="nc" id="L261">                targetCollection.add(item);</span>
+            }
+<span class="nc" id="L263">        }</span>
+<span class="nc" id="L264">        return targetCollection;</span>
+    }
+
+    /**
+     * @see Iterate#selectWith(Iterable, Predicate2, Object, Collection)
+     */
+    public static &lt;T, P, R extends Collection&lt;T&gt;&gt; R selectWith(
+            Iterator&lt;T&gt; iterator,
+            Predicate2&lt;? super T, ? super P&gt; predicate,
+            P injectedValue,
+            R targetCollection)
+    {
+<span class="nc bnc" id="L276" title="All 2 branches missed.">        while (iterator.hasNext())</span>
+        {
+<span class="nc" id="L278">            T item = iterator.next();</span>
+<span class="nc bnc" id="L279" title="All 2 branches missed.">            if (predicate.accept(item, injectedValue))</span>
+            {
+<span class="nc" id="L281">                targetCollection.add(item);</span>
+            }
+<span class="nc" id="L283">        }</span>
+<span class="nc" id="L284">        return targetCollection;</span>
+    }
+
+    /**
+     * @see Iterate#selectInstancesOf(Iterable, Class)
+     */
+    public static &lt;T, R extends Collection&lt;T&gt;&gt; R selectInstancesOf(
+            Iterator&lt;?&gt; iterator,
+            Class&lt;T&gt; clazz,
+            R targetCollection)
+    {
+<span class="nc bnc" id="L295" title="All 2 branches missed.">        while (iterator.hasNext())</span>
+        {
+<span class="nc" id="L297">            Object item = iterator.next();</span>
+<span class="nc bnc" id="L298" title="All 2 branches missed.">            if (clazz.isInstance(item))</span>
+            {
+<span class="nc" id="L300">                targetCollection.add((T) item);</span>
+            }
+<span class="nc" id="L302">        }</span>
+<span class="nc" id="L303">        return targetCollection;</span>
+    }
+
+    /**
+     * @see Iterate#selectWith(Iterable, Predicate2, Object, Collection)
+     */
+    public static &lt;T, V, R extends Collection&lt;V&gt;&gt; R collectIf(
+            Iterator&lt;T&gt; iterator,
+            Predicate&lt;? super T&gt; predicate,
+            Function&lt;? super T, ? extends V&gt; function,
+            R targetCollection)
+    {
+<span class="nc bnc" id="L315" title="All 2 branches missed.">        while (iterator.hasNext())</span>
+        {
+<span class="nc" id="L317">            T item = iterator.next();</span>
+<span class="nc bnc" id="L318" title="All 2 branches missed.">            if (predicate.accept(item))</span>
+            {
+<span class="nc" id="L320">                targetCollection.add(function.valueOf(item));</span>
+            }
+<span class="nc" id="L322">        }</span>
+<span class="nc" id="L323">        return targetCollection;</span>
+    }
+
+    /**
+     * @see Iterate#reject(Iterable, Predicate, Collection)
+     */
+    public static &lt;T, R extends Collection&lt;T&gt;&gt; R reject(
+            Iterator&lt;T&gt; iterator,
+            Predicate&lt;? super T&gt; predicate,
+            R targetCollection)
+    {
+<span class="nc bnc" id="L334" title="All 2 branches missed.">        while (iterator.hasNext())</span>
+        {
+<span class="nc" id="L336">            T item = iterator.next();</span>
+<span class="nc bnc" id="L337" title="All 2 branches missed.">            if (!predicate.accept(item))</span>
+            {
+<span class="nc" id="L339">                targetCollection.add(item);</span>
+            }
+<span class="nc" id="L341">        }</span>
+<span class="nc" id="L342">        return targetCollection;</span>
+    }
+
+    /**
+     * @see Iterate#rejectWith(Iterable, Predicate2, Object, Collection)
+     */
+    public static &lt;T, P, R extends Collection&lt;T&gt;&gt; R rejectWith(
+            Iterator&lt;T&gt; iterator,
+            Predicate2&lt;? super T, ? super P&gt; predicate,
+            P parameter,
+            R targetCollection)
+    {
+<span class="nc bnc" id="L354" title="All 2 branches missed.">        while (iterator.hasNext())</span>
+        {
+<span class="nc" id="L356">            T item = iterator.next();</span>
+<span class="nc bnc" id="L357" title="All 2 branches missed.">            if (!predicate.accept(item, parameter))</span>
+            {
+<span class="nc" id="L359">                targetCollection.add(item);</span>
+            }
+<span class="nc" id="L361">        }</span>
+<span class="nc" id="L362">        return targetCollection;</span>
+    }
+
+    /**
+     * @see Iterate#collect(Iterable, Function, Collection)
+     */
+    public static &lt;T, V, R extends Collection&lt;V&gt;&gt; R collect(
+            Iterator&lt;T&gt; iterator,
+            Function&lt;? super T, ? extends V&gt; function,
+            R targetCollection)
+    {
+<span class="nc bnc" id="L373" title="All 2 branches missed.">        while (iterator.hasNext())</span>
+        {
+<span class="nc" id="L375">            targetCollection.add(function.valueOf(iterator.next()));</span>
+        }
+<span class="nc" id="L377">        return targetCollection;</span>
+    }
+
+    /**
+     * @see Iterate#collectBoolean(Iterable, BooleanFunction)
+     */
+    public static &lt;T&gt; MutableBooleanCollection collectBoolean(
+            Iterator&lt;T&gt; iterator,
+            BooleanFunction&lt;? super T&gt; booleanFunction)
+    {
+<span class="nc" id="L387">        MutableBooleanCollection result = new BooleanArrayList();</span>
+<span class="nc bnc" id="L388" title="All 2 branches missed.">        while (iterator.hasNext())</span>
+        {
+<span class="nc" id="L390">            result.add(booleanFunction.booleanValueOf(iterator.next()));</span>
+        }
+<span class="nc" id="L392">        return result;</span>
+    }
+
+    /**
+     * @see Iterate#collectBoolean(Iterable, BooleanFunction, MutableBooleanCollection)
+     */
+    public static &lt;T, R extends MutableBooleanCollection&gt; R collectBoolean(
+            Iterator&lt;T&gt; iterator,
+            BooleanFunction&lt;? super T&gt; booleanFunction,
+            R target)
+    {
+<span class="nc bnc" id="L403" title="All 2 branches missed.">        while (iterator.hasNext())</span>
+        {
+<span class="nc" id="L405">            target.add(booleanFunction.booleanValueOf(iterator.next()));</span>
+        }
+<span class="nc" id="L407">        return target;</span>
+    }
+
+    /**
+     * @see Iterate#collectByte(Iterable, ByteFunction)
+     */
+    public static &lt;T&gt; MutableByteCollection collectByte(
+            Iterator&lt;T&gt; iterator,
+            ByteFunction&lt;? super T&gt; byteFunction)
+    {
+<span class="nc" id="L417">        MutableByteCollection result = new ByteArrayList();</span>
+<span class="nc bnc" id="L418" title="All 2 branches missed.">        while (iterator.hasNext())</span>
+        {
+<span class="nc" id="L420">            result.add(byteFunction.byteValueOf(iterator.next()));</span>
+        }
+<span class="nc" id="L422">        return result;</span>
+    }
+
+    /**
+     * @see Iterate#collectByte(Iterable, ByteFunction,
+     * MutableByteCollection)
+     */
+    public static &lt;T, R extends MutableByteCollection&gt; R collectByte(
+            Iterator&lt;T&gt; iterator,
+            ByteFunction&lt;? super T&gt; byteFunction,
+            R target)
+    {
+<span class="nc bnc" id="L434" title="All 2 branches missed.">        while (iterator.hasNext())</span>
+        {
+<span class="nc" id="L436">            target.add(byteFunction.byteValueOf(iterator.next()));</span>
+        }
+<span class="nc" id="L438">        return target;</span>
+    }
+
+    /**
+     * @see Iterate#collectChar(Iterable, CharFunction)
+     */
+    public static &lt;T&gt; MutableCharCollection collectChar(
+            Iterator&lt;T&gt; iterator,
+            CharFunction&lt;? super T&gt; charFunction)
+    {
+<span class="nc" id="L448">        MutableCharCollection result = new CharArrayList();</span>
+<span class="nc bnc" id="L449" title="All 2 branches missed.">        while (iterator.hasNext())</span>
+        {
+<span class="nc" id="L451">            result.add(charFunction.charValueOf(iterator.next()));</span>
+        }
+<span class="nc" id="L453">        return result;</span>
+    }
+
+    /**
+     * @see Iterate#collectChar(Iterable, CharFunction,
+     * MutableCharCollection)
+     */
+    public static &lt;T, R extends MutableCharCollection&gt; R collectChar(
+            Iterator&lt;T&gt; iterator,
+            CharFunction&lt;? super T&gt; charFunction,
+            R target)
+    {
+<span class="nc bnc" id="L465" title="All 2 branches missed.">        while (iterator.hasNext())</span>
+        {
+<span class="nc" id="L467">            target.add(charFunction.charValueOf(iterator.next()));</span>
+        }
+<span class="nc" id="L469">        return target;</span>
+    }
+
+    /**
+     * @see Iterate#collectDouble(Iterable, DoubleFunction)
+     */
+    public static &lt;T&gt; MutableDoubleCollection collectDouble(
+            Iterator&lt;T&gt; iterator,
+            DoubleFunction&lt;? super T&gt; doubleFunction)
+    {
+<span class="nc" id="L479">        MutableDoubleCollection result = new DoubleArrayList();</span>
+<span class="nc bnc" id="L480" title="All 2 branches missed.">        while (iterator.hasNext())</span>
+        {
+<span class="nc" id="L482">            result.add(doubleFunction.doubleValueOf(iterator.next()));</span>
+        }
+<span class="nc" id="L484">        return result;</span>
+    }
+
+    /**
+     * @see Iterate#collectDouble(Iterable, DoubleFunction,
+     * MutableDoubleCollection)
+     */
+    public static &lt;T, R extends MutableDoubleCollection&gt; R collectDouble(
+            Iterator&lt;T&gt; iterator,
+            DoubleFunction&lt;? super T&gt; doubleFunction,
+            R target)
+    {
+<span class="nc bnc" id="L496" title="All 2 branches missed.">        while (iterator.hasNext())</span>
+        {
+<span class="nc" id="L498">            target.add(doubleFunction.doubleValueOf(iterator.next()));</span>
+        }
+<span class="nc" id="L500">        return target;</span>
+    }
+
+    /**
+     * @see Iterate#collectFloat(Iterable, FloatFunction)
+     */
+    public static &lt;T&gt; MutableFloatCollection collectFloat(
+            Iterator&lt;T&gt; iterator,
+            FloatFunction&lt;? super T&gt; floatFunction)
+    {
+<span class="nc" id="L510">        MutableFloatCollection result = new FloatArrayList();</span>
+<span class="nc bnc" id="L511" title="All 2 branches missed.">        while (iterator.hasNext())</span>
+        {
+<span class="nc" id="L513">            result.add(floatFunction.floatValueOf(iterator.next()));</span>
+        }
+<span class="nc" id="L515">        return result;</span>
+    }
+
+    /**
+     * @see Iterate#collectFloat(Iterable, FloatFunction,
+     * MutableFloatCollection)
+     */
+    public static &lt;T, R extends MutableFloatCollection&gt; R collectFloat(
+            Iterator&lt;T&gt; iterator,
+            FloatFunction&lt;? super T&gt; floatFunction,
+            R target)
+    {
+<span class="nc bnc" id="L527" title="All 2 branches missed.">        while (iterator.hasNext())</span>
+        {
+<span class="nc" id="L529">            target.add(floatFunction.floatValueOf(iterator.next()));</span>
+        }
+<span class="nc" id="L531">        return target;</span>
+    }
+
+    /**
+     * @see Iterate#collectInt(Iterable, IntFunction)
+     */
+    public static &lt;T&gt; MutableIntCollection collectInt(
+            Iterator&lt;T&gt; iterator,
+            IntFunction&lt;? super T&gt; intFunction)
+    {
+<span class="nc" id="L541">        MutableIntCollection result = new IntArrayList();</span>
+<span class="nc bnc" id="L542" title="All 2 branches missed.">        while (iterator.hasNext())</span>
+        {
+<span class="nc" id="L544">            result.add(intFunction.intValueOf(iterator.next()));</span>
+        }
+<span class="nc" id="L546">        return result;</span>
+    }
+
+    /**
+     * @see Iterate#collectInt(Iterable, IntFunction,
+     * MutableIntCollection)
+     */
+    public static &lt;T, R extends MutableIntCollection&gt; R collectInt(
+            Iterator&lt;T&gt; iterator,
+            IntFunction&lt;? super T&gt; intFunction,
+            R target)
+    {
+<span class="nc bnc" id="L558" title="All 2 branches missed.">        while (iterator.hasNext())</span>
+        {
+<span class="nc" id="L560">            target.add(intFunction.intValueOf(iterator.next()));</span>
+        }
+<span class="nc" id="L562">        return target;</span>
+    }
+
+    /**
+     * @see Iterate#collectLong(Iterable, LongFunction)
+     */
+    public static &lt;T&gt; MutableLongCollection collectLong(
+            Iterator&lt;T&gt; iterator,
+            LongFunction&lt;? super T&gt; longFunction)
+    {
+<span class="nc" id="L572">        MutableLongCollection result = new LongArrayList();</span>
+<span class="nc bnc" id="L573" title="All 2 branches missed.">        while (iterator.hasNext())</span>
+        {
+<span class="nc" id="L575">            result.add(longFunction.longValueOf(iterator.next()));</span>
+        }
+<span class="nc" id="L577">        return result;</span>
+    }
+
+    /**
+     * @see Iterate#collectLong(Iterable, LongFunction,
+     * MutableLongCollection)
+     */
+    public static &lt;T, R extends MutableLongCollection&gt; R collectLong(
+            Iterator&lt;T&gt; iterator,
+            LongFunction&lt;? super T&gt; longFunction,
+            R target)
+    {
+<span class="nc bnc" id="L589" title="All 2 branches missed.">        while (iterator.hasNext())</span>
+        {
+<span class="nc" id="L591">            target.add(longFunction.longValueOf(iterator.next()));</span>
+        }
+<span class="nc" id="L593">        return target;</span>
+    }
+
+    /**
+     * @see Iterate#collectShort(Iterable, ShortFunction)
+     */
+    public static &lt;T&gt; MutableShortCollection collectShort(
+            Iterator&lt;T&gt; iterator,
+            ShortFunction&lt;? super T&gt; shortFunction)
+    {
+<span class="nc" id="L603">        MutableShortCollection result = new ShortArrayList();</span>
+<span class="nc bnc" id="L604" title="All 2 branches missed.">        while (iterator.hasNext())</span>
+        {
+<span class="nc" id="L606">            result.add(shortFunction.shortValueOf(iterator.next()));</span>
+        }
+<span class="nc" id="L608">        return result;</span>
+    }
+
+    /**
+     * @see Iterate#collectShort(Iterable, ShortFunction,
+     * MutableShortCollection)
+     */
+    public static &lt;T, R extends MutableShortCollection&gt; R collectShort(
+            Iterator&lt;T&gt; iterator,
+            ShortFunction&lt;? super T&gt; shortFunction,
+            R target)
+    {
+<span class="nc bnc" id="L620" title="All 2 branches missed.">        while (iterator.hasNext())</span>
+        {
+<span class="nc" id="L622">            target.add(shortFunction.shortValueOf(iterator.next()));</span>
+        }
+<span class="nc" id="L624">        return target;</span>
+    }
+
+    /**
+     * @see Iterate#flatCollect(Iterable, Function, Collection)
+     */
+    public static &lt;T, V, R extends Collection&lt;V&gt;&gt; R flatCollect(
+            Iterator&lt;T&gt; iterator,
+            Function&lt;? super T, ? extends Iterable&lt;V&gt;&gt; function,
+            R targetCollection)
+    {
+<span class="nc bnc" id="L635" title="All 2 branches missed.">        while (iterator.hasNext())</span>
+        {
+<span class="nc" id="L637">            Iterate.addAllTo(function.valueOf(iterator.next()), targetCollection);</span>
+        }
+<span class="nc" id="L639">        return targetCollection;</span>
+    }
+
+    /**
+     * @see Iterate#forEach(Iterable, Procedure)
+     */
+    public static &lt;T&gt; void forEach(Iterator&lt;T&gt; iterator, Procedure&lt;? super T&gt; procedure)
+    {
+<span class="nc bnc" id="L647" title="All 2 branches missed.">        while (iterator.hasNext())</span>
+        {
+<span class="nc" id="L649">            procedure.value(iterator.next());</span>
+        }
+<span class="nc" id="L651">    }</span>
+
+    /**
+     * @see Iterate#forEachWithIndex(Iterable, ObjectIntProcedure)
+     */
+    public static &lt;T&gt; void forEachWithIndex(Iterator&lt;T&gt; iterator, ObjectIntProcedure&lt;? super T&gt; objectIntProcedure)
+    {
+<span class="nc" id="L658">        int i = 0;</span>
+<span class="nc bnc" id="L659" title="All 2 branches missed.">        while (iterator.hasNext())</span>
+        {
+<span class="nc" id="L661">            objectIntProcedure.value(iterator.next(), i++);</span>
+        }
+<span class="nc" id="L663">    }</span>
+
+    /**
+     * @see Iterate#detect(Iterable, Predicate)
+     */
+    public static &lt;T&gt; T detect(Iterator&lt;T&gt; iterator, Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc bnc" id="L670" title="All 2 branches missed.">        while (iterator.hasNext())</span>
+        {
+<span class="nc" id="L672">            T each = iterator.next();</span>
+<span class="nc bnc" id="L673" title="All 2 branches missed.">            if (predicate.accept(each))</span>
+            {
+<span class="nc" id="L675">                return each;</span>
+            }
+<span class="nc" id="L677">        }</span>
+<span class="nc" id="L678">        return null;</span>
+    }
+
+    /**
+     * @see Iterate#detectWith(Iterable, Predicate2, Object)
+     */
+    public static &lt;T, P&gt; T detectWith(Iterator&lt;T&gt; iterator, Predicate2&lt;? super T, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc bnc" id="L686" title="All 2 branches missed.">        while (iterator.hasNext())</span>
+        {
+<span class="nc" id="L688">            T each = iterator.next();</span>
+<span class="nc bnc" id="L689" title="All 2 branches missed.">            if (predicate.accept(each, parameter))</span>
+            {
+<span class="nc" id="L691">                return each;</span>
+            }
+<span class="nc" id="L693">        }</span>
+<span class="nc" id="L694">        return null;</span>
+    }
+
+    /**
+     * @see Iterate#detectOptional(Iterable, Predicate)
+     */
+    public static &lt;T&gt; Optional&lt;T&gt; detectOptional(Iterator&lt;T&gt; iterator, Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc bnc" id="L702" title="All 2 branches missed.">        while (iterator.hasNext())</span>
+        {
+<span class="nc" id="L704">            T each = iterator.next();</span>
+<span class="nc bnc" id="L705" title="All 2 branches missed.">            if (predicate.accept(each))</span>
+            {
+<span class="nc" id="L707">                return Optional.of(each);</span>
+            }
+<span class="nc" id="L709">        }</span>
+<span class="nc" id="L710">        return Optional.empty();</span>
+    }
+
+    /**
+     * @see Iterate#detectWithOptional(Iterable, Predicate2, Object)
+     */
+    public static &lt;T, P&gt; Optional&lt;T&gt; detectWithOptional(Iterator&lt;T&gt; iterator, Predicate2&lt;? super T, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc bnc" id="L718" title="All 2 branches missed.">        while (iterator.hasNext())</span>
+        {
+<span class="nc" id="L720">            T each = iterator.next();</span>
+<span class="nc bnc" id="L721" title="All 2 branches missed.">            if (predicate.accept(each, parameter))</span>
+            {
+<span class="nc" id="L723">                return Optional.of(each);</span>
+            }
+<span class="nc" id="L725">        }</span>
+<span class="nc" id="L726">        return Optional.empty();</span>
+    }
+
+    /**
+     * @see Iterate#injectInto(Object, Iterable, Function2)
+     */
+    public static &lt;T, IV&gt; IV injectInto(
+            IV injectValue,
+            Iterator&lt;T&gt; iterator,
+            Function2&lt;? super IV, ? super T, ? extends IV&gt; function)
+    {
+<span class="nc" id="L737">        IV result = injectValue;</span>
+<span class="nc bnc" id="L738" title="All 2 branches missed.">        while (iterator.hasNext())</span>
+        {
+<span class="nc" id="L740">            result = function.value(result, iterator.next());</span>
+        }
+<span class="nc" id="L742">        return result;</span>
+    }
+
+    /**
+     * @see Iterate#injectInto(int, Iterable, IntObjectToIntFunction)
+     */
+    public static &lt;T&gt; int injectInto(
+            int injectValue,
+            Iterator&lt;T&gt; iterator,
+            IntObjectToIntFunction&lt;? super T&gt; function)
+    {
+<span class="nc" id="L753">        int result = injectValue;</span>
+<span class="nc bnc" id="L754" title="All 2 branches missed.">        while (iterator.hasNext())</span>
+        {
+<span class="nc" id="L756">            result = function.intValueOf(result, iterator.next());</span>
+        }
+<span class="nc" id="L758">        return result;</span>
+    }
+
+    /**
+     * @see Iterate#injectInto(long, Iterable, LongObjectToLongFunction)
+     */
+    public static &lt;T&gt; long injectInto(
+            long injectValue,
+            Iterator&lt;T&gt; iterator,
+            LongObjectToLongFunction&lt;? super T&gt; function)
+    {
+<span class="nc" id="L769">        long result = injectValue;</span>
+<span class="nc bnc" id="L770" title="All 2 branches missed.">        while (iterator.hasNext())</span>
+        {
+<span class="nc" id="L772">            result = function.longValueOf(result, iterator.next());</span>
+        }
+<span class="nc" id="L774">        return result;</span>
+    }
+
+    /**
+     * @see Iterate#injectInto(double, Iterable, DoubleObjectToDoubleFunction)
+     */
+    public static &lt;T&gt; double injectInto(
+            double injectValue,
+            Iterator&lt;T&gt; iterator,
+            DoubleObjectToDoubleFunction&lt;? super T&gt; function)
+    {
+<span class="nc" id="L785">        double result = injectValue;</span>
+<span class="nc bnc" id="L786" title="All 2 branches missed.">        while (iterator.hasNext())</span>
+        {
+<span class="nc" id="L788">            result = function.doubleValueOf(result, iterator.next());</span>
+        }
+<span class="nc" id="L790">        return result;</span>
+    }
+
+    /**
+     * @see Iterate#injectInto(float, Iterable, FloatObjectToFloatFunction)
+     */
+    public static &lt;T&gt; float injectInto(
+            float injectValue,
+            Iterator&lt;T&gt; iterator,
+            FloatObjectToFloatFunction&lt;? super T&gt; function)
+    {
+<span class="nc" id="L801">        float result = injectValue;</span>
+<span class="nc bnc" id="L802" title="All 2 branches missed.">        while (iterator.hasNext())</span>
+        {
+<span class="nc" id="L804">            result = function.floatValueOf(result, iterator.next());</span>
+        }
+<span class="nc" id="L806">        return result;</span>
+    }
+
+    /**
+     * @see Iterate#injectIntoWith(Object, Iterable, Function3, Object)
+     */
+    public static &lt;T, IV, P&gt; IV injectIntoWith(IV injectValue, Iterator&lt;T&gt; iterator, Function3&lt;? super IV, ? super T, ? super P, ? extends IV&gt; function, P parameter)
+    {
+<span class="nc" id="L814">        IV result = injectValue;</span>
+<span class="nc bnc" id="L815" title="All 2 branches missed.">        while (iterator.hasNext())</span>
+        {
+<span class="nc" id="L817">            result = function.value(result, iterator.next(), parameter);</span>
+        }
+<span class="nc" id="L819">        return result;</span>
+    }
+
+    public static &lt;T&gt; boolean shortCircuit(
+            Iterator&lt;T&gt; iterator,
+            Predicate&lt;? super T&gt; predicate,
+            boolean expected,
+            boolean onShortCircuit,
+            boolean atEnd)
+    {
+<span class="nc bnc" id="L829" title="All 2 branches missed.">        while (iterator.hasNext())</span>
+        {
+<span class="nc" id="L831">            T each = iterator.next();</span>
+<span class="nc bnc" id="L832" title="All 2 branches missed.">            if (predicate.accept(each) == expected)</span>
+            {
+<span class="nc" id="L834">                return onShortCircuit;</span>
+            }
+<span class="nc" id="L836">        }</span>
+<span class="nc" id="L837">        return atEnd;</span>
+    }
+
+    public static &lt;T, P&gt; boolean shortCircuitWith(
+            Iterator&lt;T&gt; iterator,
+            Predicate2&lt;? super T, ? super P&gt; predicate2,
+            P parameter,
+            boolean expected,
+            boolean onShortCircuit,
+            boolean atEnd)
+    {
+<span class="nc bnc" id="L848" title="All 2 branches missed.">        while (iterator.hasNext())</span>
+        {
+<span class="nc" id="L850">            T each = iterator.next();</span>
+<span class="nc bnc" id="L851" title="All 2 branches missed.">            if (predicate2.accept(each, parameter) == expected)</span>
+            {
+<span class="nc" id="L853">                return onShortCircuit;</span>
+            }
+<span class="nc" id="L855">        }</span>
+<span class="nc" id="L856">        return atEnd;</span>
+    }
+
+    /**
+     * @see Iterate#anySatisfy(Iterable, Predicate)
+     */
+    public static &lt;T&gt; boolean anySatisfy(Iterator&lt;T&gt; iterator, Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L864">        return IteratorIterate.shortCircuit(iterator, predicate, true, true, false);</span>
+    }
+
+    /**
+     * @see Iterate#anySatisfyWith(Iterable, Predicate2, Object)
+     */
+    public static &lt;T, P&gt; boolean anySatisfyWith(Iterator&lt;T&gt; iterator, Predicate2&lt;? super T, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc" id="L872">        return IteratorIterate.shortCircuitWith(iterator, predicate, parameter, true, true, false);</span>
+    }
+
+    /**
+     * @see Iterate#allSatisfy(Iterable, Predicate)
+     */
+    public static &lt;T&gt; boolean allSatisfy(Iterator&lt;T&gt; iterator, Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L880">        return IteratorIterate.shortCircuit(iterator, predicate, false, false, true);</span>
+    }
+
+    /**
+     * @see Iterate#allSatisfyWith(Iterable, Predicate2, Object)
+     */
+    public static &lt;T, P&gt; boolean allSatisfyWith(Iterator&lt;T&gt; iterator, Predicate2&lt;? super T, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc" id="L888">        return IteratorIterate.shortCircuitWith(iterator, predicate, parameter, false, false, true);</span>
+    }
+
+    /**
+     * @see Iterate#noneSatisfy(Iterable, Predicate)
+     */
+    public static &lt;T&gt; boolean noneSatisfy(Iterator&lt;T&gt; iterator, Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L896">        return IteratorIterate.shortCircuit(iterator, predicate, true, false, true);</span>
+    }
+
+    /**
+     * @see Iterate#noneSatisfyWith(Iterable, Predicate2, Object)
+     */
+    public static &lt;T, P&gt; boolean noneSatisfyWith(Iterator&lt;T&gt; iterator, Predicate2&lt;? super T, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc" id="L904">        return IteratorIterate.shortCircuitWith(iterator, predicate, parameter, true, false, true);</span>
+    }
+
+    /**
+     * @see Iterate#removeIf(Iterable, Predicate)
+     */
+    public static &lt;T&gt; boolean removeIf(Iterator&lt;T&gt; iterator, Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L912">        boolean changed = false;</span>
+<span class="nc bnc" id="L913" title="All 2 branches missed.">        while (iterator.hasNext())</span>
+        {
+<span class="nc" id="L915">            T each = iterator.next();</span>
+<span class="nc bnc" id="L916" title="All 2 branches missed.">            if (predicate.accept(each))</span>
+            {
+<span class="nc" id="L918">                iterator.remove();</span>
+<span class="nc" id="L919">                changed = true;</span>
+            }
+<span class="nc" id="L921">        }</span>
+<span class="nc" id="L922">        return changed;</span>
+    }
+
+    /**
+     * @see Iterate#removeIfWith(Iterable, Predicate2, Object)
+     */
+    public static &lt;T, P&gt; boolean removeIfWith(Iterator&lt;T&gt; iterator, Predicate2&lt;? super T, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc" id="L930">        boolean changed = false;</span>
+<span class="nc bnc" id="L931" title="All 2 branches missed.">        while (iterator.hasNext())</span>
+        {
+<span class="nc" id="L933">            T each = iterator.next();</span>
+<span class="nc bnc" id="L934" title="All 2 branches missed.">            if (predicate.accept(each, parameter))</span>
+            {
+<span class="nc" id="L936">                iterator.remove();</span>
+<span class="nc" id="L937">                changed = true;</span>
+            }
+<span class="nc" id="L939">        }</span>
+<span class="nc" id="L940">        return changed;</span>
+    }
+
+    public static &lt;T&gt; boolean removeIf(Iterator&lt;T&gt; iterator, Predicate&lt;? super T&gt; predicate, Procedure&lt;? super T&gt; procedure)
+    {
+<span class="nc" id="L945">        boolean changed = false;</span>
+<span class="nc bnc" id="L946" title="All 2 branches missed.">        while (iterator.hasNext())</span>
+        {
+<span class="nc" id="L948">            T each = iterator.next();</span>
+<span class="nc bnc" id="L949" title="All 2 branches missed.">            if (predicate.accept(each))</span>
+            {
+<span class="nc" id="L951">                procedure.value(each);</span>
+<span class="nc" id="L952">                iterator.remove();</span>
+<span class="nc" id="L953">                changed = true;</span>
+            }
+<span class="nc" id="L955">        }</span>
+<span class="nc" id="L956">        return changed;</span>
+    }
+
+    public static &lt;T, P&gt; boolean removeIfWith(Iterator&lt;T&gt; iterator, Predicate2&lt;? super T, ? super P&gt; predicate, P parameter, Procedure&lt;? super T&gt; procedure)
+    {
+<span class="nc" id="L961">        boolean changed = false;</span>
+<span class="nc bnc" id="L962" title="All 2 branches missed.">        while (iterator.hasNext())</span>
+        {
+<span class="nc" id="L964">            T each = iterator.next();</span>
+<span class="nc bnc" id="L965" title="All 2 branches missed.">            if (predicate.accept(each, parameter))</span>
+            {
+<span class="nc" id="L967">                procedure.value(each);</span>
+<span class="nc" id="L968">                iterator.remove();</span>
+<span class="nc" id="L969">                changed = true;</span>
+            }
+<span class="nc" id="L971">        }</span>
+<span class="nc" id="L972">        return changed;</span>
+    }
+
+    /**
+     * @see Iterate#detectIndex(Iterable, Predicate)
+     */
+    public static &lt;T&gt; int detectIndex(Iterator&lt;T&gt; iterator, Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L980">        int i = 0;</span>
+<span class="nc bnc" id="L981" title="All 2 branches missed.">        while (iterator.hasNext())</span>
+        {
+<span class="nc bnc" id="L983" title="All 2 branches missed.">            if (predicate.accept(iterator.next()))</span>
+            {
+<span class="nc" id="L985">                return i;</span>
+            }
+<span class="nc" id="L987">            i++;</span>
+        }
+<span class="nc" id="L989">        return -1;</span>
+    }
+
+    /**
+     * @see Iterate#detectIndexWith(Iterable, Predicate2, Object)
+     */
+    public static &lt;T, IV&gt; int detectIndexWith(Iterator&lt;T&gt; iterator, Predicate2&lt;? super T, ? super IV&gt; predicate, IV injectedValue)
+    {
+<span class="nc" id="L997">        int i = 0;</span>
+<span class="nc bnc" id="L998" title="All 2 branches missed.">        while (iterator.hasNext())</span>
+        {
+<span class="nc bnc" id="L1000" title="All 2 branches missed.">            if (predicate.accept(iterator.next(), injectedValue))</span>
+            {
+<span class="nc" id="L1002">                return i;</span>
+            }
+<span class="nc" id="L1004">            i++;</span>
+        }
+<span class="nc" id="L1006">        return -1;</span>
+    }
+
+    /**
+     * @see Iterate#forEachWith(Iterable, Procedure2, Object)
+     */
+    public static &lt;T, P&gt; void forEachWith(Iterator&lt;T&gt; iterator, Procedure2&lt;? super T, ? super P&gt; procedure, P parameter)
+    {
+<span class="nc bnc" id="L1014" title="All 2 branches missed.">        while (iterator.hasNext())</span>
+        {
+<span class="nc" id="L1016">            procedure.value(iterator.next(), parameter);</span>
+        }
+<span class="nc" id="L1018">    }</span>
+
+    /**
+     * @see Iterate#collectWith(Iterable, Function2, Object, Collection)
+     */
+    public static &lt;T, P, A, R extends Collection&lt;A&gt;&gt; R collectWith(
+            Iterator&lt;T&gt; iterator,
+            Function2&lt;? super T, ? super P, ? extends A&gt; function,
+            P parameter,
+            R targetCollection)
+    {
+<span class="nc bnc" id="L1029" title="All 2 branches missed.">        while (iterator.hasNext())</span>
+        {
+<span class="nc" id="L1031">            targetCollection.add(function.value(iterator.next(), parameter));</span>
+        }
+<span class="nc" id="L1033">        return targetCollection;</span>
+    }
+
+    /**
+     * @see Iterate#groupBy(Iterable, Function)
+     */
+    public static &lt;T, V&gt; ImmutableMultimap&lt;V, T&gt; groupBy(
+            Iterator&lt;T&gt; iterator,
+            Function&lt;? super T, ? extends V&gt; function)
+    {
+<span class="nc" id="L1043">        return IteratorIterate.groupBy(iterator, function, new FastListMultimap&lt;V, T&gt;()).toImmutable();</span>
+    }
+
+    /**
+     * @see Iterate#groupBy(Iterable, Function, MutableMultimap)
+     */
+    public static &lt;T, V, R extends MutableMultimap&lt;V, T&gt;&gt; R groupBy(
+            Iterator&lt;T&gt; iterator,
+            Function&lt;? super T, ? extends V&gt; function,
+            R target)
+    {
+<span class="nc bnc" id="L1054" title="All 2 branches missed.">        while (iterator.hasNext())</span>
+        {
+<span class="nc" id="L1056">            T item = iterator.next();</span>
+<span class="nc" id="L1057">            target.put(function.valueOf(item), item);</span>
+<span class="nc" id="L1058">        }</span>
+<span class="nc" id="L1059">        return target;</span>
+    }
+
+    /**
+     * @see Iterate#groupByEach(Iterable, Function, MutableMultimap)
+     */
+    public static &lt;T, V, R extends MutableMultimap&lt;V, T&gt;&gt; R groupByEach(
+            Iterator&lt;T&gt; iterator,
+            Function&lt;? super T, ? extends Iterable&lt;V&gt;&gt; function,
+            R target)
+    {
+<span class="nc bnc" id="L1070" title="All 2 branches missed.">        while (iterator.hasNext())</span>
+        {
+<span class="nc" id="L1072">            T item = iterator.next();</span>
+<span class="nc" id="L1073">            Iterable&lt;V&gt; iterable = function.valueOf(item);</span>
+<span class="nc bnc" id="L1074" title="All 2 branches missed.">            for (V key : iterable)</span>
+            {
+<span class="nc" id="L1076">                target.put(key, item);</span>
+<span class="nc" id="L1077">            }</span>
+<span class="nc" id="L1078">        }</span>
+<span class="nc" id="L1079">        return target;</span>
+    }
+
+    /**
+     * @see Iterate#groupByUniqueKey(Iterable, Function, MutableMap)
+     */
+    public static &lt;K, T, R extends MutableMap&lt;K, T&gt;&gt; R groupByUniqueKey(
+            Iterator&lt;T&gt; iterator,
+            Function&lt;? super T, ? extends K&gt; function,
+            R target)
+    {
+<span class="nc bnc" id="L1090" title="All 2 branches missed.">        while (iterator.hasNext())</span>
+        {
+<span class="nc" id="L1092">            T value = iterator.next();</span>
+<span class="nc" id="L1093">            K key = function.valueOf(value);</span>
+<span class="nc bnc" id="L1094" title="All 2 branches missed.">            if (target.put(key, value) != null)</span>
+            {
+<span class="nc" id="L1096">                throw new IllegalStateException(&quot;Key &quot; + key + &quot; already exists in map!&quot;);</span>
+            }
+<span class="nc" id="L1098">        }</span>
+<span class="nc" id="L1099">        return target;</span>
+    }
+
+    /**
+     * @deprecated in 7.0.
+     */
+    @Deprecated
+    public static &lt;T, R extends List&lt;T&gt;&gt; R distinct(
+            Iterator&lt;T&gt; iterator,
+            R targetCollection)
+    {
+<span class="nc" id="L1110">        Set&lt;T&gt; seenSoFar = UnifiedSet.newSet();</span>
+<span class="nc bnc" id="L1111" title="All 2 branches missed.">        while (iterator.hasNext())</span>
+        {
+<span class="nc" id="L1113">            T item = iterator.next();</span>
+<span class="nc bnc" id="L1114" title="All 2 branches missed.">            if (seenSoFar.add(item))</span>
+            {
+<span class="nc" id="L1116">                targetCollection.add(item);</span>
+            }
+<span class="nc" id="L1118">        }</span>
+<span class="nc" id="L1119">        return targetCollection;</span>
+    }
+
+    /**
+     * @since 7.0.
+     */
+    public static &lt;T&gt; MutableList&lt;T&gt; distinct(Iterator&lt;T&gt; iterator)
+    {
+<span class="nc" id="L1127">        return IteratorIterate.distinct(iterator, FastList.newList());</span>
+    }
+
+    /**
+     * @since 7.0.
+     */
+    public static &lt;T&gt; MutableList&lt;T&gt; distinct(Iterator&lt;T&gt; iterator, HashingStrategy&lt;? super T&gt; hashingStrategy)
+    {
+<span class="nc" id="L1135">        Set&lt;T&gt; seenSoFar = UnifiedSetWithHashingStrategy.newSet(hashingStrategy);</span>
+<span class="nc" id="L1136">        FastList&lt;T&gt; result = FastList.newList();</span>
+<span class="nc bnc" id="L1137" title="All 2 branches missed.">        while (iterator.hasNext())</span>
+        {
+<span class="nc" id="L1139">            T item = iterator.next();</span>
+<span class="nc bnc" id="L1140" title="All 2 branches missed.">            if (seenSoFar.add(item))</span>
+            {
+<span class="nc" id="L1142">                result.add(item);</span>
+            }
+<span class="nc" id="L1144">        }</span>
+<span class="nc" id="L1145">        return result;</span>
+    }
+
+    /**
+     * @see Iterate#zip(Iterable, Iterable, Collection)
+     */
+    public static &lt;X, Y, R extends Collection&lt;Pair&lt;X, Y&gt;&gt;&gt; R zip(
+            Iterator&lt;X&gt; xs,
+            Iterator&lt;Y&gt; ys,
+            R target)
+    {
+<span class="nc bnc" id="L1156" title="All 4 branches missed.">        while (xs.hasNext() &amp;&amp; ys.hasNext())</span>
+        {
+<span class="nc" id="L1158">            target.add(Tuples.pair(xs.next(), ys.next()));</span>
+        }
+<span class="nc" id="L1160">        return target;</span>
+    }
+
+    /**
+     * @see Iterate#zipWithIndex(Iterable, Collection)
+     */
+    public static &lt;T, R extends Collection&lt;Pair&lt;T, Integer&gt;&gt;&gt; R zipWithIndex(Iterator&lt;T&gt; iterator, R target)
+    {
+<span class="nc" id="L1168">        int index = 0;</span>
+<span class="nc bnc" id="L1169" title="All 2 branches missed.">        while (iterator.hasNext())</span>
+        {
+<span class="nc" id="L1171">            target.add(Tuples.pair(iterator.next(), index));</span>
+<span class="nc" id="L1172">            index += 1;</span>
+        }
+<span class="nc" id="L1174">        return target;</span>
+    }
+
+    /**
+     * @see Iterate#chunk(Iterable, int)
+     */
+    public static &lt;T&gt; RichIterable&lt;RichIterable&lt;T&gt;&gt; chunk(Iterator&lt;T&gt; iterator, int size)
+    {
+<span class="nc bnc" id="L1182" title="All 2 branches missed.">        if (size &lt;= 0)</span>
+        {
+<span class="nc" id="L1184">            throw new IllegalArgumentException(&quot;Size for groups must be positive but was: &quot; + size);</span>
+        }
+
+<span class="nc" id="L1187">        MutableList&lt;RichIterable&lt;T&gt;&gt; result = Lists.mutable.empty();</span>
+<span class="nc bnc" id="L1188" title="All 2 branches missed.">        while (iterator.hasNext())</span>
+        {
+<span class="nc" id="L1190">            MutableList&lt;T&gt; batch = Lists.mutable.empty();</span>
+<span class="nc bnc" id="L1191" title="All 4 branches missed.">            for (int i = 0; i &lt; size &amp;&amp; iterator.hasNext(); i++)</span>
+            {
+<span class="nc" id="L1193">                batch.add(iterator.next());</span>
+            }
+<span class="nc" id="L1195">            result.add(batch);</span>
+<span class="nc" id="L1196">        }</span>
+<span class="nc" id="L1197">        return result;</span>
+    }
+
+    /**
+     * @see Iterate#min(Iterable, Comparator)
+     */
+    public static &lt;T&gt; T min(Iterator&lt;T&gt; iterator, Comparator&lt;? super T&gt; comparator)
+    {
+<span class="nc" id="L1205">        T min = iterator.next();</span>
+<span class="nc bnc" id="L1206" title="All 2 branches missed.">        while (iterator.hasNext())</span>
+        {
+<span class="nc" id="L1208">            T next = iterator.next();</span>
+<span class="nc bnc" id="L1209" title="All 2 branches missed.">            if (comparator.compare(next, min) &lt; 0)</span>
+            {
+<span class="nc" id="L1211">                min = next;</span>
+            }
+<span class="nc" id="L1213">        }</span>
+<span class="nc" id="L1214">        return min;</span>
+    }
+
+    /**
+     * @see Iterate#max(Iterable, Comparator)
+     */
+    public static &lt;T&gt; T max(Iterator&lt;T&gt; iterator, Comparator&lt;? super T&gt; comparator)
+    {
+<span class="nc" id="L1222">        T max = iterator.next();</span>
+<span class="nc bnc" id="L1223" title="All 2 branches missed.">        while (iterator.hasNext())</span>
+        {
+<span class="nc" id="L1225">            T next = iterator.next();</span>
+<span class="nc bnc" id="L1226" title="All 2 branches missed.">            if (comparator.compare(next, max) &gt; 0)</span>
+            {
+<span class="nc" id="L1228">                max = next;</span>
+            }
+<span class="nc" id="L1230">        }</span>
+<span class="nc" id="L1231">        return max;</span>
+    }
+
+    public static &lt;T&gt; Iterator&lt;T&gt; advanceIteratorTo(Iterator&lt;T&gt; iterator, int from)
+    {
+<span class="nc bnc" id="L1236" title="All 2 branches missed.">        for (int i = 0; i &lt; from; i++)</span>
+        {
+<span class="nc" id="L1238">            iterator.next();</span>
+        }
+<span class="nc" id="L1240">        return iterator;</span>
+    }
+
+    public static &lt;T&gt; long sumOfInt(Iterator&lt;T&gt; iterator, IntFunction&lt;? super T&gt; function)
+    {
+<span class="nc" id="L1245">        long sum = 0L;</span>
+<span class="nc bnc" id="L1246" title="All 2 branches missed.">        while (iterator.hasNext())</span>
+        {
+<span class="nc" id="L1248">            sum += (long) function.intValueOf(iterator.next());</span>
+        }
+<span class="nc" id="L1250">        return sum;</span>
+    }
+
+    public static &lt;T&gt; long sumOfLong(Iterator&lt;T&gt; iterator, LongFunction&lt;? super T&gt; function)
+    {
+<span class="nc" id="L1255">        long sum = 0L;</span>
+<span class="nc bnc" id="L1256" title="All 2 branches missed.">        while (iterator.hasNext())</span>
+        {
+<span class="nc" id="L1258">            sum += function.longValueOf(iterator.next());</span>
+        }
+<span class="nc" id="L1260">        return sum;</span>
+    }
+
+    public static &lt;T&gt; double sumOfFloat(Iterator&lt;T&gt; iterator, FloatFunction&lt;? super T&gt; function)
+    {
+<span class="nc" id="L1265">        double sum = 0.0d;</span>
+<span class="nc" id="L1266">        double compensation = 0.0d;</span>
+<span class="nc bnc" id="L1267" title="All 2 branches missed.">        while (iterator.hasNext())</span>
+        {
+<span class="nc" id="L1269">            double adjustedValue = (double) function.floatValueOf(iterator.next()) - compensation;</span>
+<span class="nc" id="L1270">            double nextSum = sum + adjustedValue;</span>
+<span class="nc" id="L1271">            compensation = nextSum - sum - adjustedValue;</span>
+<span class="nc" id="L1272">            sum = nextSum;</span>
+<span class="nc" id="L1273">        }</span>
+<span class="nc" id="L1274">        return sum;</span>
+    }
+
+    public static &lt;T&gt; double sumOfDouble(Iterator&lt;T&gt; iterator, DoubleFunction&lt;? super T&gt; function)
+    {
+<span class="nc" id="L1279">        double sum = 0.0d;</span>
+<span class="nc" id="L1280">        double compensation = 0.0d;</span>
+<span class="nc bnc" id="L1281" title="All 2 branches missed.">        while (iterator.hasNext())</span>
+        {
+<span class="nc" id="L1283">            double adjustedValue = function.doubleValueOf(iterator.next()) - compensation;</span>
+<span class="nc" id="L1284">            double nextSum = sum + adjustedValue;</span>
+<span class="nc" id="L1285">            compensation = nextSum - sum - adjustedValue;</span>
+<span class="nc" id="L1286">            sum = nextSum;</span>
+<span class="nc" id="L1287">        }</span>
+<span class="nc" id="L1288">        return sum;</span>
+    }
+
+    public static &lt;T&gt; BigDecimal sumOfBigDecimal(Iterator&lt;T&gt; iterator, Function&lt;? super T, BigDecimal&gt; function)
+    {
+<span class="nc" id="L1293">        BigDecimal result = BigDecimal.ZERO;</span>
+<span class="nc bnc" id="L1294" title="All 2 branches missed.">        while (iterator.hasNext())</span>
+        {
+<span class="nc" id="L1296">            result = result.add(function.valueOf(iterator.next()));</span>
+        }
+<span class="nc" id="L1298">        return result;</span>
+    }
+
+    public static &lt;T&gt; BigInteger sumOfBigInteger(Iterator&lt;T&gt; iterator, Function&lt;? super T, BigInteger&gt; function)
+    {
+<span class="nc" id="L1303">        BigInteger result = BigInteger.ZERO;</span>
+<span class="nc bnc" id="L1304" title="All 2 branches missed.">        while (iterator.hasNext())</span>
+        {
+<span class="nc" id="L1306">            result = result.add(function.valueOf(iterator.next()));</span>
+        }
+<span class="nc" id="L1308">        return result;</span>
+    }
+
+    public static &lt;V, T&gt; MutableMap&lt;V, BigDecimal&gt; sumByBigDecimal(Iterator&lt;T&gt; iterator, Function&lt;T, V&gt; groupBy, Function&lt;? super T, BigDecimal&gt; function)
+    {
+<span class="nc" id="L1313">        MutableMap&lt;V, BigDecimal&gt; result = UnifiedMap.newMap();</span>
+<span class="nc bnc" id="L1314" title="All 2 branches missed.">        while (iterator.hasNext())</span>
+        {
+<span class="nc" id="L1316">            T item = iterator.next();</span>
+<span class="nc" id="L1317">            result.updateValue(groupBy.valueOf(item), Functions0.zeroBigDecimal(), original -&gt; original.add(function.valueOf(item)));</span>
+<span class="nc" id="L1318">        }</span>
+<span class="nc" id="L1319">        return result;</span>
+    }
+
+    public static &lt;V, T&gt; MutableMap&lt;V, BigInteger&gt; sumByBigInteger(Iterator&lt;T&gt; iterator, Function&lt;T, V&gt; groupBy, Function&lt;? super T, BigInteger&gt; function)
+    {
+<span class="nc" id="L1324">        MutableMap&lt;V, BigInteger&gt; result = UnifiedMap.newMap();</span>
+<span class="nc bnc" id="L1325" title="All 2 branches missed.">        while (iterator.hasNext())</span>
+        {
+<span class="nc" id="L1327">            T item = iterator.next();</span>
+<span class="nc" id="L1328">            result.updateValue(groupBy.valueOf(item), Functions0.zeroBigInteger(), original -&gt; original.add(function.valueOf(item)));</span>
+<span class="nc" id="L1329">        }</span>
+<span class="nc" id="L1330">        return result;</span>
+    }
+
+    public static &lt;T, K, V&gt; MutableMap&lt;K, V&gt; aggregateBy(
+            Iterator&lt;T&gt; iterator,
+            Function&lt;? super T, ? extends K&gt; groupBy,
+            Function0&lt;? extends V&gt; zeroValueFactory,
+            Procedure2&lt;? super V, ? super T&gt; mutatingAggregator)
+    {
+<span class="nc" id="L1339">        MutableMap&lt;K, V&gt; map = UnifiedMap.newMap();</span>
+<span class="nc" id="L1340">        IteratorIterate.forEach(iterator, new MutatingAggregationProcedure&lt;&gt;(map, groupBy, zeroValueFactory, mutatingAggregator));</span>
+<span class="nc" id="L1341">        return map;</span>
+    }
+
+    public static &lt;T, K, V&gt; MutableMap&lt;K, V&gt; aggregateBy(
+            Iterator&lt;T&gt; iterator,
+            Function&lt;? super T, ? extends K&gt; groupBy,
+            Function0&lt;? extends V&gt; zeroValueFactory,
+            Function2&lt;? super V, ? super T, ? extends V&gt; nonMutatingAggregator)
+    {
+<span class="nc" id="L1350">        MutableMap&lt;K, V&gt; map = UnifiedMap.newMap();</span>
+<span class="nc" id="L1351">        IteratorIterate.forEach(iterator, new NonMutatingAggregationProcedure&lt;&gt;(map, groupBy, zeroValueFactory, nonMutatingAggregator));</span>
+<span class="nc" id="L1352">        return map;</span>
+    }
+
+    public static &lt;T, V extends Comparable&lt;? super V&gt;&gt; T minBy(Iterator&lt;T&gt; iterator, Function&lt;? super T, ? extends V&gt; function)
+    {
+<span class="nc" id="L1357">        T min = iterator.next();</span>
+<span class="nc" id="L1358">        V minValue = function.valueOf(min);</span>
+<span class="nc bnc" id="L1359" title="All 2 branches missed.">        while (iterator.hasNext())</span>
+        {
+<span class="nc" id="L1361">            T next = iterator.next();</span>
+<span class="nc" id="L1362">            V nextValue = function.valueOf(next);</span>
+<span class="nc bnc" id="L1363" title="All 2 branches missed.">            if (nextValue.compareTo(minValue) &lt; 0)</span>
+            {
+<span class="nc" id="L1365">                min = next;</span>
+<span class="nc" id="L1366">                minValue = nextValue;</span>
+            }
+<span class="nc" id="L1368">        }</span>
+<span class="nc" id="L1369">        return min;</span>
+    }
+
+    public static &lt;T, V extends Comparable&lt;? super V&gt;&gt; T maxBy(Iterator&lt;T&gt; iterator, Function&lt;? super T, ? extends V&gt; function)
+    {
+<span class="nc" id="L1374">        T max = iterator.next();</span>
+<span class="nc" id="L1375">        V maxValue = function.valueOf(max);</span>
+<span class="nc bnc" id="L1376" title="All 2 branches missed.">        while (iterator.hasNext())</span>
+        {
+<span class="nc" id="L1378">            T next = iterator.next();</span>
+<span class="nc" id="L1379">            V nextValue = function.valueOf(next);</span>
+<span class="nc bnc" id="L1380" title="All 2 branches missed.">            if (nextValue.compareTo(maxValue) &gt; 0)</span>
+            {
+<span class="nc" id="L1382">                max = next;</span>
+<span class="nc" id="L1383">                maxValue = nextValue;</span>
+            }
+<span class="nc" id="L1385">        }</span>
+<span class="nc" id="L1386">        return max;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.0.201801022044</span></div></body></html>

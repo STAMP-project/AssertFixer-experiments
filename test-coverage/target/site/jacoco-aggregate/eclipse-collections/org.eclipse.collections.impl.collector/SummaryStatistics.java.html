@@ -1,0 +1,147 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>SummaryStatistics.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Eclipse Collections Test Coverage Aggregation</a> &gt; <a href="../index.html" class="el_bundle">eclipse-collections</a> &gt; <a href="index.source.html" class="el_package">org.eclipse.collections.impl.collector</a> &gt; <span class="el_source">SummaryStatistics.java</span></div><h1>SummaryStatistics.java</h1><pre class="source lang-java linenums">/*
+ * Copyright (c) 2017 Goldman Sachs.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * and Eclipse Distribution License v. 1.0 which accompany this distribution.
+ * The Eclipse Public License is available at http://www.eclipse.org/legal/epl-v10.html
+ * and the Eclipse Distribution License is available at
+ * http://www.eclipse.org/org/documents/edl-v10.php.
+ */
+
+package org.eclipse.collections.impl.collector;
+
+import java.io.Externalizable;
+import java.io.IOException;
+import java.io.ObjectInput;
+import java.io.ObjectOutput;
+import java.util.DoubleSummaryStatistics;
+import java.util.IntSummaryStatistics;
+import java.util.LongSummaryStatistics;
+import java.util.stream.Collector;
+
+import org.eclipse.collections.api.block.function.primitive.DoubleFunction;
+import org.eclipse.collections.api.block.function.primitive.IntFunction;
+import org.eclipse.collections.api.block.function.primitive.LongFunction;
+import org.eclipse.collections.api.block.procedure.Procedure;
+import org.eclipse.collections.api.map.ImmutableMap;
+import org.eclipse.collections.impl.factory.Maps;
+
+/**
+ * A Summarizer can be used to aggregate statistics for multiple primitive attributes.
+ *
+ * @since 8.1
+ * @deprecated since 8.2 since it will not work with Java 9 natively. Will be removed in 9.0.0.
+ */
+@Deprecated
+public class SummaryStatistics&lt;T&gt; implements Procedure&lt;T&gt;, Externalizable
+{
+    private static final long serialVersionUID = 1L;
+
+<span class="nc" id="L40">    private ImmutableMap&lt;Object, IntFunction&lt;? super T&gt;&gt; intFunctionsMap = Maps.immutable.empty();</span>
+<span class="nc" id="L41">    private ImmutableMap&lt;Object, LongFunction&lt;? super T&gt;&gt; longFunctionsMap = Maps.immutable.empty();</span>
+<span class="nc" id="L42">    private ImmutableMap&lt;Object, DoubleFunction&lt;? super T&gt;&gt; doubleFunctionsMap = Maps.immutable.empty();</span>
+<span class="nc" id="L43">    private ImmutableMap&lt;Object, SerializableIntSummaryStatistics&gt; intStatisticsMap = Maps.immutable.empty();</span>
+<span class="nc" id="L44">    private ImmutableMap&lt;Object, SerializableLongSummaryStatistics&gt; longStatisticsMap = Maps.immutable.empty();</span>
+<span class="nc" id="L45">    private ImmutableMap&lt;Object, SerializableDoubleSummaryStatistics&gt; doubleStatisticsMap = Maps.immutable.empty();</span>
+
+    public SummaryStatistics()
+<span class="nc" id="L48">    {</span>
+<span class="nc" id="L49">    }</span>
+
+    private SummaryStatistics(
+            ImmutableMap&lt;Object, IntFunction&lt;? super T&gt;&gt; intFunctions,
+            ImmutableMap&lt;Object, LongFunction&lt;? super T&gt;&gt; longFunctions,
+            ImmutableMap&lt;Object, DoubleFunction&lt;? super T&gt;&gt; doubleFunctions)
+<span class="nc" id="L55">    {</span>
+<span class="nc" id="L56">        this.intFunctionsMap = intFunctions;</span>
+<span class="nc" id="L57">        this.intStatisticsMap = intFunctions.collectValues((key, value) -&gt; new SerializableIntSummaryStatistics());</span>
+<span class="nc" id="L58">        this.longFunctionsMap = longFunctions;</span>
+<span class="nc" id="L59">        this.longStatisticsMap = longFunctions.collectValues((key, value) -&gt; new SerializableLongSummaryStatistics());</span>
+<span class="nc" id="L60">        this.doubleFunctionsMap = doubleFunctions;</span>
+<span class="nc" id="L61">        this.doubleStatisticsMap = doubleFunctions.collectValues((key, value) -&gt; new SerializableDoubleSummaryStatistics());</span>
+<span class="nc" id="L62">    }</span>
+
+    public SummaryStatistics&lt;T&gt; addIntFunction(Object key, IntFunction&lt;? super T&gt; function)
+    {
+<span class="nc" id="L66">        this.intFunctionsMap = this.intFunctionsMap.newWithKeyValue(key, function);</span>
+<span class="nc" id="L67">        this.intStatisticsMap = this.intStatisticsMap.newWithKeyValue(key, new SerializableIntSummaryStatistics());</span>
+<span class="nc" id="L68">        return this;</span>
+    }
+
+    public SummaryStatistics&lt;T&gt; addLongFunction(Object key, LongFunction&lt;? super T&gt; function)
+    {
+<span class="nc" id="L73">        this.longFunctionsMap = this.longFunctionsMap.newWithKeyValue(key, function);</span>
+<span class="nc" id="L74">        this.longStatisticsMap = this.longStatisticsMap.newWithKeyValue(key, new SerializableLongSummaryStatistics());</span>
+<span class="nc" id="L75">        return this;</span>
+    }
+
+    public SummaryStatistics&lt;T&gt; addDoubleFunction(Object key, DoubleFunction&lt;? super T&gt; function)
+    {
+<span class="nc" id="L80">        this.doubleFunctionsMap = this.doubleFunctionsMap.newWithKeyValue(key, function);</span>
+<span class="nc" id="L81">        this.doubleStatisticsMap = this.doubleStatisticsMap.newWithKeyValue(key, new SerializableDoubleSummaryStatistics());</span>
+<span class="nc" id="L82">        return this;</span>
+    }
+
+    @Override
+    public void value(T each)
+    {
+<span class="nc" id="L88">        this.intStatisticsMap.forEachKeyValue((key, value) -&gt; value.accept(this.intFunctionsMap.get(key).intValueOf(each)));</span>
+<span class="nc" id="L89">        this.longStatisticsMap.forEachKeyValue((key, value) -&gt; value.accept(this.longFunctionsMap.get(key).longValueOf(each)));</span>
+<span class="nc" id="L90">        this.doubleStatisticsMap.forEachKeyValue((key, value) -&gt; value.accept(this.doubleFunctionsMap.get(key).doubleValueOf(each)));</span>
+<span class="nc" id="L91">    }</span>
+
+    public DoubleSummaryStatistics getDoubleStats(Object name)
+    {
+<span class="nc" id="L95">        return this.doubleStatisticsMap.get(name);</span>
+    }
+
+    public IntSummaryStatistics getIntStats(Object name)
+    {
+<span class="nc" id="L100">        return this.intStatisticsMap.get(name);</span>
+    }
+
+    public LongSummaryStatistics getLongStats(Object name)
+    {
+<span class="nc" id="L105">        return this.longStatisticsMap.get(name);</span>
+    }
+
+    public SummaryStatistics&lt;T&gt; merge(SummaryStatistics&lt;T&gt; summaryStatistics)
+    {
+<span class="nc" id="L110">        this.doubleStatisticsMap.forEachKeyValue((key, value) -&gt; value.combine(summaryStatistics.getDoubleStats(key)));</span>
+<span class="nc" id="L111">        this.intStatisticsMap.forEachKeyValue((key, value) -&gt; value.combine(summaryStatistics.getIntStats(key)));</span>
+<span class="nc" id="L112">        this.longStatisticsMap.forEachKeyValue((key, value) -&gt; value.combine(summaryStatistics.getLongStats(key)));</span>
+<span class="nc" id="L113">        return this;</span>
+    }
+
+    public Collector&lt;T, ?, SummaryStatistics&lt;T&gt;&gt; toCollector()
+    {
+<span class="nc" id="L118">        return Collector.of(</span>
+<span class="nc" id="L119">                () -&gt; new SummaryStatistics&lt;&gt;(this.intFunctionsMap, this.longFunctionsMap, this.doubleFunctionsMap),</span>
+                SummaryStatistics::value,
+                SummaryStatistics::merge,
+                Collector.Characteristics.UNORDERED);
+    }
+
+    @Override
+    public void writeExternal(ObjectOutput out) throws IOException
+    {
+<span class="nc" id="L128">        out.writeObject(this.intFunctionsMap);</span>
+<span class="nc" id="L129">        out.writeObject(this.longFunctionsMap);</span>
+<span class="nc" id="L130">        out.writeObject(this.doubleFunctionsMap);</span>
+<span class="nc" id="L131">        out.writeObject(this.intStatisticsMap);</span>
+<span class="nc" id="L132">        out.writeObject(this.longStatisticsMap);</span>
+<span class="nc" id="L133">        out.writeObject(this.doubleStatisticsMap);</span>
+<span class="nc" id="L134">    }</span>
+
+    @Override
+    public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException
+    {
+<span class="nc" id="L139">        this.intFunctionsMap = (ImmutableMap&lt;Object, IntFunction&lt;? super T&gt;&gt;) in.readObject();</span>
+<span class="nc" id="L140">        this.longFunctionsMap = (ImmutableMap&lt;Object, LongFunction&lt;? super T&gt;&gt;) in.readObject();</span>
+<span class="nc" id="L141">        this.doubleFunctionsMap = (ImmutableMap&lt;Object, DoubleFunction&lt;? super T&gt;&gt;) in.readObject();</span>
+<span class="nc" id="L142">        this.intStatisticsMap = (ImmutableMap&lt;Object, SerializableIntSummaryStatistics&gt;) in.readObject();</span>
+<span class="nc" id="L143">        this.longStatisticsMap = (ImmutableMap&lt;Object, SerializableLongSummaryStatistics&gt;) in.readObject();</span>
+<span class="nc" id="L144">        this.doubleStatisticsMap = (ImmutableMap&lt;Object, SerializableDoubleSummaryStatistics&gt;) in.readObject();</span>
+<span class="nc" id="L145">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.0.201801022044</span></div></body></html>

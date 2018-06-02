@@ -1,0 +1,139 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>AbstractMutableBagMultimap.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Eclipse Collections Test Coverage Aggregation</a> &gt; <a href="../index.html" class="el_bundle">eclipse-collections</a> &gt; <a href="index.source.html" class="el_package">org.eclipse.collections.impl.multimap.bag</a> &gt; <span class="el_source">AbstractMutableBagMultimap.java</span></div><h1>AbstractMutableBagMultimap.java</h1><pre class="source lang-java linenums">/*
+ * Copyright (c) 2016 Goldman Sachs and others.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * and Eclipse Distribution License v. 1.0 which accompany this distribution.
+ * The Eclipse Public License is available at http://www.eclipse.org/legal/epl-v10.html
+ * and the Eclipse Distribution License is available at
+ * http://www.eclipse.org/org/documents/edl-v10.php.
+ */
+
+package org.eclipse.collections.impl.multimap.bag;
+
+import java.io.IOException;
+import java.io.ObjectInput;
+import java.io.ObjectOutput;
+
+import org.eclipse.collections.api.bag.ImmutableBag;
+import org.eclipse.collections.api.bag.MutableBag;
+import org.eclipse.collections.api.block.function.Function2;
+import org.eclipse.collections.api.map.MutableMap;
+import org.eclipse.collections.api.multimap.bag.ImmutableBagMultimap;
+import org.eclipse.collections.api.multimap.bag.MutableBagMultimap;
+import org.eclipse.collections.api.tuple.Pair;
+import org.eclipse.collections.impl.block.procedure.checked.CheckedObjectIntProcedure;
+import org.eclipse.collections.impl.block.procedure.checked.CheckedProcedure2;
+import org.eclipse.collections.impl.multimap.AbstractMutableMultimap;
+
+public abstract class AbstractMutableBagMultimap&lt;K, V&gt; extends AbstractMutableMultimap&lt;K, V, MutableBag&lt;V&gt;&gt; implements MutableBagMultimap&lt;K, V&gt;
+{
+    protected AbstractMutableBagMultimap()
+<span class="nc" id="L31">    {</span>
+<span class="nc" id="L32">    }</span>
+
+    protected AbstractMutableBagMultimap(Pair&lt;K, V&gt;... pairs)
+    {
+<span class="nc" id="L36">        super(pairs);</span>
+<span class="nc" id="L37">    }</span>
+
+    protected AbstractMutableBagMultimap(Iterable&lt;Pair&lt;K, V&gt;&gt; inputIterable)
+    {
+<span class="nc" id="L41">        super(inputIterable);</span>
+<span class="nc" id="L42">    }</span>
+
+    protected AbstractMutableBagMultimap(int size)
+    {
+<span class="nc" id="L46">        super(size);</span>
+<span class="nc" id="L47">    }</span>
+
+    @Override
+    public MutableBagMultimap&lt;K, V&gt; toMutable()
+    {
+<span class="nc" id="L52">        MutableBagMultimap&lt;K, V&gt; mutableBagMultimap = this.newEmpty();</span>
+<span class="nc" id="L53">        mutableBagMultimap.putAll(this);</span>
+<span class="nc" id="L54">        return mutableBagMultimap;</span>
+    }
+
+    @Override
+    public ImmutableBagMultimap&lt;K, V&gt; toImmutable()
+    {
+<span class="nc" id="L60">        MutableMap&lt;K, ImmutableBag&lt;V&gt;&gt; result = (MutableMap&lt;K, ImmutableBag&lt;V&gt;&gt;) (MutableMap&lt;?, ?&gt;) this.createMapWithKeyCount(this.map.size());</span>
+
+<span class="nc" id="L62">        this.map.forEachKeyValue((key, bag) -&gt; result.put(key, bag.toImmutable()));</span>
+
+<span class="nc" id="L64">        return new ImmutableBagMultimapImpl&lt;&gt;(result);</span>
+    }
+
+    @Override
+    public &lt;K2, V2&gt; HashBagMultimap&lt;K2, V2&gt; collectKeysValues(Function2&lt;? super K, ? super V, Pair&lt;K2, V2&gt;&gt; function)
+    {
+<span class="nc" id="L70">        return this.collectKeysValues(function, HashBagMultimap.newMultimap());</span>
+    }
+
+    @Override
+    public void writeExternal(ObjectOutput out) throws IOException
+    {
+<span class="nc" id="L76">        int keysCount = this.map.size();</span>
+<span class="nc" id="L77">        out.writeInt(keysCount);</span>
+<span class="nc" id="L78">        this.map.forEachKeyValue(new CheckedProcedure2&lt;K, MutableBag&lt;V&gt;&gt;()</span>
+<span class="nc" id="L79">        {</span>
+            public void safeValue(K key, MutableBag&lt;V&gt; bag) throws IOException
+            {
+<span class="nc" id="L82">                out.writeObject(key);</span>
+<span class="nc" id="L83">                out.writeInt(bag.sizeDistinct());</span>
+<span class="nc" id="L84">                bag.forEachWithOccurrences(new CheckedObjectIntProcedure&lt;V&gt;()</span>
+<span class="nc" id="L85">                {</span>
+                    public void safeValue(V value, int count) throws IOException
+                    {
+<span class="nc" id="L88">                        out.writeObject(value);</span>
+<span class="nc" id="L89">                        out.writeInt(count);</span>
+<span class="nc" id="L90">                    }</span>
+                });
+<span class="nc" id="L92">            }</span>
+        });
+<span class="nc" id="L94">    }</span>
+
+    @Override
+    public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException
+    {
+<span class="nc" id="L99">        int keyCount = in.readInt();</span>
+<span class="nc" id="L100">        this.map = this.createMapWithKeyCount(keyCount);</span>
+<span class="nc bnc" id="L101" title="All 2 branches missed.">        for (int i = 0; i &lt; keyCount; i++)</span>
+        {
+<span class="nc" id="L103">            K key = (K) in.readObject();</span>
+<span class="nc" id="L104">            int valuesSize = in.readInt();</span>
+<span class="nc" id="L105">            MutableBag&lt;V&gt; bag = this.createCollection();</span>
+<span class="nc bnc" id="L106" title="All 2 branches missed.">            for (int j = 0; j &lt; valuesSize; j++)</span>
+            {
+<span class="nc" id="L108">                V value = (V) in.readObject();</span>
+<span class="nc" id="L109">                int count = in.readInt();</span>
+
+<span class="nc" id="L111">                bag.addOccurrences(value, count);</span>
+            }
+<span class="nc" id="L113">            this.putAll(key, bag);</span>
+        }
+<span class="nc" id="L115">    }</span>
+
+    @Override
+    public void putOccurrences(K key, V value, int occurrences)
+    {
+<span class="nc bnc" id="L120" title="All 2 branches missed.">        if (occurrences &lt; 0)</span>
+        {
+<span class="nc" id="L122">            throw new IllegalArgumentException(&quot;Cannot add a negative number of occurrences&quot;);</span>
+        }
+<span class="nc bnc" id="L124" title="All 2 branches missed.">        if (occurrences &gt; 0)</span>
+        {
+<span class="nc" id="L126">            MutableBag&lt;V&gt; bag = this.map.getIfAbsentPutWith(key, this.createCollectionBlock(), this);</span>
+
+<span class="nc" id="L128">            bag.addOccurrences(value, occurrences);</span>
+<span class="nc" id="L129">            this.addToTotalSize(occurrences);</span>
+        }
+<span class="nc" id="L131">    }</span>
+
+    @Override
+    public MutableBagMultimap&lt;K, V&gt; asSynchronized()
+    {
+<span class="nc" id="L136">        return SynchronizedBagMultimap.of(this);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.0.201801022044</span></div></body></html>

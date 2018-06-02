@@ -1,0 +1,845 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>TreeSortedSet.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Eclipse Collections Test Coverage Aggregation</a> &gt; <a href="../index.html" class="el_bundle">eclipse-collections</a> &gt; <a href="index.source.html" class="el_package">org.eclipse.collections.impl.set.sorted.mutable</a> &gt; <span class="el_source">TreeSortedSet.java</span></div><h1>TreeSortedSet.java</h1><pre class="source lang-java linenums">/*
+ * Copyright (c) 2018 Goldman Sachs and others.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * and Eclipse Distribution License v. 1.0 which accompany this distribution.
+ * The Eclipse Public License is available at http://www.eclipse.org/legal/epl-v10.html
+ * and the Eclipse Distribution License is available at
+ * http://www.eclipse.org/org/documents/edl-v10.php.
+ */
+
+package org.eclipse.collections.impl.set.sorted.mutable;
+
+import java.io.Externalizable;
+import java.io.IOException;
+import java.io.ObjectInput;
+import java.io.ObjectOutput;
+import java.util.Collection;
+import java.util.Comparator;
+import java.util.Iterator;
+import java.util.Set;
+import java.util.SortedSet;
+import java.util.TreeSet;
+import java.util.concurrent.ExecutorService;
+
+import org.eclipse.collections.api.LazyIterable;
+import org.eclipse.collections.api.RichIterable;
+import org.eclipse.collections.api.annotation.Beta;
+import org.eclipse.collections.api.block.function.Function;
+import org.eclipse.collections.api.block.function.Function2;
+import org.eclipse.collections.api.block.function.primitive.BooleanFunction;
+import org.eclipse.collections.api.block.function.primitive.ByteFunction;
+import org.eclipse.collections.api.block.function.primitive.CharFunction;
+import org.eclipse.collections.api.block.function.primitive.DoubleFunction;
+import org.eclipse.collections.api.block.function.primitive.FloatFunction;
+import org.eclipse.collections.api.block.function.primitive.IntFunction;
+import org.eclipse.collections.api.block.function.primitive.LongFunction;
+import org.eclipse.collections.api.block.function.primitive.ShortFunction;
+import org.eclipse.collections.api.block.predicate.Predicate;
+import org.eclipse.collections.api.block.predicate.Predicate2;
+import org.eclipse.collections.api.block.procedure.Procedure;
+import org.eclipse.collections.api.block.procedure.primitive.ObjectIntProcedure;
+import org.eclipse.collections.api.list.MutableList;
+import org.eclipse.collections.api.list.primitive.MutableBooleanList;
+import org.eclipse.collections.api.list.primitive.MutableByteList;
+import org.eclipse.collections.api.list.primitive.MutableCharList;
+import org.eclipse.collections.api.list.primitive.MutableDoubleList;
+import org.eclipse.collections.api.list.primitive.MutableFloatList;
+import org.eclipse.collections.api.list.primitive.MutableIntList;
+import org.eclipse.collections.api.list.primitive.MutableLongList;
+import org.eclipse.collections.api.list.primitive.MutableShortList;
+import org.eclipse.collections.api.ordered.OrderedIterable;
+import org.eclipse.collections.api.partition.set.sorted.PartitionMutableSortedSet;
+import org.eclipse.collections.api.set.SetIterable;
+import org.eclipse.collections.api.set.sorted.ImmutableSortedSet;
+import org.eclipse.collections.api.set.sorted.MutableSortedSet;
+import org.eclipse.collections.api.set.sorted.ParallelSortedSetIterable;
+import org.eclipse.collections.api.set.sorted.SortedSetIterable;
+import org.eclipse.collections.api.stack.MutableStack;
+import org.eclipse.collections.api.tuple.Pair;
+import org.eclipse.collections.impl.block.factory.Comparators;
+import org.eclipse.collections.impl.block.factory.Functions;
+import org.eclipse.collections.impl.block.factory.Predicates2;
+import org.eclipse.collections.impl.block.procedure.CollectIfProcedure;
+import org.eclipse.collections.impl.block.procedure.CollectProcedure;
+import org.eclipse.collections.impl.block.procedure.CollectionAddProcedure;
+import org.eclipse.collections.impl.block.procedure.FlatCollectProcedure;
+import org.eclipse.collections.impl.block.procedure.PartitionPredicate2Procedure;
+import org.eclipse.collections.impl.block.procedure.PartitionProcedure;
+import org.eclipse.collections.impl.block.procedure.RejectProcedure;
+import org.eclipse.collections.impl.block.procedure.SelectInstancesOfProcedure;
+import org.eclipse.collections.impl.block.procedure.SelectProcedure;
+import org.eclipse.collections.impl.block.procedure.checked.CheckedProcedure;
+import org.eclipse.collections.impl.block.procedure.primitive.CollectBooleanProcedure;
+import org.eclipse.collections.impl.block.procedure.primitive.CollectByteProcedure;
+import org.eclipse.collections.impl.block.procedure.primitive.CollectCharProcedure;
+import org.eclipse.collections.impl.block.procedure.primitive.CollectDoubleProcedure;
+import org.eclipse.collections.impl.block.procedure.primitive.CollectFloatProcedure;
+import org.eclipse.collections.impl.block.procedure.primitive.CollectIntProcedure;
+import org.eclipse.collections.impl.block.procedure.primitive.CollectLongProcedure;
+import org.eclipse.collections.impl.block.procedure.primitive.CollectShortProcedure;
+import org.eclipse.collections.impl.collection.mutable.AbstractMutableCollection;
+import org.eclipse.collections.impl.factory.SortedSets;
+import org.eclipse.collections.impl.lazy.parallel.set.sorted.NonParallelSortedSetIterable;
+import org.eclipse.collections.impl.list.mutable.FastList;
+import org.eclipse.collections.impl.list.mutable.primitive.BooleanArrayList;
+import org.eclipse.collections.impl.list.mutable.primitive.ByteArrayList;
+import org.eclipse.collections.impl.list.mutable.primitive.CharArrayList;
+import org.eclipse.collections.impl.list.mutable.primitive.DoubleArrayList;
+import org.eclipse.collections.impl.list.mutable.primitive.FloatArrayList;
+import org.eclipse.collections.impl.list.mutable.primitive.IntArrayList;
+import org.eclipse.collections.impl.list.mutable.primitive.LongArrayList;
+import org.eclipse.collections.impl.list.mutable.primitive.ShortArrayList;
+import org.eclipse.collections.impl.multimap.set.sorted.TreeSortedSetMultimap;
+import org.eclipse.collections.impl.partition.set.sorted.PartitionTreeSortedSet;
+import org.eclipse.collections.impl.stack.mutable.ArrayStack;
+import org.eclipse.collections.impl.utility.ArrayIterate;
+import org.eclipse.collections.impl.utility.Iterate;
+import org.eclipse.collections.impl.utility.ListIterate;
+import org.eclipse.collections.impl.utility.OrderedIterate;
+import org.eclipse.collections.impl.utility.internal.IterableIterate;
+import org.eclipse.collections.impl.utility.internal.SetIterables;
+import org.eclipse.collections.impl.utility.internal.SetIterate;
+import org.eclipse.collections.impl.utility.internal.SortedSetIterables;
+
+public class TreeSortedSet&lt;T&gt; extends AbstractMutableCollection&lt;T&gt;
+        implements Externalizable, MutableSortedSet&lt;T&gt;
+{
+    private static final long serialVersionUID = 1L;
+    private TreeSet&lt;T&gt; treeSet;
+
+    public TreeSortedSet()
+<span class="nc" id="L112">    {</span>
+<span class="nc" id="L113">        this.treeSet = new TreeSet&lt;&gt;();</span>
+<span class="nc" id="L114">    }</span>
+
+    public TreeSortedSet(Iterable&lt;? extends T&gt; iterable)
+<span class="nc" id="L117">    {</span>
+<span class="nc" id="L118">        this.treeSet = new TreeSet&lt;&gt;();</span>
+<span class="nc" id="L119">        this.addAllIterable(iterable);</span>
+<span class="nc" id="L120">    }</span>
+
+    public TreeSortedSet(Comparator&lt;? super T&gt; comparator)
+<span class="nc" id="L123">    {</span>
+<span class="nc" id="L124">        this.treeSet = new TreeSet&lt;&gt;(comparator);</span>
+<span class="nc" id="L125">    }</span>
+
+    public TreeSortedSet(SortedSet&lt;T&gt; set)
+<span class="nc" id="L128">    {</span>
+<span class="nc" id="L129">        this.treeSet = new TreeSet&lt;&gt;(set);</span>
+<span class="nc" id="L130">    }</span>
+
+    public TreeSortedSet(Comparator&lt;? super T&gt; comparator, Iterable&lt;? extends T&gt; iterable)
+    {
+<span class="nc" id="L134">        this(comparator);</span>
+<span class="nc" id="L135">        this.addAllIterable(iterable);</span>
+<span class="nc" id="L136">    }</span>
+
+    public static &lt;T&gt; TreeSortedSet&lt;T&gt; newSet()
+    {
+<span class="nc" id="L140">        return new TreeSortedSet&lt;&gt;();</span>
+    }
+
+    public static &lt;T&gt; TreeSortedSet&lt;T&gt; newSet(Comparator&lt;? super T&gt; comparator)
+    {
+<span class="nc" id="L145">        return new TreeSortedSet&lt;&gt;(comparator);</span>
+    }
+
+    public static &lt;T&gt; TreeSortedSet&lt;T&gt; newSet(Iterable&lt;? extends T&gt; source)
+    {
+<span class="nc bnc" id="L150" title="All 2 branches missed.">        if (source instanceof SortedSet&lt;?&gt;)</span>
+        {
+<span class="nc" id="L152">            return new TreeSortedSet&lt;&gt;((SortedSet&lt;T&gt;) source);</span>
+        }
+<span class="nc" id="L154">        TreeSortedSet&lt;T&gt; sortedSet = TreeSortedSet.newSet();</span>
+<span class="nc" id="L155">        Iterate.forEach(source, CollectionAddProcedure.on(sortedSet));</span>
+<span class="nc" id="L156">        return sortedSet;</span>
+    }
+
+    public static &lt;T&gt; TreeSortedSet&lt;T&gt; newSet(Comparator&lt;? super T&gt; comparator, Iterable&lt;? extends T&gt; iterable)
+    {
+<span class="nc" id="L161">        return new TreeSortedSet&lt;&gt;(comparator, iterable);</span>
+    }
+
+    public static &lt;T&gt; TreeSortedSet&lt;T&gt; newSetWith(T... elements)
+    {
+<span class="nc" id="L166">        return new TreeSortedSet&lt;T&gt;().with(elements);</span>
+    }
+
+    public static &lt;T&gt; TreeSortedSet&lt;T&gt; newSetWith(Comparator&lt;? super T&gt; comparator, T... elements)
+    {
+<span class="nc" id="L171">        return new TreeSortedSet&lt;T&gt;(comparator).with(elements);</span>
+    }
+
+    @Override
+    public MutableSortedSet&lt;T&gt; asUnmodifiable()
+    {
+<span class="nc" id="L177">        return UnmodifiableSortedSet.of(this);</span>
+    }
+
+    @Override
+    public MutableSortedSet&lt;T&gt; asSynchronized()
+    {
+<span class="nc" id="L183">        return SynchronizedSortedSet.of(this);</span>
+    }
+
+    @Override
+    @Beta
+    public ParallelSortedSetIterable&lt;T&gt; asParallel(ExecutorService executorService, int batchSize)
+    {
+<span class="nc bnc" id="L190" title="All 2 branches missed.">        if (executorService == null)</span>
+        {
+<span class="nc" id="L192">            throw new NullPointerException();</span>
+        }
+<span class="nc bnc" id="L194" title="All 2 branches missed.">        if (batchSize &lt; 1)</span>
+        {
+<span class="nc" id="L196">            throw new IllegalArgumentException();</span>
+        }
+<span class="nc" id="L198">        return new NonParallelSortedSetIterable&lt;&gt;(this);</span>
+    }
+
+    @Override
+    public ImmutableSortedSet&lt;T&gt; toImmutable()
+    {
+<span class="nc" id="L204">        return SortedSets.immutable.withSortedSet(this);</span>
+    }
+
+    @Override
+    public MutableStack&lt;T&gt; toStack()
+    {
+<span class="nc" id="L210">        return ArrayStack.newStack(this);</span>
+    }
+
+    @Override
+    public boolean add(T element)
+    {
+<span class="nc" id="L216">        return this.treeSet.add(element);</span>
+    }
+
+    @Override
+    public boolean remove(Object element)
+    {
+<span class="nc" id="L222">        return this.treeSet.remove(element);</span>
+    }
+
+    @Override
+    public boolean addAll(Collection&lt;? extends T&gt; collection)
+    {
+<span class="nc" id="L228">        return this.treeSet.addAll(collection);</span>
+    }
+
+    @Override
+    public boolean contains(Object o)
+    {
+<span class="nc" id="L234">        return this.treeSet.contains(o);</span>
+    }
+
+    @Override
+    public boolean containsAll(Collection&lt;?&gt; collection)
+    {
+<span class="nc" id="L240">        return Iterate.allSatisfyWith(collection, Predicates2.in(), this.treeSet);</span>
+    }
+
+    @Override
+    public void clear()
+    {
+<span class="nc" id="L246">        this.treeSet.clear();</span>
+<span class="nc" id="L247">    }</span>
+
+    @Override
+    public TreeSortedSet&lt;T&gt; clone()
+    {
+        try
+        {
+<span class="nc" id="L254">            TreeSortedSet&lt;T&gt; clone = (TreeSortedSet&lt;T&gt;) super.clone();</span>
+<span class="nc" id="L255">            clone.treeSet = (TreeSet&lt;T&gt;) this.treeSet.clone();</span>
+<span class="nc" id="L256">            return clone;</span>
+        }
+<span class="nc" id="L258">        catch (CloneNotSupportedException e)</span>
+        {
+<span class="nc" id="L260">            throw new AssertionError(e);</span>
+        }
+    }
+
+    @Override
+    public boolean equals(Object object)
+    {
+<span class="nc bnc" id="L267" title="All 2 branches missed.">        if (this == object)</span>
+        {
+<span class="nc" id="L269">            return true;</span>
+        }
+
+<span class="nc bnc" id="L272" title="All 2 branches missed.">        if (!(object instanceof Set))</span>
+        {
+<span class="nc" id="L274">            return false;</span>
+        }
+
+<span class="nc" id="L277">        Set&lt;?&gt; other = (Set&lt;?&gt;) object;</span>
+<span class="nc" id="L278">        return other.equals(this.treeSet);</span>
+    }
+
+    @Override
+    public int hashCode()
+    {
+<span class="nc" id="L284">        return this.treeSet.hashCode();</span>
+    }
+
+    @Override
+    public TreeSortedSet&lt;T&gt; with(T element)
+    {
+<span class="nc" id="L290">        this.treeSet.add(element);</span>
+<span class="nc" id="L291">        return this;</span>
+    }
+
+    public TreeSortedSet&lt;T&gt; with(T element1, T element2)
+    {
+<span class="nc" id="L296">        this.treeSet.add(element1);</span>
+<span class="nc" id="L297">        this.treeSet.add(element2);</span>
+<span class="nc" id="L298">        return this;</span>
+    }
+
+    public TreeSortedSet&lt;T&gt; with(T element1, T element2, T element3)
+    {
+<span class="nc" id="L303">        this.treeSet.add(element1);</span>
+<span class="nc" id="L304">        this.treeSet.add(element2);</span>
+<span class="nc" id="L305">        this.treeSet.add(element3);</span>
+<span class="nc" id="L306">        return this;</span>
+    }
+
+    public TreeSortedSet&lt;T&gt; with(T... elements)
+    {
+<span class="nc" id="L311">        ArrayIterate.forEach(elements, CollectionAddProcedure.on(this.treeSet));</span>
+<span class="nc" id="L312">        return this;</span>
+    }
+
+    @Override
+    public TreeSortedSet&lt;T&gt; without(T element)
+    {
+<span class="nc" id="L318">        this.remove(element);</span>
+<span class="nc" id="L319">        return this;</span>
+    }
+
+    @Override
+    public TreeSortedSet&lt;T&gt; withAll(Iterable&lt;? extends T&gt; elements)
+    {
+<span class="nc" id="L325">        this.addAllIterable(elements);</span>
+<span class="nc" id="L326">        return this;</span>
+    }
+
+    @Override
+    public TreeSortedSet&lt;T&gt; withoutAll(Iterable&lt;? extends T&gt; elements)
+    {
+<span class="nc" id="L332">        this.removeAllIterable(elements);</span>
+<span class="nc" id="L333">        return this;</span>
+    }
+
+    @Override
+    public TreeSortedSet&lt;T&gt; newEmpty()
+    {
+<span class="nc" id="L339">        return TreeSortedSet.newSet(this.treeSet.comparator());</span>
+    }
+
+    @Override
+    public TreeSortedSet&lt;T&gt; tap(Procedure&lt;? super T&gt; procedure)
+    {
+<span class="nc" id="L345">        this.forEach(procedure);</span>
+<span class="nc" id="L346">        return this;</span>
+    }
+
+    @Override
+    public void each(Procedure&lt;? super T&gt; procedure)
+    {
+<span class="nc" id="L352">        IterableIterate.forEach(this, procedure);</span>
+<span class="nc" id="L353">    }</span>
+
+    @Override
+    public TreeSortedSet&lt;T&gt; select(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L358">        TreeSortedSet&lt;T&gt; result = this.newEmpty();</span>
+<span class="nc" id="L359">        this.forEach(new SelectProcedure&lt;&gt;(predicate, result));</span>
+<span class="nc" id="L360">        return result;</span>
+    }
+
+    @Override
+    public TreeSortedSet&lt;T&gt; reject(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L366">        TreeSortedSet&lt;T&gt; result = this.newEmpty();</span>
+<span class="nc" id="L367">        this.forEach(new RejectProcedure&lt;&gt;(predicate, result));</span>
+<span class="nc" id="L368">        return result;</span>
+    }
+
+    @Override
+    public PartitionMutableSortedSet&lt;T&gt; partition(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L374">        PartitionTreeSortedSet&lt;T&gt; partitionTreeSortedSet = new PartitionTreeSortedSet&lt;&gt;(this.comparator());</span>
+<span class="nc" id="L375">        this.forEach(new PartitionProcedure&lt;&gt;(predicate, partitionTreeSortedSet));</span>
+<span class="nc" id="L376">        return partitionTreeSortedSet;</span>
+    }
+
+    @Override
+    public &lt;P&gt; PartitionMutableSortedSet&lt;T&gt; partitionWith(Predicate2&lt;? super T, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc" id="L382">        PartitionTreeSortedSet&lt;T&gt; partitionTreeSortedSet = new PartitionTreeSortedSet&lt;&gt;(this.comparator());</span>
+<span class="nc" id="L383">        this.forEach(new PartitionPredicate2Procedure&lt;&gt;(predicate, parameter, partitionTreeSortedSet));</span>
+<span class="nc" id="L384">        return partitionTreeSortedSet;</span>
+    }
+
+    @Override
+    public PartitionMutableSortedSet&lt;T&gt; partitionWhile(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L390">        PartitionTreeSortedSet&lt;T&gt; result = new PartitionTreeSortedSet&lt;&gt;(this.comparator());</span>
+<span class="nc" id="L391">        return IterableIterate.partitionWhile(this, predicate, result);</span>
+    }
+
+    @Override
+    public &lt;S&gt; TreeSortedSet&lt;S&gt; selectInstancesOf(Class&lt;S&gt; clazz)
+    {
+<span class="nc" id="L397">        TreeSortedSet&lt;S&gt; result = (TreeSortedSet&lt;S&gt;) this.newEmpty();</span>
+<span class="nc" id="L398">        this.forEach(new SelectInstancesOfProcedure&lt;&gt;(clazz, result));</span>
+<span class="nc" id="L399">        return result;</span>
+    }
+
+    @Override
+    public &lt;V&gt; MutableList&lt;V&gt; collect(Function&lt;? super T, ? extends V&gt; function)
+    {
+<span class="nc" id="L405">        MutableList&lt;V&gt; result = FastList.newList();</span>
+<span class="nc" id="L406">        this.forEach(new CollectProcedure&lt;&gt;(function, result));</span>
+<span class="nc" id="L407">        return result;</span>
+    }
+
+    @Override
+    public MutableBooleanList collectBoolean(BooleanFunction&lt;? super T&gt; booleanFunction)
+    {
+<span class="nc" id="L413">        BooleanArrayList result = new BooleanArrayList(this.size());</span>
+<span class="nc" id="L414">        this.forEach(new CollectBooleanProcedure&lt;&gt;(booleanFunction, result));</span>
+<span class="nc" id="L415">        return result;</span>
+    }
+
+    @Override
+    public MutableByteList collectByte(ByteFunction&lt;? super T&gt; byteFunction)
+    {
+<span class="nc" id="L421">        ByteArrayList result = new ByteArrayList(this.size());</span>
+<span class="nc" id="L422">        this.forEach(new CollectByteProcedure&lt;&gt;(byteFunction, result));</span>
+<span class="nc" id="L423">        return result;</span>
+    }
+
+    @Override
+    public MutableCharList collectChar(CharFunction&lt;? super T&gt; charFunction)
+    {
+<span class="nc" id="L429">        CharArrayList result = new CharArrayList(this.size());</span>
+<span class="nc" id="L430">        this.forEach(new CollectCharProcedure&lt;&gt;(charFunction, result));</span>
+<span class="nc" id="L431">        return result;</span>
+    }
+
+    @Override
+    public MutableDoubleList collectDouble(DoubleFunction&lt;? super T&gt; doubleFunction)
+    {
+<span class="nc" id="L437">        DoubleArrayList result = new DoubleArrayList(this.size());</span>
+<span class="nc" id="L438">        this.forEach(new CollectDoubleProcedure&lt;&gt;(doubleFunction, result));</span>
+<span class="nc" id="L439">        return result;</span>
+    }
+
+    @Override
+    public MutableFloatList collectFloat(FloatFunction&lt;? super T&gt; floatFunction)
+    {
+<span class="nc" id="L445">        FloatArrayList result = new FloatArrayList(this.size());</span>
+<span class="nc" id="L446">        this.forEach(new CollectFloatProcedure&lt;&gt;(floatFunction, result));</span>
+<span class="nc" id="L447">        return result;</span>
+    }
+
+    @Override
+    public MutableIntList collectInt(IntFunction&lt;? super T&gt; intFunction)
+    {
+<span class="nc" id="L453">        IntArrayList result = new IntArrayList(this.size());</span>
+<span class="nc" id="L454">        this.forEach(new CollectIntProcedure&lt;&gt;(intFunction, result));</span>
+<span class="nc" id="L455">        return result;</span>
+    }
+
+    @Override
+    public MutableLongList collectLong(LongFunction&lt;? super T&gt; longFunction)
+    {
+<span class="nc" id="L461">        LongArrayList result = new LongArrayList(this.size());</span>
+<span class="nc" id="L462">        this.forEach(new CollectLongProcedure&lt;&gt;(longFunction, result));</span>
+<span class="nc" id="L463">        return result;</span>
+    }
+
+    @Override
+    public MutableShortList collectShort(ShortFunction&lt;? super T&gt; shortFunction)
+    {
+<span class="nc" id="L469">        ShortArrayList result = new ShortArrayList(this.size());</span>
+<span class="nc" id="L470">        this.forEach(new CollectShortProcedure&lt;&gt;(shortFunction, result));</span>
+<span class="nc" id="L471">        return result;</span>
+    }
+
+    @Override
+    public &lt;V&gt; MutableList&lt;V&gt; flatCollect(Function&lt;? super T, ? extends Iterable&lt;V&gt;&gt; function)
+    {
+<span class="nc" id="L477">        MutableList&lt;V&gt; result = FastList.newList();</span>
+<span class="nc" id="L478">        this.forEach(new FlatCollectProcedure&lt;&gt;(function, result));</span>
+<span class="nc" id="L479">        return result;</span>
+    }
+
+    @Override
+    public &lt;V&gt; MutableList&lt;V&gt; collectIf(
+            Predicate&lt;? super T&gt; predicate,
+            Function&lt;? super T, ? extends V&gt; function)
+    {
+<span class="nc" id="L487">        MutableList&lt;V&gt; result = FastList.newList();</span>
+<span class="nc" id="L488">        this.forEach(new CollectIfProcedure&lt;&gt;(result, function, predicate));</span>
+<span class="nc" id="L489">        return result;</span>
+    }
+
+    @Override
+    public int detectIndex(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L495">        return Iterate.detectIndex(this, predicate);</span>
+    }
+
+    @Override
+    public &lt;V&gt; TreeSortedSetMultimap&lt;V, T&gt; groupBy(Function&lt;? super T, ? extends V&gt; function)
+    {
+<span class="nc" id="L501">        return Iterate.groupBy(this.treeSet, function, TreeSortedSetMultimap.newMultimap(this.comparator()));</span>
+    }
+
+    @Override
+    public &lt;V&gt; TreeSortedSetMultimap&lt;V, T&gt; groupByEach(Function&lt;? super T, ? extends Iterable&lt;V&gt;&gt; function)
+    {
+<span class="nc" id="L507">        return Iterate.groupByEach(this.treeSet, function, TreeSortedSetMultimap.newMultimap(this.comparator()));</span>
+    }
+
+    @Override
+    public &lt;P&gt; TreeSortedSet&lt;T&gt; selectWith(Predicate2&lt;? super T, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc" id="L513">        return Iterate.selectWith(this.treeSet, predicate, parameter, this.newEmpty());</span>
+    }
+
+    @Override
+    public &lt;P&gt; TreeSortedSet&lt;T&gt; rejectWith(Predicate2&lt;? super T, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc" id="L519">        return Iterate.rejectWith(this.treeSet, predicate, parameter, this.newEmpty());</span>
+    }
+
+    @Override
+    public &lt;P, V&gt; MutableList&lt;V&gt; collectWith(Function2&lt;? super T, ? super P, ? extends V&gt; function, P parameter)
+    {
+<span class="nc" id="L525">        return Iterate.collectWith(this.treeSet, function, parameter, FastList.newList());</span>
+    }
+
+    @Override
+    public &lt;S&gt; MutableList&lt;Pair&lt;T, S&gt;&gt; zip(Iterable&lt;S&gt; that)
+    {
+<span class="nc bnc" id="L531" title="All 4 branches missed.">        if (that instanceof Collection || that instanceof RichIterable)</span>
+        {
+<span class="nc" id="L533">            int thatSize = Iterate.sizeOf(that);</span>
+<span class="nc" id="L534">            FastList&lt;Pair&lt;T, S&gt;&gt; target = FastList.newList(Math.min(this.size(), thatSize));</span>
+<span class="nc" id="L535">            return Iterate.zip(this, that, target);</span>
+        }
+<span class="nc" id="L537">        return Iterate.zip(this, that, FastList.newList());</span>
+    }
+
+    @Override
+    public TreeSortedSet&lt;Pair&lt;T, Integer&gt;&gt; zipWithIndex()
+    {
+<span class="nc" id="L543">        Comparator&lt;? super T&gt; comparator = this.comparator();</span>
+<span class="nc bnc" id="L544" title="All 2 branches missed.">        if (comparator == null)</span>
+        {
+<span class="nc" id="L546">            TreeSortedSet&lt;Pair&lt;T, Integer&gt;&gt; pairs = TreeSortedSet.newSet(Comparators.byFunction(Functions.firstOfPair(), Comparators.naturalOrder()));</span>
+<span class="nc" id="L547">            return Iterate.zipWithIndex(this, pairs);</span>
+        }
+<span class="nc" id="L549">        return Iterate.zipWithIndex(this, TreeSortedSet.newSet(Comparators.byFirstOfPair(comparator)));</span>
+    }
+
+    @Override
+    public MutableSortedSet&lt;T&gt; takeWhile(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L555">        MutableSortedSet&lt;T&gt; result = TreeSortedSet.newSet(this.comparator());</span>
+<span class="nc" id="L556">        return IterableIterate.takeWhile(this, predicate, result);</span>
+    }
+
+    @Override
+    public MutableSortedSet&lt;T&gt; dropWhile(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L562">        MutableSortedSet&lt;T&gt; result = TreeSortedSet.newSet(this.comparator());</span>
+<span class="nc" id="L563">        return IterableIterate.dropWhile(this, predicate, result);</span>
+    }
+
+    @Override
+    public MutableSortedSet&lt;T&gt; distinct()
+    {
+<span class="nc" id="L569">        return this.clone();</span>
+    }
+
+    @Override
+    public &lt;S&gt; boolean corresponds(OrderedIterable&lt;S&gt; other, Predicate2&lt;? super T, ? super S&gt; predicate)
+    {
+<span class="nc" id="L575">        return OrderedIterate.corresponds(this, other, predicate);</span>
+    }
+
+    @Override
+    public void forEach(int fromIndex, int toIndex, Procedure&lt;? super T&gt; procedure)
+    {
+<span class="nc" id="L581">        ListIterate.rangeCheck(fromIndex, toIndex, this.size());</span>
+
+<span class="nc bnc" id="L583" title="All 2 branches missed.">        if (fromIndex &gt; toIndex)</span>
+        {
+<span class="nc" id="L585">            throw new IllegalArgumentException(&quot;fromIndex must not be greater than toIndex&quot;);</span>
+        }
+
+<span class="nc" id="L588">        Iterator&lt;T&gt; iterator = this.iterator();</span>
+<span class="nc" id="L589">        int i = 0;</span>
+<span class="nc bnc" id="L590" title="All 4 branches missed.">        while (iterator.hasNext() &amp;&amp; i &lt;= toIndex)</span>
+        {
+<span class="nc" id="L592">            T each = iterator.next();</span>
+<span class="nc bnc" id="L593" title="All 2 branches missed.">            if (i &gt;= fromIndex)</span>
+            {
+<span class="nc" id="L595">                procedure.value(each);</span>
+            }
+<span class="nc" id="L597">            i++;</span>
+<span class="nc" id="L598">        }</span>
+<span class="nc" id="L599">    }</span>
+
+    @Override
+    public void forEachWithIndex(int fromIndex, int toIndex, ObjectIntProcedure&lt;? super T&gt; objectIntProcedure)
+    {
+<span class="nc" id="L604">        ListIterate.rangeCheck(fromIndex, toIndex, this.size());</span>
+
+<span class="nc bnc" id="L606" title="All 2 branches missed.">        if (fromIndex &gt; toIndex)</span>
+        {
+<span class="nc" id="L608">            throw new IllegalArgumentException(&quot;fromIndex must not be greater than toIndex&quot;);</span>
+        }
+
+<span class="nc" id="L611">        Iterator&lt;T&gt; iterator = this.iterator();</span>
+<span class="nc" id="L612">        int i = 0;</span>
+<span class="nc bnc" id="L613" title="All 4 branches missed.">        while (iterator.hasNext() &amp;&amp; i &lt;= toIndex)</span>
+        {
+<span class="nc" id="L615">            T each = iterator.next();</span>
+<span class="nc bnc" id="L616" title="All 2 branches missed.">            if (i &gt;= fromIndex)</span>
+            {
+<span class="nc" id="L618">                objectIntProcedure.value(each, i);</span>
+            }
+<span class="nc" id="L620">            i++;</span>
+<span class="nc" id="L621">        }</span>
+<span class="nc" id="L622">    }</span>
+
+    @Override
+    public boolean removeAllIterable(Iterable&lt;?&gt; iterable)
+    {
+<span class="nc" id="L627">        return SetIterate.removeAllIterable(this.treeSet, iterable);</span>
+    }
+
+    @Override
+    public Comparator&lt;? super T&gt; comparator()
+    {
+<span class="nc" id="L633">        return this.treeSet.comparator();</span>
+    }
+
+    @Override
+    public MutableSortedSet&lt;T&gt; subSet(T fromElement, T toElement)
+    {
+<span class="nc" id="L639">        return SortedSetAdapter.adapt(this.treeSet.subSet(fromElement, toElement));</span>
+    }
+
+    @Override
+    public MutableSortedSet&lt;T&gt; headSet(T toElement)
+    {
+<span class="nc" id="L645">        return SortedSetAdapter.adapt(this.treeSet.headSet(toElement));</span>
+    }
+
+    @Override
+    public MutableSortedSet&lt;T&gt; tailSet(T fromElement)
+    {
+<span class="nc" id="L651">        return SortedSetAdapter.adapt(this.treeSet.tailSet(fromElement));</span>
+    }
+
+    @Override
+    public T first()
+    {
+<span class="nc" id="L657">        return this.treeSet.first();</span>
+    }
+
+    @Override
+    public T last()
+    {
+<span class="nc" id="L663">        return this.treeSet.last();</span>
+    }
+
+    @Override
+    public int indexOf(Object object)
+    {
+<span class="nc bnc" id="L669" title="All 2 branches missed.">        if (this.treeSet.contains(object))</span>
+        {
+<span class="nc" id="L671">            return this.treeSet.headSet((T) object).size();</span>
+        }
+<span class="nc" id="L673">        return -1;</span>
+    }
+
+    @Override
+    public T getFirst()
+    {
+<span class="nc" id="L679">        return this.first();</span>
+    }
+
+    @Override
+    public T getLast()
+    {
+<span class="nc" id="L685">        return this.last();</span>
+    }
+
+    @Override
+    public MutableSortedSet&lt;SortedSetIterable&lt;T&gt;&gt; powerSet()
+    {
+<span class="nc" id="L691">        return (MutableSortedSet&lt;SortedSetIterable&lt;T&gt;&gt;) (MutableSortedSet&lt;?&gt;) SortedSetIterables.powerSet(this);</span>
+    }
+
+    @Override
+    public &lt;B&gt; LazyIterable&lt;Pair&lt;T, B&gt;&gt; cartesianProduct(SetIterable&lt;B&gt; set)
+    {
+<span class="nc" id="L697">        return SetIterables.cartesianProduct(this, set);</span>
+    }
+
+    @Override
+    public TreeSortedSet&lt;T&gt; union(SetIterable&lt;? extends T&gt; set)
+    {
+<span class="nc" id="L703">        return SetIterables.unionInto(this, set, this.newEmpty());</span>
+    }
+
+    @Override
+    public TreeSortedSet&lt;T&gt; intersect(SetIterable&lt;? extends T&gt; set)
+    {
+<span class="nc" id="L709">        return SetIterables.intersectInto(this, set, this.newEmpty());</span>
+    }
+
+    @Override
+    public TreeSortedSet&lt;T&gt; difference(SetIterable&lt;? extends T&gt; subtrahendSet)
+    {
+<span class="nc" id="L715">        return SetIterables.differenceInto(this, subtrahendSet, this.newEmpty());</span>
+    }
+
+    @Override
+    public MutableSortedSet&lt;T&gt; symmetricDifference(SetIterable&lt;? extends T&gt; setB)
+    {
+<span class="nc" id="L721">        return SetIterables.symmetricDifferenceInto(this, setB, this.newEmpty());</span>
+    }
+
+    @Override
+    public &lt;R extends Set&lt;T&gt;&gt; R unionInto(SetIterable&lt;? extends T&gt; set, R targetSet)
+    {
+<span class="nc" id="L727">        return SetIterables.unionInto(this, set, targetSet);</span>
+    }
+
+    @Override
+    public &lt;R extends Set&lt;T&gt;&gt; R intersectInto(SetIterable&lt;? extends T&gt; set, R targetSet)
+    {
+<span class="nc" id="L733">        return SetIterables.intersectInto(this, set, targetSet);</span>
+    }
+
+    @Override
+    public &lt;R extends Set&lt;T&gt;&gt; R differenceInto(SetIterable&lt;? extends T&gt; subtrahendSet, R targetSet)
+    {
+<span class="nc" id="L739">        return SetIterables.differenceInto(this, subtrahendSet, targetSet);</span>
+    }
+
+    @Override
+    public &lt;R extends Set&lt;T&gt;&gt; R symmetricDifferenceInto(SetIterable&lt;? extends T&gt; set, R targetSet)
+    {
+<span class="nc" id="L745">        return SetIterables.symmetricDifferenceInto(this, set, targetSet);</span>
+    }
+
+    @Override
+    public boolean isSubsetOf(SetIterable&lt;? extends T&gt; candidateSuperset)
+    {
+<span class="nc" id="L751">        return SetIterables.isSubsetOf(this, candidateSuperset);</span>
+    }
+
+    @Override
+    public boolean isProperSubsetOf(SetIterable&lt;? extends T&gt; candidateSuperset)
+    {
+<span class="nc" id="L757">        return SetIterables.isProperSubsetOf(this, candidateSuperset);</span>
+    }
+
+    @Override
+    public Iterator&lt;T&gt; iterator()
+    {
+<span class="nc" id="L763">        return this.treeSet.iterator();</span>
+    }
+
+    @Override
+    public int size()
+    {
+<span class="nc" id="L769">        return this.treeSet.size();</span>
+    }
+
+    @Override
+    public MutableSortedSet&lt;T&gt; toReversed()
+    {
+<span class="nc" id="L775">        throw new UnsupportedOperationException(this.getClass().getSimpleName() + &quot;.toReversed() not implemented yet&quot;);</span>
+    }
+
+    @Override
+    public MutableSortedSet&lt;T&gt; take(int count)
+    {
+<span class="nc" id="L781">        return IterableIterate.take(this, Math.min(this.size(), count), this.newEmpty());</span>
+    }
+
+    @Override
+    public MutableSortedSet&lt;T&gt; drop(int count)
+    {
+<span class="nc" id="L787">        return IterableIterate.drop(this, count, this.newEmpty());</span>
+    }
+
+    @Override
+    public void reverseForEach(Procedure&lt;? super T&gt; procedure)
+    {
+<span class="nc" id="L793">        throw new UnsupportedOperationException(this.getClass().getSimpleName() + &quot;.reverseForEach() not implemented yet&quot;);</span>
+    }
+
+    @Override
+    public void reverseForEachWithIndex(ObjectIntProcedure&lt;? super T&gt; procedure)
+    {
+<span class="nc" id="L799">        throw new UnsupportedOperationException(this.getClass().getSimpleName() + &quot;.reverseForEachWithIndex() not implemented yet&quot;);</span>
+    }
+
+    @Override
+    public LazyIterable&lt;T&gt; asReversed()
+    {
+<span class="nc" id="L805">        throw new UnsupportedOperationException(this.getClass().getSimpleName() + &quot;.asReversed() not implemented yet&quot;);</span>
+    }
+
+    @Override
+    public int detectLastIndex(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L811">        throw new UnsupportedOperationException(this.getClass().getSimpleName() + &quot;.detectLastIndex() not implemented yet&quot;);</span>
+    }
+
+    @Override
+    public void writeExternal(ObjectOutput out) throws IOException
+    {
+<span class="nc" id="L817">        out.writeObject(this.comparator());</span>
+<span class="nc" id="L818">        out.writeInt(this.size());</span>
+<span class="nc" id="L819">        this.forEach(new CheckedProcedure&lt;T&gt;()</span>
+<span class="nc" id="L820">        {</span>
+            public void safeValue(T each) throws Exception
+            {
+<span class="nc" id="L823">                out.writeObject(each);</span>
+<span class="nc" id="L824">            }</span>
+        });
+<span class="nc" id="L826">    }</span>
+
+    @Override
+    public void readExternal(ObjectInput in) throws IOException, ClassNotFoundException
+    {
+<span class="nc" id="L831">        this.treeSet = new TreeSet&lt;&gt;((Comparator&lt;T&gt;) in.readObject());</span>
+<span class="nc" id="L832">        int size = in.readInt();</span>
+<span class="nc bnc" id="L833" title="All 2 branches missed.">        for (int i = 0; i &lt; size; i++)</span>
+        {
+<span class="nc" id="L835">            this.add((T) in.readObject());</span>
+        }
+<span class="nc" id="L837">    }</span>
+
+    @Override
+    public int compareTo(SortedSetIterable&lt;T&gt; otherSet)
+    {
+<span class="nc" id="L842">        return SortedSetIterables.compare(this, otherSet);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.0.201801022044</span></div></body></html>

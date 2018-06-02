@@ -1,0 +1,732 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>CompositeFastList.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Eclipse Collections Test Coverage Aggregation</a> &gt; <a href="../index.html" class="el_bundle">eclipse-collections</a> &gt; <a href="index.source.html" class="el_package">org.eclipse.collections.impl.list.mutable</a> &gt; <span class="el_source">CompositeFastList.java</span></div><h1>CompositeFastList.java</h1><pre class="source lang-java linenums">/*
+ * Copyright (c) 2016 Goldman Sachs.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * and Eclipse Distribution License v. 1.0 which accompany this distribution.
+ * The Eclipse Public License is available at http://www.eclipse.org/legal/epl-v10.html
+ * and the Eclipse Distribution License is available at
+ * http://www.eclipse.org/org/documents/edl-v10.php.
+ */
+
+package org.eclipse.collections.impl.list.mutable;
+
+import java.io.Serializable;
+import java.lang.reflect.Array;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.Iterator;
+import java.util.List;
+import java.util.ListIterator;
+import java.util.NoSuchElementException;
+import java.util.concurrent.ExecutorService;
+
+import org.eclipse.collections.api.block.function.Function;
+import org.eclipse.collections.api.block.function.Function2;
+import org.eclipse.collections.api.block.function.primitive.DoubleObjectToDoubleFunction;
+import org.eclipse.collections.api.block.function.primitive.FloatObjectToFloatFunction;
+import org.eclipse.collections.api.block.function.primitive.IntObjectToIntFunction;
+import org.eclipse.collections.api.block.function.primitive.LongObjectToLongFunction;
+import org.eclipse.collections.api.block.predicate.Predicate;
+import org.eclipse.collections.api.block.predicate.Predicate2;
+import org.eclipse.collections.api.block.procedure.Procedure;
+import org.eclipse.collections.api.block.procedure.Procedure2;
+import org.eclipse.collections.api.block.procedure.primitive.ObjectIntProcedure;
+import org.eclipse.collections.api.list.MutableList;
+import org.eclipse.collections.api.list.ParallelListIterable;
+import org.eclipse.collections.impl.block.factory.Predicates;
+import org.eclipse.collections.impl.lazy.parallel.list.NonParallelListIterable;
+import org.eclipse.collections.impl.parallel.BatchIterable;
+import org.eclipse.collections.impl.parallel.ParallelIterate;
+import org.eclipse.collections.impl.utility.Iterate;
+
+/**
+ * CompositeFastList behaves like a list, but is composed of at least one list.
+ * It is useful where you don't want the additional expense of appending several lists or allocating memory
+ * for a super list to add multiple sublists to.&lt;p&gt;
+ * &lt;b&gt;Note:&lt;/b&gt; mutation operations (e.g. add and remove, sorting) will change the underlying
+ * lists - so be sure to only use a composite list where it will be the only reference to the sublists
+ * (for example, a composite list which contains multiple query results is OK as long
+ * as it is the only thing that references the lists)
+ */
+<span class="nc" id="L52">public final class CompositeFastList&lt;E&gt;</span>
+        extends AbstractMutableList&lt;E&gt;
+        implements BatchIterable&lt;E&gt;, Serializable
+{
+<span class="nc" id="L56">    private static final Predicate2&lt;FastList&lt;?&gt;, Object&gt; REMOVE_PREDICATE = FastList::remove;</span>
+<span class="nc" id="L57">    private static final Procedure&lt;FastList&lt;?&gt;&gt; REVERSE_LIST_PROCEDURE = FastList::reverseThis;</span>
+
+    private static final long serialVersionUID = 2L;
+<span class="nc" id="L60">    private final FastList&lt;FastList&lt;E&gt;&gt; lists = FastList.newList();</span>
+    private int size;
+
+    @Override
+    public MutableList&lt;E&gt; clone()
+    {
+<span class="nc" id="L66">        throw new UnsupportedOperationException(this.getClass().getSimpleName() + &quot;.clone() not implemented yet&quot;);</span>
+    }
+
+    @Override
+    public int size()
+    {
+<span class="nc" id="L72">        return this.size;</span>
+    }
+
+    public void resetSize()
+    {
+<span class="nc" id="L77">        int newSize = 0;</span>
+<span class="nc bnc" id="L78" title="All 2 branches missed.">        for (int i = this.lists.size() - 1; i &gt;= 0; i--)</span>
+        {
+<span class="nc" id="L80">            newSize += this.lists.get(i).size();</span>
+        }
+<span class="nc" id="L82">        this.size = newSize;</span>
+<span class="nc" id="L83">    }</span>
+
+    @Override
+    public void batchForEach(Procedure&lt;? super E&gt; procedure, int sectionIndex, int sectionCount)
+    {
+<span class="nc bnc" id="L88" title="All 2 branches missed.">        if (this.lists.size() == 1)</span>
+        {
+<span class="nc" id="L90">            this.lists.get(0).batchForEach(procedure, sectionIndex, sectionCount);</span>
+        }
+        else
+        {
+<span class="nc" id="L94">            this.lists.get(sectionIndex).batchForEach(procedure, 0, 1);</span>
+        }
+<span class="nc" id="L96">    }</span>
+
+    @Override
+    public int getBatchCount(int batchSize)
+    {
+<span class="nc bnc" id="L101" title="All 2 branches missed.">        if (this.lists.size() == 1)</span>
+        {
+<span class="nc" id="L103">            return this.lists.get(0).getBatchCount(batchSize);</span>
+        }
+<span class="nc" id="L105">        return this.lists.size();</span>
+    }
+
+    @Override
+    public CompositeFastList&lt;E&gt; reverseThis()
+    {
+<span class="nc" id="L111">        ParallelIterate.forEach(this.lists, REVERSE_LIST_PROCEDURE);</span>
+<span class="nc" id="L112">        this.lists.reverseThis();</span>
+<span class="nc" id="L113">        return this;</span>
+    }
+
+    @Override
+    public void each(Procedure&lt;? super E&gt; procedure)
+    {
+<span class="nc" id="L119">        this.lists.each(list -&gt; list.forEach(procedure));</span>
+<span class="nc" id="L120">    }</span>
+
+    @Override
+    public &lt;IV&gt; IV injectInto(IV injectedValue, Function2&lt;? super IV, ? super E, ? extends IV&gt; function)
+    {
+<span class="nc" id="L125">        return this.lists.injectInto(injectedValue, (Function2&lt;IV, FastList&lt;E&gt;, IV&gt;) (inject, list) -&gt; list.injectInto(inject, function));</span>
+    }
+
+    @Override
+    public int injectInto(int injectedValue, IntObjectToIntFunction&lt;? super E&gt; function)
+    {
+<span class="nc" id="L131">        return this.lists.injectInto(injectedValue, (IntObjectToIntFunction&lt;FastList&lt;E&gt;&gt;) (inject, list) -&gt; list.injectInto(inject, function));</span>
+    }
+
+    @Override
+    public float injectInto(float injectedValue, FloatObjectToFloatFunction&lt;? super E&gt; function)
+    {
+<span class="nc" id="L137">        return this.lists.injectInto(injectedValue, (FloatObjectToFloatFunction&lt;FastList&lt;E&gt;&gt;) (inject, list) -&gt; list.injectInto(inject, function));</span>
+    }
+
+    @Override
+    public long injectInto(long injectedValue, LongObjectToLongFunction&lt;? super E&gt; function)
+    {
+<span class="nc" id="L143">        return this.lists.injectInto(injectedValue, (LongObjectToLongFunction&lt;FastList&lt;E&gt;&gt;) (inject, list) -&gt; list.injectInto(inject, function));</span>
+    }
+
+    @Override
+    public double injectInto(double injectedValue, DoubleObjectToDoubleFunction&lt;? super E&gt; function)
+    {
+<span class="nc" id="L149">        return this.lists.injectInto(injectedValue, (DoubleObjectToDoubleFunction&lt;FastList&lt;E&gt;&gt;) (inject, list) -&gt; list.injectInto(inject, function));</span>
+    }
+
+    @Override
+    public void forEachWithIndex(ObjectIntProcedure&lt;? super E&gt; objectIntProcedure)
+    {
+<span class="nc" id="L155">        this.lists.forEach(new ProcedureToInnerListObjectIntProcedure&lt;&gt;(objectIntProcedure));</span>
+<span class="nc" id="L156">    }</span>
+
+    @Override
+    public void reverseForEach(Procedure&lt;? super E&gt; procedure)
+    {
+<span class="nc" id="L161">        this.lists.reverseForEach(each -&gt; each.reverseForEach(procedure));</span>
+<span class="nc" id="L162">    }</span>
+
+    @Override
+    public void reverseForEachWithIndex(ObjectIntProcedure&lt;? super E&gt; procedure)
+    {
+<span class="nc" id="L167">        this.lists.reverseForEach(new ProcedureToReverseInnerListObjectIntProcedure&lt;&gt;(procedure, this.size - 1));</span>
+<span class="nc" id="L168">    }</span>
+
+    @Override
+    public &lt;P&gt; void forEachWith(
+            Procedure2&lt;? super E, ? super P&gt; procedure2,
+            P parameter)
+    {
+<span class="nc" id="L175">        this.lists.each(list -&gt; list.forEachWith(procedure2, parameter));</span>
+<span class="nc" id="L176">    }</span>
+
+    @Override
+    public boolean isEmpty()
+    {
+<span class="nc" id="L181">        return this.lists.allSatisfy(FastList&lt;E&gt;::isEmpty);</span>
+    }
+
+    @Override
+    public boolean contains(Object object)
+    {
+<span class="nc" id="L187">        return this.lists.anySatisfy(list -&gt; list.contains(object));</span>
+    }
+
+    @Override
+    public Iterator&lt;E&gt; iterator()
+    {
+<span class="nc bnc" id="L193" title="All 2 branches missed.">        if (this.lists.isEmpty())</span>
+        {
+<span class="nc" id="L195">            return Collections.&lt;E&gt;emptyList().iterator();</span>
+        }
+<span class="nc" id="L197">        return new CompositeIterator(this.lists);</span>
+    }
+
+    @Override
+    public Object[] toArray()
+    {
+<span class="nc" id="L203">        Object[] result = new Object[this.size()];</span>
+<span class="nc" id="L204">        this.forEachWithIndex((each, index) -&gt; result[index] = each);</span>
+<span class="nc" id="L205">        return result;</span>
+    }
+
+    @Override
+    public boolean add(E object)
+    {
+<span class="nc bnc" id="L211" title="All 2 branches missed.">        if (this.lists.isEmpty())</span>
+        {
+<span class="nc" id="L213">            this.addComposited(FastList.newList());</span>
+        }
+<span class="nc" id="L215">        Collection&lt;E&gt; list = this.lists.getLast();</span>
+<span class="nc" id="L216">        this.size++;</span>
+<span class="nc" id="L217">        return list.add(object);</span>
+    }
+
+    @Override
+    public boolean remove(Object object)
+    {
+<span class="nc" id="L223">        boolean removed = this.lists.anySatisfyWith(REMOVE_PREDICATE, object);</span>
+<span class="nc bnc" id="L224" title="All 2 branches missed.">        if (removed)</span>
+        {
+<span class="nc" id="L226">            this.size--;</span>
+        }
+<span class="nc" id="L228">        return removed;</span>
+    }
+
+    @Override
+    public boolean addAll(Collection&lt;? extends E&gt; collection)
+    {
+<span class="nc bnc" id="L234" title="All 2 branches missed.">        if (collection.isEmpty())</span>
+        {
+<span class="nc" id="L236">            return false;</span>
+        }
+<span class="nc bnc" id="L238" title="All 2 branches missed.">        Collection&lt;? extends E&gt; collectionToAdd =</span>
+<span class="nc" id="L239">                collection instanceof FastList ? collection : FastList.newList(collection);</span>
+<span class="nc" id="L240">        this.addComposited(collectionToAdd);</span>
+<span class="nc" id="L241">        return true;</span>
+    }
+
+    @Override
+    public boolean containsAll(Collection&lt;?&gt; collection)
+    {
+<span class="nc" id="L247">        return Iterate.allSatisfy(collection, Predicates.in(this));</span>
+    }
+
+    @Override
+    public Object[] toArray(Object[] array)
+    {
+<span class="nc" id="L253">        int size = this.size();</span>
+<span class="nc bnc" id="L254" title="All 2 branches missed.">        Object[] result = array.length &gt;= size</span>
+                ? array
+<span class="nc" id="L256">                : (Object[]) Array.newInstance(array.getClass().getComponentType(), size);</span>
+
+<span class="nc" id="L258">        this.forEachWithIndex((each, index) -&gt; result[index] = each);</span>
+
+<span class="nc bnc" id="L260" title="All 2 branches missed.">        if (result.length &gt; size)</span>
+        {
+<span class="nc" id="L262">            result[size] = null;</span>
+        }
+<span class="nc" id="L264">        return result;</span>
+    }
+
+    public void addComposited(Collection&lt;? extends E&gt; collection)
+    {
+<span class="nc bnc" id="L269" title="All 2 branches missed.">        if (!(collection instanceof FastList))</span>
+        {
+<span class="nc" id="L271">            throw new IllegalArgumentException(&quot;CompositeFastList can only add FastLists&quot;);</span>
+        }
+<span class="nc" id="L273">        this.size += collection.size();</span>
+<span class="nc" id="L274">        this.lists.add((FastList&lt;E&gt;) collection);</span>
+<span class="nc" id="L275">    }</span>
+
+    @Override
+    public boolean addAll(int index, Collection&lt;? extends E&gt; collection)
+    {
+<span class="nc" id="L280">        throw new UnsupportedOperationException(this.getClass().getSimpleName() + &quot;.addAll(index, collection) not implemented yet&quot;);</span>
+    }
+
+    @Override
+    public void clear()
+    {
+<span class="nc" id="L286">        this.lists.each(FastList::clear);</span>
+<span class="nc" id="L287">        this.size = 0;</span>
+<span class="nc" id="L288">    }</span>
+
+    @Override
+    public boolean retainAll(Collection&lt;?&gt; collection)
+    {
+<span class="nc" id="L293">        boolean changed = false;</span>
+<span class="nc bnc" id="L294" title="All 2 branches missed.">        for (int i = this.lists.size() - 1; i &gt;= 0; i--)</span>
+        {
+<span class="nc bnc" id="L296" title="All 4 branches missed.">            changed = this.lists.get(i).retainAll(collection) || changed;</span>
+        }
+<span class="nc bnc" id="L298" title="All 2 branches missed.">        if (changed)</span>
+        {
+<span class="nc" id="L300">            this.resetSize();</span>
+        }
+<span class="nc" id="L302">        return changed;</span>
+    }
+
+    @Override
+    public boolean removeAll(Collection&lt;?&gt; collection)
+    {
+<span class="nc bnc" id="L308" title="All 2 branches missed.">        if (collection.isEmpty())</span>
+        {
+<span class="nc" id="L310">            return false;</span>
+        }
+<span class="nc" id="L312">        boolean changed = false;</span>
+<span class="nc bnc" id="L313" title="All 2 branches missed.">        for (int i = this.lists.size() - 1; i &gt;= 0; i--)</span>
+        {
+<span class="nc bnc" id="L315" title="All 4 branches missed.">            changed = this.lists.get(i).removeAll(collection) || changed;</span>
+        }
+<span class="nc bnc" id="L317" title="All 2 branches missed.">        if (changed)</span>
+        {
+<span class="nc" id="L319">            this.resetSize();</span>
+        }
+<span class="nc" id="L321">        return changed;</span>
+    }
+
+    @Override
+    public E get(int index)
+    {
+<span class="nc" id="L327">        this.rangeCheck(index);</span>
+<span class="nc" id="L328">        int p = 0;</span>
+<span class="nc" id="L329">        int currentSize = this.lists.getFirst().size();</span>
+<span class="nc bnc" id="L330" title="All 2 branches missed.">        while (index &gt;= currentSize)</span>
+        {
+<span class="nc" id="L332">            index -= currentSize;</span>
+<span class="nc" id="L333">            currentSize = this.lists.get(++p).size();</span>
+        }
+<span class="nc" id="L335">        return this.lists.get(p).items[index];</span>
+    }
+
+    private void rangeCheck(int index)
+    {
+<span class="nc bnc" id="L340" title="All 2 branches missed.">        if (index &gt;= this.size())</span>
+        {
+<span class="nc" id="L342">            throw new IndexOutOfBoundsException(&quot;No such element &quot; + index + &quot; size: &quot; + this.size());</span>
+        }
+<span class="nc" id="L344">    }</span>
+
+    @Override
+    public E set(int index, E element)
+    {
+<span class="nc" id="L349">        this.rangeCheck(index);</span>
+<span class="nc" id="L350">        int p = 0;</span>
+<span class="nc" id="L351">        int currentSize = this.lists.getFirst().size();</span>
+<span class="nc bnc" id="L352" title="All 2 branches missed.">        while (index &gt;= currentSize)</span>
+        {
+<span class="nc" id="L354">            index -= currentSize;</span>
+<span class="nc" id="L355">            currentSize = this.lists.get(++p).size();</span>
+        }
+<span class="nc" id="L357">        return this.lists.get(p).set(index, element);</span>
+    }
+
+    @Override
+    public void add(int index, E element)
+    {
+<span class="nc" id="L363">        int localSize = this.size();</span>
+<span class="nc bnc" id="L364" title="All 4 branches missed.">        if (index &gt; localSize || index &lt; 0)</span>
+        {
+<span class="nc" id="L366">            throw new IndexOutOfBoundsException(&quot;Index: &quot; + index + &quot;, Size: &quot; + localSize);</span>
+        }
+<span class="nc" id="L368">        int max = 0;</span>
+<span class="nc bnc" id="L369" title="All 2 branches missed.">        for (int i = 0; i &lt; this.lists.size(); i++)</span>
+        {
+<span class="nc" id="L371">            List&lt;E&gt; list = this.lists.get(i);</span>
+<span class="nc" id="L372">            int previousMax = max;</span>
+<span class="nc" id="L373">            max += list.size();</span>
+<span class="nc bnc" id="L374" title="All 2 branches missed.">            if (index &lt;= max)</span>
+            {
+<span class="nc" id="L376">                list.add(index - previousMax, element);</span>
+<span class="nc" id="L377">                this.size++;</span>
+<span class="nc" id="L378">                return;</span>
+            }
+        }
+<span class="nc" id="L381">    }</span>
+
+    @Override
+    public E remove(int index)
+    {
+<span class="nc" id="L386">        this.rangeCheck(index);</span>
+<span class="nc" id="L387">        int p = 0;</span>
+<span class="nc" id="L388">        int currentSize = this.lists.getFirst().size();</span>
+<span class="nc bnc" id="L389" title="All 2 branches missed.">        while (index &gt;= currentSize)</span>
+        {
+<span class="nc" id="L391">            index -= currentSize;</span>
+<span class="nc" id="L392">            currentSize = this.lists.get(++p).size();</span>
+        }
+<span class="nc" id="L394">        this.size--;</span>
+<span class="nc" id="L395">        return this.lists.get(p).remove(index);</span>
+    }
+
+    @Override
+    public int indexOf(Object o)
+    {
+<span class="nc" id="L401">        int offset = 0;</span>
+<span class="nc" id="L402">        int listsSize = this.lists.size();</span>
+<span class="nc bnc" id="L403" title="All 2 branches missed.">        for (int i = 0; i &lt; listsSize; i++)</span>
+        {
+<span class="nc" id="L405">            MutableList&lt;E&gt; list = this.lists.get(i);</span>
+<span class="nc" id="L406">            int index = list.indexOf(o);</span>
+<span class="nc bnc" id="L407" title="All 2 branches missed.">            if (index &gt; -1)</span>
+            {
+<span class="nc" id="L409">                return index + offset;</span>
+            }
+<span class="nc" id="L411">            offset += list.size();</span>
+        }
+<span class="nc" id="L413">        return -1;</span>
+    }
+
+    @Override
+    public int lastIndexOf(Object o)
+    {
+<span class="nc" id="L419">        int offset = this.size();</span>
+<span class="nc bnc" id="L420" title="All 2 branches missed.">        for (int i = this.lists.size() - 1; i &gt;= 0; i--)</span>
+        {
+<span class="nc" id="L422">            MutableList&lt;E&gt; list = this.lists.get(i);</span>
+<span class="nc" id="L423">            offset -= list.size();</span>
+<span class="nc" id="L424">            int index = list.lastIndexOf(o);</span>
+<span class="nc bnc" id="L425" title="All 2 branches missed.">            if (index &gt; -1)</span>
+            {
+<span class="nc" id="L427">                return index + offset;</span>
+            }
+        }
+<span class="nc" id="L430">        return -1;</span>
+    }
+
+    /**
+     * a list iterator is a problem for a composite list as going back in the order of the list is an issue,
+     * as are the other methods like set() and add() (and especially, remove).
+     * Convert the internal lists to one list (if not already just one list)
+     * and return that list's list iterator.
+     * &lt;p&gt;
+     * AFAIK list iterator is only commonly used in sorting.
+     *
+     * @return a ListIterator for this, with internal state converted to one list if needed.
+     */
+    @Override
+    public ListIterator&lt;E&gt; listIterator()
+    {
+<span class="nc" id="L446">        return this.listIterator(0);</span>
+    }
+
+    /**
+     * a list iterator is a problem for a composite list as going back in the order of the list is an issue,
+     * as are the other methods like set() and add() (and especially, remove).
+     * Convert the internal lists to one list (if not already just one list)
+     * and return that list's list iterator.
+     * &lt;p&gt;
+     * AFAIK list iterator is only commonly used in sorting.
+     *
+     * @return a ListIterator for this, with internal state converted to one list if needed.
+     */
+    @Override
+    public ListIterator&lt;E&gt; listIterator(int index)
+    {
+<span class="nc bnc" id="L462" title="All 4 branches missed.">        if (this.lists.size() &gt; 1 || this.lists.isEmpty())</span>
+        {
+<span class="nc" id="L464">            this.flattenLists();</span>
+        }
+<span class="nc" id="L466">        return super.listIterator(index);</span>
+    }
+
+    @Override
+    public int count(Predicate&lt;? super E&gt; predicate)
+    {
+<span class="nc" id="L472">        int count = 0;</span>
+<span class="nc" id="L473">        int localSize = this.lists.size();</span>
+<span class="nc bnc" id="L474" title="All 2 branches missed.">        for (int i = 0; i &lt; localSize; i++)</span>
+        {
+<span class="nc" id="L476">            count += this.lists.get(i).count(predicate);</span>
+        }
+<span class="nc" id="L478">        return count;</span>
+    }
+
+    @Override
+    public &lt;P&gt; int countWith(Predicate2&lt;? super E, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc" id="L484">        int count = 0;</span>
+<span class="nc" id="L485">        int localSize = this.lists.size();</span>
+<span class="nc bnc" id="L486" title="All 2 branches missed.">        for (int i = 0; i &lt; localSize; i++)</span>
+        {
+<span class="nc" id="L488">            count += this.lists.get(i).countWith(predicate, parameter);</span>
+        }
+<span class="nc" id="L490">        return count;</span>
+    }
+
+    @Override
+    public boolean anySatisfy(Predicate&lt;? super E&gt; predicate)
+    {
+<span class="nc" id="L496">        return this.lists.anySatisfy(each -&gt; each.anySatisfy(predicate));</span>
+    }
+
+    @Override
+    public &lt;R extends Collection&lt;E&gt;&gt; R select(Predicate&lt;? super E&gt; predicate, R target)
+    {
+<span class="nc" id="L502">        int localSize = this.lists.size();</span>
+<span class="nc bnc" id="L503" title="All 2 branches missed.">        for (int i = 0; i &lt; localSize; i++)</span>
+        {
+<span class="nc" id="L505">            this.lists.get(i).select(predicate, target);</span>
+        }
+<span class="nc" id="L507">        return target;</span>
+    }
+
+    @Override
+    public &lt;P, R extends Collection&lt;E&gt;&gt; R selectWith(Predicate2&lt;? super E, ? super P&gt; predicate, P parameter, R target)
+    {
+<span class="nc" id="L513">        int localSize = this.lists.size();</span>
+<span class="nc bnc" id="L514" title="All 2 branches missed.">        for (int i = 0; i &lt; localSize; i++)</span>
+        {
+<span class="nc" id="L516">            this.lists.get(i).selectWith(predicate, parameter, target);</span>
+        }
+<span class="nc" id="L518">        return target;</span>
+    }
+
+    @Override
+    public &lt;R extends Collection&lt;E&gt;&gt; R reject(Predicate&lt;? super E&gt; predicate, R target)
+    {
+<span class="nc" id="L524">        int localSize = this.lists.size();</span>
+<span class="nc bnc" id="L525" title="All 2 branches missed.">        for (int i = 0; i &lt; localSize; i++)</span>
+        {
+<span class="nc" id="L527">            this.lists.get(i).reject(predicate, target);</span>
+        }
+<span class="nc" id="L529">        return target;</span>
+    }
+
+    @Override
+    public &lt;P, R extends Collection&lt;E&gt;&gt; R rejectWith(Predicate2&lt;? super E, ? super P&gt; predicate, P parameter, R target)
+    {
+<span class="nc" id="L535">        int localSize = this.lists.size();</span>
+<span class="nc bnc" id="L536" title="All 2 branches missed.">        for (int i = 0; i &lt; localSize; i++)</span>
+        {
+<span class="nc" id="L538">            this.lists.get(i).rejectWith(predicate, parameter, target);</span>
+        }
+<span class="nc" id="L540">        return target;</span>
+    }
+
+    @Override
+    public &lt;V, R extends Collection&lt;V&gt;&gt; R collect(Function&lt;? super E, ? extends V&gt; function, R target)
+    {
+<span class="nc" id="L546">        int localSize = this.lists.size();</span>
+<span class="nc bnc" id="L547" title="All 2 branches missed.">        for (int i = 0; i &lt; localSize; i++)</span>
+        {
+<span class="nc" id="L549">            this.lists.get(i).collect(function, target);</span>
+        }
+<span class="nc" id="L551">        return target;</span>
+    }
+
+    @Override
+    public &lt;P, A, R extends Collection&lt;A&gt;&gt; R collectWith(Function2&lt;? super E, ? super P, ? extends A&gt; function, P parameter, R target)
+    {
+<span class="nc" id="L557">        int localSize = this.lists.size();</span>
+<span class="nc bnc" id="L558" title="All 2 branches missed.">        for (int i = 0; i &lt; localSize; i++)</span>
+        {
+<span class="nc" id="L560">            this.lists.get(i).collectWith(function, parameter, target);</span>
+        }
+<span class="nc" id="L562">        return target;</span>
+    }
+
+    @Override
+    public &lt;P&gt; boolean anySatisfyWith(Predicate2&lt;? super E, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc" id="L568">        return this.lists.anySatisfyWith((each, parm) -&gt; each.anySatisfyWith(predicate, parm), parameter);</span>
+    }
+
+    @Override
+    public boolean allSatisfy(Predicate&lt;? super E&gt; predicate)
+    {
+<span class="nc" id="L574">        return this.lists.allSatisfy(each -&gt; each.allSatisfy(predicate));</span>
+    }
+
+    @Override
+    public &lt;P&gt; boolean allSatisfyWith(Predicate2&lt;? super E, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc" id="L580">        return this.lists.allSatisfyWith((each, param) -&gt; each.allSatisfyWith(predicate, param), parameter);</span>
+    }
+
+    @Override
+    public boolean noneSatisfy(Predicate&lt;? super E&gt; predicate)
+    {
+<span class="nc" id="L586">        return this.lists.allSatisfy(each -&gt; each.noneSatisfy(predicate));</span>
+    }
+
+    @Override
+    public &lt;P&gt; boolean noneSatisfyWith(Predicate2&lt;? super E, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc" id="L592">        return this.lists.allSatisfyWith((each, param) -&gt; each.noneSatisfyWith(predicate, param), parameter);</span>
+    }
+
+    /**
+     * convert multiple contained lists into one list and replace the contained lists with that list.
+     * Synchronize to prevent changes to this list whilst this process is happening
+     */
+    private void flattenLists()
+    {
+<span class="nc" id="L601">        FastList&lt;E&gt; list = (FastList&lt;E&gt;) this.toList();</span>
+<span class="nc" id="L602">        this.lists.clear();</span>
+<span class="nc" id="L603">        this.lists.add(list);</span>
+<span class="nc" id="L604">    }</span>
+
+    /**
+     * Override in subclasses where it can be optimized.
+     */
+    @Override
+    protected void defaultSort(Comparator&lt;? super E&gt; comparator)
+    {
+<span class="nc bnc" id="L612" title="All 2 branches missed.">        FastList&lt;E&gt; list = comparator == null</span>
+<span class="nc" id="L613">                ? (FastList&lt;E&gt;) this.toSortedList()</span>
+<span class="nc" id="L614">                : (FastList&lt;E&gt;) this.toSortedList(comparator);</span>
+<span class="nc" id="L615">        this.lists.clear();</span>
+<span class="nc" id="L616">        this.lists.add(list);</span>
+<span class="nc" id="L617">    }</span>
+
+    private final class CompositeIterator
+            implements Iterator&lt;E&gt;
+    {
+        private final Iterator&lt;E&gt;[] iterators;
+        private Iterator&lt;E&gt; currentIterator;
+        private int currentIndex;
+
+        private CompositeIterator(FastList&lt;FastList&lt;E&gt;&gt; newLists)
+<span class="nc" id="L627">        {</span>
+<span class="nc" id="L628">            this.iterators = new Iterator[newLists.size()];</span>
+<span class="nc bnc" id="L629" title="All 2 branches missed.">            for (int i = 0; i &lt; newLists.size(); ++i)</span>
+            {
+<span class="nc" id="L631">                this.iterators[i] = newLists.get(i).iterator();</span>
+            }
+<span class="nc" id="L633">            this.currentIterator = this.iterators[0];</span>
+<span class="nc" id="L634">            this.currentIndex = 0;</span>
+<span class="nc" id="L635">        }</span>
+
+        @Override
+        public boolean hasNext()
+        {
+<span class="nc bnc" id="L640" title="All 2 branches missed.">            if (this.currentIterator.hasNext())</span>
+            {
+<span class="nc" id="L642">                return true;</span>
+            }
+<span class="nc bnc" id="L644" title="All 2 branches missed.">            if (this.currentIndex &lt; this.iterators.length - 1)</span>
+            {
+<span class="nc" id="L646">                this.currentIterator = this.iterators[++this.currentIndex];</span>
+<span class="nc" id="L647">                return this.hasNext();</span>
+            }
+<span class="nc" id="L649">            return false;</span>
+        }
+
+        @Override
+        public E next()
+        {
+<span class="nc bnc" id="L655" title="All 2 branches missed.">            if (this.currentIterator.hasNext())</span>
+            {
+<span class="nc" id="L657">                return this.currentIterator.next();</span>
+            }
+<span class="nc bnc" id="L659" title="All 2 branches missed.">            if (this.currentIndex &lt; this.iterators.length - 1)</span>
+            {
+<span class="nc" id="L661">                this.currentIterator = this.iterators[++this.currentIndex];</span>
+<span class="nc" id="L662">                return this.next();</span>
+            }
+<span class="nc" id="L664">            throw new NoSuchElementException();</span>
+        }
+
+        @Override
+        public void remove()
+        {
+<span class="nc" id="L670">            CompositeFastList.this.size--;</span>
+<span class="nc" id="L671">            this.currentIterator.remove();</span>
+<span class="nc" id="L672">        }</span>
+    }
+
+    private static final class ProcedureToInnerListObjectIntProcedure&lt;E&gt; implements Procedure&lt;FastList&lt;E&gt;&gt;
+    {
+        private static final long serialVersionUID = 1L;
+
+        private int index;
+        private final ObjectIntProcedure&lt;? super E&gt; objectIntProcedure;
+
+        private ProcedureToInnerListObjectIntProcedure(ObjectIntProcedure&lt;? super E&gt; objectIntProcedure)
+<span class="nc" id="L683">        {</span>
+<span class="nc" id="L684">            this.objectIntProcedure = objectIntProcedure;</span>
+<span class="nc" id="L685">        }</span>
+
+        @Override
+        public void value(FastList&lt;E&gt; list)
+        {
+<span class="nc" id="L690">            list.each(object -&gt;</span>
+            {
+<span class="nc" id="L692">                this.objectIntProcedure.value(</span>
+                        object,
+                        this.index);
+<span class="nc" id="L695">                this.index++;</span>
+<span class="nc" id="L696">            });</span>
+<span class="nc" id="L697">        }</span>
+    }
+
+    private static final class ProcedureToReverseInnerListObjectIntProcedure&lt;E&gt; implements Procedure&lt;FastList&lt;E&gt;&gt;
+    {
+        private static final long serialVersionUID = 1L;
+
+        private int index;
+        private final ObjectIntProcedure&lt;? super E&gt; objectIntProcedure;
+
+        private ProcedureToReverseInnerListObjectIntProcedure(ObjectIntProcedure&lt;? super E&gt; objectIntProcedure, int size)
+<span class="nc" id="L708">        {</span>
+<span class="nc" id="L709">            this.objectIntProcedure = objectIntProcedure;</span>
+<span class="nc" id="L710">            this.index = size;</span>
+<span class="nc" id="L711">        }</span>
+
+        @Override
+        public void value(FastList&lt;E&gt; list)
+        {
+<span class="nc" id="L716">            list.reverseForEach(object -&gt;</span>
+            {
+<span class="nc" id="L718">                this.objectIntProcedure.value(</span>
+                        object,
+                        this.index);
+<span class="nc" id="L721">                this.index--;</span>
+<span class="nc" id="L722">            });</span>
+<span class="nc" id="L723">        }</span>
+    }
+
+    @Override
+    public ParallelListIterable&lt;E&gt; asParallel(ExecutorService executorService, int batchSize)
+    {
+<span class="nc" id="L729">        return new NonParallelListIterable&lt;&gt;(this);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.0.201801022044</span></div></body></html>

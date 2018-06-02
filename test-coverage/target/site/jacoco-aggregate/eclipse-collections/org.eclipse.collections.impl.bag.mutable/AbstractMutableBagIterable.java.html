@@ -1,0 +1,357 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>AbstractMutableBagIterable.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Eclipse Collections Test Coverage Aggregation</a> &gt; <a href="../index.html" class="el_bundle">eclipse-collections</a> &gt; <a href="index.source.html" class="el_package">org.eclipse.collections.impl.bag.mutable</a> &gt; <span class="el_source">AbstractMutableBagIterable.java</span></div><h1>AbstractMutableBagIterable.java</h1><pre class="source lang-java linenums">/*
+ * Copyright (c) 2017 Goldman Sachs and others.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * and Eclipse Distribution License v. 1.0 which accompany this distribution.
+ * The Eclipse Public License is available at http://www.eclipse.org/legal/epl-v10.html
+ * and the Eclipse Distribution License is available at
+ * http://www.eclipse.org/org/documents/edl-v10.php.
+ */
+
+package org.eclipse.collections.impl.bag.mutable;
+
+import java.util.Collection;
+import java.util.Comparator;
+import java.util.Iterator;
+import java.util.Optional;
+
+import org.eclipse.collections.api.RichIterable;
+import org.eclipse.collections.api.bag.Bag;
+import org.eclipse.collections.api.bag.MutableBag;
+import org.eclipse.collections.api.bag.MutableBagIterable;
+import org.eclipse.collections.api.block.function.Function;
+import org.eclipse.collections.api.block.function.Function0;
+import org.eclipse.collections.api.block.function.Function2;
+import org.eclipse.collections.api.block.function.primitive.DoubleFunction;
+import org.eclipse.collections.api.block.function.primitive.FloatFunction;
+import org.eclipse.collections.api.block.function.primitive.IntFunction;
+import org.eclipse.collections.api.block.function.primitive.LongFunction;
+import org.eclipse.collections.api.block.predicate.Predicate;
+import org.eclipse.collections.api.block.predicate.Predicate2;
+import org.eclipse.collections.api.block.procedure.Procedure2;
+import org.eclipse.collections.api.collection.MutableCollection;
+import org.eclipse.collections.api.list.MutableList;
+import org.eclipse.collections.api.map.MutableMap;
+import org.eclipse.collections.api.map.primitive.MutableObjectDoubleMap;
+import org.eclipse.collections.api.map.primitive.MutableObjectLongMap;
+import org.eclipse.collections.api.set.MutableSetIterable;
+import org.eclipse.collections.api.tuple.Twin;
+import org.eclipse.collections.api.tuple.primitive.ObjectIntPair;
+import org.eclipse.collections.impl.bag.AbstractBag;
+import org.eclipse.collections.impl.block.factory.Predicates2;
+import org.eclipse.collections.impl.block.factory.PrimitiveFunctions;
+import org.eclipse.collections.impl.block.factory.Procedures2;
+import org.eclipse.collections.impl.block.procedure.MutatingAggregationProcedure;
+import org.eclipse.collections.impl.block.procedure.NonMutatingAggregationProcedure;
+import org.eclipse.collections.impl.factory.Bags;
+import org.eclipse.collections.impl.factory.Lists;
+import org.eclipse.collections.impl.map.mutable.UnifiedMap;
+import org.eclipse.collections.impl.map.mutable.primitive.ObjectDoubleHashMap;
+import org.eclipse.collections.impl.map.mutable.primitive.ObjectLongHashMap;
+import org.eclipse.collections.impl.set.mutable.UnifiedSet;
+import org.eclipse.collections.impl.utility.Iterate;
+import org.eclipse.collections.impl.utility.internal.IterableIterate;
+
+<span class="nc" id="L55">public abstract class AbstractMutableBagIterable&lt;T&gt;</span>
+        extends AbstractBag&lt;T&gt;
+        implements MutableBagIterable&lt;T&gt;
+{
+    protected abstract RichIterable&lt;T&gt; getKeysView();
+
+    @Override
+    public boolean addAll(Collection&lt;? extends T&gt; source)
+    {
+<span class="nc" id="L64">        return this.addAllIterable(source);</span>
+    }
+
+    @Override
+    public boolean addAllIterable(Iterable&lt;? extends T&gt; iterable)
+    {
+<span class="nc bnc" id="L70" title="All 2 branches missed.">        if (iterable instanceof Bag)</span>
+        {
+<span class="nc" id="L72">            return this.addAllBag((Bag&lt;T&gt;) iterable);</span>
+        }
+<span class="nc" id="L74">        int oldSize = this.size();</span>
+<span class="nc" id="L75">        Iterate.forEachWith(iterable, Procedures2.addToCollection(), this);</span>
+<span class="nc bnc" id="L76" title="All 2 branches missed.">        return oldSize != this.size();</span>
+    }
+
+    protected boolean addAllBag(Bag&lt;? extends T&gt; source)
+    {
+<span class="nc" id="L81">        source.forEachWithOccurrences(this::addOccurrences);</span>
+<span class="nc" id="L82">        return source.notEmpty();</span>
+    }
+
+    @Override
+    public boolean removeAll(Collection&lt;?&gt; collection)
+    {
+<span class="nc" id="L88">        return this.removeAllIterable(collection);</span>
+    }
+
+    @Override
+    public boolean retainAll(Collection&lt;?&gt; collection)
+    {
+<span class="nc" id="L94">        return this.retainAllIterable(collection);</span>
+    }
+
+    @Override
+    public boolean retainAllIterable(Iterable&lt;?&gt; iterable)
+    {
+<span class="nc" id="L100">        int oldSize = this.size();</span>
+<span class="nc" id="L101">        this.removeIfWith(Predicates2.notIn(), UnifiedSet.newSet(iterable));</span>
+<span class="nc bnc" id="L102" title="All 2 branches missed.">        return this.size() != oldSize;</span>
+    }
+
+    @Override
+    public &lt;P&gt; Twin&lt;MutableList&lt;T&gt;&gt; selectAndRejectWith(Predicate2&lt;? super T, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc" id="L108">        return IterableIterate.selectAndRejectWith(this, predicate, parameter);</span>
+    }
+
+    @Override
+    public T getFirst()
+    {
+<span class="nc" id="L114">        return this.getKeysView().getFirst();</span>
+    }
+
+    @Override
+    public T getLast()
+    {
+<span class="nc" id="L120">        return this.getKeysView().getLast();</span>
+    }
+
+    @Override
+    public &lt;V&gt; MutableMap&lt;V, T&gt; groupByUniqueKey(Function&lt;? super T, ? extends V&gt; function)
+    {
+<span class="nc" id="L126">        return this.groupByUniqueKey(function, UnifiedMap.newMap(this.size()));</span>
+    }
+
+    @Override
+    public RichIterable&lt;RichIterable&lt;T&gt;&gt; chunk(int size)
+    {
+<span class="nc bnc" id="L132" title="All 2 branches missed.">        if (size &lt;= 0)</span>
+        {
+<span class="nc" id="L134">            throw new IllegalArgumentException(&quot;Size for groups must be positive but was: &quot; + size);</span>
+        }
+
+<span class="nc" id="L137">        Iterator&lt;T&gt; iterator = this.iterator();</span>
+<span class="nc" id="L138">        MutableList&lt;RichIterable&lt;T&gt;&gt; result = Lists.mutable.empty();</span>
+<span class="nc bnc" id="L139" title="All 2 branches missed.">        while (iterator.hasNext())</span>
+        {
+<span class="nc" id="L141">            MutableCollection&lt;T&gt; batch = this.newEmpty();</span>
+<span class="nc bnc" id="L142" title="All 4 branches missed.">            for (int i = 0; i &lt; size &amp;&amp; iterator.hasNext(); i++)</span>
+            {
+<span class="nc" id="L144">                batch.add(iterator.next());</span>
+            }
+<span class="nc" id="L146">            result.add(batch);</span>
+<span class="nc" id="L147">        }</span>
+<span class="nc" id="L148">        return result;</span>
+    }
+
+    @Override
+    public T detect(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L154">        return this.getKeysView().detect(predicate);</span>
+    }
+
+    @Override
+    public &lt;P&gt; T detectWith(Predicate2&lt;? super T, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc" id="L160">        return this.getKeysView().detectWith(predicate, parameter);</span>
+    }
+
+    @Override
+    public Optional&lt;T&gt; detectOptional(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L166">        return this.getKeysView().detectOptional(predicate);</span>
+    }
+
+    @Override
+    public &lt;P&gt; Optional&lt;T&gt; detectWithOptional(Predicate2&lt;? super T, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc" id="L172">        return this.getKeysView().detectWithOptional(predicate, parameter);</span>
+    }
+
+    @Override
+    public T detectIfNone(Predicate&lt;? super T&gt; predicate, Function0&lt;? extends T&gt; function)
+    {
+<span class="nc" id="L178">        return this.getKeysView().detectIfNone(predicate, function);</span>
+    }
+
+    @Override
+    public &lt;P&gt; T detectWithIfNone(
+            Predicate2&lt;? super T, ? super P&gt; predicate,
+            P parameter,
+            Function0&lt;? extends T&gt; function)
+    {
+<span class="nc" id="L187">        return this.getKeysView().detectIfNone(each -&gt; predicate.accept(each, parameter), function);</span>
+    }
+
+    @Override
+    public boolean anySatisfy(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L193">        return this.getKeysView().anySatisfy(predicate);</span>
+    }
+
+    @Override
+    public &lt;P&gt; boolean anySatisfyWith(Predicate2&lt;? super T, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc" id="L199">        return this.getKeysView().anySatisfyWith(predicate, parameter);</span>
+    }
+
+    @Override
+    public boolean allSatisfy(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L205">        return this.getKeysView().allSatisfy(predicate);</span>
+    }
+
+    @Override
+    public &lt;P&gt; boolean allSatisfyWith(Predicate2&lt;? super T, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc" id="L211">        return this.getKeysView().allSatisfyWith(predicate, parameter);</span>
+    }
+
+    @Override
+    public boolean noneSatisfy(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L217">        return this.getKeysView().noneSatisfy(predicate);</span>
+    }
+
+    @Override
+    public &lt;P&gt; boolean noneSatisfyWith(Predicate2&lt;? super T, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc" id="L223">        return this.getKeysView().noneSatisfyWith(predicate, parameter);</span>
+    }
+
+    /**
+     * @since 9.0
+     */
+    @Override
+    public &lt;V&gt; MutableBag&lt;V&gt; countBy(Function&lt;? super T, ? extends V&gt; function)
+    {
+<span class="nc" id="L232">        return this.countBy(function, Bags.mutable.empty());</span>
+    }
+
+    /**
+     * @since 9.0
+     */
+    @Override
+    public &lt;V, P&gt; MutableBag&lt;V&gt; countByWith(Function2&lt;? super T, ? super P, ? extends V&gt; function, P parameter)
+    {
+<span class="nc" id="L241">        return this.countByWith(function, parameter, Bags.mutable.empty());</span>
+    }
+
+    /**
+     * @since 10.0.0
+     */
+    @Override
+    public &lt;V&gt; MutableBag&lt;V&gt; countByEach(Function&lt;? super T, ? extends Iterable&lt;V&gt;&gt; function)
+    {
+<span class="nc" id="L250">        return this.countByEach(function, Bags.mutable.empty());</span>
+    }
+
+    @Override
+    public T min()
+    {
+<span class="nc" id="L256">        return this.getKeysView().min();</span>
+    }
+
+    @Override
+    public T min(Comparator&lt;? super T&gt; comparator)
+    {
+<span class="nc" id="L262">        return this.getKeysView().min(comparator);</span>
+    }
+
+    @Override
+    public &lt;V extends Comparable&lt;? super V&gt;&gt; T minBy(Function&lt;? super T, ? extends V&gt; function)
+    {
+<span class="nc" id="L268">        return this.getKeysView().minBy(function);</span>
+    }
+
+    @Override
+    public T max()
+    {
+<span class="nc" id="L274">        return this.getKeysView().max();</span>
+    }
+
+    @Override
+    public T max(Comparator&lt;? super T&gt; comparator)
+    {
+<span class="nc" id="L280">        return this.getKeysView().max(comparator);</span>
+    }
+
+    @Override
+    public &lt;V extends Comparable&lt;? super V&gt;&gt; T maxBy(Function&lt;? super T, ? extends V&gt; function)
+    {
+<span class="nc" id="L286">        return this.getKeysView().maxBy(function);</span>
+    }
+
+    @Override
+    public &lt;K, V&gt; MutableMap&lt;K, V&gt; aggregateInPlaceBy(
+            Function&lt;? super T, ? extends K&gt; groupBy,
+            Function0&lt;? extends V&gt; zeroValueFactory,
+            Procedure2&lt;? super V, ? super T&gt; mutatingAggregator)
+    {
+<span class="nc" id="L295">        MutableMap&lt;K, V&gt; map = UnifiedMap.newMap();</span>
+<span class="nc" id="L296">        this.forEach(new MutatingAggregationProcedure&lt;&gt;(map, groupBy, zeroValueFactory, mutatingAggregator));</span>
+<span class="nc" id="L297">        return map;</span>
+    }
+
+    @Override
+    public &lt;K, V&gt; MutableMap&lt;K, V&gt; aggregateBy(
+            Function&lt;? super T, ? extends K&gt; groupBy,
+            Function0&lt;? extends V&gt; zeroValueFactory,
+            Function2&lt;? super V, ? super T, ? extends V&gt; nonMutatingAggregator)
+    {
+<span class="nc" id="L306">        MutableMap&lt;K, V&gt; map = UnifiedMap.newMap();</span>
+<span class="nc" id="L307">        this.forEach(new NonMutatingAggregationProcedure&lt;&gt;(map, groupBy, zeroValueFactory, nonMutatingAggregator));</span>
+<span class="nc" id="L308">        return map;</span>
+    }
+
+    @Override
+    public &lt;V&gt; MutableObjectLongMap&lt;V&gt; sumByInt(Function&lt;? super T, ? extends V&gt; groupBy, IntFunction&lt;? super T&gt; function)
+    {
+<span class="nc" id="L314">        MutableObjectLongMap&lt;V&gt; result = ObjectLongHashMap.newMap();</span>
+<span class="nc" id="L315">        return this.injectInto(result, PrimitiveFunctions.sumByIntFunction(groupBy, function));</span>
+    }
+
+    @Override
+    public &lt;V&gt; MutableObjectDoubleMap&lt;V&gt; sumByFloat(Function&lt;? super T, ? extends V&gt; groupBy, FloatFunction&lt;? super T&gt; function)
+    {
+<span class="nc" id="L321">        MutableObjectDoubleMap&lt;V&gt; result = ObjectDoubleHashMap.newMap();</span>
+<span class="nc" id="L322">        return this.injectInto(result, PrimitiveFunctions.sumByFloatFunction(groupBy, function));</span>
+    }
+
+    @Override
+    public &lt;V&gt; MutableObjectLongMap&lt;V&gt; sumByLong(Function&lt;? super T, ? extends V&gt; groupBy, LongFunction&lt;? super T&gt; function)
+    {
+<span class="nc" id="L328">        MutableObjectLongMap&lt;V&gt; result = ObjectLongHashMap.newMap();</span>
+<span class="nc" id="L329">        return this.injectInto(result, PrimitiveFunctions.sumByLongFunction(groupBy, function));</span>
+    }
+
+    @Override
+    public &lt;V&gt; MutableObjectDoubleMap&lt;V&gt; sumByDouble(Function&lt;? super T, ? extends V&gt; groupBy, DoubleFunction&lt;? super T&gt; function)
+    {
+<span class="nc" id="L335">        MutableObjectDoubleMap&lt;V&gt; result = ObjectDoubleHashMap.newMap();</span>
+<span class="nc" id="L336">        return this.injectInto(result, PrimitiveFunctions.sumByDoubleFunction(groupBy, function));</span>
+    }
+
+    @Override
+    public MutableList&lt;ObjectIntPair&lt;T&gt;&gt; topOccurrences(int n)
+    {
+<span class="nc" id="L342">        return this.occurrencesSortingBy(n, item -&gt; -item.getTwo(), Lists.mutable.empty());</span>
+    }
+
+    @Override
+    public MutableList&lt;ObjectIntPair&lt;T&gt;&gt; bottomOccurrences(int n)
+    {
+<span class="nc" id="L348">        return this.occurrencesSortingBy(n, ObjectIntPair::getTwo, Lists.mutable.empty());</span>
+    }
+
+    @Override
+    public MutableSetIterable&lt;T&gt; selectUnique()
+    {
+<span class="nc" id="L354">        return (MutableSetIterable&lt;T&gt;) super.selectUnique();</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.0.201801022044</span></div></body></html>

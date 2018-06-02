@@ -1,0 +1,164 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>SetIterables.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Eclipse Collections Test Coverage Aggregation</a> &gt; <a href="../index.html" class="el_bundle">eclipse-collections</a> &gt; <a href="index.source.html" class="el_package">org.eclipse.collections.impl.utility.internal</a> &gt; <span class="el_source">SetIterables.java</span></div><h1>SetIterables.java</h1><pre class="source lang-java linenums">/*
+ * Copyright (c) 2017 Goldman Sachs and others.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * and Eclipse Distribution License v. 1.0 which accompany this distribution.
+ * The Eclipse Public License is available at http://www.eclipse.org/legal/epl-v10.html
+ * and the Eclipse Distribution License is available at
+ * http://www.eclipse.org/org/documents/edl-v10.php.
+ */
+
+package org.eclipse.collections.impl.utility.internal;
+
+import java.util.Set;
+
+import org.eclipse.collections.api.LazyIterable;
+import org.eclipse.collections.api.block.function.Function2;
+import org.eclipse.collections.api.set.ImmutableSet;
+import org.eclipse.collections.api.set.MutableSet;
+import org.eclipse.collections.api.set.SetIterable;
+import org.eclipse.collections.api.tuple.Pair;
+import org.eclipse.collections.impl.set.mutable.SetAdapter;
+import org.eclipse.collections.impl.set.mutable.UnifiedSet;
+import org.eclipse.collections.impl.set.strategy.mutable.UnifiedSetWithHashingStrategy;
+import org.eclipse.collections.impl.tuple.Tuples;
+import org.eclipse.collections.impl.utility.Iterate;
+import org.eclipse.collections.impl.utility.LazyIterate;
+
+/**
+ * Set algebra operations.
+ * &lt;p&gt;
+ * Most operations are non-destructive, i.e. no input sets are modified during execution.
+ * The exception is operations ending in &quot;Into.&quot; These accept the target collection of
+ * the final calculation as the first parameter.
+ */
+public final class SetIterables
+{
+    private SetIterables()
+<span class="nc" id="L38">    {</span>
+<span class="nc" id="L39">        throw new AssertionError(&quot;Suppress default constructor for noninstantiability&quot;);</span>
+    }
+
+    public static &lt;E&gt; MutableSet&lt;E&gt; union(
+            SetIterable&lt;? extends E&gt; setA,
+            SetIterable&lt;? extends E&gt; setB)
+    {
+<span class="nc" id="L46">        return SetIterables.unionInto(setA, setB, UnifiedSet.newSet());</span>
+    }
+
+    public static &lt;E, R extends Set&lt;E&gt;&gt; R unionInto(
+            SetIterable&lt;? extends E&gt; setA,
+            SetIterable&lt;? extends E&gt; setB,
+            R targetSet)
+    {
+<span class="nc" id="L54">        Iterate.addAllIterable(setA, targetSet);</span>
+<span class="nc" id="L55">        Iterate.addAllIterable(setB, targetSet);</span>
+<span class="nc" id="L56">        return targetSet;</span>
+    }
+
+    public static &lt;E&gt; MutableSet&lt;E&gt; intersect(
+            SetIterable&lt;? extends E&gt; setA,
+            SetIterable&lt;? extends E&gt; setB)
+    {
+<span class="nc" id="L63">        return SetIterables.intersectInto(setA, setB, UnifiedSet.newSet());</span>
+    }
+
+    public static &lt;E, R extends Set&lt;E&gt;&gt; R intersectInto(
+            SetIterable&lt;? extends E&gt; setA,
+            SetIterable&lt;? extends E&gt; setB,
+            R targetSet)
+    {
+<span class="nc" id="L71">        MutableSet&lt;E&gt; adapted = SetAdapter.adapt(targetSet);</span>
+<span class="nc" id="L72">        adapted.addAllIterable(setA);</span>
+<span class="nc" id="L73">        adapted.retainAllIterable(setB);</span>
+<span class="nc" id="L74">        return targetSet;</span>
+    }
+
+    public static &lt;E&gt; MutableSet&lt;E&gt; difference(
+            SetIterable&lt;? extends E&gt; minuendSet,
+            SetIterable&lt;? extends E&gt; subtrahendSet)
+    {
+<span class="nc" id="L81">        return SetIterables.differenceInto(minuendSet, subtrahendSet, UnifiedSet.newSet());</span>
+    }
+
+    public static &lt;E, R extends Set&lt;E&gt;&gt; R differenceInto(
+            SetIterable&lt;? extends E&gt; minuendSet,
+            SetIterable&lt;? extends E&gt; subtrahendSet,
+            R targetSet)
+    {
+<span class="nc" id="L89">        MutableSet&lt;E&gt; adapted = SetAdapter.adapt(targetSet);</span>
+<span class="nc" id="L90">        adapted.addAllIterable(minuendSet);</span>
+<span class="nc" id="L91">        adapted.removeAllIterable(subtrahendSet);</span>
+<span class="nc" id="L92">        return targetSet;</span>
+    }
+
+    public static &lt;E&gt; MutableSet&lt;E&gt; symmetricDifference(
+            SetIterable&lt;? extends E&gt; setA,
+            SetIterable&lt;? extends E&gt; setB)
+    {
+<span class="nc" id="L99">        return SetIterables.symmetricDifferenceInto(setA, setB, UnifiedSet.newSet());</span>
+    }
+
+    public static &lt;E, R extends Set&lt;E&gt;&gt; R symmetricDifferenceInto(
+            SetIterable&lt;? extends E&gt; setA,
+            SetIterable&lt;? extends E&gt; setB,
+            R targetSet)
+    {
+<span class="nc" id="L107">        return SetIterables.unionInto(</span>
+<span class="nc" id="L108">                SetIterables.difference(setA, setB),</span>
+<span class="nc" id="L109">                SetIterables.difference(setB, setA),</span>
+                targetSet);
+    }
+
+    public static &lt;E&gt; boolean isSubsetOf(
+            SetIterable&lt;? extends E&gt; candidateSubset,
+            SetIterable&lt;? extends E&gt; candidateSuperset)
+    {
+<span class="nc bnc" id="L117" title="All 2 branches missed.">        return candidateSubset.size() &lt;= candidateSuperset.size()</span>
+<span class="nc bnc" id="L118" title="All 2 branches missed.">                &amp;&amp; candidateSuperset.containsAllIterable(candidateSubset);</span>
+    }
+
+    public static &lt;E&gt; boolean isProperSubsetOf(
+            SetIterable&lt;? extends E&gt; candidateSubset,
+            SetIterable&lt;? extends E&gt; candidateSuperset)
+    {
+<span class="nc bnc" id="L125" title="All 2 branches missed.">        return candidateSubset.size() &lt; candidateSuperset.size()</span>
+<span class="nc bnc" id="L126" title="All 2 branches missed.">                &amp;&amp; candidateSuperset.containsAllIterable(candidateSubset);</span>
+    }
+
+    public static &lt;T&gt; MutableSet&lt;MutableSet&lt;T&gt;&gt; powerSet(Set&lt;T&gt; set)
+    {
+<span class="nc" id="L131">        MutableSet&lt;MutableSet&lt;T&gt;&gt; seed = UnifiedSet.newSetWith(UnifiedSet.newSet());</span>
+<span class="nc" id="L132">        return powerSetWithSeed(set, seed);</span>
+    }
+
+    public static &lt;T&gt; MutableSet&lt;MutableSet&lt;T&gt;&gt; powerSet(UnifiedSetWithHashingStrategy&lt;T&gt; set)
+    {
+<span class="nc" id="L137">        MutableSet&lt;MutableSet&lt;T&gt;&gt; seed = UnifiedSet.newSetWith(set.newEmpty());</span>
+<span class="nc" id="L138">        return powerSetWithSeed(set, seed);</span>
+    }
+
+    private static &lt;T&gt; MutableSet&lt;MutableSet&lt;T&gt;&gt; powerSetWithSeed(Set&lt;T&gt; set, MutableSet&lt;MutableSet&lt;T&gt;&gt; seed)
+    {
+<span class="nc" id="L143">        return Iterate.injectInto(seed, set, (accumulator, element) -&gt; SetIterables.union(accumulator, accumulator.collect(innerSet -&gt; innerSet.clone().with(element))));</span>
+    }
+
+    /**
+     * Returns an Immutable version of powerset where the inner sets are also immutable.
+     */
+    public static &lt;T&gt; ImmutableSet&lt;ImmutableSet&lt;T&gt;&gt; immutablePowerSet(Set&lt;T&gt; set)
+    {
+<span class="nc" id="L151">        return powerSet(set).collect(MutableSet::toImmutable).toImmutable();</span>
+    }
+
+    public static &lt;A, B&gt; LazyIterable&lt;Pair&lt;A, B&gt;&gt; cartesianProduct(SetIterable&lt;A&gt; set1, SetIterable&lt;B&gt; set2)
+    {
+<span class="nc" id="L156">        return SetIterables.cartesianProduct(set1, set2, Tuples::pair);</span>
+    }
+
+    public static &lt;A, B, C&gt; LazyIterable&lt;C&gt; cartesianProduct(SetIterable&lt;A&gt; set1, SetIterable&lt;B&gt; set2, Function2&lt;A, B, C&gt; function)
+    {
+<span class="nc" id="L161">        return LazyIterate.flatCollect(set1, first -&gt; LazyIterate.collect(set2, second -&gt; function.value(first, second)));</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.0.201801022044</span></div></body></html>

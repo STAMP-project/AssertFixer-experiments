@@ -1,0 +1,767 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>AbstractParallelIterable.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Eclipse Collections Test Coverage Aggregation</a> &gt; <a href="../index.html" class="el_bundle">eclipse-collections</a> &gt; <a href="index.source.html" class="el_package">org.eclipse.collections.impl.lazy.parallel</a> &gt; <span class="el_source">AbstractParallelIterable.java</span></div><h1>AbstractParallelIterable.java</h1><pre class="source lang-java linenums">/*
+ * Copyright (c) 2016 Goldman Sachs.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * and Eclipse Distribution License v. 1.0 which accompany this distribution.
+ * The Eclipse Public License is available at http://www.eclipse.org/legal/epl-v10.html
+ * and the Eclipse Distribution License is available at
+ * http://www.eclipse.org/org/documents/edl-v10.php.
+ */
+
+package org.eclipse.collections.impl.lazy.parallel;
+
+import java.io.IOException;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.NoSuchElementException;
+import java.util.Set;
+import java.util.concurrent.Callable;
+import java.util.concurrent.CompletionService;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorCompletionService;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
+
+import org.eclipse.collections.api.LazyIterable;
+import org.eclipse.collections.api.ParallelIterable;
+import org.eclipse.collections.api.annotation.Beta;
+import org.eclipse.collections.api.bag.MutableBag;
+import org.eclipse.collections.api.bag.sorted.MutableSortedBag;
+import org.eclipse.collections.api.block.function.Function;
+import org.eclipse.collections.api.block.function.Function0;
+import org.eclipse.collections.api.block.function.Function2;
+import org.eclipse.collections.api.block.function.primitive.DoubleFunction;
+import org.eclipse.collections.api.block.function.primitive.FloatFunction;
+import org.eclipse.collections.api.block.function.primitive.IntFunction;
+import org.eclipse.collections.api.block.function.primitive.LongFunction;
+import org.eclipse.collections.api.block.predicate.Predicate;
+import org.eclipse.collections.api.block.predicate.Predicate2;
+import org.eclipse.collections.api.block.procedure.Procedure;
+import org.eclipse.collections.api.block.procedure.Procedure2;
+import org.eclipse.collections.api.list.MutableList;
+import org.eclipse.collections.api.map.MapIterable;
+import org.eclipse.collections.api.map.MutableMap;
+import org.eclipse.collections.api.map.sorted.MutableSortedMap;
+import org.eclipse.collections.api.set.MutableSet;
+import org.eclipse.collections.api.set.sorted.MutableSortedSet;
+import org.eclipse.collections.impl.Counter;
+import org.eclipse.collections.impl.bag.mutable.HashBag;
+import org.eclipse.collections.impl.bag.sorted.mutable.TreeBag;
+import org.eclipse.collections.impl.block.factory.Comparators;
+import org.eclipse.collections.impl.block.factory.Functions2;
+import org.eclipse.collections.impl.block.factory.Predicates;
+import org.eclipse.collections.impl.block.factory.Procedures;
+import org.eclipse.collections.impl.block.procedure.CollectionAddProcedure;
+import org.eclipse.collections.impl.block.procedure.DoubleSumResultHolder;
+import org.eclipse.collections.impl.block.procedure.MapCollectProcedure;
+import org.eclipse.collections.impl.block.procedure.MutatingAggregationProcedure;
+import org.eclipse.collections.impl.block.procedure.NonMutatingAggregationProcedure;
+import org.eclipse.collections.impl.block.procedure.checked.CheckedProcedure2;
+import org.eclipse.collections.impl.list.mutable.CompositeFastList;
+import org.eclipse.collections.impl.list.mutable.FastList;
+import org.eclipse.collections.impl.map.mutable.ConcurrentHashMap;
+import org.eclipse.collections.impl.map.mutable.ConcurrentHashMapUnsafe;
+import org.eclipse.collections.impl.map.mutable.UnifiedMap;
+import org.eclipse.collections.impl.map.sorted.mutable.TreeSortedMap;
+import org.eclipse.collections.impl.set.mutable.SetAdapter;
+import org.eclipse.collections.impl.set.mutable.UnifiedSet;
+import org.eclipse.collections.impl.set.sorted.mutable.TreeSortedSet;
+
+@Beta
+<span class="nc" id="L71">public abstract class AbstractParallelIterable&lt;T, B extends Batch&lt;T&gt;&gt; implements ParallelIterable&lt;T&gt;</span>
+{
+    protected static &lt;T&gt; void forEach(AbstractParallelIterable&lt;T, ? extends RootBatch&lt;T&gt;&gt; parallelIterable, Procedure&lt;? super T&gt; procedure)
+    {
+<span class="nc" id="L75">        LazyIterable&lt;Future&lt;?&gt;&gt; futures =</span>
+<span class="nc" id="L76">                parallelIterable.split().collect(chunk -&gt; parallelIterable.getExecutorService().submit(() -&gt; chunk.forEach(procedure)));</span>
+        // The call to toList() is important to stop the lazy evaluation and force all the Runnables to start executing.
+<span class="nc" id="L78">        MutableList&lt;Future&lt;?&gt;&gt; futuresList = futures.toList();</span>
+<span class="nc bnc" id="L79" title="All 2 branches missed.">        for (Future&lt;?&gt; future : futuresList)</span>
+        {
+            try
+            {
+<span class="nc" id="L83">                future.get();</span>
+            }
+<span class="nc" id="L85">            catch (InterruptedException e)</span>
+            {
+<span class="nc" id="L87">                Thread.currentThread().interrupt();</span>
+<span class="nc" id="L88">                throw new RuntimeException(e);</span>
+            }
+<span class="nc" id="L90">            catch (ExecutionException e)</span>
+            {
+<span class="nc" id="L92">                throw new RuntimeException(e);</span>
+<span class="nc" id="L93">            }</span>
+<span class="nc" id="L94">        }</span>
+<span class="nc" id="L95">    }</span>
+
+    protected static &lt;T&gt; boolean anySatisfy(AbstractParallelIterable&lt;T, ? extends RootBatch&lt;T&gt;&gt; parallelIterable, Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L99">        CompletionService&lt;Boolean&gt; completionService = new ExecutorCompletionService&lt;&gt;(parallelIterable.getExecutorService());</span>
+<span class="nc" id="L100">        MutableSet&lt;Future&lt;Boolean&gt;&gt; futures =</span>
+<span class="nc" id="L101">                parallelIterable.split().collect(batch -&gt; completionService.submit(() -&gt; batch.anySatisfy(predicate)), UnifiedSet.newSet());</span>
+
+<span class="nc bnc" id="L103" title="All 2 branches missed.">        while (futures.notEmpty())</span>
+        {
+            try
+            {
+<span class="nc" id="L107">                Future&lt;Boolean&gt; future = completionService.take();</span>
+<span class="nc bnc" id="L108" title="All 2 branches missed.">                if (future.get())</span>
+                {
+<span class="nc bnc" id="L110" title="All 2 branches missed.">                    for (Future&lt;Boolean&gt; eachFuture : futures)</span>
+                    {
+<span class="nc" id="L112">                        eachFuture.cancel(true);</span>
+<span class="nc" id="L113">                    }</span>
+<span class="nc" id="L114">                    return true;</span>
+                }
+<span class="nc" id="L116">                futures.remove(future);</span>
+            }
+<span class="nc" id="L118">            catch (InterruptedException e)</span>
+            {
+<span class="nc" id="L120">                Thread.currentThread().interrupt();</span>
+<span class="nc" id="L121">                throw new RuntimeException(e);</span>
+            }
+<span class="nc" id="L123">            catch (ExecutionException e)</span>
+            {
+<span class="nc" id="L125">                throw new RuntimeException(e);</span>
+<span class="nc" id="L126">            }</span>
+        }
+<span class="nc" id="L128">        return false;</span>
+    }
+
+    protected static &lt;T&gt; boolean allSatisfy(AbstractParallelIterable&lt;T, ? extends RootBatch&lt;T&gt;&gt; parallelIterable, Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L133">        CompletionService&lt;Boolean&gt; completionService = new ExecutorCompletionService&lt;&gt;(parallelIterable.getExecutorService());</span>
+<span class="nc" id="L134">        MutableSet&lt;Future&lt;Boolean&gt;&gt; futures =</span>
+<span class="nc" id="L135">                parallelIterable.split().collect(batch -&gt; completionService.submit(() -&gt; batch.allSatisfy(predicate)), UnifiedSet.newSet());</span>
+
+<span class="nc bnc" id="L137" title="All 2 branches missed.">        while (futures.notEmpty())</span>
+        {
+            try
+            {
+<span class="nc" id="L141">                Future&lt;Boolean&gt; future = completionService.take();</span>
+<span class="nc bnc" id="L142" title="All 2 branches missed.">                if (!future.get())</span>
+                {
+<span class="nc bnc" id="L144" title="All 2 branches missed.">                    for (Future&lt;Boolean&gt; eachFuture : futures)</span>
+                    {
+<span class="nc" id="L146">                        eachFuture.cancel(true);</span>
+<span class="nc" id="L147">                    }</span>
+<span class="nc" id="L148">                    return false;</span>
+                }
+<span class="nc" id="L150">                futures.remove(future);</span>
+            }
+<span class="nc" id="L152">            catch (InterruptedException e)</span>
+            {
+<span class="nc" id="L154">                Thread.currentThread().interrupt();</span>
+<span class="nc" id="L155">                throw new RuntimeException(e);</span>
+            }
+<span class="nc" id="L157">            catch (ExecutionException e)</span>
+            {
+<span class="nc" id="L159">                throw new RuntimeException(e);</span>
+<span class="nc" id="L160">            }</span>
+        }
+<span class="nc" id="L162">        return true;</span>
+    }
+
+    protected static &lt;T&gt; T detect(AbstractParallelIterable&lt;T, ? extends RootBatch&lt;T&gt;&gt; parallelIterable, Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L167">        LazyIterable&lt;? extends RootBatch&lt;T&gt;&gt; chunks = parallelIterable.split();</span>
+<span class="nc" id="L168">        LazyIterable&lt;Future&lt;T&gt;&gt; futures =</span>
+<span class="nc" id="L169">                chunks.collect(chunk -&gt; parallelIterable.getExecutorService().submit(() -&gt; chunk.detect(predicate)));</span>
+        // The call to toList() is important to stop the lazy evaluation and force all the Runnables to start executing.
+<span class="nc" id="L171">        MutableList&lt;Future&lt;T&gt;&gt; futuresList = futures.toList();</span>
+<span class="nc bnc" id="L172" title="All 2 branches missed.">        for (Future&lt;T&gt; future : futuresList)</span>
+        {
+            try
+            {
+<span class="nc" id="L176">                T eachResult = future.get();</span>
+<span class="nc bnc" id="L177" title="All 2 branches missed.">                if (eachResult != null)</span>
+                {
+<span class="nc bnc" id="L179" title="All 2 branches missed.">                    for (Future&lt;T&gt; eachFutureToCancel : futuresList)</span>
+                    {
+<span class="nc" id="L181">                        eachFutureToCancel.cancel(true);</span>
+<span class="nc" id="L182">                    }</span>
+<span class="nc" id="L183">                    return eachResult;</span>
+                }
+            }
+<span class="nc" id="L186">            catch (InterruptedException e)</span>
+            {
+<span class="nc" id="L188">                Thread.currentThread().interrupt();</span>
+<span class="nc" id="L189">                throw new RuntimeException(e);</span>
+            }
+<span class="nc" id="L191">            catch (ExecutionException e)</span>
+            {
+<span class="nc" id="L193">                throw new RuntimeException(e);</span>
+<span class="nc" id="L194">            }</span>
+<span class="nc" id="L195">        }</span>
+<span class="nc" id="L196">        return null;</span>
+    }
+
+    public abstract ExecutorService getExecutorService();
+
+    public abstract int getBatchSize();
+
+    public abstract LazyIterable&lt;B&gt; split();
+
+    protected abstract boolean isOrdered();
+
+    protected &lt;S, V&gt; void collectCombine(Function&lt;Batch&lt;T&gt;, V&gt; function, Procedure2&lt;S, V&gt; combineProcedure, S state)
+    {
+<span class="nc bnc" id="L209" title="All 2 branches missed.">        if (this.isOrdered())</span>
+        {
+<span class="nc" id="L211">            this.collectCombineOrdered(function, combineProcedure, state);</span>
+        }
+        else
+        {
+<span class="nc" id="L215">            this.collectCombineUnordered(function, combineProcedure, state);</span>
+        }
+<span class="nc" id="L217">    }</span>
+
+    private &lt;S, V&gt; void collectCombineOrdered(Function&lt;Batch&lt;T&gt;, V&gt; function, Procedure2&lt;S, V&gt; combineProcedure, S state)
+    {
+<span class="nc" id="L221">        LazyIterable&lt;? extends Batch&lt;T&gt;&gt; chunks = this.split();</span>
+<span class="nc" id="L222">        LazyIterable&lt;Future&lt;V&gt;&gt; futures =</span>
+<span class="nc" id="L223">                chunks.collect(chunk -&gt; this.getExecutorService().submit(() -&gt; function.valueOf(chunk)));</span>
+        // The call to toList() is important to stop the lazy evaluation and force all the Runnables to start executing.
+<span class="nc" id="L225">        MutableList&lt;Future&lt;V&gt;&gt; futuresList = futures.toList();</span>
+<span class="nc bnc" id="L226" title="All 2 branches missed.">        for (Future&lt;V&gt; future : futuresList)</span>
+        {
+            try
+            {
+<span class="nc" id="L230">                combineProcedure.value(state, future.get());</span>
+            }
+<span class="nc" id="L232">            catch (InterruptedException e)</span>
+            {
+<span class="nc" id="L234">                Thread.currentThread().interrupt();</span>
+<span class="nc" id="L235">                throw new RuntimeException(e);</span>
+            }
+<span class="nc" id="L237">            catch (ExecutionException e)</span>
+            {
+<span class="nc" id="L239">                throw new RuntimeException(e);</span>
+<span class="nc" id="L240">            }</span>
+<span class="nc" id="L241">        }</span>
+<span class="nc" id="L242">    }</span>
+
+    private &lt;S, V&gt; void collectCombineUnordered(Function&lt;Batch&lt;T&gt;, V&gt; function, Procedure2&lt;S, V&gt; combineProcedure, S state)
+    {
+<span class="nc" id="L246">        LazyIterable&lt;? extends Batch&lt;T&gt;&gt; chunks = this.split();</span>
+<span class="nc" id="L247">        MutableList&lt;Callable&lt;V&gt;&gt; callables = chunks.collect((Function&lt;Batch&lt;T&gt;, Callable&lt;V&gt;&gt;) chunk -&gt; () -&gt; function.valueOf(chunk)).toList();</span>
+
+<span class="nc" id="L249">        ExecutorCompletionService&lt;V&gt; completionService = new ExecutorCompletionService&lt;&gt;(this.getExecutorService());</span>
+<span class="nc" id="L250">        callables.each(completionService::submit);</span>
+
+<span class="nc" id="L252">        int numTasks = callables.size();</span>
+<span class="nc bnc" id="L253" title="All 2 branches missed.">        while (numTasks &gt; 0)</span>
+        {
+            try
+            {
+<span class="nc" id="L257">                Future&lt;V&gt; future = completionService.take();</span>
+<span class="nc" id="L258">                combineProcedure.value(state, future.get());</span>
+<span class="nc" id="L259">                numTasks--;</span>
+            }
+<span class="nc" id="L261">            catch (InterruptedException e)</span>
+            {
+<span class="nc" id="L263">                Thread.currentThread().interrupt();</span>
+<span class="nc" id="L264">                throw new RuntimeException(e);</span>
+            }
+<span class="nc" id="L266">            catch (ExecutionException e)</span>
+            {
+<span class="nc" id="L268">                throw new RuntimeException(e);</span>
+<span class="nc" id="L269">            }</span>
+        }
+<span class="nc" id="L271">    }</span>
+
+    private T collectReduce(Function&lt;Batch&lt;T&gt;, T&gt; map, Function2&lt;T, T, T&gt; function2)
+    {
+<span class="nc bnc" id="L275" title="All 2 branches missed.">        return this.isOrdered()</span>
+<span class="nc" id="L276">                ? this.collectReduceOrdered(map, function2)</span>
+<span class="nc" id="L277">                : this.collectReduceUnordered(map, function2);</span>
+    }
+
+    private T collectReduceOrdered(Function&lt;Batch&lt;T&gt;, T&gt; map, Function2&lt;T, T, T&gt; function2)
+    {
+<span class="nc" id="L282">        LazyIterable&lt;? extends Batch&lt;T&gt;&gt; chunks = this.split();</span>
+<span class="nc" id="L283">        LazyIterable&lt;Future&lt;T&gt;&gt; futures = chunks.collect(chunk -&gt; this.getExecutorService().submit(() -&gt; map.valueOf(chunk)));</span>
+        // The call to toList() is important to stop the lazy evaluation and force all the Runnables to start executing.
+<span class="nc" id="L285">        MutableList&lt;Future&lt;T&gt;&gt; futuresList = futures.toList();</span>
+        try
+        {
+<span class="nc" id="L288">            T result = futuresList.getFirst().get();</span>
+<span class="nc bnc" id="L289" title="All 2 branches missed.">            for (int i = 1; i &lt; futuresList.size(); i++)</span>
+            {
+<span class="nc" id="L291">                T next = futuresList.get(i).get();</span>
+<span class="nc bnc" id="L292" title="All 2 branches missed.">                if (next != null)</span>
+                {
+<span class="nc bnc" id="L294" title="All 2 branches missed.">                    if (result == null)</span>
+                    {
+<span class="nc" id="L296">                        result = next;</span>
+                    }
+                    else
+                    {
+<span class="nc" id="L300">                        result = function2.value(result, next);</span>
+                    }
+                }
+            }
+<span class="nc bnc" id="L304" title="All 2 branches missed.">            if (result == null)</span>
+            {
+<span class="nc" id="L306">                throw new NoSuchElementException();</span>
+            }
+<span class="nc" id="L308">            return result;</span>
+        }
+<span class="nc" id="L310">        catch (InterruptedException e)</span>
+        {
+<span class="nc" id="L312">            Thread.currentThread().interrupt();</span>
+<span class="nc" id="L313">            throw new RuntimeException(e);</span>
+        }
+<span class="nc" id="L315">        catch (ExecutionException e)</span>
+        {
+<span class="nc bnc" id="L317" title="All 2 branches missed.">            if (e.getCause() instanceof NullPointerException)</span>
+            {
+<span class="nc" id="L319">                throw (NullPointerException) e.getCause();</span>
+            }
+<span class="nc" id="L321">            throw new RuntimeException(e);</span>
+        }
+    }
+
+    private T collectReduceUnordered(Function&lt;Batch&lt;T&gt;, T&gt; map, Function2&lt;T, T, T&gt; function2)
+    {
+<span class="nc" id="L327">        LazyIterable&lt;? extends Batch&lt;T&gt;&gt; chunks = this.split();</span>
+<span class="nc" id="L328">        MutableList&lt;Callable&lt;T&gt;&gt; callables =</span>
+<span class="nc" id="L329">                chunks.collect((Function&lt;Batch&lt;T&gt;, Callable&lt;T&gt;&gt;) chunk -&gt; () -&gt; map.valueOf(chunk)).toList();</span>
+
+<span class="nc" id="L331">        ExecutorCompletionService&lt;T&gt; completionService = new ExecutorCompletionService&lt;&gt;(this.getExecutorService());</span>
+<span class="nc" id="L332">        callables.each(completionService::submit);</span>
+
+        try
+        {
+<span class="nc" id="L336">            T result = completionService.take().get();</span>
+<span class="nc" id="L337">            int numTasks = callables.size() - 1;</span>
+<span class="nc bnc" id="L338" title="All 2 branches missed.">            while (numTasks &gt; 0)</span>
+            {
+<span class="nc" id="L340">                T next = completionService.take().get();</span>
+<span class="nc bnc" id="L341" title="All 2 branches missed.">                if (next != null)</span>
+                {
+<span class="nc bnc" id="L343" title="All 2 branches missed.">                    if (result == null)</span>
+                    {
+<span class="nc" id="L345">                        result = next;</span>
+                    }
+                    else
+                    {
+<span class="nc" id="L349">                        result = function2.value(result, next);</span>
+                    }
+                }
+<span class="nc" id="L352">                numTasks--;</span>
+<span class="nc" id="L353">            }</span>
+<span class="nc bnc" id="L354" title="All 2 branches missed.">            if (result == null)</span>
+            {
+<span class="nc" id="L356">                throw new NoSuchElementException();</span>
+            }
+<span class="nc" id="L358">            return result;</span>
+        }
+<span class="nc" id="L360">        catch (InterruptedException e)</span>
+        {
+<span class="nc" id="L362">            Thread.currentThread().interrupt();</span>
+<span class="nc" id="L363">            throw new RuntimeException(e);</span>
+        }
+<span class="nc" id="L365">        catch (ExecutionException e)</span>
+        {
+<span class="nc bnc" id="L367" title="All 2 branches missed.">            if (e.getCause() instanceof NullPointerException)</span>
+            {
+<span class="nc" id="L369">                throw (NullPointerException) e.getCause();</span>
+            }
+<span class="nc" id="L371">            throw new RuntimeException(e);</span>
+        }
+    }
+
+    @Override
+    public String toString()
+    {
+<span class="nc" id="L378">        return this.makeString(&quot;[&quot;, &quot;, &quot;, &quot;]&quot;);</span>
+    }
+
+    @Override
+    public void appendString(Appendable appendable, String start, String separator, String end)
+    {
+        try
+        {
+<span class="nc" id="L386">            appendable.append(start);</span>
+<span class="nc" id="L387">            Function&lt;Batch&lt;T&gt;, String&gt; map = batch -&gt; batch.makeString(separator);</span>
+<span class="nc" id="L388">            Procedure2&lt;Appendable, String&gt; reduce = new CheckedProcedure2&lt;Appendable, String&gt;()</span>
+<span class="nc" id="L389">            {</span>
+<span class="nc" id="L390">                private boolean first = true;</span>
+
+                public void safeValue(Appendable accumulator, String each) throws IOException
+                {
+<span class="nc bnc" id="L394" title="All 2 branches missed.">                    if (&quot;&quot;.equals(each))</span>
+                    {
+<span class="nc" id="L396">                        return;</span>
+                    }
+<span class="nc bnc" id="L398" title="All 2 branches missed.">                    if (this.first)</span>
+                    {
+<span class="nc" id="L400">                        this.first = false;</span>
+                    }
+                    else
+                    {
+<span class="nc" id="L404">                        appendable.append(separator);</span>
+                    }
+<span class="nc" id="L406">                    appendable.append(each);</span>
+<span class="nc" id="L407">                }</span>
+            };
+<span class="nc" id="L409">            this.collectCombine(map, reduce, appendable);</span>
+
+<span class="nc" id="L411">            appendable.append(end);</span>
+        }
+<span class="nc" id="L413">        catch (IOException e)</span>
+        {
+<span class="nc" id="L415">            throw new RuntimeException(e);</span>
+<span class="nc" id="L416">        }</span>
+<span class="nc" id="L417">    }</span>
+
+    @Override
+    public &lt;P&gt; void forEachWith(Procedure2&lt;? super T, ? super P&gt; procedure, P parameter)
+    {
+<span class="nc" id="L422">        this.forEach(Procedures.bind(procedure, parameter));</span>
+<span class="nc" id="L423">    }</span>
+
+    @Override
+    public &lt;P&gt; boolean anySatisfyWith(Predicate2&lt;? super T, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc" id="L428">        return this.anySatisfy(Predicates.bind(predicate, parameter));</span>
+    }
+
+    @Override
+    public &lt;P&gt; boolean allSatisfyWith(Predicate2&lt;? super T, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc" id="L434">        return this.allSatisfy(Predicates.bind(predicate, parameter));</span>
+    }
+
+    @Override
+    public boolean noneSatisfy(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L440">        return this.allSatisfy(Predicates.not(predicate));</span>
+    }
+
+    @Override
+    public &lt;P&gt; boolean noneSatisfyWith(Predicate2&lt;? super T, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc" id="L446">        return this.noneSatisfy(Predicates.bind(predicate, parameter));</span>
+    }
+
+    @Override
+    public &lt;P&gt; T detectWith(Predicate2&lt;? super T, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc" id="L452">        return this.detect(Predicates.bind(predicate, parameter));</span>
+    }
+
+    @Override
+    public T detectIfNone(Predicate&lt;? super T&gt; predicate, Function0&lt;? extends T&gt; function)
+    {
+<span class="nc" id="L458">        T result = this.detect(predicate);</span>
+<span class="nc bnc" id="L459" title="All 2 branches missed.">        return result == null ? function.value() : result;</span>
+    }
+
+    @Override
+    public &lt;P&gt; T detectWithIfNone(Predicate2&lt;? super T, ? super P&gt; predicate, P parameter, Function0&lt;? extends T&gt; function)
+    {
+<span class="nc" id="L465">        return this.detectIfNone(Predicates.bind(predicate, parameter), function);</span>
+    }
+
+    @Override
+    public &lt;E&gt; E[] toArray(E[] array)
+    {
+<span class="nc" id="L471">        throw new UnsupportedOperationException(this.getClass().getSimpleName() + &quot;.toArray() not implemented yet&quot;);</span>
+    }
+
+    @Override
+    public MutableList&lt;T&gt; toList()
+    {
+<span class="nc" id="L477">        Function&lt;Batch&lt;T&gt;, FastList&lt;T&gt;&gt; map = batch -&gt; {</span>
+<span class="nc" id="L478">            FastList&lt;T&gt; list = FastList.newList();</span>
+<span class="nc" id="L479">            batch.forEach(CollectionAddProcedure.on(list));</span>
+<span class="nc" id="L480">            return list;</span>
+        };
+<span class="nc" id="L482">        MutableList&lt;T&gt; state = new CompositeFastList&lt;&gt;();</span>
+<span class="nc" id="L483">        this.collectCombine(map, MutableList::addAll, state);</span>
+<span class="nc" id="L484">        return state;</span>
+    }
+
+    @Override
+    public MutableList&lt;T&gt; toSortedList(Comparator&lt;? super T&gt; comparator)
+    {
+<span class="nc" id="L490">        return this.toList().toSortedList(comparator);</span>
+    }
+
+    @Override
+    public &lt;V extends Comparable&lt;? super V&gt;&gt; MutableList&lt;T&gt; toSortedListBy(Function&lt;? super T, ? extends V&gt; function)
+    {
+<span class="nc" id="L496">        return this.toSortedList(Comparators.byFunction(function));</span>
+    }
+
+    @Override
+    public MutableSet&lt;T&gt; toSet()
+    {
+<span class="nc" id="L502">        ConcurrentHashMapUnsafe&lt;T, Boolean&gt; map = ConcurrentHashMapUnsafe.newMap();</span>
+<span class="nc" id="L503">        Set&lt;T&gt; result = Collections.newSetFromMap(map);</span>
+<span class="nc" id="L504">        this.forEach(CollectionAddProcedure.on(result));</span>
+<span class="nc" id="L505">        return SetAdapter.adapt(map.keySet());</span>
+    }
+
+    @Override
+    public MutableSortedSet&lt;T&gt; toSortedSet()
+    {
+<span class="nc" id="L511">        MutableSortedSet&lt;T&gt; result = TreeSortedSet.&lt;T&gt;newSet().asSynchronized();</span>
+<span class="nc" id="L512">        this.forEach(CollectionAddProcedure.on(result));</span>
+<span class="nc" id="L513">        return result;</span>
+    }
+
+    @Override
+    public &lt;V extends Comparable&lt;? super V&gt;&gt; MutableSortedSet&lt;T&gt; toSortedSetBy(Function&lt;? super T, ? extends V&gt; function)
+    {
+<span class="nc" id="L519">        return this.toSortedSet(Comparators.byFunction(function));</span>
+    }
+
+    @Override
+    public MutableBag&lt;T&gt; toBag()
+    {
+<span class="nc" id="L525">        MutableBag&lt;T&gt; result = HashBag.&lt;T&gt;newBag().asSynchronized();</span>
+<span class="nc" id="L526">        this.forEach(CollectionAddProcedure.on(result));</span>
+<span class="nc" id="L527">        return result;</span>
+    }
+
+    @Override
+    public MutableSortedBag&lt;T&gt; toSortedBag()
+    {
+<span class="nc" id="L533">        MutableSortedBag&lt;T&gt; result = TreeBag.&lt;T&gt;newBag().asSynchronized();</span>
+<span class="nc" id="L534">        this.forEach(CollectionAddProcedure.on(result));</span>
+<span class="nc" id="L535">        return result;</span>
+    }
+
+    @Override
+    public MutableSortedBag&lt;T&gt; toSortedBag(Comparator&lt;? super T&gt; comparator)
+    {
+<span class="nc" id="L541">        MutableSortedBag&lt;T&gt; result = TreeBag.newBag(comparator);</span>
+<span class="nc" id="L542">        result = result.asSynchronized();</span>
+<span class="nc" id="L543">        this.forEach(CollectionAddProcedure.on(result));</span>
+<span class="nc" id="L544">        return result;</span>
+    }
+
+    @Override
+    public &lt;V extends Comparable&lt;? super V&gt;&gt; MutableSortedBag&lt;T&gt; toSortedBagBy(Function&lt;? super T, ? extends V&gt; function)
+    {
+<span class="nc" id="L550">        return this.toSortedBag(Comparators.byFunction(function));</span>
+    }
+
+    @Override
+    public MutableSortedSet&lt;T&gt; toSortedSet(Comparator&lt;? super T&gt; comparator)
+    {
+<span class="nc" id="L556">        MutableSortedSet&lt;T&gt; result = TreeSortedSet.newSet(comparator);</span>
+<span class="nc" id="L557">        result = result.asSynchronized();</span>
+<span class="nc" id="L558">        this.forEach(CollectionAddProcedure.on(result));</span>
+<span class="nc" id="L559">        return result;</span>
+    }
+
+    @Override
+    public &lt;NK, NV&gt; MutableMap&lt;NK, NV&gt; toMap(
+            Function&lt;? super T, ? extends NK&gt; keyFunction,
+            Function&lt;? super T, ? extends NV&gt; valueFunction)
+    {
+<span class="nc" id="L567">        MutableMap&lt;NK, NV&gt; map = UnifiedMap.&lt;NK, NV&gt;newMap().asSynchronized();</span>
+<span class="nc" id="L568">        this.forEach(new MapCollectProcedure&lt;&gt;(map, keyFunction, valueFunction));</span>
+<span class="nc" id="L569">        return map;</span>
+    }
+
+    @Override
+    public &lt;NK, NV&gt; MutableSortedMap&lt;NK, NV&gt; toSortedMap(
+            Function&lt;? super T, ? extends NK&gt; keyFunction,
+            Function&lt;? super T, ? extends NV&gt; valueFunction)
+    {
+<span class="nc" id="L577">        MutableSortedMap&lt;NK, NV&gt; sortedMap = TreeSortedMap.&lt;NK, NV&gt;newMap().asSynchronized();</span>
+<span class="nc" id="L578">        this.forEach(new MapCollectProcedure&lt;&gt;(sortedMap, keyFunction, valueFunction));</span>
+<span class="nc" id="L579">        return sortedMap;</span>
+    }
+
+    @Override
+    public &lt;NK, NV&gt; MutableSortedMap&lt;NK, NV&gt; toSortedMap(Comparator&lt;? super NK&gt; comparator,
+            Function&lt;? super T, ? extends NK&gt; keyFunction,
+            Function&lt;? super T, ? extends NV&gt; valueFunction)
+    {
+<span class="nc" id="L587">        MutableSortedMap&lt;NK, NV&gt; sortedMap = TreeSortedMap.&lt;NK, NV&gt;newMap(comparator).asSynchronized();</span>
+<span class="nc" id="L588">        this.forEach(new MapCollectProcedure&lt;&gt;(sortedMap, keyFunction, valueFunction));</span>
+<span class="nc" id="L589">        return sortedMap;</span>
+    }
+
+    @Override
+    public &lt;K, V&gt; MapIterable&lt;K, V&gt; aggregateBy(
+            Function&lt;? super T, ? extends K&gt; groupBy,
+            Function0&lt;? extends V&gt; zeroValueFactory,
+            Function2&lt;? super V, ? super T, ? extends V&gt; nonMutatingAggregator)
+    {
+<span class="nc" id="L598">        MutableMap&lt;K, V&gt; map = ConcurrentHashMapUnsafe.newMap();</span>
+<span class="nc" id="L599">        this.forEach(new NonMutatingAggregationProcedure&lt;&gt;(map, groupBy, zeroValueFactory, nonMutatingAggregator));</span>
+<span class="nc" id="L600">        return map;</span>
+    }
+
+    @Override
+    public &lt;K, V&gt; MapIterable&lt;K, V&gt; aggregateInPlaceBy(
+            Function&lt;? super T, ? extends K&gt; groupBy,
+            Function0&lt;? extends V&gt; zeroValueFactory,
+            Procedure2&lt;? super V, ? super T&gt; mutatingAggregator)
+    {
+<span class="nc" id="L609">        MutableMap&lt;K, V&gt; map = ConcurrentHashMapUnsafe.newMap();</span>
+<span class="nc" id="L610">        this.forEach(new MutatingAggregationProcedure&lt;&gt;(map, groupBy, zeroValueFactory, mutatingAggregator));</span>
+<span class="nc" id="L611">        return map;</span>
+    }
+
+    @Override
+    public int count(Predicate&lt;? super T&gt; predicate)
+    {
+<span class="nc" id="L617">        Function&lt;Batch&lt;T&gt;, Integer&gt; map = batch -&gt; batch.count(predicate);</span>
+
+<span class="nc" id="L619">        Counter state = new Counter();</span>
+<span class="nc" id="L620">        this.collectCombineUnordered(map, Counter::add, state);</span>
+<span class="nc" id="L621">        return state.getCount();</span>
+    }
+
+    @Override
+    public &lt;P&gt; int countWith(Predicate2&lt;? super T, ? super P&gt; predicate, P parameter)
+    {
+<span class="nc" id="L627">        return this.count(Predicates.bind(predicate, parameter));</span>
+    }
+
+    @Override
+    public T min(Comparator&lt;? super T&gt; comparator)
+    {
+<span class="nc" id="L633">        Function&lt;Batch&lt;T&gt;, T&gt; map = batch -&gt; batch.min(comparator);</span>
+<span class="nc" id="L634">        return this.collectReduce(map, Functions2.min(comparator));</span>
+    }
+
+    @Override
+    public T max(Comparator&lt;? super T&gt; comparator)
+    {
+<span class="nc" id="L640">        Function&lt;Batch&lt;T&gt;, T&gt; map = batch -&gt; batch.max(comparator);</span>
+<span class="nc" id="L641">        return this.collectReduce(map, Functions2.max(comparator));</span>
+    }
+
+    @Override
+    public T min()
+    {
+<span class="nc" id="L647">        return this.min(Comparators.naturalOrder());</span>
+    }
+
+    @Override
+    public T max()
+    {
+<span class="nc" id="L653">        return this.max(Comparators.naturalOrder());</span>
+    }
+
+    @Override
+    public &lt;V extends Comparable&lt;? super V&gt;&gt; T minBy(Function&lt;? super T, ? extends V&gt; function)
+    {
+<span class="nc" id="L659">        Function&lt;Batch&lt;T&gt;, T&gt; map = batch -&gt; batch.minBy(function);</span>
+<span class="nc" id="L660">        return this.collectReduce(map, Functions2.minBy(function));</span>
+    }
+
+    @Override
+    public &lt;V extends Comparable&lt;? super V&gt;&gt; T maxBy(Function&lt;? super T, ? extends V&gt; function)
+    {
+<span class="nc" id="L666">        Function&lt;Batch&lt;T&gt;, T&gt; map = batch -&gt; batch.maxBy(function);</span>
+<span class="nc" id="L667">        return this.collectReduce(map, Functions2.maxBy(function));</span>
+    }
+
+    @Override
+    public long sumOfInt(IntFunction&lt;? super T&gt; function)
+    {
+<span class="nc" id="L673">        return this.sumOfLongOrdered(batch -&gt; batch.sumOfInt(function));</span>
+    }
+
+    @Override
+    public double sumOfFloat(FloatFunction&lt;? super T&gt; function)
+    {
+<span class="nc" id="L679">        return this.sumOfDoubleOrdered(batch -&gt; batch.sumOfFloat(function));</span>
+    }
+
+    @Override
+    public long sumOfLong(LongFunction&lt;? super T&gt; function)
+    {
+<span class="nc" id="L685">        return this.sumOfLongOrdered(batch -&gt; batch.sumOfLong(function));</span>
+    }
+
+    @Override
+    public double sumOfDouble(DoubleFunction&lt;? super T&gt; function)
+    {
+<span class="nc" id="L691">        return this.sumOfDoubleOrdered(batch -&gt; batch.sumOfDouble(function));</span>
+    }
+
+    private long sumOfLongOrdered(LongFunction&lt;Batch&lt;T&gt;&gt; map)
+    {
+<span class="nc" id="L696">        LazyIterable&lt;? extends Batch&lt;T&gt;&gt; chunks = this.split();</span>
+<span class="nc" id="L697">        LazyIterable&lt;Future&lt;Long&gt;&gt; futures =</span>
+<span class="nc" id="L698">                chunks.collect(chunk -&gt; this.getExecutorService().submit(() -&gt; map.longValueOf(chunk)));</span>
+        // The call to toList() is important to stop the lazy evaluation and force all the Runnables to start executing.
+<span class="nc" id="L700">        MutableList&lt;Future&lt;Long&gt;&gt; futuresList = futures.toList();</span>
+        try
+        {
+<span class="nc" id="L703">            long result = 0;</span>
+<span class="nc bnc" id="L704" title="All 2 branches missed.">            for (int i = 0; i &lt; futuresList.size(); i++)</span>
+            {
+<span class="nc" id="L706">                result += futuresList.get(i).get();</span>
+            }
+<span class="nc" id="L708">            return result;</span>
+        }
+<span class="nc" id="L710">        catch (InterruptedException e)</span>
+        {
+<span class="nc" id="L712">            Thread.currentThread().interrupt();</span>
+<span class="nc" id="L713">            throw new RuntimeException(e);</span>
+        }
+<span class="nc" id="L715">        catch (ExecutionException e)</span>
+        {
+<span class="nc" id="L717">            throw new RuntimeException(e);</span>
+        }
+    }
+
+    private double sumOfDoubleOrdered(Function&lt;Batch&lt;T&gt;, DoubleSumResultHolder&gt; map)
+    {
+<span class="nc" id="L723">        LazyIterable&lt;? extends Batch&lt;T&gt;&gt; chunks = this.split();</span>
+<span class="nc" id="L724">        LazyIterable&lt;Future&lt;DoubleSumResultHolder&gt;&gt; futures =</span>
+<span class="nc" id="L725">                chunks.collect(chunk -&gt; this.getExecutorService().submit(() -&gt; map.valueOf(chunk)));</span>
+        // The call to toList() is important to stop the lazy evaluation and force all the Runnables to start executing.
+<span class="nc" id="L727">        MutableList&lt;Future&lt;DoubleSumResultHolder&gt;&gt; futuresList = futures.toList();</span>
+        try
+        {
+<span class="nc" id="L730">            double sum = 0.0d;</span>
+<span class="nc" id="L731">            double compensation = 0.0d;</span>
+<span class="nc bnc" id="L732" title="All 2 branches missed.">            for (int i = 0; i &lt; futuresList.size(); i++)</span>
+            {
+<span class="nc" id="L734">                compensation += futuresList.get(i).get().getCompensation();</span>
+<span class="nc" id="L735">                double adjustedValue = futuresList.get(i).get().getResult() - compensation;</span>
+<span class="nc" id="L736">                double nextSum = sum + adjustedValue;</span>
+<span class="nc" id="L737">                compensation = nextSum - sum - adjustedValue;</span>
+<span class="nc" id="L738">                sum = nextSum;</span>
+            }
+<span class="nc" id="L740">            return sum;</span>
+        }
+<span class="nc" id="L742">        catch (InterruptedException e)</span>
+        {
+<span class="nc" id="L744">            Thread.currentThread().interrupt();</span>
+<span class="nc" id="L745">            throw new RuntimeException(e);</span>
+        }
+<span class="nc" id="L747">        catch (ExecutionException e)</span>
+        {
+<span class="nc" id="L749">            throw new RuntimeException(e);</span>
+        }
+    }
+
+    @Override
+    public &lt;V&gt; MapIterable&lt;V, T&gt; groupByUniqueKey(Function&lt;? super T, ? extends V&gt; function)
+    {
+<span class="nc" id="L756">        MutableMap&lt;V, T&gt; result = ConcurrentHashMap.newMap(this.getBatchSize());</span>
+<span class="nc" id="L757">        this.forEach(value -&gt; {</span>
+<span class="nc" id="L758">            V key = function.valueOf(value);</span>
+<span class="nc bnc" id="L759" title="All 2 branches missed.">            if (result.put(key, value) != null)</span>
+            {
+<span class="nc" id="L761">                throw new IllegalStateException(&quot;Key &quot; + key + &quot; already exists in map!&quot;);</span>
+            }
+<span class="nc" id="L763">        });</span>
+<span class="nc" id="L764">        return result;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.0.201801022044</span></div></body></html>

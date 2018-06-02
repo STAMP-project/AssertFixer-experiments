@@ -1,0 +1,214 @@
+/*
+ * Copyright (c) 2018 Goldman Sachs and others.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * and Eclipse Distribution License v. 1.0 which accompany this distribution.
+ * The Eclipse Public License is available at http://www.eclipse.org/legal/epl-v10.html
+ * and the Eclipse Distribution License is available at
+ * http://www.eclipse.org/org/documents/edl-v10.php.
+ */
+
+package org.eclipse.collections.impl.map.mutable.primitive;
+
+import org.eclipse.collections.api.iterator.MutableIntIterator;
+import org.eclipse.collections.api.set.primitive.MutableIntSet;
+import org.eclipse.collections.impl.block.factory.primitive.IntPredicates;
+import org.eclipse.collections.impl.list.mutable.primitive.IntArrayList;
+import org.eclipse.collections.impl.set.mutable.primitive.AbstractIntSetTestCase;
+import org.eclipse.collections.impl.test.Verify;
+import org.junit.Assert;
+import org.junit.Test;
+
+/**
+ * JUnit test for {@link UnmodifiableIntLongMap#keySet()}.
+ *
+ * This file was automatically generated from template file unmodifiablePrimitivePrimitiveMapKeySetTest.stg.
+ */
+public class UnmodifiableIntLongMapKeySetTest extends AbstractIntSetTestCase
+{
+    @Override
+    protected MutableIntSet classUnderTest()
+    {
+        return new UnmodifiableIntLongMap(IntLongHashMap.newWithKeysValues(1, 1L, 2, 2L, 3, 3L)).keySet();
+    }
+
+    @Override
+    protected MutableIntSet newWith(int... elements)
+    {
+        IntLongHashMap map = new IntLongHashMap();
+        for (int i = 0; i < elements.length; i++)
+        {
+            map.put(elements[i], i);
+        }
+        return map.asUnmodifiable().keySet();
+    }
+
+    @Override
+    @Test(expected = UnsupportedOperationException.class)
+    public void addAllIterable()
+    {
+        this.classUnderTest().addAll(new IntArrayList());
+    }
+
+    @Override
+    @Test(expected = UnsupportedOperationException.class)
+    public void add()
+    {
+        this.classUnderTest().add(0);
+    }
+
+    @Override
+    @Test(expected = UnsupportedOperationException.class)
+    public void addAllArray()
+    {
+        this.classUnderTest().addAll(0, 1);
+    }
+
+    @Override
+    @Test(expected = UnsupportedOperationException.class)
+    public void with()
+    {
+        this.classUnderTest().with(0);
+    }
+
+    @Override
+    @Test(expected = UnsupportedOperationException.class)
+    public void without()
+    {
+        this.classUnderTest().without(0);
+    }
+
+    @Override
+    @Test(expected = UnsupportedOperationException.class)
+    public void withAll()
+    {
+        this.classUnderTest().withAll(new IntArrayList());
+    }
+
+    @Override
+    @Test(expected = UnsupportedOperationException.class)
+    public void withoutAll()
+    {
+        this.classUnderTest().withoutAll(new IntArrayList());
+    }
+
+    @Override
+    @Test(expected = UnsupportedOperationException.class)
+    public void remove()
+    {
+        this.classUnderTest().remove(1);
+    }
+
+    @Override
+    @Test(expected = UnsupportedOperationException.class)
+    public void removeIf()
+    {
+        this.classUnderTest().removeIf(IntPredicates.equal(1));
+    }
+
+    @Override
+    @Test(expected = UnsupportedOperationException.class)
+    public void removeAll_iterable()
+    {
+        this.classUnderTest().removeAll(new IntArrayList());
+    }
+
+    @Override
+    @Test(expected = UnsupportedOperationException.class)
+    public void removeAll()
+    {
+        this.classUnderTest().removeAll();
+    }
+
+    @Override
+    @Test(expected = UnsupportedOperationException.class)
+    public void retainAll_iterable()
+    {
+        this.classUnderTest().retainAll(new IntArrayList());
+    }
+
+    @Override
+    @Test(expected = UnsupportedOperationException.class)
+    public void retainAll()
+    {
+        this.classUnderTest().retainAll();
+    }
+
+    @Override
+    @Test(expected = UnsupportedOperationException.class)
+    public void clear()
+    {
+        this.classUnderTest().clear();
+    }
+
+    @Override
+    @Test
+    public void contains()
+    {
+        Assert.assertTrue(this.classUnderTest().contains(1));
+    }
+
+    @Override
+    public void testEquals()
+    {
+        MutableIntSet set1 = this.newWith(1, 31, 32);
+        MutableIntSet set2 = this.newWith(32, 31, 1);
+        MutableIntSet set3 = this.newWith(32, 32, 31, 1);
+        MutableIntSet set4 = this.newWith(32, 32, 31, 1, 1);
+        MutableIntSet set5 = this.newWith(32, 1);
+        Verify.assertEqualsAndHashCode(set1, set2);
+        Verify.assertEqualsAndHashCode(set1, set3);
+        Verify.assertEqualsAndHashCode(set1, set4);
+        Verify.assertEqualsAndHashCode(set2, set3);
+        Verify.assertEqualsAndHashCode(set2, set4);
+        Assert.assertNotEquals(set1, set5);
+    }
+
+    @Override
+    @Test
+    public void noneSatisfy()
+    {
+        super.noneSatisfy();
+        Assert.assertFalse(this.newWith(0, 1, 2).noneSatisfy(IntPredicates.equal(0)));
+    }
+
+    @Override
+    @Test
+    public void sum()
+    {
+        super.sum();
+        Assert.assertEquals(3L, this.newWith(0, 1, 2).sum());
+    }
+
+    @Override
+    public void testHashCode()
+    {
+        MutableIntSet set1 = this.newWith(0, 1, 31, 32);
+        MutableIntSet set2 = this.newWith(32, 31, 1, 0);
+        Assert.assertEquals(set1.hashCode(), set2.hashCode());
+        Assert.assertEquals(this.newObjectCollectionWith(0, 1, 31, 32).hashCode(), set1.hashCode());
+    }
+
+    @Override
+    public void intIterator_with_remove()
+    {
+        MutableIntIterator iterator = this.classUnderTest().intIterator();
+        Assert.assertTrue(iterator.hasNext());
+        iterator.next();
+        Verify.assertThrows(UnsupportedOperationException.class, iterator::remove);
+    }
+
+    @Override
+    public void intIterator_throws_for_remove_before_next()
+    {
+        MutableIntIterator iterator = this.classUnderTest().intIterator();
+        Assert.assertTrue(iterator.hasNext());
+        Verify.assertThrows(UnsupportedOperationException.class, iterator::remove);
+    }
+
+    @Override
+    public void intIterator_throws_for_consecutive_remove()
+    {
+        // Not applicable for Unmodifiable
+    }
+}

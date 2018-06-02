@@ -1,0 +1,209 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>LazyIterable.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">Eclipse Collections Test Coverage Aggregation</a> &gt; <a href="../index.html" class="el_bundle">eclipse-collections-api</a> &gt; <a href="index.source.html" class="el_package">org.eclipse.collections.api</a> &gt; <span class="el_source">LazyIterable.java</span></div><h1>LazyIterable.java</h1><pre class="source lang-java linenums">/*
+ * Copyright (c) 2018 Goldman Sachs and others.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v1.0
+ * and Eclipse Distribution License v. 1.0 which accompany this distribution.
+ * The Eclipse Public License is available at http://www.eclipse.org/legal/epl-v10.html
+ * and the Eclipse Distribution License is available at
+ * http://www.eclipse.org/org/documents/edl-v10.php.
+ */
+
+package org.eclipse.collections.api;
+
+import java.util.Collection;
+
+import org.eclipse.collections.api.block.function.Function;
+import org.eclipse.collections.api.block.function.Function2;
+import org.eclipse.collections.api.block.function.primitive.BooleanFunction;
+import org.eclipse.collections.api.block.function.primitive.ByteFunction;
+import org.eclipse.collections.api.block.function.primitive.CharFunction;
+import org.eclipse.collections.api.block.function.primitive.DoubleFunction;
+import org.eclipse.collections.api.block.function.primitive.FloatFunction;
+import org.eclipse.collections.api.block.function.primitive.IntFunction;
+import org.eclipse.collections.api.block.function.primitive.LongFunction;
+import org.eclipse.collections.api.block.function.primitive.ShortFunction;
+import org.eclipse.collections.api.block.predicate.Predicate;
+import org.eclipse.collections.api.block.predicate.Predicate2;
+import org.eclipse.collections.api.block.procedure.Procedure;
+import org.eclipse.collections.api.ordered.OrderedIterable;
+import org.eclipse.collections.api.tuple.Pair;
+
+/**
+ * A LazyIterable is RichIterable which will defer evaluation for certain methods like select, reject, collect, etc.
+ * Any methods that do not return a LazyIterable when called will cause evaluation to be forced.
+ *
+ * @since 1.0
+ */
+public interface LazyIterable&lt;T&gt;
+        extends RichIterable&lt;T&gt;
+{
+    /**
+     * @inheritDoc
+     */
+    @Override
+    T getFirst();
+
+    /**
+     * Creates a deferred iterable for selecting elements from the current iterable.
+     */
+    @Override
+    LazyIterable&lt;T&gt; select(Predicate&lt;? super T&gt; predicate);
+
+    @Override
+    &lt;P&gt; LazyIterable&lt;T&gt; selectWith(Predicate2&lt;? super T, ? super P&gt; predicate, P parameter);
+
+    @Override
+    &lt;S&gt; LazyIterable&lt;S&gt; selectInstancesOf(Class&lt;S&gt; clazz);
+
+    /**
+     * Creates a deferred iterable for rejecting elements from the current iterable.
+     */
+    @Override
+    LazyIterable&lt;T&gt; reject(Predicate&lt;? super T&gt; predicate);
+
+    @Override
+    &lt;P&gt; LazyIterable&lt;T&gt; rejectWith(Predicate2&lt;? super T, ? super P&gt; predicate, P parameter);
+
+    /**
+     * Creates a deferred iterable for collecting elements from the current iterable.
+     */
+    @Override
+    &lt;V&gt; LazyIterable&lt;V&gt; collect(Function&lt;? super T, ? extends V&gt; function);
+
+    @Override
+    &lt;P, V&gt; LazyIterable&lt;V&gt; collectWith(Function2&lt;? super T, ? super P, ? extends V&gt; function, P parameter);
+
+    /**
+     * Creates a deferred iterable for selecting and collecting elements from the current iterable.
+     */
+    @Override
+    &lt;V&gt; LazyIterable&lt;V&gt; collectIf(Predicate&lt;? super T&gt; predicate, Function&lt;? super T, ? extends V&gt; function);
+
+    /**
+     * Creates a deferred take iterable for the current iterable using the specified count as the limit.
+     */
+    LazyIterable&lt;T&gt; take(int count);
+
+    /**
+     * Creates a deferred drop iterable for the current iterable using the specified count as the limit.
+     */
+    LazyIterable&lt;T&gt; drop(int count);
+
+    /**
+     * @see OrderedIterable#takeWhile(Predicate)
+     * @since 8.0
+     */
+    LazyIterable&lt;T&gt; takeWhile(Predicate&lt;? super T&gt; predicate);
+
+    /**
+     * @see OrderedIterable#dropWhile(Predicate)
+     * @since 8.0
+     */
+    LazyIterable&lt;T&gt; dropWhile(Predicate&lt;? super T&gt; predicate);
+
+    /**
+     * Creates a deferred distinct iterable to get distinct elements from the current iterable.
+     *
+     * @since 5.0
+     */
+    LazyIterable&lt;T&gt; distinct();
+
+    /**
+     * Creates a deferred flattening iterable for the current iterable.
+     */
+    @Override
+    &lt;V&gt; LazyIterable&lt;V&gt; flatCollect(Function&lt;? super T, ? extends Iterable&lt;V&gt;&gt; function);
+
+    /**
+     * @since 9.2
+     */
+    @Override
+    default &lt;P, V&gt; LazyIterable&lt;V&gt; flatCollectWith(Function2&lt;? super T, ? super P, ? extends Iterable&lt;V&gt;&gt; function, P parameter)
+    {
+<span class="nc" id="L123">        return this.flatCollect(each -&gt; function.apply(each, parameter));</span>
+    }
+
+    /**
+     * Creates a deferred iterable that will join this iterable with the specified iterable.
+     */
+    LazyIterable&lt;T&gt; concatenate(Iterable&lt;T&gt; iterable);
+
+    /**
+     * Creates a deferred zip iterable.
+     */
+    @Override
+    &lt;S&gt; LazyIterable&lt;Pair&lt;T, S&gt;&gt; zip(Iterable&lt;S&gt; that);
+
+    /**
+     * Creates a deferred zipWithIndex iterable.
+     */
+    @Override
+    LazyIterable&lt;Pair&lt;T, Integer&gt;&gt; zipWithIndex();
+
+    /**
+     * Creates a deferred chunk iterable.
+     */
+    @Override
+    LazyIterable&lt;RichIterable&lt;T&gt;&gt; chunk(int size);
+
+    /**
+     * Creates a deferred tap iterable.
+     */
+    @Override
+    LazyIterable&lt;T&gt; tap(Procedure&lt;? super T&gt; procedure);
+
+    /**
+     * Iterates over this iterable adding all elements into the target collection.
+     */
+    @Override
+    &lt;R extends Collection&lt;T&gt;&gt; R into(R target);
+
+    /**
+     * Returns a lazy BooleanIterable which will transform the underlying iterable data to boolean values based on the booleanFunction.
+     */
+    @Override
+    LazyBooleanIterable collectBoolean(BooleanFunction&lt;? super T&gt; booleanFunction);
+
+    /**
+     * Returns a lazy ByteIterable which will transform the underlying iterable data to byte values based on the byteFunction.
+     */
+    @Override
+    LazyByteIterable collectByte(ByteFunction&lt;? super T&gt; byteFunction);
+
+    /**
+     * Returns a lazy CharIterable which will transform the underlying iterable data to char values based on the charFunction.
+     */
+    @Override
+    LazyCharIterable collectChar(CharFunction&lt;? super T&gt; charFunction);
+
+    /**
+     * Returns a lazy DoubleIterable which will transform the underlying iterable data to double values based on the doubleFunction.
+     */
+    @Override
+    LazyDoubleIterable collectDouble(DoubleFunction&lt;? super T&gt; doubleFunction);
+
+    /**
+     * Returns a lazy FloatIterable which will transform the underlying iterable data to float values based on the floatFunction.
+     */
+    @Override
+    LazyFloatIterable collectFloat(FloatFunction&lt;? super T&gt; floatFunction);
+
+    /**
+     * Returns a lazy IntIterable which will transform the underlying iterable data to int values based on the intFunction.
+     */
+    @Override
+    LazyIntIterable collectInt(IntFunction&lt;? super T&gt; intFunction);
+
+    /**
+     * Returns a lazy LongIterable which will transform the underlying iterable data to long values based on the longFunction.
+     */
+    @Override
+    LazyLongIterable collectLong(LongFunction&lt;? super T&gt; longFunction);
+
+    /**
+     * Returns a lazy ShortIterable which will transform the underlying iterable data to short values based on the shortFunction.
+     */
+    @Override
+    LazyShortIterable collectShort(ShortFunction&lt;? super T&gt; shortFunction);
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.0.201801022044</span></div></body></html>
