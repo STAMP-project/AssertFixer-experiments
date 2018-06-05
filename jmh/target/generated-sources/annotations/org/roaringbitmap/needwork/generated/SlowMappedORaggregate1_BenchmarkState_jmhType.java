@@ -1,0 +1,4 @@
+package org.roaringbitmap.needwork.generated;
+public class SlowMappedORaggregate1_BenchmarkState_jmhType extends SlowMappedORaggregate1_BenchmarkState_jmhType_B3 {
+}
+

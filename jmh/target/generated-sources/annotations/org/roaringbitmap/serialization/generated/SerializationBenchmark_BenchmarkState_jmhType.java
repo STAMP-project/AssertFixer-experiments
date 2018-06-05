@@ -1,0 +1,4 @@
+package org.roaringbitmap.serialization.generated;
+public class SerializationBenchmark_BenchmarkState_jmhType extends SerializationBenchmark_BenchmarkState_jmhType_B3 {
+}
+

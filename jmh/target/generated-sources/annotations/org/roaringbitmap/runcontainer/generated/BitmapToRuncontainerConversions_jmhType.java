@@ -1,0 +1,4 @@
+package org.roaringbitmap.runcontainer.generated;
+public class BitmapToRuncontainerConversions_jmhType extends BitmapToRuncontainerConversions_jmhType_B3 {
+}
+

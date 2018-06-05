@@ -1,0 +1,4 @@
+package org.roaringbitmap.runcontainer.generated;
+public class BasicAndContainerBenchmark_BenchmarkState_jmhType extends BasicAndContainerBenchmark_BenchmarkState_jmhType_B3 {
+}
+

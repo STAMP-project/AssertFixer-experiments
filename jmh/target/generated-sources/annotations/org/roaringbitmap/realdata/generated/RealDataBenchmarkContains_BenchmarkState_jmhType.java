@@ -1,0 +1,4 @@
+package org.roaringbitmap.realdata.generated;
+public class RealDataBenchmarkContains_BenchmarkState_jmhType extends RealDataBenchmarkContains_BenchmarkState_jmhType_B3 {
+}
+

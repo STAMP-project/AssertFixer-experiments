@@ -1,0 +1,4 @@
+package org.roaringbitmap.runcontainer.generated;
+public class RunContainerRealDataBenchmarkRunOptimize_BenchmarkState_jmhType extends RunContainerRealDataBenchmarkRunOptimize_BenchmarkState_jmhType_B3 {
+}
+

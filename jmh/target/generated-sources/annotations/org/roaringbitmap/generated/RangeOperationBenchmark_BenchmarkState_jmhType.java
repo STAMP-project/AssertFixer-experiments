@@ -1,0 +1,4 @@
+package org.roaringbitmap.generated;
+public class RangeOperationBenchmark_BenchmarkState_jmhType extends RangeOperationBenchmark_BenchmarkState_jmhType_B3 {
+}
+

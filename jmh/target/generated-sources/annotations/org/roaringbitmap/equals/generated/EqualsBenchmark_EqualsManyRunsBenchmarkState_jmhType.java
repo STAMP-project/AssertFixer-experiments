@@ -1,0 +1,4 @@
+package org.roaringbitmap.equals.generated;
+public class EqualsBenchmark_EqualsManyRunsBenchmarkState_jmhType extends EqualsBenchmark_EqualsManyRunsBenchmarkState_jmhType_B3 {
+}
+
