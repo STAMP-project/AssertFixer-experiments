@@ -1,0 +1,259 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>JsMagmaScriptEvaluator.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">js</a> &gt; <a href="index.source.html" class="el_package">org.molgenis.js.magma</a> &gt; <span class="el_source">JsMagmaScriptEvaluator.java</span></div><h1>JsMagmaScriptEvaluator.java</h1><pre class="source lang-java linenums">package org.molgenis.js.magma;
+
+import com.google.common.base.Stopwatch;
+import com.google.common.collect.Maps;
+import jdk.nashorn.api.scripting.JSObject;
+import jdk.nashorn.api.scripting.ScriptObjectMirror;
+import org.molgenis.data.Entity;
+import org.molgenis.data.meta.AttributeType;
+import org.molgenis.data.meta.IllegalAttributeTypeException;
+import org.molgenis.data.meta.model.Attribute;
+import org.molgenis.js.nashorn.NashornScriptEngine;
+import org.molgenis.script.core.ScriptException;
+import org.molgenis.util.UnexpectedEnumException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Component;
+
+import javax.script.Bindings;
+import javax.script.SimpleBindings;
+import java.io.IOException;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
+
+import static java.util.Arrays.asList;
+import static java.util.Objects.requireNonNull;
+import static java.util.concurrent.TimeUnit.MICROSECONDS;
+import static java.util.stream.Collectors.toList;
+import static org.molgenis.util.ResourceUtils.getString;
+
+/**
+ * JavaScript script evaluator using the Nashorn script engine.
+ */
+@Component
+public class JsMagmaScriptEvaluator
+{
+<span class="fc" id="L40">	private static final Logger LOG = LoggerFactory.getLogger(JsMagmaScriptEvaluator.class);</span>
+	private static final int ENTITY_REFERENCE_DEFAULT_FETCHING_DEPTH = 1;
+	private static final String KEY_IS_NULL = &quot;_isNull&quot;;
+	private static final String KEY_NEW_VALUE = &quot;newValue&quot;;
+	private static final String KEY_DOLLAR = &quot;$&quot;;
+	private static final String KEY_MAGMA_SCRIPT = &quot;MagmaScript&quot;;
+	private static final String BIND = &quot;bind&quot;;
+	public static final String KEY_ID_VALUE = &quot;_idValue&quot;;
+
+	private final NashornScriptEngine jsScriptEngine;
+<span class="fc" id="L50">	private final Bindings magmaBindings = new SimpleBindings();</span>
+
+	private static final List&lt;String&gt; RESOURCE_NAMES;
+
+	static
+	{
+<span class="fc" id="L56">		RESOURCE_NAMES = asList(&quot;/js/es6-shims.js&quot;, &quot;/js/math.min.js&quot;, &quot;/js/script-evaluator.js&quot;);</span>
+<span class="fc" id="L57">	}</span>
+
+	public JsMagmaScriptEvaluator(NashornScriptEngine jsScriptEngine) throws javax.script.ScriptException, IOException
+<span class="fc" id="L60">	{</span>
+<span class="fc" id="L61">		this.jsScriptEngine = requireNonNull(jsScriptEngine);</span>
+<span class="fc bfc" id="L62" title="All 2 branches covered.">		for (String resourceName : RESOURCE_NAMES)</span>
+		{
+<span class="fc" id="L64">			loadScript(resourceName);</span>
+<span class="fc" id="L65">		}</span>
+<span class="fc" id="L66">	}</span>
+
+	private void loadScript(String resourceName) throws javax.script.ScriptException, IOException
+	{
+<span class="fc" id="L70">		String string = getString(getClass(), resourceName);</span>
+<span class="fc" id="L71">		jsScriptEngine.eval(magmaBindings, string);</span>
+<span class="fc" id="L72">	}</span>
+
+	/**
+	 * Evaluates multiple expressions for a single entity instance.
+	 *
+	 * @param expressions {@link Collection} containing the expression {@link String}s
+	 * @param entity      the entity to bind the magmascript $ function to
+	 * @return Collection containing the expression result {@link Object}s
+	 */
+	public Collection&lt;Object&gt; eval(Collection&lt;String&gt; expressions, Entity entity)
+	{
+<span class="fc" id="L83">		Stopwatch stopwatch = null;</span>
+<span class="pc bpc" id="L84" title="1 of 2 branches missed.">		if (LOG.isTraceEnabled())</span>
+		{
+<span class="nc" id="L86">			stopwatch = Stopwatch.createStarted();</span>
+		}
+<span class="fc" id="L88">		Bindings bindings = createBindings(entity, ENTITY_REFERENCE_DEFAULT_FETCHING_DEPTH);</span>
+<span class="fc" id="L89">		List&lt;Object&gt; result = expressions.stream().map(expression -&gt; eval(bindings, expression)).collect(toList());</span>
+<span class="pc bpc" id="L90" title="1 of 2 branches missed.">		if (stopwatch != null)</span>
+		{
+<span class="nc" id="L92">			stopwatch.stop();</span>
+<span class="nc" id="L93">			LOG.trace(&quot;Script evaluation took {} µs&quot;, stopwatch.elapsed(MICROSECONDS));</span>
+		}
+<span class="fc" id="L95">		return result;</span>
+	}
+
+	public Object eval(String expression, Entity entity)
+	{
+<span class="fc" id="L100">		return eval(expression, entity, ENTITY_REFERENCE_DEFAULT_FETCHING_DEPTH);</span>
+	}
+
+	/**
+	 * Evaluate a expression for a given entity.
+	 *
+	 * @param expression JavaScript expression
+	 * @param entity     entity
+	 * @return evaluated expression result, return type depends on the expression.
+	 */
+	public Object eval(String expression, Entity entity, int depth)
+	{
+<span class="fc" id="L112">		return eval(createBindings(entity, depth), expression);</span>
+	}
+
+	/**
+	 * Evaluates an expression with the given bindings.
+	 *
+	 * @param bindings Bindings to use as engine scope
+	 * @param expression  JavaScript expression to evaluate
+	 * @return evaluated expression result, return type depends on the expression.
+	 */
+	private Object eval(Bindings bindings, String expression)
+	{
+		try
+		{
+<span class="fc" id="L126">			return jsScriptEngine.eval(bindings, expression);</span>
+		}
+<span class="fc" id="L128">		catch (javax.script.ScriptException t)</span>
+		{
+<span class="fc" id="L130">			return new ScriptException(t.getCause());</span>
+		}
+<span class="nc" id="L132">		catch (Exception t)</span>
+		{
+<span class="nc" id="L134">			return new ScriptException(t);</span>
+		}
+	}
+
+	/**
+	 * Creates magmascript bindings for a given Entity.
+	 *
+	 * @param entity the entity to bind to the magmascript $ function
+	 * @param depth  maximum depth to follow references when creating the entity value map
+	 * @return Bindings with $ function bound to the entity
+	 */
+	private Bindings createBindings(Entity entity, int depth)
+	{
+<span class="fc" id="L147">		Bindings bindings = new SimpleBindings();</span>
+<span class="fc" id="L148">		JSObject global = (JSObject) magmaBindings.get(&quot;nashorn.global&quot;);</span>
+<span class="fc" id="L149">		JSObject magmaScript = (JSObject) global.getMember(KEY_MAGMA_SCRIPT);</span>
+<span class="fc" id="L150">		JSObject dollarFunction = (JSObject) magmaScript.getMember(KEY_DOLLAR);</span>
+<span class="fc" id="L151">		JSObject bindFunction = (JSObject) dollarFunction.getMember(BIND);</span>
+<span class="fc" id="L152">		Object boundDollar = bindFunction.call(dollarFunction, toScriptEngineValueMap(entity, depth));</span>
+<span class="fc" id="L153">		bindings.put(KEY_DOLLAR, boundDollar);</span>
+<span class="fc" id="L154">		bindings.put(KEY_NEW_VALUE, magmaScript.getMember(KEY_NEW_VALUE));</span>
+<span class="fc" id="L155">		bindings.put(KEY_IS_NULL, magmaScript.getMember(KEY_IS_NULL));</span>
+<span class="fc" id="L156">		return bindings;</span>
+	}
+
+	/**
+	 * Convert entity to a JavaScript object.
+	 * Adds &quot;_idValue&quot; as a special key to every level for quick access to the id value of an entity.
+	 *
+	 * @param entity The entity to be flattened, should start with non null entity
+	 * @param depth  Represents the number of reference levels being added to the JavaScript object
+	 * @return A JavaScript object in Tree form, containing entities and there references
+	 */
+	private Object toScriptEngineValueMap(Entity entity, int depth)
+	{
+<span class="fc bfc" id="L169" title="All 2 branches covered.">		if (entity != null)</span>
+		{
+<span class="fc" id="L171">			Object idValue = toScriptEngineValue(entity, entity.getEntityType().getIdAttribute(), 0);</span>
+<span class="fc bfc" id="L172" title="All 2 branches covered.">			if (depth == 0)</span>
+			{
+<span class="fc" id="L174">				return idValue;</span>
+			}
+			else
+			{
+<span class="fc" id="L178">				Map&lt;String, Object&gt; map = Maps.newHashMap();</span>
+<span class="fc" id="L179">				entity.getEntityType()</span>
+<span class="fc" id="L180">					  .getAtomicAttributes()</span>
+<span class="fc" id="L181">					  .forEach(attr -&gt; map.put(attr.getName(), toScriptEngineValue(entity, attr, depth)));</span>
+<span class="fc" id="L182">				map.put(KEY_ID_VALUE, idValue);</span>
+<span class="fc" id="L183">				return map;</span>
+			}
+		}
+		else
+		{
+<span class="fc" id="L188">			return null;</span>
+		}
+	}
+
+	private Object toScriptEngineValue(Entity entity, Attribute attr, int depth)
+	{
+<span class="fc" id="L194">		Object value = null;</span>
+
+<span class="fc" id="L196">		String attrName = attr.getName();</span>
+<span class="fc" id="L197">		AttributeType attrType = attr.getDataType();</span>
+<span class="pc bpc" id="L198" title="2 of 11 branches missed.">		switch (attrType)</span>
+		{
+			case BOOL:
+<span class="fc" id="L201">				value = entity.getBoolean(attrName);</span>
+<span class="fc" id="L202">				break;</span>
+			case CATEGORICAL:
+			case FILE:
+			case XREF:
+<span class="fc" id="L206">				Entity xrefEntity = entity.getEntity(attrName);</span>
+<span class="fc" id="L207">				value = toScriptEngineValueMap(xrefEntity, depth - 1);</span>
+<span class="fc" id="L208">				break;</span>
+			case CATEGORICAL_MREF:
+			case MREF:
+			case ONE_TO_MANY:
+<span class="fc" id="L212">				ScriptObjectMirror jsArray = jsScriptEngine.newJSArray();</span>
+				@SuppressWarnings(&quot;unchecked&quot;)
+<span class="fc" id="L214">				List&lt;Object&gt; mrefValues = jsArray.to(List.class);</span>
+<span class="fc" id="L215">				entity.getEntities(attrName)</span>
+<span class="fc" id="L216">					  .forEach(mrefEntity -&gt; mrefValues.add(toScriptEngineValueMap(mrefEntity, depth - 1)));</span>
+<span class="fc" id="L217">				value = jsArray;</span>
+<span class="fc" id="L218">				break;</span>
+			case DATE:
+<span class="fc" id="L220">				LocalDate localDate = entity.getLocalDate(attrName);</span>
+<span class="fc bfc" id="L221" title="All 2 branches covered.">				if (localDate != null)</span>
+				{
+<span class="fc" id="L223">					value = localDate.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli();</span>
+				}
+				break;
+			case DATE_TIME:
+<span class="fc" id="L227">				Instant instant = entity.getInstant(attrName);</span>
+<span class="pc bpc" id="L228" title="1 of 2 branches missed.">				if (instant != null)</span>
+				{
+<span class="fc" id="L230">					value = instant.toEpochMilli();</span>
+				}
+				break;
+			case DECIMAL:
+<span class="fc" id="L234">				value = entity.getDouble(attrName);</span>
+<span class="fc" id="L235">				break;</span>
+			case EMAIL:
+			case ENUM:
+			case HTML:
+			case HYPERLINK:
+			case SCRIPT:
+			case STRING:
+			case TEXT:
+<span class="fc" id="L243">				value = entity.getString(attrName);</span>
+<span class="fc" id="L244">				break;</span>
+			case INT:
+<span class="fc" id="L246">				value = entity.getInt(attrName);</span>
+<span class="fc" id="L247">				break;</span>
+			case LONG:
+<span class="fc" id="L249">				value = entity.getLong(attrName);</span>
+<span class="fc" id="L250">				break;</span>
+			case COMPOUND:
+<span class="nc" id="L252">				throw new IllegalAttributeTypeException(attrType);</span>
+			default:
+<span class="nc" id="L254">				throw new UnexpectedEnumException(attrType);</span>
+		}
+<span class="fc" id="L256">		return value;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.1.201803210924</span></div></body></html>

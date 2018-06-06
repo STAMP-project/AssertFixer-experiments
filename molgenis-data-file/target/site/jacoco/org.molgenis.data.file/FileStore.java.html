@@ -1,0 +1,201 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>FileStore.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">data-file</a> &gt; <a href="index.source.html" class="el_package">org.molgenis.data.file</a> &gt; <span class="el_source">FileStore.java</span></div><h1>FileStore.java</h1><pre class="source lang-java linenums">package org.molgenis.data.file;
+
+import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.IOUtils;
+import org.molgenis.util.file.ZipFileUtil;
+
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.Objects;
+
+import static java.io.File.separator;
+
+public class FileStore
+{
+	private final String storageDir;
+	private final Path storageDirPath;
+
+	public FileStore(String storageDir)
+<span class="fc" id="L24">	{</span>
+<span class="fc" id="L25">		this.storageDir = Objects.requireNonNull(storageDir);</span>
+<span class="fc" id="L26">		storageDirPath = Paths.get(storageDir).toAbsolutePath();</span>
+<span class="fc" id="L27">	}</span>
+
+	public boolean createDirectory(String dirName)
+	{
+<span class="fc" id="L31">		return new File(storageDir + separator + dirName).mkdirs();</span>
+	}
+
+	public void deleteDirectory(String dirName) throws IOException
+	{
+<span class="nc" id="L36">		FileUtils.deleteDirectory(getFile(dirName));</span>
+<span class="nc" id="L37">	}</span>
+
+	public File store(InputStream is, String fileName) throws IOException
+	{
+<span class="fc" id="L41">		File file = new File(storageDir + separator + fileName);</span>
+<span class="fc" id="L42">		try (FileOutputStream fos = new FileOutputStream(file))</span>
+		{
+<span class="fc" id="L44">			IOUtils.copy(is, fos);</span>
+		}
+<span class="fc" id="L46">		return file;</span>
+	}
+
+	/**
+	 * Move directories in FileStore
+	 * Pleae provide the path from the relative root of the fileStore
+	 * &lt;p&gt;
+	 * So if you want to move a top-level  directory the following syntax is sufficient:
+	 * &lt;code&gt;
+	 * move(&quot;dir1&quot;, &quot;dir2&quot;);
+	 * &lt;/code&gt;
+	 * Sub-level directory can be moved by typing:
+	 * &lt;code&gt;
+	 * move(&quot;dir1/subdir1&quot;, &quot;dir2/subdir1&quot;);
+	 * &lt;/code&gt;
+	 * Make sure the top-level directories are existing
+	 *
+	 * @param sourceDir directory yo want to move
+	 * @param targetDir target directory you want to move to
+	 * @throws IOException
+	 */
+	public void move(String sourceDir, String targetDir) throws IOException
+	{
+<span class="fc" id="L69">		Files.move(Paths.get(getStorageDir() + File.separator + sourceDir),</span>
+<span class="fc" id="L70">				Paths.get(getStorageDir() + File.separator + targetDir));</span>
+<span class="fc" id="L71">	}</span>
+
+	public File getFile(String fileName)
+	{
+<span class="fc" id="L75">		return new File(storageDir + separator + fileName);</span>
+	}
+
+	public boolean delete(String fileName)
+	{
+<span class="fc" id="L80">		File file = new File(storageDir + separator + fileName);</span>
+<span class="fc" id="L81">		return file.delete();</span>
+	}
+
+	public String getStorageDir()
+	{
+<span class="fc" id="L86">		return storageDir;</span>
+	}
+
+	public void writeToFile(InputStream inputStream, String fileName) throws IOException
+	{
+<span class="nc" id="L91">		FileUtils.copyInputStreamToFile(inputStream, getFile(fileName));</span>
+<span class="nc" id="L92">	}</span>
+
+	////// Created a couple new methods based on relative Paths rather than Files.
+
+	/**
+	 * Deletes a file.
+	 *
+	 * @param path relative path for the file
+	 * @throws IOException              if deletion fails
+	 * @throws IllegalArgumentException if the path resolution fails
+	 */
+	public void delete(Path path) throws IOException
+	{
+<span class="fc" id="L105">		Files.deleteIfExists(resolve(path));</span>
+<span class="fc" id="L106">	}</span>
+
+	/**
+	 * Recursively deletes a directory.
+	 *
+	 * @param path relative path for the directory
+	 * @throws IOException              if deletion fails
+	 * @throws IllegalArgumentException if the path resolution fails
+	 */
+	public void deleteDirectory(Path path) throws IOException
+	{
+<span class="fc" id="L117">		FileUtils.deleteDirectory(resolve(path).toFile());</span>
+<span class="fc" id="L118">	}</span>
+
+	/**
+	 * Creates a temporary directory with a unique name.
+	 * Creates all directories needed in between as well.
+	 *
+	 * @param path   path where the directory should be created.
+	 * @param prefix prefix for the temporary directory name
+	 * @return Path of the created directory
+	 * @throws IOException              if the file creation fails
+	 * @throws IllegalArgumentException if the path resolution fails
+	 */
+	public Path createTempDirectory(Path path, String prefix) throws IOException
+	{
+<span class="fc" id="L132">		Path parent = resolve(path);</span>
+<span class="fc" id="L133">		Files.createDirectories(parent);</span>
+<span class="fc" id="L134">		Path result = Files.createTempDirectory(parent, prefix);</span>
+<span class="fc" id="L135">		return storageDirPath.relativize(result);</span>
+	}
+
+	/**
+	 * Unpacks a zipfile to a directory.
+	 *
+	 * @param is   InputStream containing the zip file contents
+	 * @param path path of the directory where the zip file should be unpacked
+	 * @throws org.molgenis.util.file.UnzipException if something goes wrong unzipping the file
+	 */
+	public void unpack(InputStream is, Path path)
+	{
+<span class="fc" id="L147">		File file = resolve(path).toFile();</span>
+<span class="fc" id="L148">		ZipFileUtil.unzip(is, file);</span>
+<span class="fc" id="L149">	}</span>
+
+	/**
+	 * Checks if a path exists.
+	 *
+	 * @param path Path to check
+	 * @return boolean indicating if a file or directory exists at the given path
+	 */
+	public boolean exists(Path path)
+	{
+<span class="fc" id="L159">		return resolve(path).toFile().exists();</span>
+	}
+
+	/**
+	 * Moves one relative path to another.
+	 *
+	 * @param from the relative path to move from
+	 * @param to   the relative path to move to
+	 * @throws IOException              if the move operation fails
+	 * @throws IllegalArgumentException if either path cannot be resolved
+	 */
+	public void move(Path from, Path to) throws IOException
+	{
+<span class="fc" id="L172">		Files.move(resolve(from), resolve(to));</span>
+<span class="fc" id="L173">	}</span>
+
+	/**
+	 * Streams file content.
+	 *
+	 * @param path the relative path for the file
+	 * @return InputStream for the file contents
+	 * @throws IOException if an IO operation fails
+	 */
+	public InputStream streamFileContent(Path path) throws IOException
+	{
+<span class="fc" id="L184">		return Files.newInputStream(resolve(path));</span>
+	}
+
+	private Path resolve(Path path)
+	{
+<span class="fc bfc" id="L189" title="All 2 branches covered.">		if (path.isAbsolute())</span>
+		{
+<span class="fc" id="L191">			throw new IllegalArgumentException(&quot;Path should be relative: &quot; + path);</span>
+		}
+<span class="fc" id="L193">		Path result = storageDirPath.resolve(path).normalize().toAbsolutePath();</span>
+<span class="fc bfc" id="L194" title="All 2 branches covered.">		if (!result.startsWith(storageDirPath))</span>
+		{
+<span class="fc" id="L196">			throw new IllegalArgumentException(&quot;Path should be inside storage dir: &quot; + path);</span>
+		}
+<span class="fc" id="L198">		return result;</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.1.201803210924</span></div></body></html>

@@ -1,0 +1,174 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>DefaultValuePopulator.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">data</a> &gt; <a href="index.source.html" class="el_package">org.molgenis.data.populate</a> &gt; <span class="el_source">DefaultValuePopulator.java</span></div><h1>DefaultValuePopulator.java</h1><pre class="source lang-java linenums">package org.molgenis.data.populate;
+
+import org.molgenis.data.Entity;
+import org.molgenis.data.EntityReferenceCreator;
+import org.molgenis.data.meta.AttributeType;
+import org.molgenis.data.meta.IllegalAttributeTypeException;
+import org.molgenis.data.meta.model.Attribute;
+import org.molgenis.data.meta.model.EntityType;
+import org.molgenis.data.support.AttributeUtils;
+import org.molgenis.util.ListEscapeUtils;
+import org.molgenis.util.UnexpectedEnumException;
+import org.springframework.stereotype.Component;
+
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
+import java.util.List;
+
+import static java.lang.Boolean.FALSE;
+import static java.lang.Boolean.TRUE;
+import static java.lang.String.format;
+import static java.util.Objects.requireNonNull;
+import static java.util.stream.Collectors.toList;
+import static org.molgenis.data.util.EntityUtils.asStream;
+import static org.molgenis.data.util.MolgenisDateFormat.*;
+
+/**
+ * Populate entity values for attributes with default values
+ */
+@Component
+public class DefaultValuePopulator
+{
+	private final EntityReferenceCreator entityReferenceCreator;
+
+	public DefaultValuePopulator(EntityReferenceCreator entityReferenceCreator)
+<span class="fc" id="L36">	{</span>
+<span class="fc" id="L37">		this.entityReferenceCreator = requireNonNull(entityReferenceCreator);</span>
+<span class="fc" id="L38">	}</span>
+
+	/**
+	 * Populates an entity with default values
+	 *
+	 * @param entity populated entity
+	 */
+	public void populate(Entity entity)
+	{
+<span class="fc" id="L47">		asStream(entity.getEntityType().getAllAttributes()).filter(Attribute::hasDefaultValue)</span>
+<span class="fc" id="L48">														   .forEach(attr -&gt; populateDefaultValues(entity, attr));</span>
+<span class="fc" id="L49">	}</span>
+
+	private void populateDefaultValues(Entity entity, Attribute attr)
+	{
+<span class="fc" id="L53">		Object defaultValueAsString = getDefaultValue(attr);</span>
+<span class="fc" id="L54">		entity.set(attr.getName(), defaultValueAsString);</span>
+<span class="fc" id="L55">	}</span>
+
+	private Object getDefaultValue(Attribute attr)
+	{
+<span class="fc" id="L59">		return AttributeUtils.getDefaultTypedValue(attr, entityReferenceCreator);</span>
+	}
+
+	private Object convertToTypedValue(Attribute attr, String valueAsString)
+	{
+<span class="nc" id="L64">		AttributeType attrType = attr.getDataType();</span>
+<span class="nc bnc" id="L65" title="All 11 branches missed.">		switch (attrType)</span>
+		{
+			case BOOL:
+<span class="nc" id="L68">				return convertBool(attr, valueAsString);</span>
+			case CATEGORICAL:
+			case FILE:
+			case XREF:
+<span class="nc" id="L72">				return convertRef(attr, valueAsString);</span>
+			case CATEGORICAL_MREF:
+			case MREF:
+			case ONE_TO_MANY:
+<span class="nc" id="L76">				return convertMref(attr, valueAsString);</span>
+			case DATE:
+<span class="nc" id="L78">				return convertDate(attr, valueAsString);</span>
+			case DATE_TIME:
+<span class="nc" id="L80">				return convertDateTime(attr, valueAsString);</span>
+			case DECIMAL:
+<span class="nc" id="L82">				return convertDecimal(valueAsString);</span>
+			case EMAIL:
+			case ENUM:
+			case HTML:
+			case HYPERLINK:
+			case SCRIPT:
+			case STRING:
+			case TEXT:
+<span class="nc" id="L90">				return valueAsString;</span>
+			case INT:
+<span class="nc" id="L92">				return convertInt(valueAsString);</span>
+			case LONG:
+<span class="nc" id="L94">				return convertLong(valueAsString);</span>
+			case COMPOUND:
+<span class="nc" id="L96">				throw new IllegalAttributeTypeException(attrType);</span>
+			default:
+<span class="nc" id="L98">				throw new UnexpectedEnumException(attrType);</span>
+		}
+	}
+
+	private static Long convertLong(String valueAsString)
+	{
+<span class="nc" id="L104">		return Long.valueOf(valueAsString);</span>
+	}
+
+	private static Integer convertInt(String valueAsString)
+	{
+<span class="nc" id="L109">		return Integer.valueOf(valueAsString);</span>
+	}
+
+	private static Double convertDecimal(String valueAsString)
+	{
+<span class="nc" id="L114">		return Double.valueOf(valueAsString);</span>
+	}
+
+	private static LocalDate convertDate(Attribute attr, String valueAsString)
+	{
+		try
+		{
+<span class="nc" id="L121">			return parseLocalDate(valueAsString);</span>
+		}
+<span class="nc" id="L123">		catch (DateTimeParseException e)</span>
+		{
+<span class="nc" id="L125">			throw new RuntimeException(</span>
+<span class="nc" id="L126">					format(FAILED_TO_PARSE_ATTRIBUTE_AS_DATE_MESSAGE, attr.getName(), valueAsString));</span>
+		}
+	}
+
+	private static Instant convertDateTime(Attribute attr, String valueAsString)
+	{
+		try
+		{
+<span class="nc" id="L134">			return parseInstant(valueAsString);</span>
+		}
+<span class="nc" id="L136">		catch (DateTimeParseException e)</span>
+		{
+<span class="nc" id="L138">			throw new RuntimeException(</span>
+<span class="nc" id="L139">					format(FAILED_TO_PARSE_ATTRIBUTE_AS_DATETIME_MESSAGE, attr.getName(), valueAsString));</span>
+		}
+	}
+
+	private static Boolean convertBool(Attribute attr, String valueAsString)
+	{
+<span class="nc bnc" id="L145" title="All 2 branches missed.">		if (valueAsString.equalsIgnoreCase(TRUE.toString()))</span>
+		{
+<span class="nc" id="L147">			return true;</span>
+		}
+<span class="nc bnc" id="L149" title="All 2 branches missed.">		else if (valueAsString.equalsIgnoreCase(FALSE.toString()))</span>
+		{
+<span class="nc" id="L151">			return false;</span>
+		}
+		else
+		{
+<span class="nc" id="L155">			throw new RuntimeException(</span>
+<span class="nc" id="L156">					format(&quot;Attribute [%s] value [%s] cannot be converter to type [%s]&quot;, attr.getName(), valueAsString,</span>
+<span class="nc" id="L157">							Boolean.class.getSimpleName()));</span>
+		}
+	}
+
+	private Entity convertRef(Attribute attr, String idValueAsString)
+	{
+<span class="nc" id="L163">		EntityType refEntityType = attr.getRefEntity();</span>
+<span class="nc" id="L164">		Object idValue = convertToTypedValue(refEntityType.getIdAttribute(), idValueAsString);</span>
+<span class="nc" id="L165">		return entityReferenceCreator.getReference(refEntityType, idValue);</span>
+	}
+
+	private List&lt;Entity&gt; convertMref(Attribute attr, String idValuesAsString)
+	{
+<span class="nc" id="L170">		List&lt;String&gt; valuesAsString = ListEscapeUtils.toList(idValuesAsString);</span>
+<span class="nc" id="L171">		return valuesAsString.stream().map(refValueAsString -&gt; convertRef(attr, refValueAsString)).collect(toList());</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.1.201803210924</span></div></body></html>
