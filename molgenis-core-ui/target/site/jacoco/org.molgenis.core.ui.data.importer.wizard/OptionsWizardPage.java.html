@@ -1,0 +1,209 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>OptionsWizardPage.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">core-ui</a> &gt; <a href="index.source.html" class="el_package">org.molgenis.core.ui.data.importer.wizard</a> &gt; <span class="el_source">OptionsWizardPage.java</span></div><h1>OptionsWizardPage.java</h1><pre class="source lang-java linenums">package org.molgenis.core.ui.data.importer.wizard;
+
+import org.apache.commons.lang3.StringUtils;
+import org.molgenis.core.ui.wizard.AbstractWizardPage;
+import org.molgenis.core.ui.wizard.Wizard;
+import org.molgenis.data.DataService;
+import org.molgenis.data.MolgenisDataException;
+import org.molgenis.data.RepositoryCollection;
+import org.molgenis.data.file.FileRepositoryCollectionFactory;
+import org.molgenis.data.file.util.FileExtensionUtils;
+import org.molgenis.data.importer.EntitiesValidationReport;
+import org.molgenis.data.importer.ImportService;
+import org.molgenis.data.importer.ImportServiceFactory;
+import org.molgenis.data.meta.MetaUtils;
+import org.molgenis.data.meta.model.Package;
+import org.molgenis.data.security.PackageIdentity;
+import org.molgenis.data.validation.meta.NameValidator;
+import org.molgenis.security.core.UserPermissionEvaluator;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Component;
+import org.springframework.validation.BindingResult;
+import org.springframework.validation.ObjectError;
+
+import javax.servlet.http.HttpServletRequest;
+import java.io.File;
+import java.util.*;
+
+import static java.util.Comparator.comparing;
+import static java.util.Objects.requireNonNull;
+import static org.molgenis.data.security.PackagePermission.ADD_ENTITY_TYPE;
+import static org.molgenis.data.security.PackagePermission.ADD_PACKAGE;
+import static org.molgenis.util.stream.MapCollectors.toLinkedMap;
+
+@Component
+public class OptionsWizardPage extends AbstractWizardPage
+{
+	private static final long serialVersionUID = -2931051095557369343L;
+<span class="fc" id="L39">	private static final Logger LOG = LoggerFactory.getLogger(OptionsWizardPage.class);</span>
+
+	private final transient FileRepositoryCollectionFactory fileRepositoryCollectionFactory;
+	private final transient ImportServiceFactory importServiceFactory;
+	private transient DataService dataService;
+	private final transient UserPermissionEvaluator userPermissionEvaluator;
+
+	public OptionsWizardPage(FileRepositoryCollectionFactory fileRepositoryCollectionFactory,
+			ImportServiceFactory importServiceFactory, DataService dataService,
+			UserPermissionEvaluator userPermissionEvaluator)
+<span class="nc" id="L49">	{</span>
+<span class="nc" id="L50">		this.fileRepositoryCollectionFactory = fileRepositoryCollectionFactory;</span>
+<span class="nc" id="L51">		this.importServiceFactory = importServiceFactory;</span>
+<span class="nc" id="L52">		this.dataService = dataService;</span>
+<span class="nc" id="L53">		this.userPermissionEvaluator = requireNonNull(userPermissionEvaluator);</span>
+<span class="nc" id="L54">	}</span>
+
+	@Override
+	public String getTitle()
+	{
+<span class="nc" id="L59">		return &quot;Options&quot;;</span>
+	}
+
+	@Override
+	public String handleRequest(HttpServletRequest request, BindingResult result, Wizard wizard)
+	{
+<span class="nc" id="L65">		ImportWizardUtil.validateImportWizard(wizard);</span>
+<span class="nc" id="L66">		ImportWizard importWizard = (ImportWizard) wizard;</span>
+<span class="nc" id="L67">		String entityImportOption = request.getParameter(&quot;entity_option&quot;);</span>
+<span class="nc" id="L68">		importWizard.setEntityImportOption(entityImportOption);</span>
+
+<span class="nc bnc" id="L70" title="All 2 branches missed.">		if (importWizard.getMustChangeEntityName())</span>
+		{
+<span class="nc" id="L72">			String userGivenName = request.getParameter(&quot;name&quot;);</span>
+<span class="nc bnc" id="L73" title="All 2 branches missed.">			if (StringUtils.isEmpty(userGivenName))</span>
+			{
+<span class="nc" id="L75">				result.addError(new ObjectError(&quot;wizard&quot;, &quot;Please enter an entity name&quot;));</span>
+<span class="nc" id="L76">				return null;</span>
+			}
+
+			try
+			{
+<span class="nc" id="L81">				NameValidator.validateEntityName(userGivenName);</span>
+<span class="nc bnc" id="L82" title="All 2 branches missed.">				if (dataService.hasRepository(userGivenName))</span>
+				{
+<span class="nc" id="L84">					result.addError(new ObjectError(&quot;wizard&quot;, &quot;An entity with this name already exists.&quot;));</span>
+<span class="nc" id="L85">					return null;</span>
+				}
+			}
+<span class="nc" id="L88">			catch (MolgenisDataException e)</span>
+			{
+<span class="nc" id="L90">				ImportWizardUtil.handleException(e, importWizard, result, LOG, entityImportOption);</span>
+<span class="nc" id="L91">				return null;</span>
+<span class="nc" id="L92">			}</span>
+
+<span class="nc" id="L94">			File tmpFile = importWizard.getFile();</span>
+<span class="nc" id="L95">			String fileName = tmpFile.getName();</span>
+
+			// FIXME: can this be done a bit cleaner?
+<span class="nc" id="L98">			String extension = FileExtensionUtils.findExtensionFromPossibilities(fileName,</span>
+<span class="nc" id="L99">					fileRepositoryCollectionFactory.createFileRepositoryCollection(tmpFile).getFileNameExtensions());</span>
+
+<span class="nc" id="L101">			File file = new File(tmpFile.getParent(), userGivenName + &quot;.&quot; + extension);</span>
+<span class="nc bnc" id="L102" title="All 2 branches missed.">			if (!tmpFile.renameTo(file))</span>
+			{
+<span class="nc" id="L104">				LOG.error(&quot;Failed to rename '{}' to '{}'&quot;, tmpFile.getName(), file.getName());</span>
+			}
+<span class="nc" id="L106">			importWizard.setFile(file);</span>
+		}
+
+		try
+		{
+<span class="nc" id="L111">			return validateInput(importWizard.getFile(), importWizard, result);</span>
+		}
+<span class="nc" id="L113">		catch (Exception e)</span>
+		{
+<span class="nc" id="L115">			ImportWizardUtil.handleException(e, importWizard, result, LOG, entityImportOption);</span>
+		}
+
+<span class="nc" id="L118">		return null;</span>
+	}
+
+	private String validateInput(File file, ImportWizard wizard, BindingResult result)
+	{
+
+		// decide what importer to use...
+<span class="nc" id="L125">		RepositoryCollection source = fileRepositoryCollectionFactory.createFileRepositoryCollection(file);</span>
+<span class="nc" id="L126">		ImportService importService = importServiceFactory.getImportService(file, source);</span>
+<span class="nc" id="L127">		EntitiesValidationReport validationReport = importService.validateImport(file, source);</span>
+
+<span class="nc" id="L129">		wizard.setEntitiesImportable(validationReport.getSheetsImportable());</span>
+<span class="nc" id="L130">		wizard.setFieldsDetected(validationReport.getFieldsImportable());</span>
+<span class="nc" id="L131">		wizard.setFieldsRequired(validationReport.getFieldsRequired());</span>
+<span class="nc" id="L132">		wizard.setFieldsAvailable(validationReport.getFieldsAvailable());</span>
+<span class="nc" id="L133">		wizard.setFieldsUnknown(validationReport.getFieldsUnknown());</span>
+
+<span class="nc" id="L135">		Set&lt;String&gt; allPackages = new HashSet&lt;&gt;(validationReport.getPackages());</span>
+<span class="nc" id="L136">		List&lt;Package&gt; packages = dataService.getMeta().getPackages();</span>
+<span class="nc bnc" id="L137" title="All 2 branches missed.">		for (Package p : packages)</span>
+		{
+<span class="nc" id="L139">			allPackages.add(p.getId());</span>
+<span class="nc" id="L140">		}</span>
+
+<span class="nc" id="L142">		List&lt;String&gt; entitiesInDefaultPackage = new ArrayList&lt;&gt;();</span>
+<span class="nc bnc" id="L143" title="All 2 branches missed.">		for (String entityTypeId : validationReport.getSheetsImportable().keySet())</span>
+		{
+<span class="nc bnc" id="L145" title="All 2 branches missed.">			if (validationReport.getSheetsImportable().get(entityTypeId))</span>
+			{
+<span class="nc bnc" id="L147" title="All 2 branches missed.">				if (isInDefaultPackage(entityTypeId, allPackages)) entitiesInDefaultPackage.add(entityTypeId);</span>
+			}
+<span class="nc" id="L149">		}</span>
+<span class="nc" id="L150">		wizard.setEntitiesInDefaultPackage(entitiesInDefaultPackage);</span>
+
+<span class="nc" id="L152">		Map&lt;String, String&gt; packageSelection = getPackageSelection(packages);</span>
+<span class="nc" id="L153">		wizard.setPackages(packageSelection);</span>
+
+<span class="nc" id="L155">		String msg = null;</span>
+<span class="nc bnc" id="L156" title="All 2 branches missed.">		if (validationReport.valid())</span>
+		{
+<span class="nc" id="L158">			wizard.setFile(file);</span>
+<span class="nc" id="L159">			msg = &quot;File is validated and can be imported.&quot;;</span>
+		}
+		else
+		{
+<span class="nc" id="L163">			wizard.setValidationMessage(</span>
+					&quot;File did not pass validation see results below. Please resolve the errors and try again.&quot;);
+		}
+
+<span class="nc" id="L167">		return msg;</span>
+	}
+
+	private boolean isInDefaultPackage(String entityTypeId, Set&lt;String&gt; packages)
+	{
+<span class="nc bnc" id="L172" title="All 2 branches missed.">		for (String packageName : packages)</span>
+		{
+<span class="nc bnc" id="L174" title="All 2 branches missed.">			if (entityTypeId.toLowerCase().startsWith(packageName.toLowerCase())) return false;</span>
+<span class="nc" id="L175">		}</span>
+
+<span class="nc" id="L177">		return true;</span>
+	}
+
+	/**
+	 * @return sorted map of writable packages ids to package path label
+	 */
+	private Map&lt;String, String&gt; getPackageSelection(List&lt;Package&gt; packages)
+	{
+<span class="nc" id="L185">		return packages.stream()</span>
+<span class="nc" id="L186">					   .filter(this::isWritablePackage)</span>
+<span class="nc" id="L187">					   .sorted(comparing(this::getPackagePathLabel))</span>
+<span class="nc" id="L188">					   .collect(toLinkedMap(Package::getId, this::getPackagePathLabel));</span>
+	}
+
+	private String getPackagePathLabel(Package aPackage)
+	{
+<span class="nc" id="L193">		String packageLabel = aPackage.getLabel();</span>
+<span class="nc" id="L194">		Package parentPackage = aPackage.getParent();</span>
+<span class="nc bnc" id="L195" title="All 2 branches missed.">		return parentPackage == null ? packageLabel : getPackagePathLabel(parentPackage) + &quot; / &quot; + packageLabel;</span>
+	}
+
+	/**
+	 * @return whether the current user can add entity types or add packages to this package
+	 */
+	private boolean isWritablePackage(Package aPackage)
+	{
+<span class="nc" id="L203">		PackageIdentity packageIdentity = new PackageIdentity(aPackage);</span>
+<span class="nc bnc" id="L204" title="All 2 branches missed.">		return !MetaUtils.isSystemPackage(aPackage) &amp;&amp; (</span>
+<span class="nc bnc" id="L205" title="All 2 branches missed.">				userPermissionEvaluator.hasPermission(packageIdentity, ADD_ENTITY_TYPE)</span>
+<span class="nc bnc" id="L206" title="All 2 branches missed.">						|| userPermissionEvaluator.hasPermission(packageIdentity, ADD_PACKAGE));</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.1.201803210924</span></div></body></html>

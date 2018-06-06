@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>GroupRestController.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">security</a> &gt; <a href="index.source.html" class="el_package">org.molgenis.security.group</a> &gt; <span class="el_source">GroupRestController.java</span></div><h1>GroupRestController.java</h1><pre class="source lang-java linenums">package org.molgenis.security.group;
+
+import io.swagger.annotations.*;
+import org.molgenis.data.security.auth.GroupService;
+import org.molgenis.data.security.permission.RoleMembershipService;
+import org.molgenis.security.core.GroupValueFactory;
+import org.molgenis.security.core.model.GroupValue;
+import org.molgenis.security.core.model.RoleValue;
+import org.molgenis.web.ErrorMessageResponse;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import javax.annotation.Nullable;
+import javax.validation.constraints.Pattern;
+
+import static java.util.Objects.requireNonNull;
+import static org.molgenis.data.security.auth.GroupService.DEFAULT_ROLES;
+import static org.molgenis.data.security.auth.GroupService.MANAGER;
+import static org.molgenis.security.core.utils.SecurityUtils.getCurrentUsername;
+
+@RestController
+@Validated
+@Api(&quot;Group&quot;)
+public class GroupRestController
+{
+	private final GroupValueFactory groupValueFactory;
+	private final GroupService groupService;
+	private final RoleMembershipService roleMembershipService;
+
+	GroupRestController(GroupValueFactory groupValueFactory, GroupService groupService,
+			RoleMembershipService roleMembershipService)
+<span class="fc" id="L35">	{</span>
+<span class="fc" id="L36">		this.groupValueFactory = requireNonNull(groupValueFactory);</span>
+<span class="fc" id="L37">		this.groupService = requireNonNull(groupService);</span>
+<span class="fc" id="L38">		this.roleMembershipService = requireNonNull(roleMembershipService);</span>
+<span class="fc" id="L39">	}</span>
+
+	@PostMapping(&quot;api/plugin/group&quot;)
+	@ApiOperation(value = &quot;Create a new Group&quot;, response = String.class)
+	@Transactional
+	@ApiResponses({
+			@ApiResponse(code = 400, message = &quot;When the request is incorrect&quot;, response = ErrorMessageResponse.class),
+			@ApiResponse(code = 401, message = &quot;When authentication information is missing&quot;, response = ErrorMessageResponse.class),
+			@ApiResponse(code = 403, message = &quot;When the authenticated user has insufficient permissions&quot;, response = ErrorMessageResponse.class),
+			@ApiResponse(code = 200, message = &quot;The name of the newly created group&quot;, response = String.class) })
+	public String createGroup(
+			@ApiParam(&quot;Alphanumeric name for the group&quot;) @Pattern(regexp = &quot;^[a-z][a-z0-9]*(-[a-z0-9]+)*$&quot;) @RequestParam(name = &quot;name&quot;, value = &quot;name&quot;) String name,
+			@ApiParam(&quot;Label for the group&quot;) @RequestParam(&quot;label&quot;) String label,
+			@ApiParam(&quot;Description for the group&quot;) @RequestParam(value = &quot;description&quot;, required = false) @Nullable String description,
+			@ApiParam(value = &quot;Indication if this group should be publicly visible (not yet implemented!)&quot;, defaultValue = &quot;true&quot;) @RequestParam(value = &quot;public&quot;, required = false, defaultValue = &quot;true&quot;) boolean publiclyVisible)
+	{
+<span class="fc" id="L55">		GroupValue groupValue = groupValueFactory.createGroup(name, label, description, publiclyVisible,</span>
+<span class="fc" id="L56">				DEFAULT_ROLES.keySet());</span>
+
+<span class="fc" id="L58">		groupService.persist(groupValue);</span>
+<span class="fc" id="L59">		groupService.grantPermissions(groupValue);</span>
+<span class="fc" id="L60">		roleMembershipService.addUserToRole(getCurrentUsername(), getManagerRoleName(groupValue));</span>
+
+<span class="fc" id="L62">		return groupValue.getName();</span>
+	}
+
+	private String getManagerRoleName(GroupValue groupValue)
+	{
+<span class="fc" id="L67">		return groupValue.getRoles()</span>
+<span class="fc" id="L68">						 .stream()</span>
+<span class="fc" id="L69">						 .filter(role -&gt; role.getLabel().equals(MANAGER))</span>
+<span class="fc" id="L70">						 .map(RoleValue::getName)</span>
+<span class="fc" id="L71">						 .findFirst()</span>
+<span class="pc" id="L72">						 .orElseThrow(() -&gt; new IllegalStateException(&quot;Manager role is missing&quot;));</span>
+	}
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.1.201803210924</span></div></body></html>
