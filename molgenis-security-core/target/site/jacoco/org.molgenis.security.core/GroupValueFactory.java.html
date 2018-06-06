@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>GroupValueFactory.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">security-core</a> &gt; <a href="index.source.html" class="el_package">org.molgenis.security.core</a> &gt; <span class="el_source">GroupValueFactory.java</span></div><h1>GroupValueFactory.java</h1><pre class="source lang-java linenums">package org.molgenis.security.core;
+
+import com.google.common.collect.ImmutableList;
+import org.molgenis.security.core.model.GroupValue;
+import org.molgenis.security.core.model.PackageValue;
+import org.molgenis.security.core.model.RoleValue;
+import org.springframework.stereotype.Component;
+
+import javax.annotation.Nullable;
+import java.util.Collection;
+import java.util.Optional;
+
+@Component
+<span class="fc" id="L14">public class GroupValueFactory</span>
+{
+	public GroupValue createGroup(String groupName, String label, @Nullable String description,
+			boolean publiclyVisible, Collection&lt;String&gt; roleLabels)
+	{
+<span class="fc" id="L19">		GroupValue.Builder groupBuilder = GroupValue.builder()</span>
+<span class="fc" id="L20">													.setName(groupName)</span>
+<span class="fc" id="L21">													.setLabel(label)</span>
+<span class="fc" id="L22">													.setPublic(publiclyVisible);</span>
+<span class="fc" id="L23">		Optional.ofNullable(description).ifPresent(groupBuilder::setDescription);</span>
+
+<span class="fc" id="L25">		PackageValue.Builder packageBuilder = PackageValue.builder()</span>
+<span class="fc" id="L26">														  .setName(groupName.replace('-', '_'))</span>
+<span class="fc" id="L27">														  .setLabel(label);</span>
+<span class="fc" id="L28">		Optional.ofNullable(description).ifPresent(packageBuilder::setDescription);</span>
+<span class="fc" id="L29">		PackageValue rootPackage = packageBuilder.build();</span>
+<span class="fc" id="L30">		groupBuilder.setRootPackage(rootPackage);</span>
+
+<span class="fc" id="L32">		ImmutableList.Builder&lt;RoleValue&gt; rolesBuilder = groupBuilder.rolesBuilder();</span>
+<span class="fc" id="L33">		roleLabels.stream().map(roleLabel -&gt; createRoleValue(groupName, label, roleLabel)).forEach(rolesBuilder::add);</span>
+<span class="fc" id="L34">		return groupBuilder.build();</span>
+	}
+
+	public static String createRoleName(String groupName, String roleLabel)
+	{
+<span class="fc" id="L39">		return (groupName + &quot; &quot; + roleLabel).replaceAll(&quot;[- ]+&quot;, &quot;_&quot;).toUpperCase();</span>
+	}
+
+	private static RoleValue createRoleValue(String groupName, String groupLabel, String roleLabel)
+	{
+<span class="fc" id="L44">		return RoleValue.builder()</span>
+<span class="fc" id="L45">						.setName(createRoleName(groupName, roleLabel))</span>
+<span class="fc" id="L46">						.setLabel(roleLabel)</span>
+<span class="fc" id="L47">						.setDescription(groupLabel + &quot; &quot; + roleLabel)</span>
+<span class="fc" id="L48">						.build();</span>
+	}
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.1.201803210924</span></div></body></html>
