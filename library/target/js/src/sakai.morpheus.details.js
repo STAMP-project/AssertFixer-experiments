@@ -1,0 +1,1 @@
+$PBJQ("details").details();
