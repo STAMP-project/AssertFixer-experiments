@@ -1,0 +1,1 @@
+jQuery(function(){var b=$PBJQ(".Mrphs-collapseTools");if(b.length>0){var a=function(){var c=$PBJQ("#toolMenuWrap").outerWidth();b.css("position","fixed").css("bottom",0).css("left",0).css("display","flex").css("width",c);b.addClass("floatingToolMenu")};a();b.on("click",a)}});

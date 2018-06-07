@@ -1,0 +1,1 @@
+$PBJQ(function(){var f=$PBJQ("#toolMenu");var d=$PBJQ("#content");if(d.length==1){var e=f.height();if($PBJQ(document.body).height()<$PBJQ(window).height()){var b=$PBJQ("#footer").outerHeight();var a=d.offset().top;var c=$PBJQ(window).height()-a-b;e=Math.max(e,c)}d.css("minHeight",e+"px")}});
