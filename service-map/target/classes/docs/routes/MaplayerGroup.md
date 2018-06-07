@@ -1,0 +1,1 @@
+ MaplayerGroup implementation for Ibatis
