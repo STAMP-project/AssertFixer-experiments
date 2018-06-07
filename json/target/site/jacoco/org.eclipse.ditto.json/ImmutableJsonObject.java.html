@@ -1,0 +1,498 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ImmutableJsonObject.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Eclipse Ditto :: JSON</a> &gt; <a href="index.source.html" class="el_package">org.eclipse.ditto.json</a> &gt; <span class="el_source">ImmutableJsonObject.java</span></div><h1>ImmutableJsonObject.java</h1><pre class="source lang-java linenums">/*
+ * Copyright (c) 2017 Bosch Software Innovations GmbH.
+ *
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v2.0
+ * which accompanies this distribution, and is available at
+ * https://www.eclipse.org/org/documents/epl-2.0/index.php
+ *
+ * Contributors:
+ *    Bosch Software Innovations GmbH - initial contribution
+ */
+package org.eclipse.ditto.json;
+
+import static java.util.Objects.requireNonNull;
+
+import java.text.MessageFormat;
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
+import javax.annotation.Nullable;
+import javax.annotation.concurrent.Immutable;
+
+/**
+ * An immutable implementation of a JSON object. Each call to a method which would alter the state of this object
+ * returns a new JSON object with the altered state instead while the old JSON object remains unchanged. Care has to be
+ * taken to assign the result of an altering method like {@code add} to a variable to have a handle to the new resp.
+ * altered JSON object.
+ */
+@Immutable
+final class ImmutableJsonObject extends AbstractImmutableJsonValue implements JsonObject {
+
+<span class="fc" id="L40">    private static final JsonKey ROOT_KEY = JsonFactory.newKey(&quot;/&quot;);</span>
+
+    private final Map&lt;String, JsonField&gt; fields;
+
+<span class="fc" id="L44">    private ImmutableJsonObject(final Map&lt;String, JsonField&gt; theFields) {</span>
+<span class="fc" id="L45">        requireNonNull(theFields, &quot;The fields of JSON object must not be null!&quot;);</span>
+
+<span class="fc" id="L47">        fields = Collections.unmodifiableMap(new LinkedHashMap&lt;&gt;(theFields));</span>
+<span class="fc" id="L48">    }</span>
+
+    /**
+     * Returns a new empty JSON object.
+     *
+     * @return a new empty JSON object.
+     */
+    public static ImmutableJsonObject empty() {
+<span class="fc" id="L56">        return new ImmutableJsonObject(Collections.emptyMap());</span>
+    }
+
+    /**
+     * Returns a new {@code ImmutableJsonObject} instance which contains the given fields.
+     *
+     * @param fields the fields of the new JSON object.
+     * @return a new JSON object containing the {@code fields}.
+     * @throws NullPointerException if {@code fields} is {@code null}.
+     */
+    public static ImmutableJsonObject of(final Map&lt;String, JsonField&gt; fields) {
+<span class="fc" id="L67">        return new ImmutableJsonObject(fields);</span>
+    }
+
+    private static void checkPointer(final JsonPointer pointer) {
+<span class="fc" id="L71">        requireNonNull(pointer, &quot;The JSON pointer must not be null!&quot;);</span>
+<span class="fc" id="L72">    }</span>
+
+    private static void checkFieldDefinition(final JsonFieldDefinition fieldDefinition) {
+<span class="fc" id="L75">        requireNonNull(fieldDefinition, &quot;The JSON field definition which supplies the pointer must not be null!&quot;);</span>
+<span class="fc" id="L76">    }</span>
+
+    @Override
+    public JsonObject setValue(final CharSequence key, final int value) {
+<span class="fc" id="L80">        return setValue(key, JsonFactory.newValue(value));</span>
+    }
+
+    @Override
+    public JsonObject setValue(final CharSequence key, final long value) {
+<span class="fc" id="L85">        return setValue(key, JsonFactory.newValue(value));</span>
+    }
+
+    @Override
+    public JsonObject setValue(final CharSequence key, final double value) {
+<span class="fc" id="L90">        return setValue(key, JsonFactory.newValue(value));</span>
+    }
+
+    @Override
+    public JsonObject setValue(final CharSequence key, final boolean value) {
+<span class="fc" id="L95">        return setValue(key, JsonFactory.newValue(value));</span>
+    }
+
+    @Override
+    public JsonObject setValue(final CharSequence key, final String value) {
+<span class="fc" id="L100">        return setValue(key, JsonFactory.newValue(value));</span>
+    }
+
+    @Override
+    public JsonObject setValue(final CharSequence key, final JsonValue value) {
+<span class="fc" id="L105">        final JsonPointer pointer = JsonFactory.getNonEmptyPointer(key);</span>
+<span class="fc" id="L106">        final JsonKey leafKey = pointer.getLeaf().orElse(ROOT_KEY);</span>
+<span class="fc" id="L107">        final Optional&lt;JsonFieldDefinition&gt; keyDefinition = getDefinitionForKey(leafKey);</span>
+
+<span class="fc" id="L109">        return setFieldInHierarchy(this, pointer, JsonFactory.newField(leafKey, value, keyDefinition.orElse(null)));</span>
+    }
+
+    private Optional&lt;JsonFieldDefinition&gt; getDefinitionForKey(final CharSequence key) {
+<span class="fc" id="L113">        return getField(key).flatMap(JsonField::getDefinition);</span>
+    }
+
+    @Override
+    public &lt;T&gt; JsonObject set(final JsonFieldDefinition&lt;T&gt; fieldDefinition, @Nullable final T value) {
+<span class="fc" id="L118">        requireNonNull(fieldDefinition, &quot;The JSON field definition to set the value for must not be null!&quot;);</span>
+
+<span class="fc" id="L120">        final JsonPointer pointer = fieldDefinition.getPointer();</span>
+
+<span class="fc" id="L122">        final JsonKey leafKey = pointer.getLeaf().orElseThrow(() -&gt; {</span>
+<span class="nc" id="L123">            final String msgTemplate = &quot;The pointer of the field definition &lt;{0}&gt; must not be empty!&quot;;</span>
+<span class="nc" id="L124">            return new IllegalArgumentException(MessageFormat.format(msgTemplate, fieldDefinition));</span>
+        });
+<span class="fc" id="L126">        final JsonField field = JsonFactory.newField(leafKey, JsonFactory.getAppropriateValue(value), fieldDefinition);</span>
+<span class="fc" id="L127">        return setFieldInHierarchy(this, pointer, field);</span>
+    }
+
+    private static JsonObject setFieldInHierarchy(final JsonObject target, final JsonPointer pointer,
+            final JsonField jsonField) {
+
+<span class="fc bfc" id="L133" title="All 2 branches covered.">        if (1 &gt;= pointer.getLevelCount()) {</span>
+<span class="fc" id="L134">            return target.set(jsonField);</span>
+        }
+
+<span class="fc" id="L137">        final JsonKey rootKey = pointer.getRoot().orElse(ROOT_KEY);</span>
+
+<span class="fc" id="L139">        final JsonObject newTarget = target.getValue(rootKey)</span>
+<span class="fc" id="L140">                .filter(JsonValue::isObject)</span>
+<span class="pc bpc" id="L141" title="1 of 2 branches missed.">                .filter(jsonValue -&gt; !jsonValue.isNull())</span>
+<span class="fc" id="L142">                .map(JsonValue::asObject)</span>
+<span class="fc" id="L143">                .orElseGet(ImmutableJsonObject::empty);</span>
+
+        // let the recursion begin ]:-)
+<span class="fc" id="L146">        return target.setValue(rootKey, setFieldInHierarchy(newTarget, pointer.nextLevel(), jsonField));</span>
+    }
+
+    @Override
+    public ImmutableJsonObject set(final JsonField field) {
+<span class="fc" id="L151">        requireNonNull(field, &quot;The JSON field to be set must not be null!&quot;);</span>
+
+<span class="fc" id="L153">        ImmutableJsonObject result = this;</span>
+
+<span class="fc" id="L155">        final JsonField existingField = fields.get(field.getKeyName());</span>
+<span class="fc bfc" id="L156" title="All 2 branches covered.">        if (!field.equals(existingField)) {</span>
+<span class="fc" id="L157">            final Map&lt;String, JsonField&gt; fieldsCopy = copyFields();</span>
+<span class="fc" id="L158">            fieldsCopy.put(field.getKeyName(), field);</span>
+<span class="fc" id="L159">            result = new ImmutableJsonObject(fieldsCopy);</span>
+        }
+
+<span class="fc" id="L162">        return result;</span>
+    }
+
+    private Map&lt;String, JsonField&gt; copyFields() {
+<span class="fc" id="L166">        return new LinkedHashMap&lt;&gt;(fields);</span>
+    }
+
+    @Override
+    public JsonObject setAll(final Iterable&lt;JsonField&gt; fields) {
+<span class="fc" id="L171">        requireNonNull(fields, &quot;The JSON fields to add must not be null!&quot;);</span>
+
+        final JsonObject result;
+
+<span class="fc bfc" id="L175" title="All 2 branches covered.">        if (isEmpty(fields)) {</span>
+<span class="fc" id="L176">            result = this;</span>
+        } else {
+<span class="fc" id="L178">            final Map&lt;String, JsonField&gt; fieldsCopy = copyFields();</span>
+<span class="fc" id="L179">            fields.forEach(jsonField -&gt; fieldsCopy.put(jsonField.getKeyName(), jsonField));</span>
+<span class="fc" id="L180">            result = new ImmutableJsonObject(fieldsCopy);</span>
+        }
+
+<span class="fc" id="L183">        return result;</span>
+    }
+
+    private static boolean isEmpty(final Iterable&lt;?&gt; iterable) {
+<span class="fc" id="L187">        final Iterator&lt;?&gt; iterator = iterable.iterator();</span>
+<span class="fc bfc" id="L188" title="All 2 branches covered.">        return !iterator.hasNext();</span>
+    }
+
+    @Override
+    public boolean contains(final CharSequence key) {
+<span class="fc" id="L193">        requireNonNull(key, &quot;The key or pointer to check the existence of a value for must not be null!&quot;);</span>
+
+        final boolean result;
+
+<span class="fc" id="L197">        final JsonPointer pointer = JsonFactory.newPointer(key);</span>
+
+<span class="fc bfc" id="L199" title="All 2 branches covered.">        if (1 &gt;= pointer.getLevelCount()) {</span>
+<span class="fc" id="L200">            result = pointer.getRoot().map(this::containsKey).orElse(false);</span>
+        } else {
+<span class="fc" id="L202">            result = pointer.getRoot()</span>
+<span class="fc" id="L203">                    .flatMap(this::getValueForKey)</span>
+<span class="pc bpc" id="L204" title="1 of 2 branches missed.">                    .map(jsonValue -&gt; !jsonValue.isObject() ||</span>
+<span class="fc bfc" id="L205" title="All 2 branches covered.">                            jsonValue.asObject().contains(pointer.nextLevel())) // Recursion</span>
+<span class="fc" id="L206">                    .orElse(false);</span>
+        }
+
+<span class="fc" id="L209">        return result;</span>
+    }
+
+    private boolean containsKey(final CharSequence key) {
+<span class="fc" id="L213">        return fields.containsKey(key.toString());</span>
+    }
+
+    private Optional&lt;JsonValue&gt; getValueForKey(final CharSequence key) {
+<span class="fc" id="L217">        final JsonField jsonField = fields.get(key.toString());</span>
+<span class="fc bfc" id="L218" title="All 2 branches covered.">        return null != jsonField ? Optional.of(jsonField.getValue()) : Optional.empty();</span>
+    }
+
+    @Override
+    public Optional&lt;JsonValue&gt; getValue(final CharSequence key) {
+<span class="fc" id="L223">        requireNonNull(key, &quot;The key or pointer of the value to be retrieved must not be null!&quot;);</span>
+<span class="fc" id="L224">        return getValueForPointer(JsonFactory.newPointer(key));</span>
+    }
+
+    private Optional&lt;JsonValue&gt; getValueForPointer(final JsonPointer pointer) {
+        final Optional&lt;JsonValue&gt; result;
+
+<span class="fc" id="L230">        final JsonKey rootKey = pointer.getRoot().orElse(ROOT_KEY);</span>
+<span class="fc" id="L231">        final int levelCount = pointer.getLevelCount();</span>
+<span class="fc bfc" id="L232" title="All 2 branches covered.">        if (0 == levelCount) {</span>
+<span class="fc" id="L233">            result = Optional.of(this);</span>
+<span class="fc bfc" id="L234" title="All 2 branches covered.">        } else if (1 == levelCount) {</span>
+            // same as getting a value for a key
+<span class="fc" id="L236">            result = getValueForKey(rootKey);</span>
+        } else {
+<span class="fc" id="L238">            result = getValueForKey(rootKey)</span>
+<span class="fc" id="L239">                    .filter(JsonValue::isObject)</span>
+<span class="fc" id="L240">                    .map(JsonValue::asObject)</span>
+<span class="fc" id="L241">                    .flatMap(jsonObject -&gt; jsonObject.getValue(pointer.nextLevel()));</span>
+        }
+
+<span class="fc" id="L244">        return result;</span>
+    }
+
+    @Override
+    public &lt;T&gt; Optional&lt;T&gt; getValue(final JsonFieldDefinition&lt;T&gt; fieldDefinition) {
+<span class="fc" id="L249">        checkFieldDefinition(fieldDefinition);</span>
+
+<span class="fc" id="L251">        return getValueForPointer(fieldDefinition.getPointer()).map(fieldDefinition::mapValue);</span>
+    }
+
+    @Override
+    public &lt;T&gt; T getValueOrThrow(final JsonFieldDefinition&lt;T&gt; fieldDefinition) {
+<span class="pc" id="L256">        return getValue(fieldDefinition).orElseThrow(() -&gt; new JsonMissingFieldException(fieldDefinition));</span>
+    }
+
+    @Override
+    public JsonObject get(final JsonPointer pointer) {
+<span class="fc" id="L261">        checkPointer(pointer);</span>
+
+<span class="fc bfc" id="L263" title="All 2 branches covered.">        if (pointer.isEmpty()) {</span>
+<span class="fc" id="L264">            return this;</span>
+        }
+
+        final JsonObject result;
+
+<span class="fc" id="L269">        final JsonKey rootKey = pointer.getRoot().orElse(ROOT_KEY);</span>
+<span class="fc" id="L270">        final Optional&lt;JsonValue&gt; rootKeyValue = getValueForKey(rootKey);</span>
+<span class="fc" id="L271">        final Optional&lt;JsonFieldDefinition&gt; rootKeyDefinition = getDefinitionForKey(rootKey);</span>
+<span class="fc bfc" id="L272" title="All 2 branches covered.">        if (1 &gt;= pointer.getLevelCount()) {</span>
+<span class="fc" id="L273">            result = rootKeyValue.map(</span>
+<span class="fc" id="L274">                    jsonValue -&gt; JsonFactory.newField(rootKey, jsonValue, rootKeyDefinition.orElse(null)))</span>
+<span class="fc" id="L275">                    .map(jsonField -&gt; Collections.singletonMap(jsonField.getKeyName(), jsonField))</span>
+<span class="fc" id="L276">                    .map(ImmutableJsonObject::of)</span>
+<span class="fc" id="L277">                    .orElseGet(ImmutableJsonObject::empty);</span>
+        } else {
+
+            // The pointer has more than one level; therefore build result recursively.
+<span class="fc" id="L281">            final JsonPointer nextPointerLevel = pointer.nextLevel();</span>
+<span class="fc" id="L282">            final Predicate&lt;JsonObject&gt; containsNextLevelRootKey = jsonObject -&gt; nextPointerLevel.getRoot()</span>
+<span class="fc" id="L283">                    .filter(jsonObject::contains)</span>
+<span class="fc" id="L284">                    .isPresent();</span>
+
+<span class="fc" id="L286">            result = rootKeyValue.map(jsonValue -&gt; {</span>
+<span class="pc bpc" id="L287" title="1 of 2 branches missed.">                if (jsonValue.isObject()) {</span>
+<span class="fc bfc" id="L288" title="All 2 branches covered.">                    if (containsNextLevelRootKey.test(jsonValue.asObject())) {</span>
+<span class="fc" id="L289">                        return jsonValue.asObject().get(nextPointerLevel); // Recursion</span>
+                    } else {
+<span class="fc" id="L291">                        return null;</span>
+                    }
+                } else {
+<span class="nc" id="L294">                    return jsonValue;</span>
+                }
+            })
+<span class="fc" id="L297">                    .map(jsonValue -&gt; JsonFactory.newField(rootKey, jsonValue, rootKeyDefinition.orElse(null)))</span>
+<span class="fc" id="L298">                    .map(jsonField -&gt; Collections.singletonMap(jsonField.getKeyName(), jsonField))</span>
+<span class="fc" id="L299">                    .map(ImmutableJsonObject::of)</span>
+<span class="fc" id="L300">                    .orElseGet(ImmutableJsonObject::empty);</span>
+        }
+
+<span class="fc" id="L303">        return result;</span>
+    }
+
+    @Override
+    public JsonObject get(final JsonFieldDefinition fieldDefinition) {
+<span class="nc" id="L308">        checkFieldDefinition(fieldDefinition);</span>
+<span class="nc" id="L309">        return get(fieldDefinition.getPointer());</span>
+    }
+
+    @Override
+    public JsonObject get(final JsonFieldSelector fieldSelector) {
+<span class="fc" id="L314">        requireNonNull(fieldSelector, &quot;The JSON field selector must not be null!&quot;);</span>
+
+<span class="fc bfc" id="L316" title="All 2 branches covered.">        if (isEmpty()) {</span>
+<span class="fc" id="L317">            return this;</span>
+        }
+
+<span class="fc" id="L320">        final List&lt;JsonPointer&gt; pointersContainedInThis = fieldSelector.getPointers()</span>
+<span class="fc" id="L321">                .stream()</span>
+<span class="fc" id="L322">                .filter(this::contains)</span>
+<span class="fc" id="L323">                .collect(Collectors.toList());</span>
+
+<span class="fc bfc" id="L325" title="All 2 branches covered.">        if (pointersContainedInThis.isEmpty()) {</span>
+<span class="fc" id="L326">            return JsonFactory.newObject();</span>
+        } else {
+<span class="fc" id="L328">            return filterByTrie(this, JsonFieldSelectorTrie.of(pointersContainedInThis));</span>
+        }
+    }
+
+    @SuppressWarnings(&quot;unchecked&quot;)
+    private static JsonObject filterByTrie(final JsonObject self, final JsonFieldSelectorTrie trie) {
+<span class="pc bpc" id="L334" title="1 of 2 branches missed.">        if (trie.isEmpty()) {</span>
+<span class="nc" id="L335">            return self;</span>
+        }
+
+<span class="fc" id="L338">        final JsonObjectBuilder builder = JsonFactory.newObjectBuilder();</span>
+
+<span class="fc bfc" id="L340" title="All 2 branches covered.">        for (final JsonKey key : trie.getKeys()) {</span>
+<span class="fc" id="L341">            self.getField(key).ifPresent(child -&gt; {</span>
+<span class="fc" id="L342">                final JsonValue childValue = child.getValue();</span>
+<span class="fc bfc" id="L343" title="All 2 branches covered.">                final JsonValue filteredChildValue = childValue.isObject()</span>
+<span class="fc" id="L344">                        ? filterByTrie(childValue.asObject(), trie.descend(key))</span>
+                        : childValue;
+<span class="fc" id="L346">                final Optional&lt;JsonFieldDefinition&gt; childFieldDefinition = child.getDefinition();</span>
+<span class="pc bpc" id="L347" title="1 of 2 branches missed.">                if (childFieldDefinition.isPresent()) {</span>
+<span class="nc" id="L348">                    builder.set(childFieldDefinition.get(), filteredChildValue);</span>
+                } else {
+<span class="fc" id="L350">                    builder.set(key, filteredChildValue);</span>
+                }
+<span class="fc" id="L352">            });</span>
+<span class="fc" id="L353">        }</span>
+
+<span class="fc" id="L355">        return builder.build();</span>
+    }
+
+    @Override
+    public JsonObject remove(final CharSequence key) {
+<span class="fc" id="L360">        requireNonNull(key, &quot;The key or pointer of the field to be removed must not be null!&quot;);</span>
+<span class="fc" id="L361">        return removeForPointer(JsonFactory.newPointer(key));</span>
+    }
+
+    private JsonObject removeForPointer(final JsonPointer pointer) {
+        final JsonObject result;
+
+<span class="fc" id="L367">        final JsonKey rootKey = pointer.getRoot().orElse(ROOT_KEY);</span>
+<span class="fc" id="L368">        final Optional&lt;JsonFieldDefinition&gt; rootKeyDefinition = getDefinitionForKey(rootKey);</span>
+<span class="fc bfc" id="L369" title="All 2 branches covered.">        if (pointer.isEmpty()) {</span>
+<span class="fc" id="L370">            result = this;</span>
+<span class="fc bfc" id="L371" title="All 2 branches covered.">        } else if (1 == pointer.getLevelCount()) {</span>
+<span class="fc" id="L372">            result = removeValueForKey(rootKey);</span>
+        } else {
+<span class="fc" id="L374">            final JsonPointer nextPointerLevel = pointer.nextLevel();</span>
+
+<span class="fc" id="L376">            final Predicate&lt;JsonObject&gt; containsNextLevelRootKey = jsonObject -&gt; nextPointerLevel.getRoot()</span>
+<span class="fc" id="L377">                    .map(jsonObject::contains)</span>
+<span class="fc" id="L378">                    .orElse(false);</span>
+
+<span class="fc" id="L380">            result = getValueForKey(rootKey)</span>
+<span class="fc" id="L381">                    .filter(JsonValue::isObject)</span>
+<span class="fc" id="L382">                    .map(JsonValue::asObject)</span>
+<span class="fc" id="L383">                    .filter(containsNextLevelRootKey)</span>
+<span class="fc" id="L384">                    .map(jsonObject -&gt; jsonObject.remove(nextPointerLevel)) // Recursion</span>
+<span class="fc" id="L385">                    .map(withoutValue -&gt; JsonFactory.newField(rootKey, withoutValue, rootKeyDefinition.orElse(null)))</span>
+<span class="fc" id="L386">                    .map(this::set)</span>
+<span class="fc" id="L387">                    .orElse(this);</span>
+        }
+
+<span class="fc" id="L390">        return result;</span>
+    }
+
+    private JsonObject removeValueForKey(final CharSequence key) {
+<span class="fc" id="L394">        JsonObject result = this;</span>
+
+<span class="fc bfc" id="L396" title="All 2 branches covered.">        if (containsKey(key)) {</span>
+<span class="fc" id="L397">            final Map&lt;String, JsonField&gt; fieldsCopy = copyFields();</span>
+<span class="fc" id="L398">            fieldsCopy.remove(key.toString());</span>
+<span class="fc" id="L399">            result = new ImmutableJsonObject(fieldsCopy);</span>
+        }
+
+<span class="fc" id="L402">        return result;</span>
+    }
+
+    @Override
+    public List&lt;JsonKey&gt; getKeys() {
+<span class="fc" id="L407">        final List&lt;JsonKey&gt; keys = fields.values()</span>
+<span class="fc" id="L408">                .stream()</span>
+<span class="fc" id="L409">                .map(JsonField::getKey)</span>
+<span class="fc" id="L410">                .collect(Collectors.toList());</span>
+
+<span class="fc" id="L412">        return Collections.unmodifiableList(keys);</span>
+    }
+
+    @Override
+    public Optional&lt;JsonField&gt; getField(final CharSequence key) {
+<span class="fc" id="L417">        requireNonNull(key, &quot;The key or pointer of the field to be retrieved must not be null!&quot;);</span>
+
+<span class="fc" id="L419">        final JsonPointer pointer = JsonFactory.newPointer(key);</span>
+
+<span class="fc" id="L421">        Optional&lt;JsonField&gt; result = pointer.getRoot()</span>
+<span class="fc" id="L422">                .map(JsonKey::toString)</span>
+<span class="fc" id="L423">                .map(fields::get);</span>
+
+<span class="fc bfc" id="L425" title="All 2 branches covered.">        if (1 &lt; pointer.getLevelCount()) {</span>
+<span class="fc" id="L426">            result = result.map(JsonField::getValue)</span>
+<span class="fc" id="L427">                    .filter(JsonValue::isObject)</span>
+<span class="fc" id="L428">                    .map(JsonValue::asObject)</span>
+<span class="fc" id="L429">                    .flatMap(jsonObject -&gt; jsonObject.getField(pointer.nextLevel())); // Recursion</span>
+        }
+
+<span class="fc" id="L432">        return result;</span>
+    }
+
+    @Override
+    public boolean isObject() {
+<span class="fc" id="L437">        return true;</span>
+    }
+
+    @Override
+    public JsonObject asObject() {
+<span class="fc" id="L442">        return this;</span>
+    }
+
+    @Override
+    protected String createStringRepresentation() {
+<span class="fc" id="L447">        final com.eclipsesource.json.JsonObject minJsonObject = new com.eclipsesource.json.JsonObject();</span>
+<span class="fc" id="L448">        fields.values().forEach(field -&gt; minJsonObject.add(field.getKeyName(), JsonFactory.convert(field.getValue())));</span>
+<span class="fc" id="L449">        return minJsonObject.toString();</span>
+    }
+
+    /**
+     * {@inheritDoc} Removing JSON fields through the returned iterator has no effect on this JSON object.
+     *
+     * @return an iterator for the JSON fields of this JSON object.
+     */
+    @Override
+    public Iterator&lt;JsonField&gt; iterator() {
+<span class="fc" id="L459">        return fields.values().iterator();</span>
+    }
+
+    @Override
+    public Stream&lt;JsonField&gt; stream() {
+<span class="fc" id="L464">        return fields.values().stream();</span>
+    }
+
+    @Override
+    public boolean isEmpty() {
+<span class="fc" id="L469">        return fields.isEmpty();</span>
+    }
+
+    @Override
+    public int getSize() {
+<span class="fc" id="L474">        return fields.size();</span>
+    }
+
+    @SuppressWarnings({&quot;checkstyle:com.puppycrawl.tools.checkstyle.checks.metrics.CyclomaticComplexityCheck&quot;,
+            &quot;squid:MethodCyclomaticComplexity&quot;})
+    @Override
+    public boolean equals(final Object o) {
+<span class="fc bfc" id="L481" title="All 2 branches covered.">        if (this == o) {</span>
+<span class="fc" id="L482">            return true;</span>
+        }
+<span class="fc bfc" id="L484" title="All 4 branches covered.">        if (o == null || getClass() != o.getClass()) {</span>
+<span class="fc" id="L485">            return false;</span>
+        }
+<span class="fc" id="L487">        final ImmutableJsonObject that = (ImmutableJsonObject) o;</span>
+
+<span class="fc" id="L489">        return Objects.equals(fields, that.fields);</span>
+    }
+
+    @Override
+    public int hashCode() {
+<span class="fc" id="L494">        return Objects.hash(fields);</span>
+    }
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.0.201801022044</span></div></body></html>
