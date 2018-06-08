@@ -1,0 +1,149 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>Parser.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">chapter_007</a> &gt; <a href="index.source.html" class="el_package">ru.job4j.parser</a> &gt; <span class="el_source">Parser.java</span></div><h1>Parser.java</h1><pre class="source lang-java linenums">package ru.job4j.parser;
+
+import org.apache.log4j.Logger;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
+import org.jsoup.select.Elements;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.sql.Connection;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
+import java.util.*;
+
+
+/**
+ * @author Dmitry Belokursky
+ * @since 11.03.18.
+ */
+<span class="nc" id="L21">public class Parser extends TimerTask {</span>
+
+    private static final int NUMBER_OF_PAGES_FOR_FIRST_LAUNCH = 10;
+
+    private static final int NUMBER_OF_PAGES_FOR_SUBSEQUENT_LAUNCHES = 2;
+
+    private static final String JAVA_SCRIPT = &quot;[Jj][Aa][Vv][Aa].?[Ss][Cc]&quot;;
+
+    private static final String JAVA = &quot;[Jj][Aa][Vv][Aa]&quot;;
+
+    private static final String TODAY = &quot;[с][е][г][о][д][н][я][,][\\s][\\d]{1,2}[:][\\d]{1,2}&quot;;
+
+    private static final String YESTERDAY = &quot;[в][ч][е][р][а][,][\\s][\\d]{1,2}[:][\\d]{1,2}&quot;;
+
+    private static final String BASE_URL = &quot;http://www.sql.ru/forum/job-offers/&quot;;
+
+<span class="nc" id="L37">    private static final Logger LOGGER = Logger.getLogger(&quot;Parser.class&quot;);</span>
+
+<span class="nc" id="L39">    private List&lt;String&gt; urls = new ArrayList&lt;&gt;();</span>
+
+<span class="nc" id="L41">    private List&lt;Element&gt; elements = new ArrayList&lt;&gt;();</span>
+
+    @Override
+    public void run() {
+<span class="nc" id="L45">        org.apache.log4j.PropertyConfigurator.configure(ClassLoader.getSystemResource(&quot;log4j.properties&quot;));</span>
+<span class="nc" id="L46">        Properties properties = new Properties();</span>
+<span class="nc" id="L47">        try (InputStream inputStream = ClassLoader.getSystemResourceAsStream(&quot;parser.properties&quot;)) {</span>
+<span class="nc" id="L48">            properties.load(inputStream);</span>
+<span class="nc bnc" id="L49" title="All 8 branches missed.">        } catch (Exception e) {</span>
+<span class="nc" id="L50">            LOGGER.error(e.getMessage(), e);</span>
+<span class="nc" id="L51">        }</span>
+        try {
+<span class="nc" id="L53">            DataBase dataBase = new DataBase();</span>
+<span class="nc" id="L54">            Connection connection = dataBase.getConnection();</span>
+<span class="nc" id="L55">            dataBase.executeInitSql();</span>
+<span class="nc" id="L56">            int currentYear = Calendar.getInstance().get(Calendar.YEAR) % 100;</span>
+<span class="nc" id="L57">            String thisYear = &quot;[\\d]{1,2}[ ][а-я][а-я][а-я][ ]&quot; + currentYear + &quot;[,][ ][\\d]{1,2}[:][\\d]{1,2}&quot;;</span>
+<span class="nc" id="L58">            fillUrlList(dataBase, thisYear, properties);</span>
+<span class="nc" id="L59">            fillElementsList(thisYear);</span>
+
+<span class="nc bnc" id="L61" title="All 2 branches missed.">            for (Element element : elements) {</span>
+<span class="nc bnc" id="L62" title="All 2 branches missed.">                if (element.getElementsMatchingOwnText(JAVA).hasText()) {</span>
+<span class="nc" id="L63">                    String name = element.getElementsByTag(&quot;a&quot;).first().text();</span>
+<span class="nc" id="L64">                    String url = element.getElementsByTag(&quot;a&quot;).first().attr(&quot;href&quot;);</span>
+<span class="nc" id="L65">                    String lastUpdateTime = element.getElementsByClass(&quot;altCol&quot;).last().text();</span>
+<span class="nc" id="L66">                    Date todayDate = new Date();</span>
+<span class="nc" id="L67">                    Calendar calendar = Calendar.getInstance();</span>
+<span class="nc" id="L68">                    calendar.setTime(todayDate);</span>
+<span class="nc" id="L69">                    calendar.add(Calendar.DATE, -1);</span>
+<span class="nc" id="L70">                    Date yesterdayDate = calendar.getTime();</span>
+<span class="nc" id="L71">                    SimpleDateFormat parser = new SimpleDateFormat(&quot;dd MMM yy, HH:mm&quot;, new Locale(&quot;ru&quot;, &quot;RU&quot;));</span>
+<span class="nc" id="L72">                    DateFormat formatter = new SimpleDateFormat(&quot;dd MMM yy,&quot;, new Locale(&quot;ru&quot;, &quot;RU&quot;));</span>
+<span class="nc bnc" id="L73" title="All 2 branches missed.">                    if (lastUpdateTime.contains(&quot;вчера&quot;)) {</span>
+<span class="nc" id="L74">                        String time = lastUpdateTime.substring(lastUpdateTime.indexOf(&quot; &quot;), lastUpdateTime.length());</span>
+<span class="nc" id="L75">                        lastUpdateTime = lastUpdateTime.replaceAll(YESTERDAY, formatter.format(yesterdayDate) + time);</span>
+                    }
+<span class="nc bnc" id="L77" title="All 2 branches missed.">                    if (lastUpdateTime.contains(&quot;сегодня&quot;)) {</span>
+<span class="nc" id="L78">                        String time = lastUpdateTime.substring(lastUpdateTime.indexOf(&quot; &quot;), lastUpdateTime.length());</span>
+<span class="nc" id="L79">                        lastUpdateTime = lastUpdateTime.replaceAll(TODAY, formatter.format(todayDate) + time);</span>
+                    }
+<span class="nc" id="L81">                    Date date = parser.parse(lastUpdateTime);</span>
+<span class="nc" id="L82">                    dataBase.insertRecord(connection, name, url, date);</span>
+                }
+<span class="nc" id="L84">            }</span>
+<span class="nc" id="L85">            connection.commit();</span>
+<span class="nc" id="L86">        } catch (Exception e) {</span>
+<span class="nc" id="L87">            LOGGER.error(e.getMessage(), e);</span>
+<span class="nc" id="L88">        }</span>
+<span class="nc" id="L89">    }</span>
+
+    private void fillElementsList(String thisYear) {
+        Document document;
+<span class="nc bnc" id="L93" title="All 2 branches missed.">        for (String url : urls) {</span>
+            try {
+<span class="nc" id="L95">                document = Jsoup.connect(url).get();</span>
+<span class="nc" id="L96">                Elements elementsByTag = document.getElementsByTag(&quot;tr&quot;);</span>
+<span class="nc bnc" id="L97" title="All 2 branches missed.">                for (Element element : elementsByTag) {</span>
+<span class="nc bnc" id="L98" title="All 2 branches missed.">                    if (element.getElementsMatchingOwnText(JAVA_SCRIPT).hasText()) {</span>
+<span class="nc" id="L99">                        continue;</span>
+                    }
+<span class="nc bnc" id="L101" title="All 2 branches missed.">                    if (contains(thisYear, element)) {</span>
+<span class="nc" id="L102">                        elements.add(element);</span>
+                    }
+<span class="nc" id="L104">                }</span>
+<span class="nc" id="L105">            } catch (IOException e) {</span>
+<span class="nc" id="L106">                LOGGER.error(e.getMessage(), e);</span>
+<span class="nc" id="L107">            }</span>
+<span class="nc" id="L108">        }</span>
+<span class="nc" id="L109">    }</span>
+
+    private void fillUrlList(DataBase dataBase, String thisYear, Properties properties) {
+        Document document;
+<span class="nc" id="L113">        int numOfUrls = 0;</span>
+<span class="nc bnc" id="L114" title="All 2 branches missed.">        if (dataBase.isFirstLaunch()) {</span>
+<span class="nc" id="L115">            numOfUrls = NUMBER_OF_PAGES_FOR_FIRST_LAUNCH;</span>
+        } else {
+<span class="nc" id="L117">            numOfUrls = NUMBER_OF_PAGES_FOR_SUBSEQUENT_LAUNCHES;</span>
+        }
+<span class="nc bnc" id="L119" title="All 2 branches missed.">        for (int i = 1; i &lt; numOfUrls; i++) {</span>
+<span class="nc" id="L120">            String url = new StringBuilder(BASE_URL).append(i).toString();</span>
+            try {
+<span class="nc" id="L122">                document = Jsoup.connect(url)</span>
+<span class="nc" id="L123">                        .userAgent(properties.getProperty(&quot;userAgent&quot;))</span>
+<span class="nc" id="L124">                        .referrer(properties.getProperty(&quot;referrer&quot;))</span>
+<span class="nc" id="L125">                        .get();</span>
+<span class="nc" id="L126">                Elements elements = document.getElementsByTag(&quot;tr&quot;);</span>
+<span class="nc bnc" id="L127" title="All 2 branches missed.">                for (Element element : elements) {</span>
+<span class="nc bnc" id="L128" title="All 2 branches missed.">                    if (contains(thisYear, element)) {</span>
+<span class="nc" id="L129">                        urls.add(url);</span>
+<span class="nc" id="L130">                        break;</span>
+                    }
+<span class="nc" id="L132">                }</span>
+<span class="nc" id="L133">            } catch (IOException e) {</span>
+<span class="nc" id="L134">                LOGGER.error(e.getMessage(), e);</span>
+<span class="nc" id="L135">            }</span>
+        }
+<span class="nc" id="L137">    }</span>
+
+    private boolean contains(String thisYear, Element element) {
+<span class="nc bnc" id="L140" title="All 2 branches missed.">        if (element.getElementsMatchingOwnText(JAVA).hasText()</span>
+<span class="nc bnc" id="L141" title="All 2 branches missed.">                &amp;&amp; element.getElementsByAttributeValue(&quot;class&quot;, &quot;postslisttopic&quot;).hasText()) {</span>
+<span class="nc bnc" id="L142" title="All 2 branches missed.">            return element.getElementsMatchingOwnText(thisYear).hasText()</span>
+<span class="nc bnc" id="L143" title="All 2 branches missed.">                    || element.getElementsMatchingOwnText(TODAY).hasText()</span>
+<span class="nc bnc" id="L144" title="All 2 branches missed.">                    || element.getElementsMatchingOwnText(YESTERDAY).hasText();</span>
+        }
+<span class="nc" id="L146">        return false;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.7.9.201702052155</span></div></body></html>

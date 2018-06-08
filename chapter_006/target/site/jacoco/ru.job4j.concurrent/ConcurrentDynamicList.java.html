@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ConcurrentDynamicList.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">chapter_006</a> &gt; <a href="index.source.html" class="el_package">ru.job4j.concurrent</a> &gt; <span class="el_source">ConcurrentDynamicList.java</span></div><h1>ConcurrentDynamicList.java</h1><pre class="source lang-java linenums">package ru.job4j.concurrent;
+
+import net.jcip.annotations.GuardedBy;
+import net.jcip.annotations.ThreadSafe;
+
+import java.util.Arrays;
+import java.util.ConcurrentModificationException;
+import java.util.Iterator;
+import java.util.NoSuchElementException;
+
+/**
+ * @author Dmitry Belokursky
+ * @since 03.02.18.
+ */
+@ThreadSafe
+public class ConcurrentDynamicList&lt;E&gt; implements Iterable&lt;E&gt; {
+
+<span class="pc" id="L18">    private final int defaultCapacity = 10;</span>
+
+    @GuardedBy(&quot;this&quot;)
+    private Object[] container;
+
+    @GuardedBy(&quot;this&quot;)
+    private int index;
+
+    @GuardedBy(&quot;this&quot;)
+    private int size;
+
+    @GuardedBy(&quot;this&quot;)
+    private int modCount;
+
+<span class="nc" id="L32">    public ConcurrentDynamicList(int capacity) {</span>
+<span class="nc bnc" id="L33" title="All 4 branches missed.">        if (capacity &gt; 0 &amp;&amp; capacity &lt; Integer.MAX_VALUE) {</span>
+<span class="nc" id="L34">            this.container = new Object[capacity];</span>
+<span class="nc" id="L35">            this.size = 0;</span>
+<span class="nc" id="L36">            modCount = 0;</span>
+        }
+<span class="nc" id="L38">    }</span>
+
+<span class="fc" id="L40">    public ConcurrentDynamicList() {</span>
+<span class="fc" id="L41">        this.container = new Object[defaultCapacity];</span>
+<span class="fc" id="L42">        this.size = 0;</span>
+<span class="fc" id="L43">        modCount = 0;</span>
+<span class="fc" id="L44">    }</span>
+
+    public synchronized void add(E value) {
+<span class="fc bfc" id="L47" title="All 2 branches covered.">        if (index &lt; container.length) {</span>
+<span class="fc" id="L48">            container[index++] = value;</span>
+        } else {
+<span class="fc" id="L50">            container = Arrays.copyOf(container, container.length * 2);</span>
+<span class="fc" id="L51">            container[index++] = value;</span>
+        }
+<span class="fc" id="L53">        modCount++;</span>
+<span class="fc" id="L54">        size++;</span>
+<span class="fc" id="L55">    }</span>
+
+    public synchronized E get(int index) {
+<span class="pc bpc" id="L58" title="2 of 4 branches missed.">        if (index &gt;= 0 &amp;&amp; index &lt;= size) {</span>
+<span class="fc" id="L59">            return (E) container[index];</span>
+        } else {
+<span class="nc" id="L61">            throw new NoSuchElementException();</span>
+        }
+    }
+
+    @Override
+    public Iterator&lt;E&gt; iterator() {
+<span class="fc" id="L67">        return new Iterator&lt;E&gt;() {</span>
+<span class="fc" id="L68">            private final int expectedModCount = modCount;</span>
+<span class="fc" id="L69">            int i = 0;</span>
+
+            @Override
+            public boolean hasNext() {
+<span class="pc bpc" id="L73" title="2 of 4 branches missed.">                return i &gt;= 0 &amp;&amp; i &lt; size;</span>
+            }
+
+            @Override
+            public E next() {
+<span class="fc" id="L78">                checkForCommodification();</span>
+<span class="pc bpc" id="L79" title="1 of 2 branches missed.">                if (hasNext()) {</span>
+<span class="fc" id="L80">                    return (E) container[i++];</span>
+                } else {
+<span class="nc" id="L82">                    throw new NoSuchElementException();</span>
+                }
+            }
+
+            private void checkForCommodification() {
+<span class="pc bpc" id="L87" title="1 of 2 branches missed.">                if (expectedModCount != modCount) {</span>
+<span class="nc" id="L88">                    throw new ConcurrentModificationException();</span>
+                }
+<span class="fc" id="L90">            }</span>
+        };
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.7.9.201702052155</span></div></body></html>

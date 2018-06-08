@@ -1,0 +1,182 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ConcurrentSinglyLinkedList.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">chapter_006</a> &gt; <a href="index.source.html" class="el_package">ru.job4j.concurrent</a> &gt; <span class="el_source">ConcurrentSinglyLinkedList.java</span></div><h1>ConcurrentSinglyLinkedList.java</h1><pre class="source lang-java linenums">package ru.job4j.concurrent;
+
+import net.jcip.annotations.GuardedBy;
+import net.jcip.annotations.NotThreadSafe;
+import net.jcip.annotations.ThreadSafe;
+
+import java.util.ConcurrentModificationException;
+import java.util.Iterator;
+import java.util.NoSuchElementException;
+
+/**
+ * @author Dmitry Belokursky
+ * @since 03.02.18.
+ */
+@ThreadSafe
+public class ConcurrentSinglyLinkedList&lt;E&gt; implements Iterable&lt;E&gt; {
+
+    @GuardedBy(&quot;this&quot;)
+    private Node&lt;E&gt; head;
+
+    @GuardedBy(&quot;this&quot;)
+    private Node&lt;E&gt; tail;
+
+    @GuardedBy(&quot;this&quot;)
+    private int size;
+
+    @GuardedBy(&quot;this&quot;)
+    private int modCount;
+
+<span class="fc" id="L30">    public ConcurrentSinglyLinkedList() {</span>
+<span class="fc" id="L31">        head = null;</span>
+<span class="fc" id="L32">    }</span>
+
+    boolean isEmpty() {
+<span class="nc bnc" id="L35" title="All 2 branches missed.">        return head == null;</span>
+    }
+
+    public synchronized void addFirst(E item) {
+<span class="fc" id="L39">        Node&lt;E&gt; newNode = new Node&lt;&gt;(item, head, null);</span>
+<span class="fc bfc" id="L40" title="All 4 branches covered.">        if (tail == null &amp;&amp; head != null) {</span>
+<span class="fc" id="L41">            tail = head;</span>
+        }
+<span class="fc bfc" id="L43" title="All 2 branches covered.">        if (head != null) {</span>
+<span class="fc" id="L44">            head.prev = newNode;</span>
+        }
+<span class="fc" id="L46">        head = newNode;</span>
+<span class="fc" id="L47">        modCount++;</span>
+<span class="fc" id="L48">        size++;</span>
+<span class="fc" id="L49">    }</span>
+
+    public void add(E item) {
+<span class="fc" id="L52">        addLast(item);</span>
+<span class="fc" id="L53">    }</span>
+
+    public synchronized void addLast(E item) {
+<span class="fc" id="L56">        Node&lt;E&gt; newItem = new Node&lt;&gt;(item, null, null);</span>
+<span class="fc" id="L57">        Node&lt;E&gt; tmp = head;</span>
+<span class="fc bfc" id="L58" title="All 2 branches covered.">        if (head == null) {</span>
+<span class="fc" id="L59">            addFirst(item);</span>
+        } else {
+<span class="fc bfc" id="L61" title="All 2 branches covered.">            while (tmp.next != null) {</span>
+<span class="fc" id="L62">                tmp = tmp.next;</span>
+            }
+<span class="fc" id="L64">            tmp.next = newItem;</span>
+<span class="fc" id="L65">            tail = tmp.next;</span>
+<span class="fc" id="L66">            tail.prev = tmp;</span>
+<span class="fc" id="L67">            modCount++;</span>
+<span class="fc" id="L68">            size++;</span>
+        }
+<span class="fc" id="L70">    }</span>
+
+    public synchronized E get(int index) {
+<span class="fc" id="L73">        Node&lt;E&gt; current = head;</span>
+<span class="fc" id="L74">        E result = null;</span>
+<span class="fc bfc" id="L75" title="All 2 branches covered.">        if (index == 0) {</span>
+<span class="fc" id="L76">            result = current.item;</span>
+<span class="pc bpc" id="L77" title="2 of 4 branches missed.">        } else if (index &gt; 0 &amp;&amp; index &lt; size) {</span>
+<span class="fc bfc" id="L78" title="All 2 branches covered.">            for (int i = 0; i &lt; index; i++) {</span>
+<span class="fc" id="L79">                current = current.next;</span>
+            }
+<span class="fc" id="L81">            result = current.item;</span>
+        }
+<span class="fc" id="L83">        return result;</span>
+    }
+
+    public synchronized E removeLast() {
+        Node&lt;E&gt; removedNode;
+<span class="pc bpc" id="L88" title="1 of 2 branches missed.">        if (size &gt; 1) {</span>
+<span class="fc" id="L89">            removedNode = tail;</span>
+<span class="fc" id="L90">            tail = tail.prev;</span>
+<span class="fc" id="L91">            tail.next = null;</span>
+<span class="fc" id="L92">            size--;</span>
+        } else {
+<span class="nc" id="L94">            removedNode = head;</span>
+<span class="nc" id="L95">            head = null;</span>
+<span class="nc" id="L96">            tail = null;</span>
+        }
+<span class="fc" id="L98">        modCount--;</span>
+<span class="fc" id="L99">        return removedNode.item;</span>
+    }
+
+    public synchronized E removeFirst() {
+        Node&lt;E&gt; removedNode;
+<span class="nc bnc" id="L104" title="All 2 branches missed.">        if (size &gt; 1) {</span>
+<span class="nc" id="L105">            removedNode = head;</span>
+<span class="nc" id="L106">            head = head.next;</span>
+<span class="nc" id="L107">            head.prev = null;</span>
+<span class="nc" id="L108">            size--;</span>
+        } else {
+<span class="nc" id="L110">            removedNode = head;</span>
+<span class="nc" id="L111">            head = null;</span>
+<span class="nc" id="L112">            tail = null;</span>
+        }
+<span class="nc" id="L114">        modCount--;</span>
+<span class="nc" id="L115">        return removedNode.item;</span>
+    }
+
+    @Override
+    public synchronized String toString() {
+<span class="nc" id="L120">        return &quot;SinglyLinkedList{&quot;</span>
+                + &quot;head=&quot; + head
+                + &quot;, tail=&quot; + tail
+                + &quot;, size=&quot; + size + '}';
+    }
+
+    @Override
+    public Iterator&lt;E&gt; iterator() {
+<span class="fc" id="L128">        return new Iterator&lt;E&gt;() {</span>
+
+<span class="fc" id="L130">            private final int expectedModCount = modCount;</span>
+
+<span class="fc" id="L132">            private Node&lt;E&gt; nextNode = head;</span>
+
+            @Override
+            public boolean hasNext() {
+<span class="pc bpc" id="L136" title="1 of 2 branches missed.">                return nextNode != null;</span>
+            }
+
+            @Override
+            public E next() {
+<span class="fc" id="L141">                checkForCommodification();</span>
+<span class="pc bpc" id="L142" title="1 of 2 branches missed.">                if (!hasNext()) {</span>
+<span class="nc" id="L143">                    throw new NoSuchElementException();</span>
+                }
+<span class="fc" id="L145">                E result = nextNode.item;</span>
+<span class="fc" id="L146">                nextNode = nextNode.next;</span>
+<span class="fc" id="L147">                return result;</span>
+            }
+
+            private void checkForCommodification() {
+<span class="pc bpc" id="L151" title="1 of 2 branches missed.">                if (expectedModCount != modCount) {</span>
+<span class="nc" id="L152">                    throw new ConcurrentModificationException();</span>
+                }
+<span class="fc" id="L154">            }</span>
+        };
+    }
+
+    @NotThreadSafe
+    private static class Node&lt;E&gt; {
+
+        final private E item;
+
+        private Node&lt;E&gt; next;
+
+        private Node&lt;E&gt; prev;
+
+<span class="fc" id="L167">        public Node(E item, Node&lt;E&gt; next, Node&lt;E&gt; prev) {</span>
+<span class="fc" id="L168">            this.item = item;</span>
+<span class="fc" id="L169">            this.next = next;</span>
+<span class="fc" id="L170">            this.prev = prev;</span>
+<span class="fc" id="L171">        }</span>
+
+        @Override
+        public synchronized String toString() {
+<span class="nc" id="L175">            return &quot;Node{&quot;</span>
+                    + &quot;item=&quot; + item
+                    + &quot;, next=&quot; + next
+                    + &quot;, prev=&quot; + '}';
+        }
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.7.9.201702052155</span></div></body></html>

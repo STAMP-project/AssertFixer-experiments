@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ParallelSearch.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">chapter_006</a> &gt; <a href="index.source.html" class="el_package">ru.job4j.search</a> &gt; <span class="el_source">ParallelSearch.java</span></div><h1>ParallelSearch.java</h1><pre class="source lang-java linenums">package ru.job4j.search;
+
+import net.jcip.annotations.GuardedBy;
+import net.jcip.annotations.ThreadSafe;
+
+import java.io.IOException;
+import java.nio.file.FileVisitResult;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.SimpleFileVisitor;
+import java.nio.file.attribute.BasicFileAttributes;
+import java.util.List;
+import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedQueue;
+
+/**
+ * @author Dmitry Belokursky
+ * @since 03.02.18.
+ */
+@ThreadSafe
+public class ParallelSearch extends SimpleFileVisitor&lt;Path&gt; {
+
+    private final Path root;
+
+    private final String searchPhrase;
+
+    @GuardedBy(&quot;this&quot;)
+    private List&lt;String&gt; extensions;
+
+    @GuardedBy(&quot;this&quot;)
+    private Queue&lt;Path&gt; files;
+
+    @GuardedBy(&quot;this&quot;)
+    private Queue&lt;Path&gt; result;
+
+    private volatile boolean isOver;
+
+<span class="nc" id="L38">    public ParallelSearch(Path root, String text, List&lt;String&gt; extensions) {</span>
+<span class="nc" id="L39">        this.root = root;</span>
+<span class="nc" id="L40">        this.searchPhrase = text;</span>
+<span class="nc" id="L41">        this.extensions = extensions;</span>
+<span class="nc" id="L42">        this.files = new ConcurrentLinkedQueue&lt;&gt;();</span>
+<span class="nc" id="L43">        this.result = new ConcurrentLinkedQueue&lt;&gt;();</span>
+<span class="nc" id="L44">        this.isOver = false;</span>
+<span class="nc" id="L45">    }</span>
+
+    @Override
+    public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+<span class="nc bnc" id="L49" title="All 2 branches missed.">        for (String extension : extensions) {</span>
+<span class="nc bnc" id="L50" title="All 4 branches missed.">            if (attrs.isRegularFile() &amp;&amp; file.toString().endsWith(extension)) {</span>
+<span class="nc" id="L51">                files.add(file);</span>
+            }
+<span class="nc" id="L53">        }</span>
+<span class="nc" id="L54">        return FileVisitResult.CONTINUE;</span>
+    }
+
+    public void init() throws InterruptedException {
+<span class="nc" id="L58">        Thread search = new Thread() {</span>
+            @Override
+            public void run() {
+<span class="nc" id="L61">                ParallelSearch ps = new ParallelSearch(root, searchPhrase, extensions);</span>
+                try {
+<span class="nc" id="L63">                    Files.walkFileTree(root, ps);</span>
+<span class="nc" id="L64">                } catch (IOException e) {</span>
+<span class="nc" id="L65">                    e.printStackTrace();</span>
+                } finally {
+<span class="nc" id="L67">                    files = ps.files;</span>
+<span class="nc" id="L68">                    isOver = true;</span>
+<span class="nc" id="L69">                }</span>
+<span class="nc" id="L70">            }</span>
+        };
+<span class="nc" id="L72">        Thread read = new Thread() {</span>
+            @Override
+            public void run() {
+<span class="nc bnc" id="L75" title="All 4 branches missed.">                while (!isOver || files.size() != 0) {</span>
+                    try {
+<span class="nc" id="L77">                        Path currentFile = files.poll();</span>
+<span class="nc bnc" id="L78" title="All 2 branches missed.">                        if (currentFile != null) {</span>
+<span class="nc" id="L79">                            String content = new String(Files.readAllBytes(currentFile));</span>
+<span class="nc bnc" id="L80" title="All 2 branches missed.">                            if (content.contains(searchPhrase)) {</span>
+<span class="nc" id="L81">                                result.add(currentFile);</span>
+                            }
+                        }
+
+<span class="nc" id="L85">                    } catch (IOException e) {</span>
+<span class="nc" id="L86">                        e.printStackTrace();</span>
+<span class="nc" id="L87">                    }</span>
+                }
+<span class="nc" id="L89">            }</span>
+        };
+<span class="nc" id="L91">        search.start();</span>
+<span class="nc" id="L92">        read.start();</span>
+<span class="nc" id="L93">        search.join();</span>
+<span class="nc" id="L94">        read.join();</span>
+<span class="nc" id="L95">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.7.9.201702052155</span></div></body></html>

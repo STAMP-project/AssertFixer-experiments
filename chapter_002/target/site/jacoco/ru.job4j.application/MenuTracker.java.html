@@ -1,0 +1,227 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>MenuTracker.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">chapter_002</a> &gt; <a href="index.source.html" class="el_package">ru.job4j.application</a> &gt; <span class="el_source">MenuTracker.java</span></div><h1>MenuTracker.java</h1><pre class="source lang-java linenums">package ru.job4j.application;
+
+import java.io.FileInputStream;
+import java.sql.*;
+import java.util.ArrayList;
+import java.util.Properties;
+
+/**
+ * @author Dmitry Belokursky
+ * @since 09.07.17.
+ */
+public class MenuTracker {
+
+    private Input input;
+
+<span class="nc" id="L16">    private UserAction[] actions = new UserAction[7];</span>
+
+<span class="nc" id="L18">    private int position = 1;</span>
+
+<span class="nc" id="L20">    MenuTracker(Input input) {</span>
+<span class="nc" id="L21">        this.input = input;</span>
+<span class="nc" id="L22">    }</span>
+
+    public UserAction[] getActions() {
+<span class="nc" id="L25">        return actions;</span>
+    }
+
+    public void fillActions() {
+<span class="nc" id="L29">        this.actions[position++] = this.new AddItem(&quot;Add the new item.&quot;, 1);</span>
+<span class="nc" id="L30">        this.actions[position++] = new MenuTracker.ShowItems(&quot;Show items.&quot;, 2);</span>
+<span class="nc" id="L31">        this.actions[position++] = this.new EditItem(&quot;Edit item.&quot;, 3);</span>
+<span class="nc" id="L32">        this.actions[position++] = this.new DeleteItem(&quot;Delete item.&quot;, 4);</span>
+<span class="nc" id="L33">        this.actions[position++] = this.new FindItemById(&quot;Find item by id.&quot;, 5);</span>
+<span class="nc" id="L34">        this.actions[position++] = this.new FindItemByName(&quot;Find item by name.&quot;, 6);</span>
+<span class="nc" id="L35">    }</span>
+
+    private Connection getConnection() {
+<span class="nc" id="L38">        Connection connection = null;</span>
+<span class="nc" id="L39">        Properties properties = new Properties();</span>
+        try {
+<span class="nc" id="L41">            FileInputStream inputStream = new FileInputStream(&quot;./chapter_002/src/main/java/ru/job4j/application/db.properties&quot;);</span>
+<span class="nc" id="L42">            properties.load(inputStream);</span>
+<span class="nc" id="L43">            connection = DriverManager.getConnection(properties.getProperty(&quot;url&quot;),</span>
+<span class="nc" id="L44">                    properties.getProperty(&quot;username&quot;),</span>
+<span class="nc" id="L45">                    properties.getProperty(&quot;password&quot;));</span>
+<span class="nc" id="L46">        } catch (Exception e) {</span>
+<span class="nc" id="L47">            e.printStackTrace();</span>
+<span class="nc" id="L48">        }</span>
+<span class="nc" id="L49">        return connection;</span>
+    }
+
+    public ArrayList&lt;Integer&gt; getMenuRange() {
+<span class="nc" id="L53">        ArrayList&lt;Integer&gt; range = new ArrayList&lt;&gt;(getActions().length);</span>
+<span class="nc bnc" id="L54" title="All 2 branches missed.">        for (int i = 0; i &lt; this.getActions().length; i++) {</span>
+<span class="nc" id="L55">            range.add(i);</span>
+        }
+<span class="nc" id="L57">        return range;</span>
+    }
+
+    public void show() {
+<span class="nc" id="L61">        try (Connection connection = getConnection()) {</span>
+<span class="nc" id="L62">            Statement statement = connection.createStatement();</span>
+<span class="nc" id="L63">            ResultSet resultSet = statement.executeQuery(&quot;SELECT * FROM actions;&quot;);</span>
+<span class="nc bnc" id="L64" title="All 2 branches missed.">            while (resultSet.next()) {</span>
+<span class="nc" id="L65">                System.out.println(resultSet.getString(&quot;name&quot;));</span>
+            }
+<span class="nc bnc" id="L67" title="All 8 branches missed.">        } catch (SQLException e) {</span>
+<span class="nc" id="L68">            e.printStackTrace();</span>
+<span class="nc" id="L69">        }</span>
+<span class="nc" id="L70">    }</span>
+
+    public void select(int key) {
+<span class="nc" id="L73">        this.actions[key].execute(this.input);</span>
+<span class="nc" id="L74">    }</span>
+
+    private void itemNotFound() {
+<span class="nc" id="L77">        System.out.println(&quot;Item not found.&quot;);</span>
+<span class="nc" id="L78">    }</span>
+
+    private class EditItem extends BaseAction {
+
+<span class="nc" id="L82">        EditItem(String name, int key) {</span>
+<span class="nc" id="L83">            super(name, key);</span>
+<span class="nc" id="L84">        }</span>
+
+        @Override
+        public void execute(Input input) {
+<span class="nc" id="L88">            String id = input.ask(&quot;Enter the ID of the item: &quot;);</span>
+<span class="nc" id="L89">            String name = input.ask(&quot;Enter a new name for the item:&quot;);</span>
+<span class="nc" id="L90">            String description = input.ask(&quot;Enter a new description for the item: &quot;);</span>
+<span class="nc" id="L91">            try (Connection connection = getConnection()) {</span>
+<span class="nc" id="L92">                PreparedStatement preparedStatement = connection.prepareStatement(&quot;UPDATE items SET name = ?, description = ? WHERE id = ?&quot;);</span>
+<span class="nc" id="L93">                preparedStatement.setString(1, name);</span>
+<span class="nc" id="L94">                preparedStatement.setString(2, description);</span>
+<span class="nc" id="L95">                preparedStatement.setInt(3, Integer.parseInt(id));</span>
+<span class="nc" id="L96">                preparedStatement.executeUpdate();</span>
+<span class="nc bnc" id="L97" title="All 8 branches missed.">            } catch (SQLException e) {</span>
+<span class="nc" id="L98">                e.printStackTrace();</span>
+<span class="nc" id="L99">            }</span>
+<span class="nc" id="L100">        }</span>
+    }
+
+    private class ShowItems extends BaseAction {
+
+<span class="nc" id="L105">        ShowItems(String name, int key) {</span>
+<span class="nc" id="L106">            super(name, key);</span>
+<span class="nc" id="L107">        }</span>
+
+        @Override
+        public void execute(Input input) {
+<span class="nc" id="L111">            System.out.println(&quot;List of items: &quot;);</span>
+<span class="nc" id="L112">            try (Connection connection = getConnection()) {</span>
+<span class="nc" id="L113">                Statement statement = connection.createStatement();</span>
+<span class="nc" id="L114">                ResultSet resultSet = statement.executeQuery(&quot;SELECT * FROM items;&quot;);</span>
+<span class="nc bnc" id="L115" title="All 2 branches missed.">                while (resultSet.next()) {</span>
+<span class="nc" id="L116">                    System.out.println(resultSet.getInt(&quot;id&quot;) + &quot; &quot;</span>
+<span class="nc" id="L117">                            + resultSet.getString(&quot;name&quot;) + &quot; &quot;</span>
+<span class="nc" id="L118">                            + resultSet.getString(&quot;description&quot;));</span>
+                }
+<span class="nc bnc" id="L120" title="All 8 branches missed.">            } catch (SQLException e) {</span>
+<span class="nc" id="L121">                e.printStackTrace();</span>
+<span class="nc" id="L122">            }</span>
+<span class="nc" id="L123">        }</span>
+    }
+
+    private class AddItem extends BaseAction {
+
+<span class="nc" id="L128">        AddItem(String name, int key) {</span>
+<span class="nc" id="L129">            super(name, key);</span>
+<span class="nc" id="L130">        }</span>
+
+        @Override
+        public void execute(Input input) {
+<span class="nc" id="L134">            String name = input.ask(&quot;Enter the name of the item: &quot;);</span>
+<span class="nc" id="L135">            String desc = input.ask(&quot;Enter the description of the item: &quot;);</span>
+<span class="nc" id="L136">            try (Connection connection = getConnection()) {</span>
+<span class="nc" id="L137">                PreparedStatement preparedStatement = connection.prepareStatement(&quot;INSERT INTO items (name, description) VALUES (?, ?)&quot;);</span>
+<span class="nc" id="L138">                preparedStatement.setString(1, name);</span>
+<span class="nc" id="L139">                preparedStatement.setString(2, desc);</span>
+<span class="nc" id="L140">                preparedStatement.executeUpdate();</span>
+<span class="nc bnc" id="L141" title="All 8 branches missed.">            } catch (SQLException e) {</span>
+<span class="nc" id="L142">                e.printStackTrace();</span>
+<span class="nc" id="L143">            }</span>
+<span class="nc" id="L144">        }</span>
+    }
+
+    private class DeleteItem extends BaseAction {
+
+<span class="nc" id="L149">        DeleteItem(String name, int key) {</span>
+<span class="nc" id="L150">            super(name, key);</span>
+<span class="nc" id="L151">        }</span>
+
+        @Override
+        public void execute(Input input) {
+<span class="nc" id="L155">            String id = input.ask(&quot;Enter the ID of the item: &quot;);</span>
+<span class="nc" id="L156">            try (Connection connection = getConnection()) {</span>
+<span class="nc" id="L157">                PreparedStatement preparedStatement = connection.prepareStatement(&quot;DELETE FROM items WHERE id = ?;&quot;);</span>
+<span class="nc" id="L158">                preparedStatement.setInt(1, Integer.parseInt(id));</span>
+<span class="nc bnc" id="L159" title="All 2 branches missed.">                if (preparedStatement.executeUpdate() == 0) {</span>
+<span class="nc" id="L160">                    itemNotFound();</span>
+                } else {
+<span class="nc" id="L162">                    System.out.println(&quot;The item is removed.&quot;);</span>
+                }
+<span class="nc bnc" id="L164" title="All 8 branches missed.">            } catch (SQLException e) {</span>
+<span class="nc" id="L165">                e.printStackTrace();</span>
+<span class="nc" id="L166">            }</span>
+<span class="nc" id="L167">        }</span>
+    }
+
+    private class FindItemById extends BaseAction {
+
+<span class="nc" id="L172">        FindItemById(String name, int key) {</span>
+<span class="nc" id="L173">            super(name, key);</span>
+<span class="nc" id="L174">        }</span>
+
+        @Override
+        public void execute(Input input) {
+<span class="nc" id="L178">            String id = input.ask(&quot;Enter the ID of the item: &quot;);</span>
+<span class="nc" id="L179">            try (Connection connection = getConnection()) {</span>
+<span class="nc" id="L180">                PreparedStatement preparedStatement = connection.prepareStatement(&quot;SELECT * FROM items WHERE id = ?;&quot;);</span>
+<span class="nc" id="L181">                preparedStatement.setInt(1, Integer.parseInt(id));</span>
+<span class="nc" id="L182">                ResultSet resultSet = preparedStatement.executeQuery();</span>
+<span class="nc bnc" id="L183" title="All 2 branches missed.">                if (resultSet.next()) {</span>
+                    do {
+<span class="nc" id="L185">                        System.out.println(resultSet.getInt(&quot;id&quot;) + &quot; &quot;</span>
+<span class="nc" id="L186">                                + resultSet.getString(&quot;name&quot;) + &quot; &quot;</span>
+<span class="nc" id="L187">                                + resultSet.getString(&quot;description&quot;));</span>
+<span class="nc bnc" id="L188" title="All 2 branches missed.">                    } while (resultSet.next());</span>
+                } else {
+<span class="nc" id="L190">                    itemNotFound();</span>
+                }
+<span class="nc bnc" id="L192" title="All 8 branches missed.">            } catch (SQLException e) {</span>
+<span class="nc" id="L193">                e.printStackTrace();</span>
+<span class="nc" id="L194">            }</span>
+<span class="nc" id="L195">        }</span>
+    }
+
+    private class FindItemByName extends BaseAction {
+
+<span class="nc" id="L200">        FindItemByName(String name, int key) {</span>
+<span class="nc" id="L201">            super(name, key);</span>
+<span class="nc" id="L202">        }</span>
+
+        @Override
+        public void execute(Input input) {
+<span class="nc" id="L206">            String name = input.ask(&quot;Enter the name of the item: &quot;);</span>
+<span class="nc" id="L207">            try (Connection connection = getConnection()) {</span>
+<span class="nc" id="L208">                PreparedStatement preparedStatement = connection.prepareStatement(&quot;SELECT * FROM items WHERE name LIKE ?;&quot;);</span>
+<span class="nc" id="L209">                preparedStatement.setString(1, name);</span>
+<span class="nc" id="L210">                ResultSet resultSet = preparedStatement.executeQuery();</span>
+<span class="nc bnc" id="L211" title="All 2 branches missed.">                if (resultSet.next()) {</span>
+                    do {
+<span class="nc" id="L213">                        System.out.println(resultSet.getInt(&quot;id&quot;) + &quot; &quot;</span>
+<span class="nc" id="L214">                                + resultSet.getString(&quot;name&quot;) + &quot; &quot;</span>
+<span class="nc" id="L215">                                + resultSet.getString(&quot;description&quot;));</span>
+
+<span class="nc bnc" id="L217" title="All 2 branches missed.">                    } while (resultSet.next());</span>
+<span class="nc bnc" id="L218" title="All 2 branches missed.">                } else if (!resultSet.next()) {</span>
+<span class="nc" id="L219">                    itemNotFound();</span>
+                }
+<span class="nc bnc" id="L221" title="All 8 branches missed.">            } catch (SQLException e) {</span>
+<span class="nc" id="L222">                e.printStackTrace();</span>
+<span class="nc" id="L223">            }</span>
+<span class="nc" id="L224">        }</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.7.9.201702052155</span></div></body></html>
