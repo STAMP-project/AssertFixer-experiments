@@ -1,0 +1,108 @@
+[
+  ["router", {
+    "id": "Hono.Sandbox.Router",
+    "mode": "standalone",
+    "workerThreads": 3,
+    "saslConfigName": "qdrouter-sasl",
+    "saslConfigPath": "/run/secrets/"
+  }],
+
+  ["sslProfile", {
+    "name": "external",
+    "certDb": "/run/secrets/trusted-certs.pem",
+    "certFile": "/run/secrets/hono.eclipse.org-cert.pem",
+    "keyFile": "/run/secrets/hono.eclipse.org-key.pem"
+  }],
+
+  ["listener", {
+    "sslProfile": "external",
+    "requireSsl": true,
+    "host": "0.0.0.0",
+    "port": 5671,
+    "initialHandshakeTimeoutSeconds": 3,
+    "maxSessionFrames": 100,
+    "authenticatePeer": true,
+    "saslMechanisms": "PLAIN"
+  }],
+
+  ["listener", {
+    "host": "0.0.0.0",
+    "port": 5672,
+    "initialHandshakeTimeoutSeconds": 3,
+    "maxSessionFrames": 100,
+    "authenticatePeer": true,
+    "saslMechanisms": "PLAIN"
+  }],
+
+  ["listener", {
+    "host": "0.0.0.0",
+    "port": 5673,
+    "initialHandshakeTimeoutSeconds": 3,
+    "maxSessionFrames": 100,
+    "authenticatePeer": false,
+    "logMessage": "none"
+  }],
+
+  ["connector", {
+    "name": "broker",
+    "host": "hono-artemis.hono",
+    "port": 5672,
+    "role": "route-container",
+    "saslUsername": "artemis",
+    "saslPassword": "artemis"
+  }],
+
+  ["linkRoute", {
+    "prefix": "event/",
+    "dir": "in",
+    "connection": "broker"
+  }],
+
+  ["linkRoute", {
+    "prefix": "event/",
+    "dir": "out",
+    "connection": "broker"
+  }],
+
+  ["policy", {
+    "maxConnections": 220,
+    "enableVhostPolicy": true,
+    "defaultVhost": "hono"
+  }],
+
+  ["vhost", {
+      "id": "hono",
+      "maxConnections": 200,
+      "maxConnectionsPerUser": 200,
+      "maxConnectionsPerHost": 50,
+      "groups": {
+        "consumers": {
+          "users": "consumer@HONO",
+          "remoteHosts": "*",
+          "maxSessions": 10,
+          "allowUserIdProxy": true,
+          "sources": "telemetry/*, event/*",
+          "targets": "control/*"
+        }
+      }
+  }],
+
+  ["vhost", {
+      "id": "hono-internal",
+      "maxConnections": 20,
+      "allowUnknownUser": true,
+      "groups": {
+        "$default": {
+          "remoteHosts": "*",
+          "allowUserIdProxy": true,
+          "targets": "telemetry/*, event/*",
+          "sources": "control/*"
+        }
+      }
+  }],
+
+  ["log", {
+    "module": "DEFAULT",
+    "enable": "info+"
+  }]
+]
