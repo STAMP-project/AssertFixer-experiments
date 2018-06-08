@@ -1,0 +1,1980 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>PolicyPersistenceActor.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Eclipse Ditto :: Services :: Policies :: Persistence</a> &gt; <a href="index.source.html" class="el_package">org.eclipse.ditto.services.policies.persistence.actors.policy</a> &gt; <span class="el_source">PolicyPersistenceActor.java</span></div><h1>PolicyPersistenceActor.java</h1><pre class="source lang-java linenums">/*
+ * Copyright (c) 2017 Bosch Software Innovations GmbH.
+ *
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v2.0
+ * which accompanies this distribution, and is available at
+ * https://www.eclipse.org/org/documents/epl-2.0/index.php
+ *
+ * Contributors:
+ *    Bosch Software Innovations GmbH - initial contribution
+ */
+package org.eclipse.ditto.services.policies.persistence.actors.policy;
+
+import java.text.MessageFormat;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.concurrent.TimeUnit;
+
+import javax.annotation.concurrent.NotThreadSafe;
+
+import org.eclipse.ditto.model.base.headers.DittoHeaders;
+import org.eclipse.ditto.model.base.headers.WithDittoHeaders;
+import org.eclipse.ditto.model.policies.Label;
+import org.eclipse.ditto.model.policies.PoliciesModelFactory;
+import org.eclipse.ditto.model.policies.Policy;
+import org.eclipse.ditto.model.policies.PolicyBuilder;
+import org.eclipse.ditto.model.policies.PolicyEntry;
+import org.eclipse.ditto.model.policies.PolicyLifecycle;
+import org.eclipse.ditto.model.policies.Resource;
+import org.eclipse.ditto.model.policies.ResourceKey;
+import org.eclipse.ditto.model.policies.Resources;
+import org.eclipse.ditto.model.policies.Subject;
+import org.eclipse.ditto.model.policies.SubjectId;
+import org.eclipse.ditto.model.policies.Subjects;
+import org.eclipse.ditto.services.models.policies.PoliciesMessagingConstants;
+import org.eclipse.ditto.services.models.policies.PoliciesValidator;
+import org.eclipse.ditto.services.models.policies.commands.sudo.SudoRetrievePolicy;
+import org.eclipse.ditto.services.models.policies.commands.sudo.SudoRetrievePolicyResponse;
+import org.eclipse.ditto.services.policies.persistence.actors.AbstractReceiveStrategy;
+import org.eclipse.ditto.services.policies.persistence.actors.ReceiveStrategy;
+import org.eclipse.ditto.services.policies.persistence.actors.StrategyAwareReceiveBuilder;
+import org.eclipse.ditto.services.policies.util.ConfigKeys;
+import org.eclipse.ditto.services.utils.akka.LogUtil;
+import org.eclipse.ditto.services.utils.persistence.SnapshotAdapter;
+import org.eclipse.ditto.signals.base.WithId;
+import org.eclipse.ditto.signals.commands.policies.exceptions.PolicyConflictException;
+import org.eclipse.ditto.signals.commands.policies.exceptions.PolicyEntryModificationInvalidException;
+import org.eclipse.ditto.signals.commands.policies.exceptions.PolicyEntryNotAccessibleException;
+import org.eclipse.ditto.signals.commands.policies.exceptions.PolicyModificationInvalidException;
+import org.eclipse.ditto.signals.commands.policies.exceptions.PolicyNotAccessibleException;
+import org.eclipse.ditto.signals.commands.policies.exceptions.ResourceNotAccessibleException;
+import org.eclipse.ditto.signals.commands.policies.exceptions.SubjectNotAccessibleException;
+import org.eclipse.ditto.signals.commands.policies.modify.CreatePolicy;
+import org.eclipse.ditto.signals.commands.policies.modify.CreatePolicyResponse;
+import org.eclipse.ditto.signals.commands.policies.modify.DeletePolicy;
+import org.eclipse.ditto.signals.commands.policies.modify.DeletePolicyEntry;
+import org.eclipse.ditto.signals.commands.policies.modify.DeletePolicyEntryResponse;
+import org.eclipse.ditto.signals.commands.policies.modify.DeletePolicyResponse;
+import org.eclipse.ditto.signals.commands.policies.modify.DeleteResource;
+import org.eclipse.ditto.signals.commands.policies.modify.DeleteResourceResponse;
+import org.eclipse.ditto.signals.commands.policies.modify.DeleteSubject;
+import org.eclipse.ditto.signals.commands.policies.modify.DeleteSubjectResponse;
+import org.eclipse.ditto.signals.commands.policies.modify.ModifyPolicy;
+import org.eclipse.ditto.signals.commands.policies.modify.ModifyPolicyEntries;
+import org.eclipse.ditto.signals.commands.policies.modify.ModifyPolicyEntriesResponse;
+import org.eclipse.ditto.signals.commands.policies.modify.ModifyPolicyEntry;
+import org.eclipse.ditto.signals.commands.policies.modify.ModifyPolicyEntryResponse;
+import org.eclipse.ditto.signals.commands.policies.modify.ModifyPolicyResponse;
+import org.eclipse.ditto.signals.commands.policies.modify.ModifyResource;
+import org.eclipse.ditto.signals.commands.policies.modify.ModifyResourceResponse;
+import org.eclipse.ditto.signals.commands.policies.modify.ModifyResources;
+import org.eclipse.ditto.signals.commands.policies.modify.ModifyResourcesResponse;
+import org.eclipse.ditto.signals.commands.policies.modify.ModifySubject;
+import org.eclipse.ditto.signals.commands.policies.modify.ModifySubjectResponse;
+import org.eclipse.ditto.signals.commands.policies.modify.ModifySubjects;
+import org.eclipse.ditto.signals.commands.policies.modify.ModifySubjectsResponse;
+import org.eclipse.ditto.signals.commands.policies.query.RetrievePolicy;
+import org.eclipse.ditto.signals.commands.policies.query.RetrievePolicyEntries;
+import org.eclipse.ditto.signals.commands.policies.query.RetrievePolicyEntriesResponse;
+import org.eclipse.ditto.signals.commands.policies.query.RetrievePolicyEntry;
+import org.eclipse.ditto.signals.commands.policies.query.RetrievePolicyEntryResponse;
+import org.eclipse.ditto.signals.commands.policies.query.RetrievePolicyResponse;
+import org.eclipse.ditto.signals.commands.policies.query.RetrieveResource;
+import org.eclipse.ditto.signals.commands.policies.query.RetrieveResourceResponse;
+import org.eclipse.ditto.signals.commands.policies.query.RetrieveResources;
+import org.eclipse.ditto.signals.commands.policies.query.RetrieveResourcesResponse;
+import org.eclipse.ditto.signals.commands.policies.query.RetrieveSubject;
+import org.eclipse.ditto.signals.commands.policies.query.RetrieveSubjectResponse;
+import org.eclipse.ditto.signals.commands.policies.query.RetrieveSubjects;
+import org.eclipse.ditto.signals.commands.policies.query.RetrieveSubjectsResponse;
+import org.eclipse.ditto.signals.events.policies.PolicyCreated;
+import org.eclipse.ditto.signals.events.policies.PolicyDeleted;
+import org.eclipse.ditto.signals.events.policies.PolicyEntriesModified;
+import org.eclipse.ditto.signals.events.policies.PolicyEntryCreated;
+import org.eclipse.ditto.signals.events.policies.PolicyEntryDeleted;
+import org.eclipse.ditto.signals.events.policies.PolicyEntryModified;
+import org.eclipse.ditto.signals.events.policies.PolicyEvent;
+import org.eclipse.ditto.signals.events.policies.PolicyModified;
+import org.eclipse.ditto.signals.events.policies.ResourceCreated;
+import org.eclipse.ditto.signals.events.policies.ResourceDeleted;
+import org.eclipse.ditto.signals.events.policies.ResourceModified;
+import org.eclipse.ditto.signals.events.policies.ResourcesModified;
+import org.eclipse.ditto.signals.events.policies.SubjectCreated;
+import org.eclipse.ditto.signals.events.policies.SubjectDeleted;
+import org.eclipse.ditto.signals.events.policies.SubjectModified;
+import org.eclipse.ditto.signals.events.policies.SubjectsModified;
+
+import com.typesafe.config.Config;
+
+import akka.ConfigurationException;
+import akka.actor.ActorRef;
+import akka.actor.ActorSystem;
+import akka.actor.Cancellable;
+import akka.actor.PoisonPill;
+import akka.actor.Props;
+import akka.cluster.pubsub.DistributedPubSubMediator;
+import akka.cluster.sharding.ClusterSharding;
+import akka.event.DiagnosticLoggingAdapter;
+import akka.japi.Creator;
+import akka.japi.function.Procedure;
+import akka.japi.pf.FI;
+import akka.japi.pf.ReceiveBuilder;
+import akka.persistence.AbstractPersistentActor;
+import akka.persistence.DeleteMessagesFailure;
+import akka.persistence.DeleteMessagesSuccess;
+import akka.persistence.DeleteSnapshotFailure;
+import akka.persistence.DeleteSnapshotSuccess;
+import akka.persistence.RecoveryCompleted;
+import akka.persistence.SaveSnapshotFailure;
+import akka.persistence.SaveSnapshotSuccess;
+import akka.persistence.SnapshotMetadata;
+import akka.persistence.SnapshotOffer;
+import scala.concurrent.duration.Duration;
+
+/**
+ * PersistentActor which &quot;knows&quot; the state of a single {@link Policy}.
+ */
+public final class PolicyPersistenceActor extends AbstractPersistentActor {
+
+    /**
+     * The prefix of the persistenceId for Policies.
+     */
+    public static final String PERSISTENCE_ID_PREFIX = &quot;policy:&quot;;
+
+    /**
+     * The ID of the journal plugin this persistence actor uses.
+     */
+    private static final String JOURNAL_PLUGIN_ID = &quot;akka-contrib-mongodb-persistence-policies-journal&quot;;
+
+    /**
+     * The ID of the snapshot plugin this persistence actor uses.
+     */
+    private static final String SNAPSHOT_PLUGIN_ID = &quot;akka-contrib-mongodb-persistence-policies-snapshots&quot;;
+
+<span class="fc" id="L158">    private final DiagnosticLoggingAdapter log = LogUtil.obtain(this);</span>
+    private final String policyId;
+    private final SnapshotAdapter&lt;Policy&gt; snapshotAdapter;
+    private final ActorRef pubSubMediator;
+    private final java.time.Duration activityCheckInterval;
+    private final java.time.Duration activityCheckDeletedInterval;
+    private final java.time.Duration snapshotInterval;
+    private final long snapshotThreshold;
+    private final Receive handlePolicyEvents;
+    private final boolean snapshotDeleteOld;
+    private final boolean eventsDeleteOld;
+    private Policy policy;
+    private long accessCounter;
+<span class="fc" id="L171">    private long lastSnapshotSequenceNr = -1;</span>
+    private Cancellable activityChecker;
+    private Cancellable snapshotter;
+    private Runnable invokeAfterSnapshotRunnable;
+    private boolean snapshotInProgress;
+
+    private PolicyPersistenceActor(final String policyId,
+            final SnapshotAdapter&lt;Policy&gt; snapshotAdapter,
+<span class="fc" id="L179">            final ActorRef pubSubMediator) {</span>
+
+<span class="fc" id="L181">        this.policyId = policyId;</span>
+<span class="fc" id="L182">        this.pubSubMediator = pubSubMediator;</span>
+<span class="fc" id="L183">        this.snapshotAdapter = snapshotAdapter;</span>
+
+<span class="fc" id="L185">        final Config config = getContext().system().settings().config();</span>
+<span class="fc" id="L186">        activityCheckInterval = config.getDuration(ConfigKeys.Policy.ACTIVITY_CHECK_INTERVAL);</span>
+<span class="fc" id="L187">        activityCheckDeletedInterval = config.getDuration(ConfigKeys.Policy.ACTIVITY_CHECK_DELETED_INTERVAL);</span>
+<span class="fc" id="L188">        snapshotInterval = config.getDuration(ConfigKeys.Policy.SNAPSHOT_INTERVAL);</span>
+<span class="fc" id="L189">        snapshotThreshold = config.getLong(ConfigKeys.Policy.SNAPSHOT_THRESHOLD);</span>
+<span class="fc" id="L190">        snapshotDeleteOld = config.getBoolean(ConfigKeys.Policy.SNAPSHOT_DELETE_OLD);</span>
+<span class="fc" id="L191">        eventsDeleteOld = config.getBoolean(ConfigKeys.Policy.EVENTS_DELETE_OLD);</span>
+
+<span class="fc bfc" id="L193" title="All 2 branches covered.">        if (snapshotThreshold &lt; 0) {</span>
+<span class="fc" id="L194">            throw new ConfigurationException(String.format(&quot;Config setting '%s' must be positive, but is: %d.&quot;,</span>
+<span class="fc" id="L195">                    ConfigKeys.Policy.SNAPSHOT_THRESHOLD, snapshotThreshold));</span>
+        }
+
+<span class="fc" id="L198">        handlePolicyEvents = ReceiveBuilder.create()</span>
+
+                // # Policy Creation Recovery
+<span class="fc" id="L201">                .match(PolicyCreated.class, pc -&gt; policy = pc.getPolicy().toBuilder()</span>
+<span class="fc" id="L202">                        .setLifecycle(PolicyLifecycle.ACTIVE)</span>
+<span class="fc" id="L203">                        .setRevision(lastSequenceNr())</span>
+<span class="fc" id="L204">                        .setModified(pc.getTimestamp().orElse(null))</span>
+<span class="fc" id="L205">                        .build())</span>
+
+                // # Policy Modification Recovery
+<span class="fc" id="L208">                .match(PolicyModified.class, pm -&gt; {</span>
+                    // we need to use the current policy as base otherwise we would loose its state
+<span class="fc" id="L210">                    final PolicyBuilder copyBuilder = policy.toBuilder();</span>
+<span class="fc" id="L211">                    copyBuilder.removeAll(policy); // remove all old policyEntries!</span>
+<span class="fc" id="L212">                    copyBuilder.setAll(pm.getPolicy().getEntriesSet()); // add the new ones</span>
+<span class="fc" id="L213">                    policy = copyBuilder.setRevision(lastSequenceNr())</span>
+<span class="fc" id="L214">                            .setModified(pm.getTimestamp().orElse(null))</span>
+<span class="fc" id="L215">                            .build();</span>
+<span class="fc" id="L216">                })</span>
+
+                // # Policy Deletion Recovery
+<span class="fc" id="L219">                .match(PolicyDeleted.class, pd -&gt; {</span>
+<span class="pc bpc" id="L220" title="1 of 2 branches missed.">                    if (policy != null) {</span>
+<span class="fc" id="L221">                        policy = policy.toBuilder()</span>
+<span class="fc" id="L222">                                .setLifecycle(PolicyLifecycle.DELETED)</span>
+<span class="fc" id="L223">                                .setRevision(lastSequenceNr())</span>
+<span class="fc" id="L224">                                .setModified(pd.getTimestamp().orElse(null))</span>
+<span class="fc" id="L225">                                .build();</span>
+                    } else {
+<span class="nc" id="L227">                        log.warning(&quot;Policy was null when 'PolicyDeleted' event should have been applied on recovery.&quot;);</span>
+                    }
+<span class="fc" id="L229">                })</span>
+
+                // # Policy Entries Modification Recovery
+<span class="pc" id="L232">                .match(PolicyEntriesModified.class, pem -&gt; policy = policy.toBuilder()</span>
+<span class="nc" id="L233">                        .removeAll(policy.getEntriesSet())</span>
+<span class="nc" id="L234">                        .setAll(pem.getPolicyEntries())</span>
+<span class="nc" id="L235">                        .setRevision(lastSequenceNr())</span>
+<span class="nc" id="L236">                        .setModified(pem.getTimestamp().orElse(null))</span>
+<span class="nc" id="L237">                        .build())</span>
+
+
+                // # Policy Entry Creation Recovery
+<span class="fc" id="L241">                .match(PolicyEntryCreated.class, pec -&gt; policy = policy.toBuilder()</span>
+<span class="fc" id="L242">                        .set(pec.getPolicyEntry())</span>
+<span class="fc" id="L243">                        .setRevision(lastSequenceNr())</span>
+<span class="fc" id="L244">                        .setModified(pec.getTimestamp().orElse(null))</span>
+<span class="fc" id="L245">                        .build())</span>
+
+                // # Policy Entry Modification Recovery
+<span class="fc" id="L248">                .match(PolicyEntryModified.class, pem -&gt; policy = policy.toBuilder()</span>
+<span class="fc" id="L249">                        .set(pem.getPolicyEntry())</span>
+<span class="fc" id="L250">                        .setRevision(lastSequenceNr())</span>
+<span class="fc" id="L251">                        .setModified(pem.getTimestamp().orElse(null))</span>
+<span class="fc" id="L252">                        .build())</span>
+
+                // # Policy Entry Deletion Recovery
+<span class="fc" id="L255">                .match(PolicyEntryDeleted.class, ped -&gt; policy = policy.toBuilder()</span>
+<span class="fc" id="L256">                        .remove(ped.getLabel())</span>
+<span class="fc" id="L257">                        .setRevision(lastSequenceNr())</span>
+<span class="fc" id="L258">                        .setModified(ped.getTimestamp().orElse(null))</span>
+<span class="fc" id="L259">                        .build())</span>
+
+                // # Subjects Modification Recovery
+<span class="pc" id="L262">                .match(SubjectsModified.class, sm -&gt; policy.getEntryFor(sm.getLabel())</span>
+<span class="nc" id="L263">                        .map(policyEntry -&gt; PoliciesModelFactory</span>
+<span class="nc" id="L264">                                .newPolicyEntry(sm.getLabel(), sm.getSubjects(), policyEntry.getResources()))</span>
+<span class="nc" id="L265">                        .ifPresent(modifiedPolicyEntry -&gt; policy = policy.toBuilder()</span>
+<span class="nc" id="L266">                                .set(modifiedPolicyEntry)</span>
+<span class="nc" id="L267">                                .setRevision(lastSequenceNr())</span>
+<span class="nc" id="L268">                                .setModified(sm.getTimestamp().orElse(null))</span>
+<span class="nc" id="L269">                                .build()))</span>
+
+                // # Subject Creation Recovery
+<span class="fc" id="L272">                .match(SubjectCreated.class, sc -&gt; policy.getEntryFor(sc.getLabel())</span>
+<span class="fc" id="L273">                        .map(policyEntry -&gt; PoliciesModelFactory</span>
+<span class="fc" id="L274">                                .newPolicyEntry(sc.getLabel(), policyEntry.getSubjects().setSubject(sc.getSubject()),</span>
+<span class="fc" id="L275">                                        policyEntry.getResources()))</span>
+<span class="fc" id="L276">                        .ifPresent(modifiedPolicyEntry -&gt; policy = policy.toBuilder()</span>
+<span class="fc" id="L277">                                .set(modifiedPolicyEntry)</span>
+<span class="fc" id="L278">                                .setRevision(lastSequenceNr())</span>
+<span class="fc" id="L279">                                .setModified(sc.getTimestamp().orElse(null))</span>
+<span class="fc" id="L280">                                .build()))</span>
+
+                // # Subject Modification Recovery
+<span class="fc" id="L283">                .match(SubjectModified.class, sm -&gt; policy.getEntryFor(sm.getLabel())</span>
+<span class="fc" id="L284">                        .map(policyEntry -&gt; PoliciesModelFactory</span>
+<span class="fc" id="L285">                                .newPolicyEntry(sm.getLabel(), policyEntry.getSubjects().setSubject(sm.getSubject()),</span>
+<span class="fc" id="L286">                                        policyEntry.getResources()))</span>
+<span class="fc" id="L287">                        .ifPresent(modifiedPolicyEntry -&gt; policy = policy.toBuilder()</span>
+<span class="fc" id="L288">                                .set(modifiedPolicyEntry)</span>
+<span class="fc" id="L289">                                .setRevision(lastSequenceNr())</span>
+<span class="fc" id="L290">                                .setModified(sm.getTimestamp().orElse(null))</span>
+<span class="fc" id="L291">                                .build()))</span>
+
+                // # Subject Deletion Recovery
+<span class="fc" id="L294">                .match(SubjectDeleted.class, sd -&gt; policy = policy.toBuilder()</span>
+<span class="fc" id="L295">                        .forLabel(sd.getLabel())</span>
+<span class="fc" id="L296">                        .removeSubject(sd.getSubjectId())</span>
+<span class="fc" id="L297">                        .setRevision(lastSequenceNr())</span>
+<span class="fc" id="L298">                        .setModified(sd.getTimestamp().orElse(null))</span>
+<span class="fc" id="L299">                        .build())</span>
+
+                // # Resources Modification Recovery
+<span class="pc" id="L302">                .match(ResourcesModified.class, rm -&gt; policy.getEntryFor(rm.getLabel())</span>
+<span class="nc" id="L303">                        .map(policyEntry -&gt; PoliciesModelFactory</span>
+<span class="nc" id="L304">                                .newPolicyEntry(rm.getLabel(), policyEntry.getSubjects(), rm.getResources()))</span>
+<span class="nc" id="L305">                        .ifPresent(modifiedPolicyEntry -&gt; policy = policy.toBuilder()</span>
+<span class="nc" id="L306">                                .set(modifiedPolicyEntry)</span>
+<span class="nc" id="L307">                                .setRevision(lastSequenceNr())</span>
+<span class="nc" id="L308">                                .setModified(rm.getTimestamp().orElse(null))</span>
+<span class="nc" id="L309">                                .build()))</span>
+
+                // # Resource Creation Recovery
+<span class="fc" id="L312">                .match(ResourceCreated.class, rc -&gt; policy.getEntryFor(rc.getLabel())</span>
+<span class="fc" id="L313">                        .map(policyEntry -&gt; PoliciesModelFactory.newPolicyEntry(rc.getLabel(),</span>
+<span class="fc" id="L314">                                policyEntry.getSubjects(),</span>
+<span class="fc" id="L315">                                policyEntry.getResources().setResource(rc.getResource())))</span>
+<span class="fc" id="L316">                        .ifPresent(modifiedPolicyEntry -&gt; policy = policy.toBuilder()</span>
+<span class="fc" id="L317">                                .set(modifiedPolicyEntry)</span>
+<span class="fc" id="L318">                                .setRevision(lastSequenceNr())</span>
+<span class="fc" id="L319">                                .setModified(rc.getTimestamp().orElse(null))</span>
+<span class="fc" id="L320">                                .build()))</span>
+
+                // # Resource Modification Recovery
+<span class="fc" id="L323">                .match(ResourceModified.class, rm -&gt; policy.getEntryFor(rm.getLabel())</span>
+<span class="fc" id="L324">                        .map(policyEntry -&gt; PoliciesModelFactory.newPolicyEntry(rm.getLabel(),</span>
+<span class="fc" id="L325">                                policyEntry.getSubjects(),</span>
+<span class="fc" id="L326">                                policyEntry.getResources().setResource(rm.getResource())))</span>
+<span class="fc" id="L327">                        .ifPresent(modifiedPolicyEntry -&gt; policy = policy.toBuilder()</span>
+<span class="fc" id="L328">                                .set(modifiedPolicyEntry)</span>
+<span class="fc" id="L329">                                .setRevision(lastSequenceNr())</span>
+<span class="fc" id="L330">                                .setModified(rm.getTimestamp().orElse(null))</span>
+<span class="fc" id="L331">                                .build()))</span>
+
+                // # Resource Deletion Recovery
+<span class="fc" id="L334">                .match(ResourceDeleted.class, rd -&gt; policy = policy.toBuilder()</span>
+<span class="fc" id="L335">                        .forLabel(rd.getLabel())</span>
+<span class="fc" id="L336">                        .removeResource(rd.getResourceKey())</span>
+<span class="fc" id="L337">                        .setRevision(lastSequenceNr())</span>
+<span class="fc" id="L338">                        .setModified(rd.getTimestamp().orElse(null))</span>
+<span class="fc" id="L339">                        .build())</span>
+
+<span class="fc" id="L341">                .build();</span>
+<span class="fc" id="L342">    }</span>
+
+    /**
+     * Creates Akka configuration object {@link Props} for this PolicyPersistenceActor.
+     *
+     * @param policyId the ID of the Policy this Actor manages.
+     * @param snapshotAdapter the adapter to serialize Policy snapshots.
+     * @param pubSubMediator the PubSub mediator actor.
+     * @return the Akka configuration Props object
+     */
+    public static Props props(final String policyId,
+            final SnapshotAdapter&lt;Policy&gt; snapshotAdapter,
+            final ActorRef pubSubMediator) {
+<span class="fc" id="L355">        return Props.create(PolicyPersistenceActor.class, new Creator&lt;PolicyPersistenceActor&gt;() {</span>
+            private static final long serialVersionUID = 1L;
+
+            @Override
+            public PolicyPersistenceActor create() {
+<span class="fc" id="L360">                return new PolicyPersistenceActor(policyId, snapshotAdapter, pubSubMediator);</span>
+            }
+        });
+    }
+
+    /**
+     * Retrieves the ShardRegion of &quot;Policy&quot;. PolicyCommands can be sent to this region which handles dispatching them
+     * in the cluster (onto the cluster node containing the shard).
+     *
+     * @param system the ActorSystem in which to lookup the ShardRegion.
+     * @return the ActorRef to the ShardRegion.
+     */
+    public static ActorRef getShardRegion(final ActorSystem system) {
+<span class="nc" id="L373">        return ClusterSharding.get(system).shardRegion(PoliciesMessagingConstants.SHARD_REGION);</span>
+    }
+
+    private static Instant getEventTimestamp() {
+<span class="fc" id="L377">        return Instant.now();</span>
+    }
+
+    private void scheduleCheckForPolicyActivity(final long intervalInSeconds) {
+<span class="fc bfc" id="L381" title="All 2 branches covered.">        if (activityChecker != null) {</span>
+<span class="fc" id="L382">            activityChecker.cancel();</span>
+        }
+        // send a message to ourselves:
+<span class="fc" id="L385">        activityChecker = getContext().system().scheduler()</span>
+<span class="fc" id="L386">                .scheduleOnce(Duration.apply(intervalInSeconds, TimeUnit.SECONDS), getSelf(),</span>
+<span class="fc" id="L387">                        new CheckForActivity(lastSequenceNr(), accessCounter), getContext().dispatcher(), null);</span>
+<span class="fc" id="L388">    }</span>
+
+    private void scheduleSnapshot(final long intervalInSeconds) {
+        // send a message to ourselft:
+<span class="fc" id="L392">        snapshotter = getContext().system().scheduler()</span>
+<span class="fc" id="L393">                .scheduleOnce(Duration.apply(intervalInSeconds, TimeUnit.SECONDS), getSelf(),</span>
+                        TakeSnapshotInternal.INSTANCE,
+<span class="fc" id="L395">                        getContext().dispatcher(), null);</span>
+<span class="fc" id="L396">    }</span>
+
+    @Override
+    public String persistenceId() {
+<span class="fc" id="L400">        return PERSISTENCE_ID_PREFIX + policyId;</span>
+    }
+
+    @Override
+    public String journalPluginId() {
+<span class="fc" id="L405">        return JOURNAL_PLUGIN_ID;</span>
+    }
+
+    @Override
+    public String snapshotPluginId() {
+<span class="fc" id="L410">        return SNAPSHOT_PLUGIN_ID;</span>
+    }
+
+    @Override
+    public void postStop() {
+<span class="fc" id="L415">        super.postStop();</span>
+<span class="fc" id="L416">        invokeAfterSnapshotRunnable = null;</span>
+<span class="fc bfc" id="L417" title="All 2 branches covered.">        if (activityChecker != null) {</span>
+<span class="fc" id="L418">            activityChecker.cancel();</span>
+        }
+<span class="fc bfc" id="L420" title="All 2 branches covered.">        if (snapshotter != null) {</span>
+<span class="fc" id="L421">            snapshotter.cancel();</span>
+        }
+<span class="fc" id="L423">    }</span>
+
+    @Override
+    public Receive createReceive() {
+        /*
+         * First no Policy for the ID exists at all. Thus the only command this Actor reacts to is CreatePolicy.
+         * This behaviour changes as soon as a Policy was created.
+         */
+<span class="fc" id="L431">        final StrategyAwareReceiveBuilder initialReceiveCommandBuilder = new StrategyAwareReceiveBuilder();</span>
+<span class="fc" id="L432">        initialReceiveCommandBuilder.match(new CreatePolicyStrategy());</span>
+<span class="fc" id="L433">        initialReceiveCommandBuilder.match(new CheckForActivityStrategy());</span>
+<span class="fc" id="L434">        initialReceiveCommandBuilder.matchAny(new MatchAnyDuringInitializeStrategy());</span>
+<span class="fc" id="L435">        return initialReceiveCommandBuilder.build();</span>
+    }
+
+    @Override
+    public Receive createReceiveRecover() {
+        // defines how state is updated during recovery
+<span class="fc" id="L441">        return handlePolicyEvents.orElse(ReceiveBuilder.create()</span>
+
+                // # Snapshot handling
+<span class="fc" id="L444">                .match(SnapshotOffer.class, ss -&gt; {</span>
+<span class="fc" id="L445">                    policy = snapshotAdapter.fromSnapshotStore(ss);</span>
+<span class="fc" id="L446">                    lastSnapshotSequenceNr = ss.metadata().sequenceNr();</span>
+<span class="fc" id="L447">                })</span>
+
+                // # Recovery handling
+<span class="fc" id="L450">                .match(RecoveryCompleted.class, rc -&gt; {</span>
+<span class="fc bfc" id="L451" title="All 2 branches covered.">                    if (policy != null) {</span>
+<span class="fc" id="L452">                        log.debug(&quot;Policy &lt;{}&gt; was recovered.&quot;, policyId);</span>
+
+<span class="fc bfc" id="L454" title="All 2 branches covered.">                        if (isPolicyActive()) {</span>
+<span class="fc" id="L455">                            becomePolicyCreatedHandler();</span>
+<span class="pc bpc" id="L456" title="1 of 2 branches missed.">                        } else if (isPolicyDeleted()) {</span>
+<span class="fc" id="L457">                            becomePolicyDeletedHandler();</span>
+                        } else {
+<span class="nc" id="L459">                            log.error(&quot;Unknown lifecycle state &lt;{}&gt; for Policy &lt;{}&gt;.&quot;, policy.getLifecycle(), policyId);</span>
+                        }
+
+                    }
+<span class="fc" id="L463">                })</span>
+
+                // # Handle unknown
+<span class="pc" id="L466">                .matchAny(m -&gt; log.warning(&quot;Unknown recover message: {}&quot;, m))</span>
+<span class="fc" id="L467">                .build());</span>
+    }
+
+    /*
+     * Now as the {@code policy} reference is not {@code null} the strategies which act on this reference can
+     * be activated. In return the strategy for the CreatePolicy command is not needed anymore.
+     */
+    private void becomePolicyCreatedHandler() {
+<span class="fc" id="L475">        final Collection&lt;ReceiveStrategy&lt;?&gt;&gt; policyCreatedStrategies = initPolicyCreatedStrategies();</span>
+<span class="fc" id="L476">        final StrategyAwareReceiveBuilder strategyAwareReceiveBuilder = new StrategyAwareReceiveBuilder();</span>
+<span class="fc" id="L477">        policyCreatedStrategies.forEach(strategyAwareReceiveBuilder::match);</span>
+<span class="fc" id="L478">        strategyAwareReceiveBuilder.matchAny(new MatchAnyAfterInitializeStrategy());</span>
+
+<span class="fc" id="L480">        getContext().become(strategyAwareReceiveBuilder.build(), true);</span>
+<span class="fc" id="L481">        getContext().getParent().tell(new PolicySupervisorActor.ManualReset(), getSelf());</span>
+
+<span class="fc" id="L483">        scheduleCheckForPolicyActivity(activityCheckInterval.getSeconds());</span>
+<span class="fc" id="L484">        scheduleSnapshot(snapshotInterval.getSeconds());</span>
+<span class="fc" id="L485">    }</span>
+
+    private Collection&lt;ReceiveStrategy&lt;?&gt;&gt; initPolicyCreatedStrategies() {
+<span class="fc" id="L488">        final Collection&lt;ReceiveStrategy&lt;?&gt;&gt; result = new ArrayList&lt;&gt;();</span>
+
+        // Policy level
+<span class="fc" id="L491">        result.add(new PolicyConflictStrategy());</span>
+<span class="fc" id="L492">        result.add(new ModifyPolicyStrategy());</span>
+<span class="fc" id="L493">        result.add(new RetrievePolicyStrategy());</span>
+<span class="fc" id="L494">        result.add(new DeletePolicyStrategy());</span>
+
+        // Policy Entries
+<span class="fc" id="L497">        result.add(new ModifyPolicyEntriesStrategy());</span>
+<span class="fc" id="L498">        result.add(new RetrievePolicyEntriesStrategy());</span>
+
+        // Policy Entry
+<span class="fc" id="L501">        result.add(new ModifyPolicyEntryStrategy());</span>
+<span class="fc" id="L502">        result.add(new RetrievePolicyEntryStrategy());</span>
+<span class="fc" id="L503">        result.add(new DeletePolicyEntryStrategy());</span>
+
+        // Subjects
+<span class="fc" id="L506">        result.add(new ModifySubjectsStrategy());</span>
+<span class="fc" id="L507">        result.add(new ModifySubjectStrategy());</span>
+<span class="fc" id="L508">        result.add(new RetrieveSubjectsStrategy());</span>
+<span class="fc" id="L509">        result.add(new RetrieveSubjectStrategy());</span>
+<span class="fc" id="L510">        result.add(new DeleteSubjectStrategy());</span>
+
+        // Resources
+<span class="fc" id="L513">        result.add(new ModifyResourcesStrategy());</span>
+<span class="fc" id="L514">        result.add(new ModifyResourceStrategy());</span>
+<span class="fc" id="L515">        result.add(new RetrieveResourcesStrategy());</span>
+<span class="fc" id="L516">        result.add(new RetrieveResourceStrategy());</span>
+<span class="fc" id="L517">        result.add(new DeleteResourceStrategy());</span>
+
+        // Sudo
+<span class="fc" id="L520">        result.add(new SudoRetrievePolicyStrategy());</span>
+
+        // Persistence specific
+<span class="fc" id="L523">        result.add(new SaveSnapshotSuccessStrategy());</span>
+<span class="fc" id="L524">        result.add(new SaveSnapshotFailureStrategy());</span>
+<span class="fc" id="L525">        result.add(new DeleteSnapshotSuccessStrategy());</span>
+<span class="fc" id="L526">        result.add(new DeleteSnapshotFailureStrategy());</span>
+<span class="fc" id="L527">        result.add(new DeleteMessagesSuccessStrategy());</span>
+<span class="fc" id="L528">        result.add(new DeleteMessagesFailureStrategy());</span>
+<span class="fc" id="L529">        result.add(new CheckForActivityStrategy());</span>
+<span class="fc" id="L530">        result.add(new TakeSnapshotInternalStrategy());</span>
+
+<span class="fc" id="L532">        return result;</span>
+    }
+
+    private void becomePolicyDeletedHandler() {
+<span class="fc" id="L536">        final Collection&lt;ReceiveStrategy&lt;?&gt;&gt; policyDeletedStrategies = initPolicyDeletedStrategies();</span>
+<span class="fc" id="L537">        final StrategyAwareReceiveBuilder strategyAwareReceiveBuilder = new StrategyAwareReceiveBuilder();</span>
+<span class="fc" id="L538">        policyDeletedStrategies.forEach(strategyAwareReceiveBuilder::match);</span>
+<span class="fc" id="L539">        strategyAwareReceiveBuilder.matchAny(new PolicyNotFoundStrategy());</span>
+
+<span class="fc" id="L541">        getContext().become(strategyAwareReceiveBuilder.build(), true);</span>
+<span class="fc" id="L542">        getContext().getParent().tell(new PolicySupervisorActor.ManualReset(), getSelf());</span>
+
+<span class="fc bfc" id="L544" title="All 2 branches covered.">        if (activityChecker != null) {</span>
+<span class="fc" id="L545">            activityChecker.cancel();</span>
+        }
+<span class="fc bfc" id="L547" title="All 2 branches covered.">        if (snapshotter != null) {</span>
+<span class="fc" id="L548">            snapshotter.cancel();</span>
+        }
+        /*
+         * Check in the next X minutes and therefore
+         * - stay in-memory for a short amount of minutes after deletion
+         * - get a Snapshot when removed from memory
+         */
+<span class="fc" id="L555">        scheduleCheckForPolicyActivity(activityCheckDeletedInterval.getSeconds());</span>
+<span class="fc" id="L556">    }</span>
+
+    private Collection&lt;ReceiveStrategy&lt;?&gt;&gt; initPolicyDeletedStrategies() {
+<span class="fc" id="L559">        final Collection&lt;ReceiveStrategy&lt;?&gt;&gt; result = new ArrayList&lt;&gt;();</span>
+<span class="fc" id="L560">        result.add(new CreatePolicyStrategy());</span>
+
+        // Persistence specific
+<span class="fc" id="L563">        result.add(new SaveSnapshotSuccessStrategy());</span>
+<span class="fc" id="L564">        result.add(new SaveSnapshotFailureStrategy());</span>
+<span class="fc" id="L565">        result.add(new DeleteSnapshotSuccessStrategy());</span>
+<span class="fc" id="L566">        result.add(new DeleteSnapshotFailureStrategy());</span>
+<span class="fc" id="L567">        result.add(new DeleteMessagesSuccessStrategy());</span>
+<span class="fc" id="L568">        result.add(new DeleteMessagesFailureStrategy());</span>
+<span class="fc" id="L569">        result.add(new CheckForActivityStrategy());</span>
+
+<span class="fc" id="L571">        return result;</span>
+    }
+
+    private &lt;E extends PolicyEvent&gt; void processEvent(final E event, final Procedure&lt;E&gt; handler) {
+<span class="fc" id="L575">        log.debug(&quot;About to persist Event &lt;{}&gt;.&quot;, event.getType());</span>
+
+<span class="fc" id="L577">        persist(event, persistedEvent -&gt; {</span>
+<span class="fc" id="L578">            log.info(&quot;Successfully persisted Event &lt;{}&gt;.&quot;, event.getType());</span>
+
+            // after the event was persisted, apply the event on the current actor state
+<span class="fc" id="L581">            handlePolicyEvents.onMessage().apply(persistedEvent);</span>
+
+            /*
+             * The event has to be applied before creating the snapshot, otherwise a snapshot with new
+             * sequence no (e.g. 2), but old thing revision no (e.g. 1) will be created. This can lead to serious
+             * aftereffects.
+             */
+<span class="fc" id="L588">            handler.apply(persistedEvent);</span>
+
+            // save a snapshot if there were too many changes since the last snapshot
+<span class="fc bfc" id="L591" title="All 2 branches covered.">            if ((lastSequenceNr() - lastSnapshotSequenceNr) &gt; snapshotThreshold) {</span>
+<span class="fc" id="L592">                doSaveSnapshot(null);</span>
+            }
+<span class="fc" id="L594">            notifySubscribers(event);</span>
+<span class="fc" id="L595">        });</span>
+<span class="fc" id="L596">    }</span>
+
+    private long getNextRevision() {
+<span class="fc" id="L599">        return lastSequenceNr() + 1;</span>
+    }
+
+    private boolean isPolicyActive() {
+<span class="pc bpc" id="L603" title="1 of 4 branches missed.">        return policy != null &amp;&amp; policy.hasLifecycle(PolicyLifecycle.ACTIVE);</span>
+    }
+
+    private boolean isPolicyDeleted() {
+<span class="pc bpc" id="L607" title="2 of 4 branches missed.">        return null == policy || policy.hasLifecycle(PolicyLifecycle.DELETED);</span>
+    }
+
+    private void doSaveSnapshot(final Runnable invokeAfterSnapshotRunnable) {
+<span class="pc bpc" id="L611" title="1 of 2 branches missed.">        if (snapshotInProgress) {</span>
+<span class="nc" id="L612">            log.debug(&quot;Already requested taking a Snapshot - not doing it again.&quot;);</span>
+        } else {
+<span class="fc" id="L614">            snapshotInProgress = true;</span>
+<span class="fc" id="L615">            this.invokeAfterSnapshotRunnable = invokeAfterSnapshotRunnable;</span>
+<span class="fc" id="L616">            log.debug(&quot;Attempting to save Snapshot for &lt;{}&gt; ...&quot;, policy);</span>
+            // save a snapshot
+<span class="fc" id="L618">            final Object snapshotToStore = snapshotAdapter.toSnapshotStore(policy);</span>
+<span class="fc" id="L619">            saveSnapshot(snapshotToStore);</span>
+        }
+<span class="fc" id="L621">    }</span>
+
+    private void notifySubscribers(final PolicyEvent event) {
+<span class="fc" id="L624">        pubSubMediator.tell(new DistributedPubSubMediator.Publish(PolicyEvent.TYPE_PREFIX, event, true), getSelf());</span>
+<span class="fc" id="L625">    }</span>
+
+    private void policyEntryNotFound(final Label label, final DittoHeaders dittoHeaders) {
+<span class="fc" id="L628">        notifySender(PolicyEntryNotAccessibleException.newBuilder(policyId, label).dittoHeaders(dittoHeaders).build());</span>
+<span class="fc" id="L629">    }</span>
+
+    private void subjectNotFound(final Label label, final CharSequence subjectId, final DittoHeaders dittoHeaders) {
+<span class="fc" id="L632">        notifySender(SubjectNotAccessibleException.newBuilder(policyId, label.toString(), subjectId)</span>
+<span class="fc" id="L633">                .dittoHeaders(dittoHeaders)</span>
+<span class="fc" id="L634">                .build());</span>
+<span class="fc" id="L635">    }</span>
+
+    private void resourceNotFound(final Label label, final ResourceKey resourceKey, final DittoHeaders dittoHeaders) {
+<span class="fc" id="L638">        notifySender(ResourceNotAccessibleException.newBuilder(policyId, label, resourceKey.toString())</span>
+<span class="fc" id="L639">                .dittoHeaders(dittoHeaders)</span>
+<span class="fc" id="L640">                .build());</span>
+<span class="fc" id="L641">    }</span>
+
+    private WithDittoHeaders policyNotFound(final DittoHeaders dittoHeaders) {
+<span class="nc" id="L644">        return PolicyNotAccessibleException.newBuilder(policyId).dittoHeaders(dittoHeaders).build();</span>
+    }
+
+    private void policyInvalid(final String message, final DittoHeaders dittoHeaders) {
+<span class="nc" id="L648">        final PolicyModificationInvalidException exception = PolicyModificationInvalidException.newBuilder(policyId)</span>
+<span class="nc" id="L649">                .description(message)</span>
+<span class="nc" id="L650">                .dittoHeaders(dittoHeaders)</span>
+<span class="nc" id="L651">                .build();</span>
+
+<span class="nc" id="L653">        notifySender(exception);</span>
+<span class="nc" id="L654">    }</span>
+
+    private void policyEntryInvalid(final Label label, final String message, final DittoHeaders dittoHeaders) {
+<span class="fc" id="L657">        final PolicyEntryModificationInvalidException exception =</span>
+<span class="fc" id="L658">                PolicyEntryModificationInvalidException.newBuilder(policyId, label)</span>
+<span class="fc" id="L659">                        .description(message)</span>
+<span class="fc" id="L660">                        .dittoHeaders(dittoHeaders)</span>
+<span class="fc" id="L661">                        .build();</span>
+
+<span class="fc" id="L663">        notifySender(exception);</span>
+<span class="fc" id="L664">    }</span>
+
+    private void notifySender(final WithDittoHeaders message) {
+<span class="fc" id="L667">        accessCounter++;</span>
+<span class="fc" id="L668">        notifySender(getSender(), message);</span>
+<span class="fc" id="L669">    }</span>
+
+    private void notifySender(final ActorRef sender, final WithDittoHeaders message) {
+<span class="fc" id="L672">        accessCounter++;</span>
+<span class="fc" id="L673">        sender.tell(message, getSelf());</span>
+<span class="fc" id="L674">    }</span>
+
+    /**
+     * Message the PolicyPersistenceActor can send to itself to check for activity of the Actor and terminate itself
+     * if there was no activity since the last check.
+     */
+    private static final class CheckForActivity {
+
+        private final long currentSequenceNr;
+        private final long currentAccessCounter;
+
+        /**
+         * Constructs a new {@code CheckForActivity} message containing the current &quot;lastSequenceNo&quot; of the
+         * PolicyPersistenceActor.
+         *
+         * @param currentSequenceNr the current {@code PoliciesModelFactory.lastSequenceNr()} of the
+         * PolicyPersistenceActor.
+         * @param currentAccessCounter the current {@code accessCounter} of the PolicyPersistenceActor.
+         */
+<span class="fc" id="L693">        CheckForActivity(final long currentSequenceNr, final long currentAccessCounter) {</span>
+<span class="fc" id="L694">            this.currentSequenceNr = currentSequenceNr;</span>
+<span class="fc" id="L695">            this.currentAccessCounter = currentAccessCounter;</span>
+<span class="fc" id="L696">        }</span>
+
+        /**
+         * Returns the current {@code PoliciesModelFactory.lastSequenceNr()} of the PolicyPersistenceActor.
+         *
+         * @return the current {@code PoliciesModelFactory.lastSequenceNr()} of the PolicyPersistenceActor.
+         */
+        long getCurrentSequenceNr() {
+<span class="nc" id="L704">            return currentSequenceNr;</span>
+        }
+
+        /**
+         * Returns the current {@code accessCounter} of the PolicyPersistenceActor.
+         *
+         * @return the current {@code accessCounter} of the PolicyPersistenceActor.
+         */
+        long getCurrentAccessCounter() {
+<span class="nc" id="L713">            return currentAccessCounter;</span>
+        }
+
+        @Override
+        public boolean equals(final Object o) {
+<span class="nc bnc" id="L718" title="All 2 branches missed.">            if (this == o) {</span>
+<span class="nc" id="L719">                return true;</span>
+            }
+<span class="nc bnc" id="L721" title="All 4 branches missed.">            if (o == null || getClass() != o.getClass()) {</span>
+<span class="nc" id="L722">                return false;</span>
+            }
+<span class="nc" id="L724">            final CheckForActivity that = (CheckForActivity) o;</span>
+<span class="nc bnc" id="L725" title="All 2 branches missed.">            return Objects.equals(currentSequenceNr, that.currentSequenceNr) &amp;&amp;</span>
+<span class="nc bnc" id="L726" title="All 2 branches missed.">                    Objects.equals(currentAccessCounter, that.currentAccessCounter);</span>
+        }
+
+        @Override
+        public int hashCode() {
+<span class="nc" id="L731">            return Objects.hash(currentSequenceNr, currentAccessCounter);</span>
+        }
+
+        @Override
+        public String toString() {
+<span class="nc" id="L736">            return getClass().getSimpleName() + &quot; [&quot; + &quot;currentSequenceNr=&quot; + currentSequenceNr +</span>
+                    &quot;, currentAccessCounter=&quot; + currentAccessCounter + &quot;]&quot;;
+        }
+
+    }
+
+    /**
+     * Message the PolicyPersistenceActor can send to itself to take a Snapshot if the Policy was modified.
+     */
+    private static final class TakeSnapshotInternal {
+
+        /**
+         * The single instance of this message.
+         */
+<span class="fc" id="L750">        public static final TakeSnapshotInternal INSTANCE = new TakeSnapshotInternal();</span>
+
+        private TakeSnapshotInternal() {}
+
+    }
+
+    /**
+     * This strategy handles the {@link RetrievePolicy} command.
+     */
+    @NotThreadSafe
+    private abstract class WithIdReceiveStrategy&lt;T extends WithId&gt; extends AbstractReceiveStrategy&lt;T&gt; {
+
+        /**
+         * Constructs a new {@code WithIdReceiveStrategy} object.
+         *
+         * @param theMatchingClass the class of the message this strategy reacts to.
+         * @param theLogger the logger to use for logging.
+         * @throws NullPointerException if {@code theMatchingClass} is {@code null}.
+         */
+<span class="fc" id="L769">        WithIdReceiveStrategy(final Class&lt;T&gt; theMatchingClass, final DiagnosticLoggingAdapter theLogger) {</span>
+<span class="fc" id="L770">            super(theMatchingClass, theLogger);</span>
+<span class="fc" id="L771">        }</span>
+
+        @Override
+        public FI.TypedPredicate&lt;T&gt; getPredicate() {
+<span class="fc" id="L775">            return command -&gt; Objects.equals(policyId, command.getId());</span>
+        }
+
+    }
+
+    /**
+     * This strategy handles the {@link CreatePolicy} command for a new Policy.
+     */
+    @NotThreadSafe
+    private final class CreatePolicyStrategy extends WithIdReceiveStrategy&lt;CreatePolicy&gt; {
+
+        /**
+         * Constructs a new {@code CreatePolicyStrategy} object.
+         */
+<span class="fc" id="L789">        CreatePolicyStrategy() {</span>
+<span class="fc" id="L790">            super(CreatePolicy.class, log);</span>
+<span class="fc" id="L791">        }</span>
+
+        @Override
+        protected void doApply(final CreatePolicy command) {
+            // Policy not yet created - do so ..
+<span class="fc" id="L796">            final Policy newPolicy = command.getPolicy();</span>
+<span class="fc" id="L797">            final PolicyBuilder newPolicyBuilder = PoliciesModelFactory.newPolicyBuilder(newPolicy);</span>
+<span class="fc" id="L798">            final DittoHeaders dittoHeaders = command.getDittoHeaders();</span>
+
+<span class="pc bpc" id="L800" title="1 of 2 branches missed.">            if (!newPolicy.getLifecycle().isPresent()) {</span>
+<span class="nc" id="L801">                newPolicyBuilder.setLifecycle(PolicyLifecycle.ACTIVE);</span>
+            }
+
+<span class="fc" id="L804">            final Policy newPolicyWithLifecycle = newPolicyBuilder.build();</span>
+<span class="fc" id="L805">            final PoliciesValidator validator = PoliciesValidator.newInstance(newPolicyWithLifecycle);</span>
+
+<span class="pc bpc" id="L807" title="1 of 2 branches missed.">            if (validator.isValid()) {</span>
+<span class="fc" id="L808">                final PolicyCreated policyCreated =</span>
+<span class="fc" id="L809">                        PolicyCreated.of(newPolicyWithLifecycle, getNextRevision(), getEventTimestamp(), dittoHeaders);</span>
+
+<span class="fc" id="L811">                processEvent(policyCreated, event -&gt; {</span>
+<span class="fc" id="L812">                    notifySender(CreatePolicyResponse.of(policyId, PolicyPersistenceActor.this.policy, dittoHeaders));</span>
+<span class="fc" id="L813">                    log.debug(&quot;Created new Policy with ID &lt;{}&gt;.&quot;, policyId);</span>
+<span class="fc" id="L814">                    becomePolicyCreatedHandler();</span>
+<span class="fc" id="L815">                });</span>
+<span class="fc" id="L816">            } else {</span>
+<span class="nc" id="L817">                policyInvalid(validator.getReason().orElse(null), dittoHeaders);</span>
+            }
+<span class="fc" id="L819">        }</span>
+
+        @Override
+        public FI.UnitApply&lt;CreatePolicy&gt; getUnhandledFunction() {
+<span class="fc" id="L823">            return command -&gt; {</span>
+<span class="fc" id="L824">                final String msgTemplate = &quot;This Policy Actor did not handle the requested Policy with ID &lt;{0}&gt;!&quot;;</span>
+<span class="fc" id="L825">                throw new IllegalArgumentException(MessageFormat.format(msgTemplate, command.getId()));</span>
+            };
+        }
+
+    }
+
+    /**
+     * This strategy handles the {@link CreatePolicy} command for an already existing Policy.
+     */
+    @NotThreadSafe
+    private final class PolicyConflictStrategy extends AbstractReceiveStrategy&lt;CreatePolicy&gt; {
+
+        /**
+         * Constructs a new {@code PolicyConflictStrategy} object.
+         */
+<span class="fc" id="L840">        public PolicyConflictStrategy() {</span>
+<span class="fc" id="L841">            super(CreatePolicy.class, log);</span>
+<span class="fc" id="L842">        }</span>
+
+        @Override
+        public FI.TypedPredicate&lt;CreatePolicy&gt; getPredicate() {
+<span class="pc" id="L846">            return command -&gt; Objects.equals(policyId, command.getId());</span>
+        }
+
+        @Override
+        protected void doApply(final CreatePolicy command) {
+<span class="nc" id="L851">            notifySender(PolicyConflictException.newBuilder(command.getId())</span>
+<span class="nc" id="L852">                    .dittoHeaders(command.getDittoHeaders())</span>
+<span class="nc" id="L853">                    .build());</span>
+<span class="nc" id="L854">        }</span>
+
+        @Override
+        public FI.UnitApply&lt;CreatePolicy&gt; getUnhandledFunction() {
+<span class="fc" id="L858">            return command -&gt; {</span>
+<span class="nc" id="L859">                final String msgTemplate = &quot;This Policy Actor did not handle the requested Policy with ID &lt;{0}&gt;!&quot;;</span>
+<span class="nc" id="L860">                throw new IllegalArgumentException(MessageFormat.format(msgTemplate, command.getId()));</span>
+            };
+        }
+
+    }
+
+    /**
+     * This strategy handles the {@link ModifyPolicy} command for an already existing Policy.
+     */
+    @NotThreadSafe
+    private final class ModifyPolicyStrategy extends WithIdReceiveStrategy&lt;ModifyPolicy&gt; {
+
+        /**
+         * Constructs a new {@code ModifyPolicyStrategy} object.
+         */
+<span class="fc" id="L875">        ModifyPolicyStrategy() {</span>
+<span class="fc" id="L876">            super(ModifyPolicy.class, log);</span>
+<span class="fc" id="L877">        }</span>
+
+        @Override
+        protected void doApply(final ModifyPolicy command) {
+<span class="fc" id="L881">            final Policy modifiedPolicy = command.getPolicy();</span>
+<span class="fc" id="L882">            final DittoHeaders dittoHeaders = command.getDittoHeaders();</span>
+
+<span class="fc" id="L884">            final PoliciesValidator validator = PoliciesValidator.newInstance(modifiedPolicy);</span>
+
+<span class="pc bpc" id="L886" title="1 of 2 branches missed.">            if (validator.isValid()) {</span>
+<span class="fc" id="L887">                final PolicyModified policyModified =</span>
+<span class="fc" id="L888">                        PolicyModified.of(modifiedPolicy, getNextRevision(), getEventTimestamp(), dittoHeaders);</span>
+<span class="fc" id="L889">                processEvent(policyModified,</span>
+<span class="fc" id="L890">                        event -&gt; notifySender(ModifyPolicyResponse.modified(policyId, dittoHeaders)));</span>
+<span class="fc" id="L891">            } else {</span>
+<span class="nc" id="L892">                policyInvalid(validator.getReason().orElse(null), dittoHeaders);</span>
+            }
+<span class="fc" id="L894">        }</span>
+
+        @Override
+        public FI.UnitApply&lt;ModifyPolicy&gt; getUnhandledFunction() {
+<span class="pc" id="L898">            return command -&gt; notifySender(policyNotFound(command.getDittoHeaders()));</span>
+        }
+
+    }
+
+    /**
+     * This strategy handles the {@link RetrievePolicy} command.
+     */
+    @NotThreadSafe
+    private final class RetrievePolicyStrategy extends WithIdReceiveStrategy&lt;RetrievePolicy&gt; {
+
+        /**
+         * Constructs a new {@code RetrievePolicyStrategy} object.
+         */
+<span class="fc" id="L912">        RetrievePolicyStrategy() {</span>
+<span class="fc" id="L913">            super(RetrievePolicy.class, log);</span>
+<span class="fc" id="L914">        }</span>
+
+        @Override
+        protected void doApply(final RetrievePolicy command) {
+<span class="fc" id="L918">            notifySender(RetrievePolicyResponse.of(policyId, policy, command.getDittoHeaders()));</span>
+<span class="fc" id="L919">        }</span>
+
+        @Override
+        public FI.UnitApply&lt;RetrievePolicy&gt; getUnhandledFunction() {
+<span class="pc" id="L923">            return command -&gt; notifySender(policyNotFound(command.getDittoHeaders()));</span>
+        }
+
+    }
+
+    /**
+     * This strategy handles the {@link DeletePolicy} command.
+     */
+    @NotThreadSafe
+    private final class DeletePolicyStrategy extends WithIdReceiveStrategy&lt;DeletePolicy&gt; {
+
+        /**
+         * Constructs a new {@code DeletePolicyStrategy} object.
+         */
+<span class="fc" id="L937">        DeletePolicyStrategy() {</span>
+<span class="fc" id="L938">            super(DeletePolicy.class, log);</span>
+<span class="fc" id="L939">        }</span>
+
+        @Override
+        protected void doApply(final DeletePolicy command) {
+<span class="fc" id="L943">            final DittoHeaders dittoHeaders = command.getDittoHeaders();</span>
+<span class="fc" id="L944">            final PolicyDeleted policyDeleted = PolicyDeleted.of(policyId, getNextRevision(), getEventTimestamp(),</span>
+                    dittoHeaders);
+
+<span class="fc" id="L947">            processEvent(policyDeleted, event -&gt; {</span>
+<span class="fc" id="L948">                notifySender(DeletePolicyResponse.of(policyId, dittoHeaders));</span>
+<span class="fc" id="L949">                log.info(&quot;Deleted Policy with ID &lt;{}&gt;.&quot;, policyId);</span>
+<span class="fc" id="L950">                becomePolicyDeletedHandler();</span>
+<span class="fc" id="L951">            });</span>
+<span class="fc" id="L952">        }</span>
+
+        @Override
+        public FI.UnitApply&lt;DeletePolicy&gt; getUnhandledFunction() {
+<span class="pc" id="L956">            return command -&gt; notifySender(policyNotFound(command.getDittoHeaders()));</span>
+        }
+
+    }
+
+    /**
+     * This strategy handles the {@link ModifyPolicyEntries} command.
+     */
+    @NotThreadSafe
+    private final class ModifyPolicyEntriesStrategy extends WithIdReceiveStrategy&lt;ModifyPolicyEntries&gt; {
+
+        /**
+         * Constructs a new {@code ModifyPolicyEntriesStrategy} object.
+         */
+<span class="fc" id="L970">        ModifyPolicyEntriesStrategy() {</span>
+<span class="fc" id="L971">            super(ModifyPolicyEntries.class, log);</span>
+<span class="fc" id="L972">        }</span>
+
+        @Override
+        protected void doApply(final ModifyPolicyEntries command) {
+<span class="nc" id="L976">            final Iterable&lt;PolicyEntry&gt; policyEntries = command.getPolicyEntries();</span>
+<span class="nc" id="L977">            final DittoHeaders dittoHeaders = command.getDittoHeaders();</span>
+
+<span class="nc" id="L979">            final ModifyPolicyEntriesResponse response = ModifyPolicyEntriesResponse.of(policyId, dittoHeaders);</span>
+<span class="nc" id="L980">            final PolicyEntriesModified policyEntriesModified = PolicyEntriesModified.of(policyId, policyEntries,</span>
+<span class="nc" id="L981">                    getNextRevision(), getEventTimestamp(), dittoHeaders);</span>
+
+<span class="nc" id="L983">            processEvent(policyEntriesModified, event -&gt; notifySender(response));</span>
+<span class="nc" id="L984">        }</span>
+
+        @Override
+        public FI.UnitApply&lt;ModifyPolicyEntries&gt; getUnhandledFunction() {
+<span class="pc" id="L988">            return command -&gt; notifySender(policyNotFound(command.getDittoHeaders()));</span>
+        }
+
+    }
+
+    /**
+     * This strategy handles the {@link ModifyPolicyEntry} command.
+     */
+    @NotThreadSafe
+    private final class ModifyPolicyEntryStrategy extends WithIdReceiveStrategy&lt;ModifyPolicyEntry&gt; {
+
+        /**
+         * Constructs a new {@code ModifyPolicyEntryStrategy} object.
+         */
+<span class="fc" id="L1002">        ModifyPolicyEntryStrategy() {</span>
+<span class="fc" id="L1003">            super(ModifyPolicyEntry.class, log);</span>
+<span class="fc" id="L1004">        }</span>
+
+        @Override
+        protected void doApply(final ModifyPolicyEntry command) {
+<span class="fc" id="L1008">            final PolicyEntry policyEntry = command.getPolicyEntry();</span>
+<span class="fc" id="L1009">            final Label label = policyEntry.getLabel();</span>
+<span class="fc" id="L1010">            final DittoHeaders dittoHeaders = command.getDittoHeaders();</span>
+
+<span class="fc" id="L1012">            final PoliciesValidator validator = PoliciesValidator.newInstance(policy.setEntry(policyEntry));</span>
+
+<span class="fc bfc" id="L1014" title="All 2 branches covered.">            if (validator.isValid()) {</span>
+                final PolicyEvent eventToPersist;
+                final ModifyPolicyEntryResponse response;
+<span class="fc bfc" id="L1017" title="All 2 branches covered.">                if (policy.contains(label)) {</span>
+<span class="fc" id="L1018">                    eventToPersist =</span>
+<span class="fc" id="L1019">                            PolicyEntryModified.of(policyId, policyEntry, getNextRevision(), getEventTimestamp(),</span>
+                                    dittoHeaders);
+<span class="fc" id="L1021">                    response = ModifyPolicyEntryResponse.modified(policyId, dittoHeaders);</span>
+                } else {
+<span class="fc" id="L1023">                    eventToPersist =</span>
+<span class="fc" id="L1024">                            PolicyEntryCreated.of(policyId, policyEntry, getNextRevision(), getEventTimestamp(),</span>
+                                    dittoHeaders);
+<span class="fc" id="L1026">                    response = ModifyPolicyEntryResponse.created(policyId, policyEntry, dittoHeaders);</span>
+                }
+
+<span class="fc" id="L1029">                processEvent(eventToPersist, event -&gt; notifySender(response));</span>
+<span class="fc" id="L1030">            } else {</span>
+<span class="fc" id="L1031">                policyEntryInvalid(label, validator.getReason().orElse(null), dittoHeaders);</span>
+            }
+<span class="fc" id="L1033">        }</span>
+
+        @Override
+        public FI.UnitApply&lt;ModifyPolicyEntry&gt; getUnhandledFunction() {
+<span class="pc" id="L1037">            return command -&gt; notifySender(policyNotFound(command.getDittoHeaders()));</span>
+        }
+
+    }
+
+    /**
+     * This strategy handles the {@link DeletePolicyEntry} command.
+     */
+    @NotThreadSafe
+    private final class DeletePolicyEntryStrategy extends WithIdReceiveStrategy&lt;DeletePolicyEntry&gt; {
+
+        /**
+         * Constructs a new {@code DeleteAclEntryStrategy} object.
+         */
+<span class="fc" id="L1051">        DeletePolicyEntryStrategy() {</span>
+<span class="fc" id="L1052">            super(DeletePolicyEntry.class, log);</span>
+<span class="fc" id="L1053">        }</span>
+
+        @Override
+        protected void doApply(final DeletePolicyEntry command) {
+<span class="fc" id="L1057">            final DittoHeaders dittoHeaders = command.getDittoHeaders();</span>
+<span class="fc" id="L1058">            final Label label = command.getLabel();</span>
+
+<span class="pc bpc" id="L1060" title="1 of 2 branches missed.">            if (policy.contains(label)) {</span>
+<span class="fc" id="L1061">                final PoliciesValidator validator = PoliciesValidator.newInstance(policy.removeEntry(label));</span>
+
+<span class="fc bfc" id="L1063" title="All 2 branches covered.">                if (validator.isValid()) {</span>
+<span class="fc" id="L1064">                    deletePolicyEntry(label, dittoHeaders);</span>
+                } else {
+<span class="fc" id="L1066">                    policyEntryInvalid(label, validator.getReason().orElse(null), dittoHeaders);</span>
+                }
+<span class="fc" id="L1068">            } else {</span>
+<span class="nc" id="L1069">                policyEntryNotFound(label, dittoHeaders);</span>
+            }
+<span class="fc" id="L1071">        }</span>
+
+        private void deletePolicyEntry(final Label label, final DittoHeaders dittoHeaders) {
+<span class="fc" id="L1074">            final PolicyEntryDeleted policyEntryDeleted =</span>
+<span class="fc" id="L1075">                    PolicyEntryDeleted.of(policyId, label, getNextRevision(), getEventTimestamp(), dittoHeaders);</span>
+
+<span class="fc" id="L1077">            processEvent(policyEntryDeleted,</span>
+<span class="fc" id="L1078">                    event -&gt; notifySender(DeletePolicyEntryResponse.of(policyId, label, dittoHeaders)));</span>
+<span class="fc" id="L1079">        }</span>
+
+        @Override
+        public FI.UnitApply&lt;DeletePolicyEntry&gt; getUnhandledFunction() {
+<span class="pc" id="L1083">            return command -&gt; notifySender(policyNotFound(command.getDittoHeaders()));</span>
+        }
+
+    }
+
+    /**
+     * This strategy handles the {@link RetrievePolicyEntries} command.
+     */
+    @NotThreadSafe
+    private final class RetrievePolicyEntriesStrategy extends WithIdReceiveStrategy&lt;RetrievePolicyEntries&gt; {
+
+        /**
+         * Constructs a new {@code RetrievePolicyEntryStrategy} object.
+         */
+<span class="fc" id="L1097">        RetrievePolicyEntriesStrategy() {</span>
+<span class="fc" id="L1098">            super(RetrievePolicyEntries.class, log);</span>
+<span class="fc" id="L1099">        }</span>
+
+        @Override
+        protected void doApply(final RetrievePolicyEntries command) {
+<span class="nc" id="L1103">            notifySender(RetrievePolicyEntriesResponse.of(policyId, policy.getEntriesSet(), command.getDittoHeaders()));</span>
+<span class="nc" id="L1104">        }</span>
+
+        @Override
+        public FI.UnitApply&lt;RetrievePolicyEntries&gt; getUnhandledFunction() {
+<span class="pc" id="L1108">            return command -&gt; notifySender(policyNotFound(command.getDittoHeaders()));</span>
+        }
+
+    }
+
+    /**
+     * This strategy handles the {@link RetrievePolicyEntry} command.
+     */
+    @NotThreadSafe
+    private final class RetrievePolicyEntryStrategy extends WithIdReceiveStrategy&lt;RetrievePolicyEntry&gt; {
+
+        /**
+         * Constructs a new {@code RetrievePolicyEntryStrategy} object.
+         */
+<span class="fc" id="L1122">        RetrievePolicyEntryStrategy() {</span>
+<span class="fc" id="L1123">            super(RetrievePolicyEntry.class, log);</span>
+<span class="fc" id="L1124">        }</span>
+
+        @Override
+        protected void doApply(final RetrievePolicyEntry command) {
+<span class="fc" id="L1128">            final Optional&lt;PolicyEntry&gt; optionalEntry = policy.getEntryFor(command.getLabel());</span>
+<span class="fc bfc" id="L1129" title="All 2 branches covered.">            if (optionalEntry.isPresent()) {</span>
+<span class="fc" id="L1130">                notifySender(RetrievePolicyEntryResponse.of(policyId, optionalEntry.get(), command.getDittoHeaders()));</span>
+            } else {
+<span class="fc" id="L1132">                policyEntryNotFound(command.getLabel(), command.getDittoHeaders());</span>
+            }
+<span class="fc" id="L1134">        }</span>
+
+        @Override
+        public FI.UnitApply&lt;RetrievePolicyEntry&gt; getUnhandledFunction() {
+<span class="pc" id="L1138">            return command -&gt; notifySender(policyNotFound(command.getDittoHeaders()));</span>
+        }
+
+    }
+
+    /**
+     * This strategy handles the {@link ModifySubjects} command.
+     */
+    @NotThreadSafe
+    private final class ModifySubjectsStrategy extends WithIdReceiveStrategy&lt;ModifySubjects&gt; {
+
+        /**
+         * Constructs a new {@code ModifySubjectsStrategy} object.
+         */
+<span class="fc" id="L1152">        ModifySubjectsStrategy() {</span>
+<span class="fc" id="L1153">            super(ModifySubjects.class, log);</span>
+<span class="fc" id="L1154">        }</span>
+
+        @Override
+        protected void doApply(final ModifySubjects command) {
+<span class="nc" id="L1158">            final Label label = command.getLabel();</span>
+<span class="nc" id="L1159">            final Subjects subjects = command.getSubjects();</span>
+<span class="nc" id="L1160">            final DittoHeaders dittoHeaders = command.getDittoHeaders();</span>
+
+<span class="nc bnc" id="L1162" title="All 2 branches missed.">            if (policy.getEntryFor(label).isPresent()) {</span>
+<span class="nc" id="L1163">                final PoliciesValidator validator =</span>
+<span class="nc" id="L1164">                        PoliciesValidator.newInstance(policy.setSubjectsFor(label, subjects));</span>
+
+<span class="nc bnc" id="L1166" title="All 2 branches missed.">                if (validator.isValid()) {</span>
+<span class="nc" id="L1167">                    final SubjectsModified subjectsModified =</span>
+<span class="nc" id="L1168">                            SubjectsModified.of(policyId, label, subjects, getNextRevision(), getEventTimestamp(),</span>
+<span class="nc" id="L1169">                                    command.getDittoHeaders());</span>
+<span class="nc" id="L1170">                    processEvent(subjectsModified,</span>
+<span class="nc" id="L1171">                            event -&gt; notifySender(ModifySubjectsResponse.of(policyId, label, dittoHeaders)));</span>
+<span class="nc" id="L1172">                } else {</span>
+<span class="nc" id="L1173">                    policyEntryInvalid(label, validator.getReason().orElse(null), dittoHeaders);</span>
+                }
+<span class="nc" id="L1175">            } else {</span>
+<span class="nc" id="L1176">                policyEntryNotFound(label, dittoHeaders);</span>
+            }
+<span class="nc" id="L1178">        }</span>
+
+        @Override
+        public FI.UnitApply&lt;ModifySubjects&gt; getUnhandledFunction() {
+<span class="pc" id="L1182">            return command -&gt; notifySender(policyNotFound(command.getDittoHeaders()));</span>
+        }
+
+    }
+
+    /**
+     * This strategy handles the {@link RetrieveSubjects} command.
+     */
+    @NotThreadSafe
+    private final class RetrieveSubjectsStrategy extends WithIdReceiveStrategy&lt;RetrieveSubjects&gt; {
+
+        /**
+         * Constructs a new {@code RetrieveSubjectsStrategy} object.
+         */
+<span class="fc" id="L1196">        RetrieveSubjectsStrategy() {</span>
+<span class="fc" id="L1197">            super(RetrieveSubjects.class, log);</span>
+<span class="fc" id="L1198">        }</span>
+
+        @Override
+        protected void doApply(final RetrieveSubjects command) {
+<span class="nc" id="L1202">            final Optional&lt;PolicyEntry&gt; optionalEntry = policy.getEntryFor(command.getLabel());</span>
+<span class="nc bnc" id="L1203" title="All 2 branches missed.">            if (optionalEntry.isPresent()) {</span>
+<span class="nc" id="L1204">                notifySender(</span>
+<span class="nc" id="L1205">                        RetrieveSubjectsResponse.of(policyId, command.getLabel(), optionalEntry.get().getSubjects(),</span>
+<span class="nc" id="L1206">                                command.getDittoHeaders()));</span>
+            } else {
+<span class="nc" id="L1208">                policyEntryNotFound(command.getLabel(), command.getDittoHeaders());</span>
+            }
+<span class="nc" id="L1210">        }</span>
+
+        @Override
+        public FI.UnitApply&lt;RetrieveSubjects&gt; getUnhandledFunction() {
+<span class="pc" id="L1214">            return command -&gt; notifySender(policyNotFound(command.getDittoHeaders()));</span>
+        }
+
+    }
+
+    /**
+     * This strategy handles the {@link ModifySubject} command.
+     */
+    @NotThreadSafe
+    private final class ModifySubjectStrategy extends WithIdReceiveStrategy&lt;ModifySubject&gt; {
+
+        /**
+         * Constructs a new {@code ModifySubjectStrategy} object.
+         */
+<span class="fc" id="L1228">        ModifySubjectStrategy() {</span>
+<span class="fc" id="L1229">            super(ModifySubject.class, log);</span>
+<span class="fc" id="L1230">        }</span>
+
+        @Override
+        protected void doApply(final ModifySubject command) {
+<span class="fc" id="L1234">            final Label label = command.getLabel();</span>
+<span class="fc" id="L1235">            final Subject subject = command.getSubject();</span>
+<span class="fc" id="L1236">            final DittoHeaders dittoHeaders = command.getDittoHeaders();</span>
+
+<span class="fc" id="L1238">            final Optional&lt;PolicyEntry&gt; optionalEntry = policy.getEntryFor(label);</span>
+<span class="pc bpc" id="L1239" title="1 of 2 branches missed.">            if (optionalEntry.isPresent()) {</span>
+<span class="fc" id="L1240">                final PolicyEntry policyEntry = optionalEntry.get();</span>
+<span class="fc" id="L1241">                final PoliciesValidator validator = PoliciesValidator.newInstance(policy.setSubjectFor(label, subject));</span>
+
+<span class="pc bpc" id="L1243" title="1 of 2 branches missed.">                if (validator.isValid()) {</span>
+                    final PolicyEvent eventToPersist;
+                    final ModifySubjectResponse response;
+
+<span class="fc bfc" id="L1247" title="All 2 branches covered.">                    if (policyEntry.getSubjects().getSubject(subject.getId()).isPresent()) {</span>
+<span class="fc" id="L1248">                        response = ModifySubjectResponse.modified(policyId, label, dittoHeaders);</span>
+<span class="fc" id="L1249">                        eventToPersist =</span>
+<span class="fc" id="L1250">                                SubjectModified.of(policyId, label, subject, getNextRevision(), getEventTimestamp(),</span>
+<span class="fc" id="L1251">                                        command.getDittoHeaders());</span>
+                    } else {
+<span class="fc" id="L1253">                        response = ModifySubjectResponse.created(policyId, label, subject, dittoHeaders);</span>
+<span class="fc" id="L1254">                        eventToPersist =</span>
+<span class="fc" id="L1255">                                SubjectCreated.of(policyId, label, subject, getNextRevision(), getEventTimestamp(),</span>
+<span class="fc" id="L1256">                                        command.getDittoHeaders());</span>
+                    }
+
+<span class="fc" id="L1259">                    processEvent(eventToPersist, event -&gt; notifySender(response));</span>
+<span class="fc" id="L1260">                } else {</span>
+<span class="nc" id="L1261">                    policyEntryInvalid(label, validator.getReason().orElse(null), dittoHeaders);</span>
+                }
+<span class="fc" id="L1263">            } else {</span>
+<span class="nc" id="L1264">                policyEntryNotFound(label, dittoHeaders);</span>
+            }
+<span class="fc" id="L1266">        }</span>
+
+        @Override
+        public FI.UnitApply&lt;ModifySubject&gt; getUnhandledFunction() {
+<span class="pc" id="L1270">            return command -&gt; notifySender(policyNotFound(command.getDittoHeaders()));</span>
+        }
+
+    }
+
+    /**
+     * This strategy handles the {@link DeleteSubject} command.
+     */
+    @NotThreadSafe
+    private final class DeleteSubjectStrategy extends WithIdReceiveStrategy&lt;DeleteSubject&gt; {
+
+        /**
+         * Constructs a new {@code DeleteSubjectStrategy} object.
+         */
+<span class="fc" id="L1284">        DeleteSubjectStrategy() {</span>
+<span class="fc" id="L1285">            super(DeleteSubject.class, log);</span>
+<span class="fc" id="L1286">        }</span>
+
+        @Override
+        protected void doApply(final DeleteSubject command) {
+<span class="fc" id="L1290">            final Label label = command.getLabel();</span>
+<span class="fc" id="L1291">            final SubjectId subjectId = command.getSubjectId();</span>
+<span class="fc" id="L1292">            final DittoHeaders dittoHeaders = command.getDittoHeaders();</span>
+
+<span class="fc" id="L1294">            final Optional&lt;PolicyEntry&gt; optionalEntry = policy.getEntryFor(label);</span>
+<span class="pc bpc" id="L1295" title="1 of 2 branches missed.">            if (optionalEntry.isPresent()) {</span>
+<span class="fc" id="L1296">                final PolicyEntry policyEntry = optionalEntry.get();</span>
+<span class="pc bpc" id="L1297" title="1 of 2 branches missed.">                if (policyEntry.getSubjects().getSubject(subjectId).isPresent()) {</span>
+<span class="fc" id="L1298">                    final PoliciesValidator validator =</span>
+<span class="fc" id="L1299">                            PoliciesValidator.newInstance(policy.removeSubjectFor(label, subjectId));</span>
+
+<span class="pc bpc" id="L1301" title="1 of 2 branches missed.">                    if (validator.isValid()) {</span>
+<span class="fc" id="L1302">                        final SubjectDeleted subjectDeleted =</span>
+<span class="fc" id="L1303">                                SubjectDeleted.of(policyId, label, subjectId, getNextRevision(), getEventTimestamp(),</span>
+                                        dittoHeaders);
+
+<span class="fc" id="L1306">                        processEvent(subjectDeleted,</span>
+<span class="fc" id="L1307">                                event -&gt; notifySender(DeleteSubjectResponse.of(policyId, label, subjectId,</span>
+                                        dittoHeaders)));
+<span class="fc" id="L1309">                    } else {</span>
+<span class="nc" id="L1310">                        policyEntryInvalid(label, validator.getReason().orElse(null), dittoHeaders);</span>
+                    }
+<span class="fc" id="L1312">                } else {</span>
+<span class="nc" id="L1313">                    subjectNotFound(label, subjectId, dittoHeaders);</span>
+                }
+<span class="fc" id="L1315">            } else {</span>
+<span class="nc" id="L1316">                policyEntryNotFound(label, dittoHeaders);</span>
+            }
+<span class="fc" id="L1318">        }</span>
+
+        @Override
+        public FI.UnitApply&lt;DeleteSubject&gt; getUnhandledFunction() {
+<span class="pc" id="L1322">            return command -&gt; notifySender(policyNotFound(command.getDittoHeaders()));</span>
+        }
+
+    }
+
+    /**
+     * This strategy handles the {@link RetrieveSubject} command.
+     */
+    @NotThreadSafe
+    private final class RetrieveSubjectStrategy extends WithIdReceiveStrategy&lt;RetrieveSubject&gt; {
+
+        /**
+         * Constructs a new {@code RetrieveSubjectStrategy} object.
+         */
+<span class="fc" id="L1336">        RetrieveSubjectStrategy() {</span>
+<span class="fc" id="L1337">            super(RetrieveSubject.class, log);</span>
+<span class="fc" id="L1338">        }</span>
+
+        @Override
+        protected void doApply(final RetrieveSubject command) {
+<span class="fc" id="L1342">            final Optional&lt;PolicyEntry&gt; optionalEntry = policy.getEntryFor(command.getLabel());</span>
+<span class="pc bpc" id="L1343" title="1 of 2 branches missed.">            if (optionalEntry.isPresent()) {</span>
+<span class="fc" id="L1344">                final PolicyEntry policyEntry = optionalEntry.get();</span>
+<span class="fc" id="L1345">                final Optional&lt;Subject&gt; optionalSubject = policyEntry.getSubjects().getSubject(command.getSubjectId());</span>
+<span class="fc bfc" id="L1346" title="All 2 branches covered.">                if (optionalSubject.isPresent()) {</span>
+<span class="fc" id="L1347">                    notifySender(RetrieveSubjectResponse.of(policyId, command.getLabel(),</span>
+<span class="fc" id="L1348">                            optionalSubject.get(), command.getDittoHeaders()));</span>
+                } else {
+<span class="fc" id="L1350">                    subjectNotFound(command.getLabel(), command.getSubjectId(), command.getDittoHeaders());</span>
+                }
+<span class="fc" id="L1352">            } else {</span>
+<span class="nc" id="L1353">                policyEntryNotFound(command.getLabel(), command.getDittoHeaders());</span>
+            }
+<span class="fc" id="L1355">        }</span>
+
+        @Override
+        public FI.UnitApply&lt;RetrieveSubject&gt; getUnhandledFunction() {
+<span class="pc" id="L1359">            return command -&gt; notifySender(policyNotFound(command.getDittoHeaders()));</span>
+        }
+
+    }
+
+    /**
+     * This strategy handles the {@link ModifyResources} command.
+     */
+    @NotThreadSafe
+    private final class ModifyResourcesStrategy extends WithIdReceiveStrategy&lt;ModifyResources&gt; {
+
+        /**
+         * Constructs a new {@code ModifyResourcesStrategy} object.
+         */
+<span class="fc" id="L1373">        ModifyResourcesStrategy() {</span>
+<span class="fc" id="L1374">            super(ModifyResources.class, log);</span>
+<span class="fc" id="L1375">        }</span>
+
+        @Override
+        protected void doApply(final ModifyResources command) {
+<span class="nc" id="L1379">            final Label label = command.getLabel();</span>
+<span class="nc" id="L1380">            final Resources resources = command.getResources();</span>
+<span class="nc" id="L1381">            final DittoHeaders dittoHeaders = command.getDittoHeaders();</span>
+
+<span class="nc bnc" id="L1383" title="All 2 branches missed.">            if (policy.getEntryFor(label).isPresent()) {</span>
+<span class="nc" id="L1384">                final PoliciesValidator validator =</span>
+<span class="nc" id="L1385">                        PoliciesValidator.newInstance(policy.setResourcesFor(label, resources));</span>
+
+<span class="nc bnc" id="L1387" title="All 2 branches missed.">                if (validator.isValid()) {</span>
+<span class="nc" id="L1388">                    final ResourcesModified resourcesModified =</span>
+<span class="nc" id="L1389">                            ResourcesModified.of(policyId, label, resources, getNextRevision(), getEventTimestamp(),</span>
+                                    dittoHeaders);
+
+<span class="nc" id="L1392">                    processEvent(resourcesModified,</span>
+<span class="nc" id="L1393">                            event -&gt; notifySender(ModifyResourcesResponse.of(policyId, label, dittoHeaders)));</span>
+<span class="nc" id="L1394">                } else {</span>
+<span class="nc" id="L1395">                    policyEntryInvalid(label, validator.getReason().orElse(null), dittoHeaders);</span>
+                }
+<span class="nc" id="L1397">            } else {</span>
+<span class="nc" id="L1398">                policyEntryNotFound(label, dittoHeaders);</span>
+            }
+<span class="nc" id="L1400">        }</span>
+
+        @Override
+        public FI.UnitApply&lt;ModifyResources&gt; getUnhandledFunction() {
+<span class="pc" id="L1404">            return command -&gt; notifySender(policyNotFound(command.getDittoHeaders()));</span>
+        }
+
+    }
+
+    /**
+     * This strategy handles the {@link RetrieveResources} command.
+     */
+    @NotThreadSafe
+    private final class RetrieveResourcesStrategy extends WithIdReceiveStrategy&lt;RetrieveResources&gt; {
+
+        /**
+         * Constructs a new {@code RetrieveResourcesStrategy} object.
+         */
+<span class="fc" id="L1418">        RetrieveResourcesStrategy() {</span>
+<span class="fc" id="L1419">            super(RetrieveResources.class, log);</span>
+<span class="fc" id="L1420">        }</span>
+
+        @Override
+        protected void doApply(final RetrieveResources command) {
+<span class="nc" id="L1424">            final Optional&lt;PolicyEntry&gt; optionalEntry = policy.getEntryFor(command.getLabel());</span>
+<span class="nc bnc" id="L1425" title="All 2 branches missed.">            if (optionalEntry.isPresent()) {</span>
+<span class="nc" id="L1426">                notifySender(RetrieveResourcesResponse.of(policyId, command.getLabel(),</span>
+<span class="nc" id="L1427">                        optionalEntry.get().getResources(), command.getDittoHeaders()));</span>
+            } else {
+<span class="nc" id="L1429">                policyEntryNotFound(command.getLabel(), command.getDittoHeaders());</span>
+            }
+<span class="nc" id="L1431">        }</span>
+
+        @Override
+        public FI.UnitApply&lt;RetrieveResources&gt; getUnhandledFunction() {
+<span class="pc" id="L1435">            return command -&gt; notifySender(policyNotFound(command.getDittoHeaders()));</span>
+        }
+
+    }
+
+    /**
+     * This strategy handles the {@link ModifyResource} command.
+     */
+    @NotThreadSafe
+    private final class ModifyResourceStrategy extends WithIdReceiveStrategy&lt;ModifyResource&gt; {
+
+        /**
+         * Constructs a new {@code ModifyResourceStrategy} object.
+         */
+<span class="fc" id="L1449">        ModifyResourceStrategy() {</span>
+<span class="fc" id="L1450">            super(ModifyResource.class, log);</span>
+<span class="fc" id="L1451">        }</span>
+
+        @Override
+        protected void doApply(final ModifyResource command) {
+<span class="fc" id="L1455">            final Label label = command.getLabel();</span>
+<span class="fc" id="L1456">            final Resource resource = command.getResource();</span>
+<span class="fc" id="L1457">            final DittoHeaders dittoHeaders = command.getDittoHeaders();</span>
+
+<span class="fc" id="L1459">            final Optional&lt;PolicyEntry&gt; optionalEntry = policy.getEntryFor(label);</span>
+<span class="pc bpc" id="L1460" title="1 of 2 branches missed.">            if (optionalEntry.isPresent()) {</span>
+<span class="fc" id="L1461">                final PoliciesValidator validator =</span>
+<span class="fc" id="L1462">                        PoliciesValidator.newInstance(policy.setResourceFor(label, resource));</span>
+
+<span class="fc bfc" id="L1464" title="All 2 branches covered.">                if (validator.isValid()) {</span>
+<span class="fc" id="L1465">                    final PolicyEntry policyEntry = optionalEntry.get();</span>
+                    final PolicyEvent eventToPersist;
+                    final ModifyResourceResponse response;
+
+<span class="fc bfc" id="L1469" title="All 2 branches covered.">                    if (policyEntry.getResources().getResource(resource.getResourceKey()).isPresent()) {</span>
+<span class="fc" id="L1470">                        response = ModifyResourceResponse.modified(policyId, label, dittoHeaders);</span>
+<span class="fc" id="L1471">                        eventToPersist =</span>
+<span class="fc" id="L1472">                                ResourceModified.of(policyId, label, resource, getNextRevision(), getEventTimestamp(),</span>
+                                        dittoHeaders);
+                    } else {
+<span class="fc" id="L1475">                        response = ModifyResourceResponse.created(policyId, label, resource, dittoHeaders);</span>
+<span class="fc" id="L1476">                        eventToPersist =</span>
+<span class="fc" id="L1477">                                ResourceCreated.of(policyId, label, resource, getNextRevision(), getEventTimestamp(),</span>
+                                        dittoHeaders);
+                    }
+
+<span class="fc" id="L1481">                    processEvent(eventToPersist, event -&gt; notifySender(response));</span>
+<span class="fc" id="L1482">                } else {</span>
+<span class="fc" id="L1483">                    policyEntryInvalid(label, validator.getReason().orElse(null), dittoHeaders);</span>
+                }
+<span class="fc" id="L1485">            } else {</span>
+<span class="nc" id="L1486">                policyEntryNotFound(label, dittoHeaders);</span>
+            }
+<span class="fc" id="L1488">        }</span>
+
+        @Override
+        public FI.UnitApply&lt;ModifyResource&gt; getUnhandledFunction() {
+<span class="pc" id="L1492">            return command -&gt; notifySender(policyNotFound(command.getDittoHeaders()));</span>
+        }
+
+    }
+
+    /**
+     * This strategy handles the {@link DeleteResource} command.
+     */
+    @NotThreadSafe
+    private final class DeleteResourceStrategy extends WithIdReceiveStrategy&lt;DeleteResource&gt; {
+
+        /**
+         * Constructs a new {@code DeleteResourceStrategy} object.
+         */
+<span class="fc" id="L1506">        DeleteResourceStrategy() {</span>
+<span class="fc" id="L1507">            super(DeleteResource.class, log);</span>
+<span class="fc" id="L1508">        }</span>
+
+        @Override
+        protected void doApply(final DeleteResource command) {
+<span class="fc" id="L1512">            final Label label = command.getLabel();</span>
+<span class="fc" id="L1513">            final ResourceKey resourceKey = command.getResourceKey();</span>
+<span class="fc" id="L1514">            final DittoHeaders dittoHeaders = command.getDittoHeaders();</span>
+
+<span class="fc" id="L1516">            final Optional&lt;PolicyEntry&gt; optionalEntry = policy.getEntryFor(label);</span>
+<span class="pc bpc" id="L1517" title="1 of 2 branches missed.">            if (optionalEntry.isPresent()) {</span>
+<span class="fc" id="L1518">                final PolicyEntry policyEntry = optionalEntry.get();</span>
+
+<span class="pc bpc" id="L1520" title="1 of 2 branches missed.">                if (policyEntry.getResources().getResource(resourceKey).isPresent()) {</span>
+<span class="fc" id="L1521">                    final PoliciesValidator validator =</span>
+<span class="fc" id="L1522">                            PoliciesValidator.newInstance(policy.removeResourceFor(label, resourceKey));</span>
+
+<span class="pc bpc" id="L1524" title="1 of 2 branches missed.">                    if (validator.isValid()) {</span>
+<span class="fc" id="L1525">                        final ResourceDeleted resourceDeleted =</span>
+<span class="fc" id="L1526">                                ResourceDeleted.of(policyId, label, resourceKey, getNextRevision(), getEventTimestamp(),</span>
+                                        dittoHeaders);
+
+<span class="fc" id="L1529">                        processEvent(resourceDeleted,</span>
+<span class="fc" id="L1530">                                event -&gt; notifySender(DeleteResourceResponse.of(policyId, label, resourceKey,</span>
+                                        dittoHeaders)));
+<span class="fc" id="L1532">                    } else {</span>
+<span class="nc" id="L1533">                        policyEntryInvalid(label, validator.getReason().orElse(null), dittoHeaders);</span>
+                    }
+<span class="fc" id="L1535">                } else {</span>
+<span class="nc" id="L1536">                    resourceNotFound(label, resourceKey, dittoHeaders);</span>
+                }
+<span class="fc" id="L1538">            } else {</span>
+<span class="nc" id="L1539">                policyEntryNotFound(label, dittoHeaders);</span>
+            }
+<span class="fc" id="L1541">        }</span>
+
+        @Override
+        public FI.UnitApply&lt;DeleteResource&gt; getUnhandledFunction() {
+<span class="pc" id="L1545">            return command -&gt; notifySender(policyNotFound(command.getDittoHeaders()));</span>
+        }
+
+    }
+
+    /**
+     * This strategy handles the {@link RetrieveResource} command.
+     */
+    @NotThreadSafe
+    private final class RetrieveResourceStrategy extends WithIdReceiveStrategy&lt;RetrieveResource&gt; {
+
+        /**
+         * Constructs a new {@code RetrieveResourceStrategy} object.
+         */
+<span class="fc" id="L1559">        RetrieveResourceStrategy() {</span>
+<span class="fc" id="L1560">            super(RetrieveResource.class, log);</span>
+<span class="fc" id="L1561">        }</span>
+
+        @Override
+        protected void doApply(final RetrieveResource command) {
+<span class="fc" id="L1565">            final Optional&lt;PolicyEntry&gt; optionalEntry = policy.getEntryFor(command.getLabel());</span>
+<span class="pc bpc" id="L1566" title="1 of 2 branches missed.">            if (optionalEntry.isPresent()) {</span>
+<span class="fc" id="L1567">                final PolicyEntry policyEntry = optionalEntry.get();</span>
+
+<span class="fc" id="L1569">                final Optional&lt;Resource&gt; optionalResource =</span>
+<span class="fc" id="L1570">                        policyEntry.getResources().getResource(command.getResourceKey());</span>
+<span class="fc bfc" id="L1571" title="All 2 branches covered.">                if (optionalResource.isPresent()) {</span>
+<span class="fc" id="L1572">                    notifySender(RetrieveResourceResponse.of(policyId, command.getLabel(), optionalResource.get(),</span>
+<span class="fc" id="L1573">                            command.getDittoHeaders()));</span>
+                } else {
+<span class="fc" id="L1575">                    resourceNotFound(command.getLabel(), command.getResourceKey(), command.getDittoHeaders());</span>
+                }
+<span class="fc" id="L1577">            } else {</span>
+<span class="nc" id="L1578">                policyEntryNotFound(command.getLabel(), command.getDittoHeaders());</span>
+            }
+<span class="fc" id="L1580">        }</span>
+
+        @Override
+        public FI.UnitApply&lt;RetrieveResource&gt; getUnhandledFunction() {
+<span class="pc" id="L1584">            return command -&gt; notifySender(policyNotFound(command.getDittoHeaders()));</span>
+        }
+
+    }
+
+    /**
+     * This strategy handles the {@link SudoRetrievePolicy} command w/o valid authorization context.
+     */
+    @NotThreadSafe
+    private final class SudoRetrievePolicyStrategy extends WithIdReceiveStrategy&lt;SudoRetrievePolicy&gt; {
+
+        /**
+         * Constructs a new {@code SudoRetrievePolicyStrategy} object.
+         */
+<span class="fc" id="L1598">        SudoRetrievePolicyStrategy() {</span>
+<span class="fc" id="L1599">            super(SudoRetrievePolicy.class, log);</span>
+<span class="fc" id="L1600">        }</span>
+
+        @Override
+        protected void doApply(final SudoRetrievePolicy command) {
+<span class="fc" id="L1604">            notifySender(SudoRetrievePolicyResponse.of(policyId, policy, command.getDittoHeaders()));</span>
+<span class="fc" id="L1605">        }</span>
+
+        @Override
+        public FI.UnitApply&lt;SudoRetrievePolicy&gt; getUnhandledFunction() {
+<span class="pc" id="L1609">            return command -&gt; notifySender(policyNotFound(command.getDittoHeaders()));</span>
+        }
+
+    }
+
+    /**
+     * This strategy handles the success of saving a snapshot by logging the Policy's ID.
+     */
+    @NotThreadSafe
+    private final class SaveSnapshotSuccessStrategy extends AbstractReceiveStrategy&lt;SaveSnapshotSuccess&gt; {
+
+        /**
+         * Constructs a new {@code SaveSnapshotSuccessStrategy} object.
+         */
+<span class="fc" id="L1623">        SaveSnapshotSuccessStrategy() {</span>
+<span class="fc" id="L1624">            super(SaveSnapshotSuccess.class, log);</span>
+<span class="fc" id="L1625">        }</span>
+
+        @Override
+        protected void doApply(final SaveSnapshotSuccess message) {
+<span class="fc" id="L1629">            final SnapshotMetadata snapshotMetadata = message.metadata();</span>
+<span class="fc" id="L1630">            log.debug(&quot;Snapshot taken for Policy &lt;{}&gt; with metadata &lt;{}&gt;.&quot;, policyId, snapshotMetadata);</span>
+
+<span class="fc" id="L1632">            final long newSnapShotSequenceNumber = snapshotMetadata.sequenceNr();</span>
+<span class="pc bpc" id="L1633" title="1 of 2 branches missed.">            if (newSnapShotSequenceNumber &lt;= lastSnapshotSequenceNr) {</span>
+<span class="nc" id="L1634">                log.warning(&quot;Policy &lt;{}&gt; has been already snap-shot with a newer or equal sequence number.&quot; +</span>
+<span class="nc" id="L1635">                                &quot; Last sequence number: &lt;{}&gt;, new snapshot metadata: &lt;{}&gt;.&quot;, policyId,</span>
+<span class="nc" id="L1636">                        lastSnapshotSequenceNr, snapshotMetadata);</span>
+<span class="nc" id="L1637">                resetSnapshotInProgress();</span>
+            } else {
+<span class="fc" id="L1639">                deleteSnapshot(lastSnapshotSequenceNr);</span>
+<span class="fc" id="L1640">                deleteEventsOlderThan(newSnapShotSequenceNumber);</span>
+
+<span class="fc" id="L1642">                lastSnapshotSequenceNr = newSnapShotSequenceNumber;</span>
+
+<span class="fc" id="L1644">                resetSnapshotInProgress();</span>
+            }
+<span class="fc" id="L1646">        }</span>
+
+        private void deleteEventsOlderThan(final long newestSequenceNumber) {
+<span class="pc bpc" id="L1649" title="1 of 4 branches missed.">            if (eventsDeleteOld &amp;&amp; newestSequenceNumber &gt; 1) {</span>
+<span class="fc" id="L1650">                final long upToSequenceNumber = newestSequenceNumber - 1;</span>
+<span class="fc" id="L1651">                log.debug(&quot;Delete all event messages for Policy &lt;{}&gt; up to sequence number &lt;{}&gt;.&quot;, policy,</span>
+<span class="fc" id="L1652">                        upToSequenceNumber);</span>
+<span class="fc" id="L1653">                deleteMessages(upToSequenceNumber);</span>
+            }
+<span class="fc" id="L1655">        }</span>
+
+        private void deleteSnapshot(final long sequenceNumber) {
+<span class="pc bpc" id="L1658" title="1 of 4 branches missed.">            if (snapshotDeleteOld &amp;&amp; sequenceNumber != -1) {</span>
+<span class="fc" id="L1659">                log.debug(&quot;Delete old snapshot for Policy &lt;{}&gt; with sequence number &lt;{}&gt;.&quot;, policyId, sequenceNumber);</span>
+<span class="fc" id="L1660">                PolicyPersistenceActor.this.deleteSnapshot(sequenceNumber);</span>
+            }
+<span class="fc" id="L1662">        }</span>
+
+        private void resetSnapshotInProgress() {
+<span class="fc bfc" id="L1665" title="All 2 branches covered.">            if (invokeAfterSnapshotRunnable != null) {</span>
+<span class="fc" id="L1666">                invokeAfterSnapshotRunnable.run();</span>
+<span class="fc" id="L1667">                invokeAfterSnapshotRunnable = null;</span>
+            }
+<span class="fc" id="L1669">            snapshotInProgress = false;</span>
+<span class="fc" id="L1670">        }</span>
+
+    }
+
+    /**
+     * This strategy handles the failure of saving a snapshot by logging an error.
+     */
+    @NotThreadSafe
+    private final class SaveSnapshotFailureStrategy extends AbstractReceiveStrategy&lt;SaveSnapshotFailure&gt; {
+
+        /**
+         * Constructs a new {@code SaveSnapshotFailureStrategy} object.
+         */
+<span class="fc" id="L1683">        SaveSnapshotFailureStrategy() {</span>
+<span class="fc" id="L1684">            super(SaveSnapshotFailure.class, log);</span>
+<span class="fc" id="L1685">        }</span>
+
+        @SuppressWarnings(&quot;ThrowableResultOfMethodCallIgnored&quot;)
+        @Override
+        protected void doApply(final SaveSnapshotFailure message) {
+<span class="nc" id="L1690">            final Throwable cause = message.cause();</span>
+<span class="nc" id="L1691">            final String causeMessage = cause.getMessage();</span>
+<span class="nc bnc" id="L1692" title="All 2 branches missed.">            if (isPolicyDeleted()) {</span>
+<span class="nc" id="L1693">                log.error(cause, &quot;Failed to save snapshot for delete operation of &lt;{}&gt;. Cause: {}.&quot;, policyId,</span>
+                        causeMessage);
+            } else {
+<span class="nc" id="L1696">                log.error(cause, &quot;Failed to save snapshot for &lt;{}&gt;. Cause: {}.&quot;, policyId, causeMessage);</span>
+            }
+<span class="nc" id="L1698">        }</span>
+        
+    }
+
+    /**
+     * This strategy handles the success of deleting a snapshot by logging an info.
+     */
+    @NotThreadSafe
+    private final class DeleteSnapshotSuccessStrategy extends AbstractReceiveStrategy&lt;DeleteSnapshotSuccess&gt; {
+
+        /**
+         * Constructs a new {@code DeleteSnapshotSuccessStrategy} object.
+         */
+<span class="fc" id="L1711">        DeleteSnapshotSuccessStrategy() {</span>
+<span class="fc" id="L1712">            super(DeleteSnapshotSuccess.class, log);</span>
+<span class="fc" id="L1713">        }</span>
+
+        @Override
+        protected void doApply(final DeleteSnapshotSuccess message) {
+<span class="fc" id="L1717">            log.debug(&quot;Deleting snapshot with sequence number &lt;{}&gt; for Policy &lt;{}&gt; was successful.&quot;,</span>
+<span class="fc" id="L1718">                    message.metadata().sequenceNr(), policyId);</span>
+<span class="fc" id="L1719">        }</span>
+
+    }
+
+    /**
+     * This strategy handles the failure of deleting a snapshot by logging an error.
+     */
+    @NotThreadSafe
+    private final class DeleteSnapshotFailureStrategy extends AbstractReceiveStrategy&lt;DeleteSnapshotFailure&gt; {
+
+        /**
+         * Constructs a new {@code DeleteSnapshotFailureStrategy} object.
+         */
+<span class="fc" id="L1732">        DeleteSnapshotFailureStrategy() {</span>
+<span class="fc" id="L1733">            super(DeleteSnapshotFailure.class, log);</span>
+<span class="fc" id="L1734">        }</span>
+
+        @Override
+        protected void doApply(final DeleteSnapshotFailure message) {
+<span class="nc" id="L1738">            final Throwable cause = message.cause();</span>
+<span class="nc" id="L1739">            log.error(cause, &quot;Deleting snapshot with sequence number &lt;{}&gt; for Policy &lt;{}&gt; failed. Cause {}: {}&quot;,</span>
+<span class="nc" id="L1740">                    message.metadata().sequenceNr(), policyId, cause.getClass().getSimpleName(), cause.getMessage());</span>
+<span class="nc" id="L1741">        }</span>
+
+    }
+
+    /**
+     * This strategy handles the success of deleting messages by logging an info.
+     */
+    @NotThreadSafe
+    private final class DeleteMessagesSuccessStrategy extends AbstractReceiveStrategy&lt;DeleteMessagesSuccess&gt; {
+
+        /**
+         * Constructs a new {@code DeleteMessagesSuccessStrategy} object.
+         */
+<span class="fc" id="L1754">        DeleteMessagesSuccessStrategy() {</span>
+<span class="fc" id="L1755">            super(DeleteMessagesSuccess.class, log);</span>
+<span class="fc" id="L1756">        }</span>
+
+        @Override
+        protected void doApply(final DeleteMessagesSuccess message) {
+<span class="fc" id="L1760">            log.debug(&quot;Deleting messages for Policy &lt;{}&gt; was successful.&quot;, policyId);</span>
+<span class="fc" id="L1761">        }</span>
+
+    }
+
+    /**
+     * This strategy handles the failure of deleting messages by logging an error.
+     */
+    @NotThreadSafe
+    private final class DeleteMessagesFailureStrategy extends AbstractReceiveStrategy&lt;DeleteMessagesFailure&gt; {
+
+        /**
+         * Constructs a new {@code DeleteMessagesFailureStrategy} object.
+         */
+<span class="fc" id="L1774">        DeleteMessagesFailureStrategy() {</span>
+<span class="fc" id="L1775">            super(DeleteMessagesFailure.class, log);</span>
+<span class="fc" id="L1776">        }</span>
+
+        @Override
+        protected void doApply(final DeleteMessagesFailure message) {
+<span class="nc" id="L1780">            final Throwable cause = message.cause();</span>
+<span class="nc" id="L1781">            log.error(cause, &quot;Deleting messages up to sequence number &lt;{}&gt; for Policy &lt;{}&gt; failed. Cause {}: {}&quot;,</span>
+<span class="nc" id="L1782">                    policyId, message.toSequenceNr(), cause.getClass().getSimpleName(), cause.getMessage());</span>
+<span class="nc" id="L1783">        }</span>
+
+    }
+
+    /**
+     * This strategy handles all commands which were not explicitly handled beforehand. Those commands are logged as
+     * unknown messages and are marked as unhandled.
+     */
+    @NotThreadSafe
+    private final class MatchAnyAfterInitializeStrategy extends AbstractReceiveStrategy&lt;Object&gt; {
+
+        /**
+         * Constructs a new {@code MatchAnyAfterInitializeStrategy} object.
+         */
+<span class="fc" id="L1797">        MatchAnyAfterInitializeStrategy() {</span>
+<span class="fc" id="L1798">            super(Object.class, log);</span>
+<span class="fc" id="L1799">        }</span>
+
+        @Override
+        protected void doApply(final Object message) {
+<span class="nc" id="L1803">            log.warning(&quot;Unknown message: {}&quot;, message);</span>
+<span class="nc" id="L1804">            unhandled(message);</span>
+<span class="nc" id="L1805">        }</span>
+
+    }
+
+    /**
+     * This strategy handles all messages which were received before the Policy was initialized. Those messages are
+     * logged
+     * as unexpected messages and cause the actor to be stopped.
+     */
+    @NotThreadSafe
+    private final class MatchAnyDuringInitializeStrategy extends AbstractReceiveStrategy&lt;Object&gt; {
+
+        /**
+         * Constructs a new {@code MatchAnyDuringInitializeStrategy} object.
+         */
+<span class="fc" id="L1820">        MatchAnyDuringInitializeStrategy() {</span>
+<span class="fc" id="L1821">            super(Object.class, log);</span>
+<span class="fc" id="L1822">        }</span>
+
+        @Override
+        protected void doApply(final Object message) {
+<span class="fc" id="L1826">            log.debug(&quot;Unexpected message after initialization of actor received: &lt;{}&gt; - &quot; +</span>
+                            &quot;Terminating this actor and sending &lt;{}&gt; to requester..&quot;, message,
+<span class="fc" id="L1828">                    PolicyNotAccessibleException.class.getName());</span>
+<span class="fc" id="L1829">            final PolicyNotAccessibleException.Builder builder = PolicyNotAccessibleException.newBuilder(policyId);</span>
+<span class="pc bpc" id="L1830" title="1 of 2 branches missed.">            if (message instanceof WithDittoHeaders) {</span>
+<span class="fc" id="L1831">                builder.dittoHeaders(((WithDittoHeaders) message).getDittoHeaders());</span>
+            }
+<span class="fc" id="L1833">            notifySender(builder.build());</span>
+
+            // Make sure activity checker is on, but there is no need to schedule it more than once.
+<span class="pc bpc" id="L1836" title="1 of 2 branches missed.">            if (activityChecker == null) {</span>
+<span class="fc" id="L1837">                scheduleCheckForPolicyActivity(activityCheckInterval.getSeconds());</span>
+            }
+<span class="fc" id="L1839">        }</span>
+
+    }
+
+    /**
+     * This strategy handles any messages for a previous deleted Policy.
+     */
+    @NotThreadSafe
+    private final class PolicyNotFoundStrategy extends AbstractReceiveStrategy&lt;Object&gt; {
+
+        /**
+         * Constructs a new {@code PolicyNotFoundStrategy} object.
+         */
+<span class="fc" id="L1852">        PolicyNotFoundStrategy() {</span>
+<span class="fc" id="L1853">            super(Object.class, log);</span>
+<span class="fc" id="L1854">        }</span>
+
+        @Override
+        protected void doApply(final Object message) {
+<span class="fc" id="L1858">            final PolicyNotAccessibleException.Builder builder = PolicyNotAccessibleException.newBuilder(policyId);</span>
+<span class="pc bpc" id="L1859" title="1 of 2 branches missed.">            if (message instanceof WithDittoHeaders) {</span>
+<span class="fc" id="L1860">                builder.dittoHeaders(((WithDittoHeaders) message).getDittoHeaders());</span>
+            }
+<span class="fc" id="L1862">            notifySender(builder.build());</span>
+<span class="fc" id="L1863">        }</span>
+
+    }
+
+    /**
+     * This strategy handles the {@link CheckForActivity} message which checks for activity of the Actor and
+     * terminates
+     * itself if there was no activity since the last check.
+     */
+    @NotThreadSafe
+    private final class CheckForActivityStrategy extends AbstractReceiveStrategy&lt;CheckForActivity&gt; {
+
+        /**
+         * Constructs a new {@code CheckForActivityStrategy} object.
+         */
+<span class="fc" id="L1878">        CheckForActivityStrategy() {</span>
+<span class="fc" id="L1879">            super(CheckForActivity.class, log);</span>
+<span class="fc" id="L1880">        }</span>
+
+        @Override
+        protected void doApply(final CheckForActivity message) {
+<span class="nc bnc" id="L1884" title="All 4 branches missed.">            if (isPolicyDeleted() &amp;&amp; lastSnapshotSequenceNr &lt; lastSequenceNr()) {</span>
+                // take a snapshot after a period of inactivity if:
+                // - thing is deleted,
+                // - the latest snapshot is out of date or is still ongoing.
+<span class="nc" id="L1888">                final Object snapshotToStore = snapshotAdapter.toSnapshotStore(policy);</span>
+<span class="nc" id="L1889">                saveSnapshot(snapshotToStore);</span>
+<span class="nc" id="L1890">                scheduleCheckForPolicyActivity(activityCheckDeletedInterval.getSeconds());</span>
+<span class="nc bnc" id="L1891" title="All 2 branches missed.">            } else if (accessCounter &gt; message.getCurrentAccessCounter()) {</span>
+                // if the Thing was accessed in any way since the last check
+<span class="nc" id="L1893">                scheduleCheckForPolicyActivity(activityCheckInterval.getSeconds());</span>
+            } else {
+                // safe to shutdown after a period of inactivity if:
+                // - policy is active (and taking regular snapshots of itself), or
+                // - policy is deleted and the latest snapshot is up to date
+<span class="nc bnc" id="L1898" title="All 2 branches missed.">                if (isPolicyActive()) {</span>
+<span class="nc" id="L1899">                    shutdown(&quot;Policy &lt;{}&gt; was not accessed in a while. Shutting Actor down ...&quot;, policyId);</span>
+                } else {
+<span class="nc" id="L1901">                    shutdown(&quot;Policy &lt;{}&gt; was deleted recently. Shutting Actor down ...&quot;, policyId);</span>
+                }
+            }
+<span class="nc" id="L1904">        }</span>
+
+        private void shutdown(final String shutdownLogTemplate, final String thingId) {
+<span class="nc" id="L1907">            log.debug(shutdownLogTemplate, thingId);</span>
+            // stop the supervisor (otherwise it'd restart this actor) which causes this actor to stop, too.
+<span class="nc" id="L1909">            getContext().getParent().tell(PoisonPill.getInstance(), getSelf());</span>
+<span class="nc" id="L1910">        }</span>
+
+    }
+
+    /**
+     * This strategy handles the {@link TakeSnapshotInternal} message which checks for the need to take a snapshot
+     * and
+     * does so if needed.
+     */
+    @NotThreadSafe
+    private final class TakeSnapshotInternalStrategy extends AbstractTakeSnapshotStrategy&lt;TakeSnapshotInternal&gt; {
+
+        /**
+         * Constructs a new {@code TakeSnapshotInternalStrategy} object.
+         */
+<span class="fc" id="L1925">        TakeSnapshotInternalStrategy() {</span>
+<span class="fc" id="L1926">            super(TakeSnapshotInternal.class);</span>
+<span class="fc" id="L1927">        }</span>
+
+        @Override
+        void onCompleted(final TakeSnapshotInternal requestMessage, final ActorRef requestSender,
+                final boolean snapshotCreated) {
+
+<span class="fc" id="L1933">            log.debug(&quot;Completed internal request for snapshot: snapshotCreated={}&quot;, snapshotCreated);</span>
+<span class="fc" id="L1934">        }</span>
+
+    }
+
+    /**
+     * Abstract base class for handling snapshot requests.
+     */
+    @NotThreadSafe
+    private abstract class AbstractTakeSnapshotStrategy&lt;T&gt; extends AbstractReceiveStrategy&lt;T&gt; {
+
+<span class="fc" id="L1944">        AbstractTakeSnapshotStrategy(final Class&lt;T&gt; clazz) {</span>
+<span class="fc" id="L1945">            super(clazz, log);</span>
+<span class="fc" id="L1946">        }</span>
+
+        /**
+         * Hook for reacting on completion of taking the snapshot.
+         *
+         * @param requestMessage the request message
+         * @param requestSender the sender of the request message
+         * @param snapshotCreated whether a snapshot has actually been created; may be {@code false}, if there was
+         * already an existing snapshot for the latest sequence number
+         */
+        abstract void onCompleted(final T requestMessage, final ActorRef requestSender, boolean snapshotCreated);
+
+        @Override
+        protected void doApply(final T message) {
+<span class="fc" id="L1960">            log.debug(&quot;Received request to SaveSnapshot. Message: {}&quot;, message);</span>
+<span class="fc" id="L1961">            final ActorRef sender = getSender();</span>
+            // if there was any modifying activity since the last taken snapshot:
+<span class="fc bfc" id="L1963" title="All 2 branches covered.">            if (lastSequenceNr() &gt; lastSnapshotSequenceNr) {</span>
+<span class="fc" id="L1964">                doSaveSnapshot(() -&gt; onCompleted(message, sender, true));</span>
+            } else {
+                // if a snapshot already exists, don't take another one and signal success
+<span class="fc" id="L1967">                onCompleted(message, sender, false);</span>
+            }
+
+            // if the Policy is not &quot;deleted&quot;:
+<span class="pc bpc" id="L1971" title="1 of 2 branches missed.">            if (isPolicyActive()) {</span>
+                // schedule the next snapshot:
+<span class="fc" id="L1973">                scheduleSnapshot(snapshotInterval.getSeconds());</span>
+            }
+<span class="fc" id="L1975">        }</span>
+
+    }
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.0.201801022044</span></div></body></html>
