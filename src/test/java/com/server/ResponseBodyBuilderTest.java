@@ -137,6 +137,6 @@ public class ResponseBodyBuilderTest {
         String body = responseBodyBuilder.getBody(requestParams);
 
         assertTrue(body.contains("<a href=\""));
-        assertTrue(body.contains("/cat-form"));
+        assertTrue(body.contains("cat-form"));
     }
 }
