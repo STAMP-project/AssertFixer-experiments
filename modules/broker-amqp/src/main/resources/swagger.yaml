@@ -1,0 +1,133 @@
+swagger: '2.0'
+info:
+  version: 1.0.0
+  title: Broker AMQP API
+  description: Message Broker AMQP Connection Management API
+  license:
+    name: Apache 2.0
+    url: 'http://www.apache.org/licenses/LICENSE-2.0.html'
+schemes:
+  - https
+securityDefinitions:
+  basicAuth:
+    type: basic
+
+# Apply to the whole API
+security:
+  - basicAuth: []
+basePath: /broker/v1.0/transports/amqp/
+produces:
+  - application/json
+paths:
+  /connections:
+      get:
+        operationId: getAllConnections
+        summary: Get all connections
+        description: Retrieves all connections to the broker
+        produces:
+          - application/json
+        responses:
+          '200':
+            description: List of active Connections
+            schema:
+              type: array
+              items:
+                $ref: '#/definitions/ConnectionMetadata'
+          '401':
+            $ref: "#/responses/NotAuthenticated"
+          '403':
+            $ref: "#/responses/Unauthorized"
+  /connections/{id}:
+      parameters:
+        - in: path
+          name: id
+          type: integer
+          required: true
+          description: Identifier of the connection
+      delete:
+        operationId: closeConnection
+        summary: Force disconnect the specified connection.
+        description: >-
+          Disconnects the specified amqp connection if the connection exists in the broker
+        produces:
+          - application/json
+        responses:
+          '202':
+            description: Connection removal request submitted.
+            schema:
+              $ref: '#/definitions/ConnectionCloseResponse'
+          '400':
+            description: Bad request. Invalid request or validation error.
+            schema:
+              $ref: '#/definitions/Error'
+          '401':
+            $ref: "#/responses/NotAuthenticated"
+          '403':
+            $ref: "#/responses/Unauthorized"
+          '404':
+            $ref: "#/responses/NotFound"
+responses:
+  NotFound:
+    description: The specified resource was not found
+    schema:
+      $ref: '#/definitions/Error'
+  Unauthorized:
+    description: User is not autherized to perform operation
+    headers:
+      WWW_Authenticate:
+        type: string
+    schema:
+      $ref: '#/definitions/Error'
+  NotAuthenticated:
+    description: Authentication information is missing or invalid
+    headers:
+      WWW_Authenticate:
+        type: string
+    schema:
+      $ref: '#/definitions/Error'
+definitions:
+  ConnectionMetadata:
+      title: Connection Metadata
+      type: object
+      required:
+        - id
+        - remoteAddress
+        - channelCount
+        - connectedTime
+      properties:
+        id:
+          type: integer
+          description: Connection identifier
+        remoteAddress:
+          type: string
+          description: >-
+            The ip address of the connected client. This could be the same
+            for multiple connections.
+        channelCount:
+          type: integer
+          description: Number of active channels registered for each connection
+        connectedTime:
+          type: integer
+          format: int64
+          description: The time at which the connection was established
+  ConnectionCloseResponse:
+        title: Connection Close Response
+        type: object
+        required:
+          - message
+        properties:
+          message:
+            type: string
+            description: Response message with status of the connection close operation.
+  Error:
+      title: Error Response
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: integer
+          format: int64
+        message:
+          type: string
+          description: Error message.
