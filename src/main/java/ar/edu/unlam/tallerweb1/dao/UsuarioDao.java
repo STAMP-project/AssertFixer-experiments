@@ -1,0 +1,12 @@
+package ar.edu.unlam.tallerweb1.dao;
+
+import ar.edu.unlam.tallerweb1.modelo.Usuario;
+
+// Interface que define los metodos del DAO de Usuarios.
+public interface UsuarioDao {
+	
+	Usuario consultarUsuario (Usuario usuario);
+	void guardarUsuario(Usuario usuario);
+	Integer consultarExistencia(Usuario usuario);
+	Usuario getUsuarioById(Long id);
+}
