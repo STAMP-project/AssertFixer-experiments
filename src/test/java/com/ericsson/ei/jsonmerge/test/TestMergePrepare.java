@@ -1,0 +1,105 @@
+/*
+   Copyright 2017 Ericsson AB.
+   For a full list of individual contributors, please see the commit history.
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+*/
+package com.ericsson.ei.jsonmerge.test;
+
+import com.ericsson.ei.jmespath.JmesPathInterface;
+import com.ericsson.ei.jsonmerge.MergePrepare;
+import org.apache.commons.io.FileUtils;
+import org.json.JSONArray;
+import org.junit.BeforeClass;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameters;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.File;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+
+import static org.junit.Assert.assertEquals;
+
+@RunWith(Parameterized.class)
+public class TestMergePrepare {
+    private static final String testDataPath = "src/test/resources/MergePrepareData.json";
+    private String originObject;
+    private String mergeObject;
+    private String mergeRule;
+    private String mergePath;
+    private String ruleValue;
+    private String mergedObject;
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(TestMergePrepare.class);
+
+    public TestMergePrepare(String originObject, String mergeObject, String mergeRule, String mergePath,
+                            String ruleValue, String mergedObject) {
+        this.originObject = originObject;
+        this.mergeObject = mergeObject;
+        this.mergeRule = mergeRule;
+        this.mergePath = mergePath;
+        this.ruleValue = ruleValue;
+        this.mergedObject = mergedObject;
+    }
+
+    static MergePrepare mergePrepareObject;
+
+    @BeforeClass
+    public static void setup() {
+        mergePrepareObject = new MergePrepare();
+        mergePrepareObject.setJmesPathInterface(new JmesPathInterface());
+    }
+
+    @Test
+    public void getValueFromRule() {
+        String result = mergePrepareObject.getValueFromRule(mergeRule);
+        assertEquals(ruleValue, result);
+    }
+
+    @Test
+    public void getMergePath() {
+        String result = mergePrepareObject.getMergePath(originObject, mergeRule, false);
+        assertEquals(mergePath, result);
+    }
+
+    @Test
+    public void addMissingLevels() {
+        String result = mergePrepareObject.addMissingLevels(originObject, mergeObject, mergeRule, mergePath);
+        assertEquals(mergedObject, result.replace("\"", ""));
+    }
+
+    @Parameters
+    public static Collection<Object[]> inputTestData() {
+        String testData;
+        Collection<Object[]> baseList = new ArrayList<>();
+        try {
+            testData = FileUtils.readFileToString(new File(testDataPath), "UTF-8");
+            JSONArray testDataJson = new JSONArray(testData);
+            for (int i = 0; i < testDataJson.length(); i++) {
+                final List<String> childList = new ArrayList<>();
+                for (int k = 0; k < ((JSONArray) testDataJson.get(i)).length(); k++) {
+                    childList.add(((String) ((JSONArray) testDataJson.get(i)).get(k)));
+                }
+                baseList.add(childList.toArray());
+            }
+        } catch (Exception e) {
+            LOGGER.error(e.getMessage(), e);
+        }
+        return baseList;
+    }
+}
