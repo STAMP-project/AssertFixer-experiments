@@ -30,6 +30,7 @@ import java.security.KeyPairGenerator;
 import java.security.KeyStore;
 import java.security.NoSuchAlgorithmException;
 import java.security.PublicKey;
+import java.security.SignatureException;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.util.ArrayList;
@@ -250,14 +251,7 @@ public class TlsHelper {
         return filename.replaceAll("[^\\w\\.\\-\\=]+", "_");
     }
 
-    /**
-     * Returns true if the {@code certificate} is signed by one of the {@code signingCertificates}. The list should include the certificate itself to allow for self-signed certificates. If it does not, a self-signed certificate will return {@code false}.
-     *
-     * @param certificate the certificate containing the signature being verified
-     * @param signingCertificates a list of certificates which may have signed the certificate
-     * @return true if one of the signing certificates did sign the certificate
-     */
-    public static boolean verifyCertificateSignature(X509Certificate certificate, List<X509Certificate> signingCertificates) {
+    public static boolean verifyCertificateSignature(X509Certificate certificate, List<X509Certificate> signingCertificates) throws CertificateException, SignatureException {
         String certificateDisplayInfo = getCertificateDisplayInfo(certificate);
         if (isVerbose()) {
             logger.info("Verifying the certificate signature for " + certificateDisplayInfo);
