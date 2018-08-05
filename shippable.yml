@@ -1,0 +1,39 @@
+language: java
+
+jdk:
+- oraclejdk8 
+
+build:
+  cache: true
+  cache_dir_list:
+    - $HOME/.m2
+    - $HOME/.stack
+    - $SHIPPABLE_REPO_DIR/samples/client/petstore/elixir/deps
+  ci:
+    - mvn --quiet clean install
+    # ensure all modifications created by 'mature' generators are in the git repo
+    - ./bin/utils/ensure-up-to-date
+    # prepare environment for tests
+    - sudo apt-get update -qq
+    # install stack
+    - curl -sSL https://get.haskellstack.org/ | sh
+    - stack upgrade
+    - stack --version
+    # install elixir
+    - sudo apt-get install erlang
+    - wget https://packages.erlang-solutions.com/erlang-solutions_1.0_all.deb && sudo dpkg -i erlang-solutions_1.0_all.deb
+    - sudo apt-get update
+    - sudo apt-get install elixir
+    # install rebar3
+    - wget https://s3.amazonaws.com/rebar3/rebar3 && chmod +x rebar3 && cp rebar3 /usr/bin
+    # install php
+    - apt-get install php
+    # show version
+    - php -v
+    - rebar3 -v
+    - elixir --version
+    - mix --version
+    # test samples defined in pom.xml
+    - mvn --quiet verify -P samples.shippable
+    # generate all petstore samples (client, servers, doc)
+    - ./bin/run-all-petstore
