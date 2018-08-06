@@ -1,0 +1,140 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!--
+   Copyright 2013-2017 Linagora, Université Joseph Fourier, Floralis
+
+   The present code is developed in the scope of the joint LINAGORA -
+   Université Joseph Fourier - Floralis research program and is designated
+   as a "Result" pursuant to the terms and conditions of the LINAGORA
+   - Université Joseph Fourier - Floralis research program. Each copyright
+   holder of Results enumerated here above fully & independently holds complete
+   ownership of the complete Intellectual Property rights applicable to the whole
+   of said Results, and may freely exploit it in any manner which does not infringe
+   the moral rights of the other copyright holders.
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+-->
+
+<ipojo 
+		xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+		xsi:schemaLocation="org.apache.felix.ipojo http://felix.apache.org/ipojo/schemas/CURRENT/core.xsd"
+		xmlns="org.apache.felix.ipojo">
+
+	<!-- Default component -->
+	<component classname="net.roboconf.agent.internal.Agent" name="roboconf-agent-default">
+		<callback transition="validate" method="start" />
+		<callback transition="invalidate" method="stop" />
+		
+		<requires aggregate="true" optional="true">
+			<callback type="bind" method="pluginAppears" />
+			<callback type="unbind" method="pluginDisappears" />
+			<callback type="modified" method="pluginWasModified" />
+		</requires>
+		
+		<properties updated="reconfigure" pid="net.roboconf.agent.configuration">
+			<property name="messaging-type" method="setMessagingType" />
+			<property name="application-name" method="setApplicationName" />
+			<property name="scoped-instance-path" method="setScopedInstancePath" />
+			<property name="ip-address-of-the-agent" method="setIpAddress" />
+			<property name="network-interface" method="setNetworkInterface" />
+			<property name="domain" method="setDomain" />
+			<property name="parameters" method="setParameters" type="java.lang.String" />
+			<property name="override-properties-with-user-data" method="setOverrideProperties" value="true" />
+			<property name="simulate-plugins" method="setSimulatePlugins" value="false" />
+		</properties>
+		
+		<provides />
+	</component>
+	
+
+	<!-- MBean to monitor plugin activity -->
+	<component classname="net.roboconf.agent.jmx.PluginStats" name="roboconf-plugin-mbean" public="false">
+		<provides specifications="net.roboconf.agent.jmx.PluginStatsMBean" >
+			<property name="jmx.objectname" value="net.roboconf:type=agent" type="java.lang.String" />
+		</provides>
+	</component>
+
+	<instance component="roboconf-plugin-mbean" name="Roboconf - Agent MBean" />
+	
+		
+	<!-- In-memory component -->
+	<component classname="net.roboconf.agent.internal.Agent" name="roboconf-agent-in-memory">
+		<callback transition="validate" method="start" />
+		<callback transition="invalidate" method="stop" />
+		
+		<requires aggregate="true" optional="true">
+			<callback type="bind" method="pluginAppears" />
+			<callback type="unbind" method="pluginDisappears" />
+			<callback type="modified" method="pluginWasModified" />
+		</requires>
+		
+		<properties updated="reconfigure" pid="net.roboconf.agent-in-memory.configuration">
+		
+			<!-- Values that will be set by the IaaS in memory -->
+			<property name="messaging-type" method="setMessagingType" />
+			<property name="application-name" method="setApplicationName" />
+			<property name="scoped-instance-path" method="setScopedInstancePath" />
+			<property name="ip-address-of-the-agent" method="setIpAddress" />
+			<property name="domain" method="setDomain" />
+			
+			<!-- Predefined Values -->
+			<property name="parameters" method="setParameters" value="@in-memory" />
+			<property name="override-properties-with-user-data" method="setOverrideProperties" value="false" />
+			<property name="simulate-plugins" method="setSimulatePlugins" value="true" />
+		</properties>
+		
+		<!-- This agent does not expose ANY service -->
+	</component>
+	
+	
+	<!-- Sauron: an In-memory component without plug-ins and a configuration -->
+	<!-- Set the property types as iPojo cannot check the super class -->
+	<component classname="net.roboconf.agent.internal.sync.SauronAgent" name="roboconf-agent-in-memory-as-Sauron">
+		<callback transition="validate" method="start" />
+		<callback transition="invalidate" method="stop" />
+		<provides specifications="net.roboconf.agent.AgentCoordinator" />
+	</component>
+	
+	
+	<!-- Nazgul: copy of In-memory component with a different class and a NEW service dependency (Sauron) -->
+	<!-- Set the property types as iPojo cannot check the super class -->
+	<component classname="net.roboconf.agent.internal.sync.NazgulAgent" name="roboconf-agent-in-memory-as-a-Nazgul">
+		<callback transition="validate" method="start" />
+		<callback transition="invalidate" method="stop" />
+		
+		<requires field="sauron" optional="false" />
+		<requires aggregate="true" optional="true" specification="net.roboconf.plugin.api.PluginInterface">
+			<callback type="bind" method="pluginAppears" />
+			<callback type="unbind" method="pluginDisappears" />
+			<callback type="modified" method="pluginWasModified" />
+		</requires>
+		
+		<properties updated="reconfigure" pid="net.roboconf.agent-in-memory.configuration">
+		
+			<!-- Values that will be set by the IaaS in memory -->
+			<property name="messaging-type" method="setMessagingType" type="java.lang.String" />
+			<property name="application-name" method="setApplicationName" type="java.lang.String" />
+			<property name="scoped-instance-path" method="setScopedInstancePath" type="java.lang.String" />
+			<property name="ip-address-of-the-agent" method="setIpAddress" type="java.lang.String" />
+			<property name="domain" method="setDomain" type="java.lang.String" />
+			
+			<!-- Predefined Values -->
+			<property name="parameters" method="setParameters" value="@in-memory" type="java.lang.String" />
+			<property name="override-properties-with-user-data" method="setOverrideProperties" value="false" type="boolean" />
+			<property name="simulate-plugins" method="setSimulatePlugins" value="true" type="boolean" />
+		</properties>
+		
+		<!-- This agent does not expose ANY service -->
+	</component>
+
+</ipojo>

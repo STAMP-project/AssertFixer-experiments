@@ -1,0 +1,67 @@
+###################################
+##          All in One           ##
+##       with spaces in IDs      ##
+###################################
+
+
+###################################
+## First, components...
+###################################
+
+# The VM
+VM {
+	facets: Virtual Machine;
+}
+
+# MySQL database
+MySQL {
+	facets: deployable;
+	exports: ip, port = 3306;
+	installer: puppet;
+}
+
+# Tomcat
+Tomcat {
+	exports: ip, port = 8080;
+	children: war archive;
+	installer: puppet;
+	facets: deployable;
+}
+
+# Apache Load Balancer
+Apache {
+	imports: Tomcat.port, Tomcat.ip;
+	exports: ip, port = 80;
+	installer: puppet;
+	facets: deployable;
+}
+
+# WAR applications
+ecom {
+	imports: MySQL.port, MySQL.ip;	# This application uses a database.
+	facets: war archive;
+}
+
+hello world {
+	facets: war archive;
+}
+
+
+###################################
+## Then, facets...
+###################################
+
+# The VM facet
+facet Virtual Machine {
+	children: deployable;
+}
+
+# The deployable facet
+facet deployable {
+	# nothing
+}
+
+# WAR  archives
+facet war archive {
+	exports: full-url, url-path;
+}
