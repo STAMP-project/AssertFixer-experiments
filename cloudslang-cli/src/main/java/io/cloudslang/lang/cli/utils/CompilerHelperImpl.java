@@ -1,0 +1,256 @@
+/*
+ * (c) Copyright 2014 Hewlett-Packard Development Company, L.P.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Apache License v2.0 which accompany this distribution.
+ *
+ * The Apache License is available at
+ * http://www.apache.org/licenses/LICENSE-2.0
+ */
+package io.cloudslang.lang.cli.utils;
+
+import ch.lambdaj.function.convert.Converter;
+import io.cloudslang.lang.api.Slang;
+import io.cloudslang.lang.compiler.Extension;
+import io.cloudslang.lang.compiler.SlangSource;
+import io.cloudslang.lang.compiler.SlangTextualKeys;
+import io.cloudslang.lang.entities.CompilationArtifact;
+import io.cloudslang.lang.entities.SystemProperty;
+import io.cloudslang.lang.entities.bindings.values.Value;
+import io.cloudslang.lang.entities.bindings.values.ValueFactory;
+import io.cloudslang.lang.entities.utils.SetUtils;
+import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.collections4.MapUtils;
+import org.apache.commons.io.FileUtils;
+import org.apache.commons.lang.Validate;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.log4j.Logger;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
+import org.yaml.snakeyaml.Yaml;
+
+import java.io.File;
+import java.io.IOException;
+import java.io.Serializable;
+import java.util.*;
+
+import static ch.lambdaj.Lambda.convert;
+
+/**
+ * @author lesant
+ * @since 11/13/2014
+ * @version $Id$
+ */
+@Component
+public class CompilerHelperImpl implements CompilerHelper{
+
+    public static final String INVALID_DIRECTORY_ERROR_MESSAGE_SUFFIX = "' is not a directory";
+    private static final Logger logger = Logger.getLogger(CompilerHelperImpl.class);
+    private static final String SP_DIR = "properties"; //TODO reconsider it after closing CloudSlang file extensions & some real usecases
+    private static final String INPUT_DIR = "inputs";
+    private static final String CONFIG_DIR = "configuration";
+    private static final String DUPLICATE_SYSTEM_PROPERTY_ERROR_MESSAGE_PREFIX = "Duplicate system property: '";
+
+    @Autowired
+    private Slang slang;
+    @Autowired
+    private Yaml yaml;
+
+    @Override
+	public CompilationArtifact compile(String filePath, List<String> dependencies) throws IOException {
+        Validate.notNull(filePath, "File path can not be null");
+        Set<SlangSource> depsSources = new HashSet<>();
+        File file = new File(filePath);
+        Validate.isTrue(file.isFile(), "File: " + file.getName() + " was not found");
+        Extension.validateSlangFileExtension(file.getName());
+
+        if (CollectionUtils.isEmpty(dependencies)) {
+            dependencies = new ArrayList<>();
+            //app.home is the basedir property we set in our executables
+            String appHome = System.getProperty("app.home", "");
+            String contentRoot = appHome + File.separator + "content";
+            File contentRootDir = new File(contentRoot);
+            if (StringUtils.isNotEmpty(appHome) &&
+                    contentRootDir.exists() && contentRootDir.isDirectory()) {
+                dependencies.add(contentRoot);
+            } else {
+                //default behavior is taking the parent dir if not running from our executables
+                dependencies.add(file.getParent());
+            }
+        }
+        for (String dependency:dependencies) {
+            Collection<File> dependenciesFiles = listSlangFiles(new File(dependency), true);
+            for (File dependencyCandidate : dependenciesFiles) {
+                SlangSource source = SlangSource.fromFile(dependencyCandidate);
+                depsSources.add(source);
+            }
+        }
+        try {
+            return slang.compile(SlangSource.fromFile(file), depsSources);
+        } catch (Exception e) {
+            logger.error("Failed compilation for file : "+file.getName() + " ,Exception is : " + e.getMessage());
+            throw e;
+        }
+    }
+
+    @Override
+    public Set<SystemProperty> loadSystemProperties(List<String> systemPropertyFiles) {
+        String propertiesRelativePath = CONFIG_DIR + File.separator + SP_DIR;
+        return loadPropertiesFromFiles(convertToFiles(systemPropertyFiles),
+                Extension.getPropertiesFileExtensionValues(), propertiesRelativePath);
+    }
+
+    @Override
+    public Map<String, Value> loadInputsFromFile(List<String> inputFiles) {
+        String inputsRelativePath = CONFIG_DIR + File.separator + INPUT_DIR;
+        return loadMapsFromFiles(convertToFiles(inputFiles), Extension.getYamlFileExtensionValues(), inputsRelativePath);
+    }
+
+    private Map<String, Value> loadMapsFromFiles(List<File> files, String[] extensions, String directory) {
+        Collection<File> fileCollection;
+        if(CollectionUtils.isEmpty(files)) {
+            fileCollection = loadDefaultFiles(extensions, directory, false);
+            if(CollectionUtils.isEmpty(fileCollection)) return null;
+        } else {
+            fileCollection = files;
+        }
+        Map<String, Value> result = new HashMap<>();
+		for(File inputFile : fileCollection) {
+			logger.info("Loading file: " + inputFile);
+			try {
+                String inputsFileContent = SlangSource.fromFile(inputFile).getSource();
+                Boolean emptyContent = true;
+                if (StringUtils.isNotEmpty(inputsFileContent)) {
+                    @SuppressWarnings("unchecked") Map<String, ? extends Serializable> inputFileYamlContent =
+                            (Map<String, ? extends Serializable>) yaml.load(inputsFileContent);
+                    if (MapUtils.isNotEmpty(inputFileYamlContent)) {
+                        emptyContent = false;
+                        populateResultMap(result, inputFileYamlContent, inputFile);
+                    }
+                }
+                if (emptyContent) {
+                    throw new RuntimeException("Inputs file: " + inputFile + " is empty or does not contain valid YAML content.");
+                }
+			} catch(RuntimeException ex) {
+                logger.error("Error loading file: " + inputFile + ". Nested exception is: " + ex.getMessage(), ex);
+				throw new RuntimeException(ex);
+			}
+		}
+        return result;
+    }
+
+    private void populateResultMap(Map<String, Value> result, Map<String, ? extends Serializable> inputFileYamlContent,
+                                   File inputFile) {
+        for (Map.Entry<String, ? extends Serializable> property : inputFileYamlContent.entrySet()) {
+            if (property.getValue() instanceof Map) {
+                @SuppressWarnings("unchecked") Map<String, ? extends Serializable> valueMap = (Map) property.getValue();
+                validateKeys(inputFile, valueMap);
+                result.put(property.getKey(),
+                        ValueFactory.create(valueMap.get(SlangTextualKeys.VALUE_KEY), isSensitiveValue(valueMap)));
+
+            } else {
+                result.put(property.getKey(), ValueFactory.create(property.getValue(), false));
+            }
+        }
+    }
+
+    private void validateKeys(File inputFile, Map<String, ? extends Serializable> valueMap) {
+        List<String> knownModifierKeys = Arrays.asList(SlangTextualKeys.SENSITIVE_KEY, SlangTextualKeys.VALUE_KEY);
+        for (String modifierKey : valueMap.keySet()) {
+            if (!knownModifierKeys.contains(modifierKey)) {
+                throw new RuntimeException(
+                        "Artifact {" + inputFile + "} has unrecognized tag {" + modifierKey + "}" +
+                                ". Please take a look at the supported features per versions link");
+            }
+        }
+    }
+
+
+    private Boolean isSensitiveValue(Map<String, ? extends Serializable> valueMap) {
+        Boolean isSensitive = false;
+        if (valueMap.get(SlangTextualKeys.SENSITIVE_KEY) instanceof Boolean) {
+            isSensitive = (Boolean) valueMap.get(SlangTextualKeys.SENSITIVE_KEY);
+        }
+        return isSensitive;
+    }
+
+    private Set<SystemProperty> loadPropertiesFromFiles(List<File> files, String[] extensions, String directory) {
+        Collection<File> fileCollection;
+        if(CollectionUtils.isEmpty(files)) {
+            fileCollection = loadDefaultFiles(extensions, directory, true);
+            if(CollectionUtils.isEmpty(fileCollection)) return new HashSet<>();
+        } else {
+            fileCollection = files;
+            for (File propertyFileCandidate : fileCollection) {
+                Extension.validatePropertiesFileExtension(propertyFileCandidate.getName());
+            }
+        }
+        Map<File, Set<SystemProperty>> loadedProperties = new HashMap<>();
+        for(File propFile : fileCollection) {
+            try {
+                SlangSource source = SlangSource.fromFile(propFile);
+                logger.info("Loading file: " + propFile);
+                Set<SystemProperty> propsFromFile = slang.loadSystemProperties(source);
+                mergeSystemProperties(loadedProperties, propsFromFile, propFile);
+            } catch(Throwable ex) {
+                String errorMessage = "Error loading file: " + propFile + " nested exception is " + ex.getMessage();
+                logger.error(errorMessage, ex);
+                throw new RuntimeException(errorMessage, ex);
+            }
+        }
+        return SetUtils.mergeSets(loadedProperties.values());
+    }
+
+    private void mergeSystemProperties(
+            Map<File, Set<SystemProperty>> target,
+            Set<SystemProperty> propertiesFromFile,
+            File sourceFile) {
+        for (Map.Entry<File, Set<SystemProperty>> entry : target.entrySet()) {
+            for (SystemProperty propertyFromFile : propertiesFromFile) {
+                if (SetUtils.containsIgnoreCaseBasedOnFQN(entry.getValue(), propertyFromFile)) {
+                    throw new RuntimeException(
+                            DUPLICATE_SYSTEM_PROPERTY_ERROR_MESSAGE_PREFIX + propertyFromFile.getFullyQualifiedName() +
+                                    "' in the following files: " + entry.getKey().getPath() + ", " + sourceFile.getPath()
+
+                    );
+                }
+            }
+        }
+        target.put(sourceFile, propertiesFromFile);
+    }
+
+    private Collection<File> loadDefaultFiles(String[] extensions, String directory, boolean recursive) {
+        Collection<File> files;
+        String appHome = System.getProperty("app.home", "");
+        String defaultDirectoryPath = appHome + File.separator + directory;
+        File defaultDirectory = new File(defaultDirectoryPath);
+        if (defaultDirectory.isDirectory()) {
+            files = FileUtils.listFiles(defaultDirectory, extensions, recursive);
+        } else {
+            files = Collections.emptyList();
+        }
+        return files;
+    }
+
+    private List<File> convertToFiles(List<String> fileList) {
+        return convert(fileList, new Converter<String, File>() {
+            @Override
+            public File convert(String from) {
+                return new File(from);
+            }
+        });
+    }
+
+    // e.g. exclude .prop.sl from .sl set
+    private Collection<File> listSlangFiles(File directory, boolean recursive) {
+        Validate.isTrue(directory.isDirectory(), "Parameter '" + directory.getPath() + INVALID_DIRECTORY_ERROR_MESSAGE_SUFFIX);
+        Collection<File> dependenciesFiles = FileUtils.listFiles(directory, Extension.getSlangFileExtensionValues(), recursive);
+        Collection<File> result = new ArrayList<>();
+        for (File file : dependenciesFiles) {
+            if (Extension.SL.equals(Extension.findExtension(file.getName()))) {
+                result.add(file);
+            }
+        }
+        return result;
+    }
+
+}
