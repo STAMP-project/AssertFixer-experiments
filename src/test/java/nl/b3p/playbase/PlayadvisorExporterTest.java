@@ -137,31 +137,6 @@ public class PlayadvisorExporterTest extends TestUtil {
         loc.setId(locationId);
         Connection con =  DB.getConnection();
         loc.setDuplicate_images_checked(false);
-
-        Map<Integer, JSONArray> imagesPerLocation = getData(locationId);
-
-        Map<Integer, JSONArray> result = instance.analyseImagesForDuplicates(locations, imagesPerLocation,con);
-        JSONArray images = result.get(locationId);
-        Assert.assertEquals(4, images.length());
-        Assert.assertEquals(Boolean.TRUE, loc.getDuplicate_images_checked());
-        
-    }
-
-    @Test
-    public void testRemovingImagesAlreadyProcessed() throws URISyntaxException, NamingException, SQLException {
-        Location loc = new Location();
-        List<Location> locations = Collections.singletonList(loc);
-        Integer locationId = 16;
-        loc.setId(locationId);
-        loc.setDuplicate_images_checked(true);
-
-        Map<Integer, JSONArray> imagesPerLocation = getData(locationId);
-
-        Map<Integer, JSONArray> result = instance.analyseImagesForDuplicates(locations, imagesPerLocation, DB.getConnection());
-        Assert.assertEquals(0,result.keySet().size());
-    }
-
-    private Map<Integer, JSONArray> getData(Integer locationId) throws URISyntaxException {
         JSONArray pics = new JSONArray();
         Map<Integer, JSONArray> imagesPerLocation = new HashMap<>();
 
@@ -196,7 +171,59 @@ public class PlayadvisorExporterTest extends TestUtil {
         pics.put(pic);
 
         imagesPerLocation.put(locationId, pics);
-        return imagesPerLocation;
+
+        Map<Integer, JSONArray> result = instance.analyseImagesForDuplicates(locations, imagesPerLocation,con);
+        JSONArray images = result.get(locationId);
+        Assert.assertEquals(4, images.length());
+        Assert.assertEquals(Boolean.TRUE, loc.getDuplicate_images_checked());
+        
+    }
+
+    @Test
+    public void testRemovingImagesAlreadyProcessed() throws URISyntaxException, NamingException, SQLException {
+        Location loc = new Location();
+        List<Location> locations = Collections.singletonList(loc);
+        Integer locationId = 16;
+        loc.setId(locationId);
+        loc.setDuplicate_images_checked(true);
+    
+        Map<Integer, JSONArray> imagesPerLocation = new HashMap<>();
+        JSONArray pics = new JSONArray();
+
+        JSONObject pic = new JSONObject();
+        pic.put("Path", PlayadvisorExporterTest.class.getResource("imgs/11.jpg").toURI().toString());
+        pic.put("PlaybaseID",1);
+        pics.put(pic);
+
+        pic = new JSONObject();
+        pic.put("Path", PlayadvisorExporterTest.class.getResource("imgs/11_copy.jpg").toURI().toString());
+        pic.put("PlaybaseID",2);
+        pics.put(pic);
+
+        pic = new JSONObject();
+        pic.put("Path", PlayadvisorExporterTest.class.getResource("imgs/22.jpg").toURI().toString());
+        pic.put("PlaybaseID",3);
+        pics.put(pic);
+
+        pic = new JSONObject();
+        pic.put("Path", PlayadvisorExporterTest.class.getResource("imgs/22_copy.jpg").toURI().toString());
+        pic.put("PlaybaseID",4);
+        pics.put(pic);
+
+        pic = new JSONObject();
+        pic.put("Path", PlayadvisorExporterTest.class.getResource("imgs/33.jpg").toURI().toString());
+        pic.put("PlaybaseID",5);
+        pics.put(pic);
+
+        pic = new JSONObject();
+        pic.put("Path", PlayadvisorExporterTest.class.getResource("imgs/44.jpg").toURI().toString());
+        pic.put("PlaybaseID",6);
+        pics.put(pic);
+
+        imagesPerLocation.put(locationId, pics);
+
+        Map<Integer, JSONArray> result = instance.analyseImagesForDuplicates(locations, imagesPerLocation, DB.getConnection());
+        Assert.assertEquals(0,result.keySet().size());
     }
 
 }
