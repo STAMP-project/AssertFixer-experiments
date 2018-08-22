@@ -1,0 +1,55 @@
+#!/bin/bash
+
+# Copyright (C) 2018, CERN
+# This software is distributed under the terms of the GNU General Public
+# Licence version 3 (GPL Version 3), copied verbatim in the file "LICENSE".
+# In applying this license, CERN does not waive the privileges and immunities
+# granted to it by virtue of its status as Intergovernmental Organization
+# or submit itself to any jurisdiction.
+
+# Reference: http://stackoverflow.com/questions/59895/can-a-bash-script-tell-what-directory-its-stored-in
+SOURCE="${BASH_SOURCE[0]}"
+while [ -h "$SOURCE" ]; do
+  DIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"
+  SOURCE="$(readlink "$SOURCE")"
+  [[ $SOURCE != /* ]] && SOURCE="$DIR/$SOURCE"
+done
+SCRIPT_DIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"
+
+HOME=$SCRIPT_DIR/..
+
+if [ -e $HOME/conf/exdemon-env.sh ] ; then
+  . $HOME/conf/exdemon-env.sh
+fi
+
+SPARK_CMD=spark-submit
+if [ ! -z "${SPARK_HOME}" ]; then
+	SPARK_CMD=$SPARK_HOME/bin/$SPARK_CMD
+fi
+
+JARS=`ls -dm $HOME/lib/* | tr -d ' \t\n\r'`
+HTTP_LOG4J_JAR=`ls $HOME/lib/http-appender-log4j-*.jar`
+HTTP_LOG4J_JAR_NAME=$(basename -- "$HTTP_LOG4J_JAR")
+
+SPARK_VERSION=`$SPARK_CMD --version |& grep version | head -1 | grep -o '[^ ]*$'`
+
+$SPARK_CMD \
+		--master yarn \
+		--deploy-mode cluster \
+		--driver-cores 2 \
+		--driver-memory 4G \
+		--executor-memory 2G \
+		--executor-cores 1 \
+		--class ch.cern.exdemon.Driver \
+		--packages org.apache.spark:spark-streaming-kafka-0-10_2.11:$SPARK_VERSION,org.reflections:reflections:0.9.9,org.apache.curator:curator-recipes:2.7.1,com.sun.mail:javax.mail:1.6.1,org.numenta:htm.java:0.6.13 \
+		--exclude-packages algorithmfoundry:algorithmfoundry-shade-culled \
+		--jars $JARS \
+		--files "$HOME/conf/exdemon.properties,$HOME/conf/log4j.properties" \
+		--conf spark.yarn.submit.waitAppCompletion=false \
+		--conf spark.driver.extraJavaOptions='-Dlog4j.configuration=log4j.properties -Djava.security.krb5.conf=/etc/krb5.conf' \
+	    --conf spark.driver.extraClassPath="$HTTP_LOG4J_JAR_NAME" \
+    	--conf spark.executor.extraJavaOptions='-Dlog4j.configuration=log4j.properties -Djava.security.krb5.conf=/etc/krb5.conf -XX:+UseG1GC' \
+    	--conf spark.executor.extraClassPath="$HTTP_LOG4J_JAR_NAME" \
+		$SPARK_EXTRA_ARGS \
+		$HOME/lib/exdemon-*.jar \
+		classpath:/exdemon.properties
