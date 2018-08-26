@@ -1,0 +1,120 @@
+<!--  comic details modal -->
+<div id='display_comic_details' class='modal fade' role='dialog'>
+  <div class='modal-dialog modal-lg'>
+    <div class='modal-content'>
+      <div class='modal-header'>
+        <h4 class='modal-title'>{{get_title_text_for(current_comic)}}</h4>
+        <button class='btn btn-sm btn-primary' data-dismiss='modal'
+          (click)='open_selected_comic()'>Read</button>
+      </div>
+      <div class='modal-body'>
+        <div class='media'>
+          <div class='media-left media-center'>
+            <img src='{{get_image_url(current_comic)}}'
+              class='img-fluid' [style.height]='"" + cover_size + "px"'>
+          </div>
+          <div class='media-body'>
+            <h5 class='media-heading'>{{current_comic.title}}</h5>
+            <p class='text-important small'>{{current_comic.summary}}</p>
+            <span class='text-muted'><strong>Pages:</strong>
+              {{current_comic.page_count}}</span><br /> <span
+              *ngIf='current_comic.cover_date !=null' class='text-muted'><strong>Published
+                on</strong> {{current_comic.cover_date|date:'MM/yyyy'}}<br /> </span> <span
+              *ngIf='current_comic.last_read_date != null'
+              class='text-muted'> <strong>Last read on</strong>
+              {{current_comic.last_read_date | date:'MM/dd/yyyy'}}
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- library view -->
+<div class='container-fluid w-100' id='library_view'>
+  <div class='row w-100'>
+    <div class='col-3 bg-light text-black pl-5'>
+      <h4 class='text-center'>Library Search</h4>
+      <!-- number of comics per page -->
+      <div class='row w-100'>
+        <div class='field'>
+          <label for='number-of-comics-per-page'># of comics per
+            page: </label>
+        </div>
+        <div class='field row w-100'>
+          <app-page-size [page_size]='page_size'></app-page-size>
+        </div>
+      </div>
+      <!-- sort options -->
+      <div class='row w-100'>
+        <div class='field'>
+          <label for='comic-sort-order'>Sort comics by: </label>
+        </div>
+        <div class='field row w-100'>
+          <select id='comic-sort-order' class='form-control' #selectElem
+            (change)='set_sort_order(selectElem.value)'>
+            <option *ngFor='let option of sort_options'
+              [value]='option.id'>{{option.label}}</option>
+          </select>
+        </div>
+      </div>
+      <!-- search box -->
+      <div class='row w-100'>
+        <div class='field'>
+          <label for='search-terms'>Search text:</label>
+        </div>
+        <div class='field row w-100'>
+          <input id='search-terms' class='form-control'
+            [(ngModel)]='title_search'
+            placeholder='enter search terms here'>
+        </div>
+      </div>
+      <!-- cover size slider -->
+      <div class='row w-100'>
+        <div class='field'>
+          <label for='cover_size'>Cover size: {{cover_size}}</label>
+        </div>
+        <div class='field row w-100'>
+          <input class='form-control-range' [(ngModel)]='cover_size'
+            type='range' min='64' max='640' value='{{cover_size}}'
+            (blur)='save_cover_size()' class='slider w-100'>
+        </div>
+      </div>
+      <div class='row w-100'>
+        <div class='field'>
+          <label for='number-of-comics-per-page'>Group comics
+            by:</label>
+        </div>
+        <div class='field row w-100'>
+          <app-group-comics [group_by]='group_by_subject'></app-group-comics>
+        </div>
+      </div>
+    </div>
+    <div class='col-9'>
+      <div class='container-fluid w-100'>
+        <h2 class='text-center'>{{ (comics | series_filter :
+          title_search).length}} Total Comics Found</h2>
+      </div>
+      <!--  show ungrouped comics -->
+      <div *ngIf='group_by_value === 0' class='row w-100'>
+        <!--  page navigation -->
+        <div
+          class='row w-100 justify-content-center bg-secondary text-white'>
+          <pagination-controls (pageChange)='current_page = $event'></pagination-controls>
+        </div>
+        <app-comic-list-entry
+          *ngFor='let comic of comics | series_filter : title_search | paginate: { itemsPerPage: use_page_size, currentPage: current_page }'
+          [comic]='comic' [cover_size]='cover_size'
+          [sort_order]='get_sort_order()'
+          (onComicSelected)='handle_comic_clicked($event)'></app-comic-list-entry>
+      </div>
+      <!--  show grouped comics -->
+      <div *ngIf='group_by_value !== 0' class='container-fluid'>
+        <app-comic-list-group
+          *ngFor='let comic_group of comics | series_filter : title_search | group_by : group_by_value | paginate: { itemsPerPage: use_page_size, currentPage: current_page }'
+          [group_name]='comic_group.key' [comics]='comic_group.values'
+          [cover_size]='cover_size'> </app-comic-list-group>
+      </div>
+    </div>
+  </div>
+</div>
