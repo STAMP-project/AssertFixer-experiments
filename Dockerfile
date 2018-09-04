@@ -5,7 +5,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends curl tar bash p
 ARG MAVEN_VERSION=3.3.9
 ARG USER_HOME_DIR="/home/maven"
 
-RUN adduser maven -D
+RUN useradd -ms /bin/bash maven
 
 RUN mkdir -p /usr/share/maven /usr/share/maven/ref \
   && curl -fsSL http://apache.osuosl.org/maven/maven-3/$MAVEN_VERSION/binaries/apache-maven-$MAVEN_VERSION-bin.tar.gz \
