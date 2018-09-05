@@ -1,0 +1,109 @@
+[[section-design-decisions]]
+
+== Entwurfsentscheidungen
+
+
+=== Keine `null`-Werte
+
+Mit http://docs.oracle.com/javase/8/docs/api/java/util/Optional.html[Optional] aus Java 8 besteht keine Notwendigkeit mehr, `null` als Argument oder Rückgabewert zulassen.
+Dementsprechend wird bei Rückgabewerte, die optional sind, auch http://docs.oracle.com/javase/8/docs/api/java/util/Optional.html[Optional] als Datentyp zurückgegeben.
+`null` als Rückgabewert wird nicht verwendet.
+
+Auch bei Parametern ist `null` kein zulässiges Argument, sondern wird als Fehler betrachtet und mit einer ValidationException bestraft.
+Optionale Parameter können beim Aufruf einfach weggelassen werden
+
+
+=== Kein Logging / Minimale Abhängigkeiten
+
+Um nicht von einem bestimmten Log-Framework abhängig zu sein, wurde auf Logging weitgehend verzichtet.
+Das bedeutet, dass in einem Falle eines Fehlers oder fehlerhaften Aufrufs eine hilfreiche Exception ausgelöst wird.
+Diese Exception stellt alle Informationen zur Verfügung, um die Ursache des Fehlers zu finden.
+Eine Ausnahme hiervon ist die FachwertFactory-Klasse, da hier Exceptions behandelt werden.
+Dazu wird aber das Logging-Framework des JDKs im Log-Level FINE verwendet.
+
+Um sich nicht weitere unerwünschte Abhängigkeiten bei der Verwendung von jFachwert einzufangen, werden die Abhängigkeiten zu anderen Bibiotheken auf ein Minimum reduziert.
+Die einzigen Abhängigkeiten, die in Kauf genommen werden, sind:
+
+* commons-lang3: diese Bibliothek ist bereits als Abhängigkeit vieler anderer Bibliotheken vorhanden
+* validation-api: Basis-Bibliothek für Validierung
+* money-api (JSR 354): diese API ist Bestandteil ab Java 9
+* JavaMoney.org: diese Bibliothek kam mit 0.8 für die Unterstützung des Geldbetrags herein, da sonst `Monetary.getCurrency("EUR")` nicht funktioniert.
+
+
+=== Ableitung möglich
+
+Um für Fachklassen auch eigene Logik hinterlegen zu können, können die Klassen abgeleitet werden.
+Deswegen sind die Klassen nicht `final` und besitzen keine statischen Methoden, die `public` sind.
+
+
+=== Konstruktor mit Validierung
+
+Jede Klasse besitzt einen Konstruktor, der als letztes Argument einen Validator (z.B. in Form eines Pruefzifferverfahrens) hat.
+Damit ist sichergestellt, dass
+
+* nur gültige Fachwerte erzeugt werden können,
+* der Validator von der abgeleiteten Klasse ver- oder entschärft werden kann (je nach Anforderung).
+
+
+
+=== of-Methode
+
+Ursprünglich wurde auf eine statische `of`-Methode, wie sie seit Java 8 bei vielen Klassen aus dem JDK üblich ist (Beispiel: `LocalDate.of(jahr, monat, tag)`), bis v0.6 verzichtet,
+weil statische Methoden von abgeleiteten Klassen nicht überschrieben werden können.
+Mit der Einführung des math-Package in v0.6 wurde of bei einigen Klassen eine statische `of`-Methode aus folgenden Gründen eingeführt:
+                   
+* Die Anzahl (und Speicherverbrauch) lässt sich reduzieren, indem oft gebrauchte Werte "vorgehalten" werden.
+* erhöhte Lesbarkeit
+
+Dies lohnt sich vor allem für Objekte, die immer den gleichen Werte oder nur einige Werte haben (z.B. Rechnungsmonat).
+Dies kann bei sehr vielen Objekten einen spürbaren Rückgang des Speicherverbraucs bedeuten.
+Bei vielen unterschiedlichen Objekten (z.B. IBAN) sollte man dagegen eher auf den Konstruktor verwenden, weil intern ein Cache für die die Ablage bereits erzeugter Objekte verwendet wird.
+Der interne Verwaltungs-Overhead ist umso größer, je mehr unterschiedliche Objekte erzeugt werden.
+
+
+
+=== Gleichheit
+
+Die equals- und hashCode-Methode wurden jeweils überschrieben.
+Zwei Fachwerte sind gleich, wenn sie jeweils die gleichen Werte besitzen.
+
+
+=== toString
+
+Jeder Fachwert hat eine aussagekräftige `toString`-Implementierung.
+Meist ist dies der Wert selbst.
+
+
+
+=== Eigene Money-Klasse (Geldbetrag)
+
+Mit 0.8 kam die Geldbetrag-Klasse hinzu, die das MonetaryAmount-Interface aus "javax.money" implementiert.
+Gründe für eine eigene Implementierung waren:
+
+* Der Umgang mit dem Package "javax.money" und das Anlegen von MonetaryAmount-Objekten ist etwas sperrig.
+  Ziel war es, den Umgang möglichst einfach, zumindestens aber so einfach wie der Umgang mit BigDicimal-Beträgen zu machen.
+* Für Sonderfälle sollte es möglich sein, das Default-Verhalten einer MonetaryAmount-Klasse zu überschreiben.
+  Dies ist mit der http://javamoney.github.io/ri.html[Referenz-Implementierung] leider nicht möglich, da die Klassen 'final' sind.
+* Die Geldbetrag sollte als Alternative zur BigDecimal-Klasse eingesetzt werden können.
+  Dies ist vor allem für die Portierung älterer Anwendungen gedacht, die noch mit BigDecimal arbeiten.
+
+Der letzte Punkt ist auch der Grund, warum die Geldbetrag statt einer of(..)-Methode eine valueOf(..)-Methode besitzt.
+Dabei werden die gleichen Parameter wie bei BigDecimal akzeptiert.
+
+
+==== JSR 354 - Technical Compatibiliy Kit (TCK)
+
+Auf GitHub gibt es unter https://github.com/JavaMoney/jsr354-tck[JavaMoney/jsr354-tck] ein TCK, das zur Verifizierung der korrekten Implementierung herangeogen wird.
+Resultat des TCKs war u.a. die `GeldbetragFactory`-Klasse, aber auch andere Klassen, die nur für den internen Gebrauch gedacht sind und dementsprechend auch unter `de.jfachwert.bank.internal` abgelegt wurden.
+Aufgerufen wird das TCK über den Integrationstest `GeldbetragIT`.
+
+
+==== Operatoren
+
+Alle Operatoren geben einen Geldbetrag zurück, da die Klasse selbst immutable ist.
+Um die Erzeugung neuer Objekte zu minimieren, wird der Geldbetrag selbst zurueckgegeben, falls dies moeglich ist (z.B. beim Absolutbetrag, wenn der Geldbetrag bereits positiv ist).
+
+Bei Operatoren, die einen Geldbetrag als Operand erwarten (z.B. Addition), müssen die Währungen übereinstimmen.
+Ansonsten wird eine `MonetaryException` geworfen.
+Ausnahmen hiervon sind neutrale Operanden wie z.B. die Addtion oder Subtraktion von 0 EUR.
+Da dies den Wert eines Geldbetrags nicht ändert, wird hier die Währung ignoriert und _keine_ MonetaryException ausgelöst.
