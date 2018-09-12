@@ -1,0 +1,80 @@
+<#-- Implicit variable declaration for auto-complete purposes -->
+<#-- @ftlvariable name="query" type="com.weaverplatform.postgresql.database.query.model.WeaverQuery" -->
+WITH
+  qualified_individuals as (SELECT DISTINCT qid FROM (
+    <#if query.hasOrder()>
+    <#-- The order by requires this column to be defined -->
+
+    SELECT qid FROM (
+    </#if>
+      <#list query.getInclusiveIDRestrictions() as restriction>
+        ${restriction}
+      <#sep>
+        INTERSECT
+      </#list>
+
+      <#if query.hasExclusiveIDRestrictions()>
+        EXCEPT
+      <#list query.getExclusiveIDRestrictions() as restriction>
+        ${restriction}
+      <#sep>
+        EXCEPT
+      </#list>
+      </#if>
+
+<#if query.hasOrder()>
+  ) a
+  ORDER BY
+  <#list query.getOrder() as attribute>
+    (SELECT string_value FROM live_attributes WHERE source = qid AND key = (SELECT ak.id FROM attribute_keys ak WHERE ak.label = '${attribute}') LIMIT 1)
+  </#list>
+  , qid
+</#if>
+) b
+<#if !query.isCount() && !query.isCountPerGraph()>
+    <#if !query.isNoLimits()>
+          LIMIT  #{query.getLimit()}
+    </#if>
+    <#if query.hasOffset()>
+          OFFSET #{query.getOffset()}
+    </#if>
+</#if>
+   )
+<#if query.isCount()>
+SELECT COUNT(1) FROM qualified_individuals
+<#elseif query.isCountPerGraph()>
+SELECT
+  g.uid, COUNT(1)
+FROM
+  qualified_individuals qi
+  JOIN nodes n ON qi.qid = n.id
+  JOIN graphs g ON n.graph = g.id
+GROUP BY g.uid
+<#elseif query.isDatabaseIdsOnly()>
+SELECT * FROM qualified_individuals
+<#elseif query.getIdsOnly()>
+SELECT uid FROM nodes WHERE id = ANY (
+  SELECT * FROM qualified_individuals
+)
+<#else>
+SELECT * from live_query_result
+WHERE
+  node_id = ANY
+(
+  (
+    SELECT array(
+      SELECT
+        *
+      FROM
+        qualified_individuals
+    )
+  )::integer[]
+)
+<#if query.hasOrder()>
+  ORDER BY
+  <#list query.getOrder() as attribute>
+    (SELECT string_value FROM live_attributes WHERE source = node_id AND key = (SELECT ak.id FROM attribute_keys ak WHERE ak.label = '${attribute}') LIMIT 1)
+  </#list>
+  , node_id
+</#if>
+</#if>

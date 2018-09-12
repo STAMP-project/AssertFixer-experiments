@@ -1,0 +1,506 @@
+<#--
+  This is a FreeMarker template to compile a Weaver.Query to a PostgreSQL query for fetching nodes.
+  The compiled query is attached to the QueryResult object including execution time.
+-->
+
+<#-- Implicit variable declaration for auto-complete purposes -->
+<#-- @ftlvariable name="query" type="com.weaverplatform.postgresql.database.query.model.WeaverQuery" -->
+
+
+<#--
+  The WITH clause allows for selecting the nodes based on Weaver.Query criteria.
+  These selected nodes are then used for the actual fetching of properties.
+-->
+WITH
+
+
+<#--
+  Restrict as soon as possible here to number of nodes for optimal performance
+-->
+nodes_preselection AS (
+  SELECT * FROM nodes
+
+  WHERE
+  <#-- Restrict to node(s) -->
+  <#if query.hasRestricts()>
+    nodes.uid IN (${query.getCommaSeparatedRestricts()})
+    <#if query.hasGraphRestrictions()>
+      AND (
+        <#list query.getGraphRestrictions() as graphUid>
+          nodes.graph = (SELECT id FROM graphs WHERE uid
+          <#if graphUid??>
+           = '${graphUid}'
+          <#else>
+           IS NULL
+          </#if>
+          )
+        <#sep>
+          OR
+        </#list>
+      )
+    </#if>
+  <#else>
+    <#if query.hasGraphRestrictions()>
+      (
+        <#list query.getGraphRestrictions() as graphUid>
+          nodes.graph = (SELECT id FROM graphs WHERE uid
+          <#if graphUid??>
+           = '${graphUid}'
+          <#else>
+           IS NULL
+          </#if>
+          )
+        <#sep>
+          OR
+        </#list>
+      )
+    <#else>
+      TRUE
+    </#if>
+
+      <#if query.isNoRelations()>
+      -- No relations
+      AND NOT EXISTS (SELECT 1 FROM relations WHERE node = nodes.id LIMIT 1)
+      </#if>
+
+      <#if query.isNoAttributes()>
+      -- No attributes
+      AND NOT EXISTS (SELECT 1 FROM attributes WHERE node = nodes.id LIMIT 1)
+      </#if>
+
+      -- No remove nodes and replace nodes
+      AND NOT EXISTS (SELECT 1 FROM nodes remn WHERE nodes.id = remn.deleted_by LIMIT 1)
+      AND NOT EXISTS (SELECT 1 FROM replaced_attributes WHERE node = nodes.id LIMIT 1)
+      AND NOT EXISTS (SELECT 1 FROM replaced_relations WHERE node = nodes.id LIMIT 1)
+
+    <#-- Limit and offset -->
+    <#if query.hasNoConditions() && !query.isCount() && !query.isCountPerGraph()>
+    LIMIT  #{query.getLimit()}
+    OFFSET #{query.getOffset()}
+    </#if>
+  </#if>
+),
+
+
+
+
+<#-- Prepare attributes preselection -->
+attributes_preselection as (
+  SELECT
+    attributes.*,
+    attribute_keys.label as "label"
+  FROM attributes
+    JOIN nodes attribute_node ON attributes.node = attribute_node.id
+
+    -- Restrict to selected nodes
+    JOIN nodes_preselection ON attributes.source=nodes_preselection.id
+
+    -- Get attribute labels
+    JOIN attribute_keys ON attributes.key=attribute_keys.id
+
+   -- Exclude removed attributes
+  WHERE attribute_node.deleted_by = -1
+   AND NOT EXISTS (SELECT 1 FROM replaced_attributes WHERE replaced = attributes.id LIMIT 1)
+),
+
+
+<#-- Filter on attributes -->
+filtered_nodes_on_attributes as (select nodes.* FROM nodes_preselection as nodes WHERE TRUE
+
+  <#-- Attribute equals on string -->
+  <#list query.getStringEquals()?keys as attribute>
+  AND nodes.id in (SELECT source FROM attributes_preselection WHERE label='${attribute}' AND string_value='${query.getEquals()[attribute]}')
+  </#list>
+
+  <#-- Attribute equals on boolean -->
+  <#list query.getBooleanEquals()?keys as attribute>
+  AND nodes.id in (SELECT source FROM attributes_preselection WHERE label='${attribute}' AND boolean_value=${query.getEquals()[attribute]?c})
+  </#list>
+
+  <#-- Attribute equals on double -->
+  <#list query.getDoubleEquals()?keys as attribute>
+  AND nodes.id in (SELECT source FROM attributes_preselection WHERE label='${attribute}' AND double_value=#{query.getEquals()[attribute]})
+  </#list>
+
+  <#-- Conditions -->
+  <#list query.getConditions()?keys as attribute>
+
+  <#assign condition = query.getConditions()[attribute]>
+
+  <#-- ContainedIn -->
+  <#if condition["$contains"]??>
+  AND nodes.id in (SELECT source FROM attributes_preselection WHERE label='${attribute}' AND LOWER(string_value) LIKE LOWER('%${condition["$contains"]?trim}%'))
+  </#if>
+
+  </#list>
+),
+
+
+
+
+
+<#-- Prepare relations preselection -->
+relations_preselection as (
+  SELECT
+    relations.*,
+    relation_keys.label      as "label",
+    target_nodes.uid         as "target_uid",
+    target_nodes.graph       as "target_graph_id",
+    target_nodes.created_on  as "target_created",
+    creators.uid             as "target_creator",
+    source_nodes.uid         as "source_uid",
+    source_nodes.graph       as "source_graph_id"
+
+  FROM relations
+
+    -- Restrict to selected nodes
+    JOIN filtered_nodes_on_attributes ON relations.source=filtered_nodes_on_attributes.id
+
+    -- Get relation labels
+    JOIN relation_keys ON relations.key=relation_keys.id
+
+    -- Get target nodes
+    JOIN nodes target_nodes ON relations.target=target_nodes.id
+
+    <#-- Get target creators -->
+    JOIN creators ON target_nodes.created_by=creators.id
+
+    -- Get source nodes
+    JOIN nodes source_nodes ON relations.source=source_nodes.id
+
+
+  WHERE TRUE
+
+    -- Exclude replaced relations
+    AND NOT EXISTS (SELECT 1 FROM replaced_relations WHERE replaced = relations.id LIMIT 1)
+
+    -- Exclude removed relations
+    AND NOT EXISTS (SELECT 1 FROM nodes WHERE id = relations.node AND nodes.deleted_by >= 0 LIMIT 1)
+),
+
+
+
+
+<#-- Filter on relations -->
+filtered_nodes_on_relations as (select nodes.* FROM filtered_nodes_on_attributes as nodes WHERE TRUE
+
+  <#-- Conditions -->
+  <#list query.getConditions()?keys as relation>
+
+    <#assign condition = query.getConditions()[relation]>
+
+    <#-- relOut -->
+    <#if condition["$relOut"]??>
+      <#if condition["$relOut"][0]?is_hash && condition["$relOut"][0].id??>
+        AND nodes.id in (SELECT source FROM relations_preselection WHERE label='${relation}' AND target_uid='${condition["$relOut"][0].id}'
+          AND target_graph_id = (SELECT id FROM graphs WHERE uid IS NOT DISTINCT FROM
+            <#if condition["$relOut"][0].graph??>
+              '${condition["$relOut"][0].graph}'
+            <#else>
+              NULL
+            </#if>
+          )
+        )
+      <#elseif condition["$relOut"][0] == '*'>
+        AND nodes.id in (SELECT source FROM relations_preselection WHERE label='${relation}')
+      <#else>
+        AND nodes.id in (SELECT source FROM relations_preselection WHERE label='${relation}' AND target_uid='${condition["$relOut"][0]}')
+      </#if>
+    </#if>
+
+    <#-- noRelOut -->
+    <#if condition["$noRelOut"]??>
+      <#if condition["$noRelOut"][0]?is_hash && condition["$noRelOut"][0].id??>
+        AND nodes.id NOT in (SELECT source FROM relations_preselection WHERE label='${relation}' AND target_uid='${condition["$noRelOut"][0].id}'
+          AND target_graph_id = (SELECT id FROM graphs WHERE uid IS NOT DISTINCT FROM
+            <#if condition["$noRelOut"][0].graph??>
+              '${condition["$noRelOut"][0].graph}'
+            <#else>
+              NULL
+            </#if>
+          )
+        )
+      <#elseif condition["$noRelOut"][0] == '*'>
+        AND nodes.id NOT in (SELECT source FROM relations_preselection WHERE label='${relation}')
+      <#else>
+        AND nodes.id NOT in (SELECT source FROM relations_preselection WHERE label='${relation}' AND target_uid='${condition["$noRelOut"][0]}')
+      </#if>
+    </#if>
+
+    <#-- relIn -->
+    <#if condition["$relIn"]??>
+      <#if condition["$relIn"][0]?is_hash && condition["$relIn"][0].id??>
+        AND nodes.id in (SELECT target FROM relations_preselection WHERE label='${relation}' AND source_uid='${condition["$relIn"][0].id}'
+          AND source_graph_id = (SELECT id FROM graphs WHERE uid IS NOT DISTINCT FROM
+            <#if condition["$relIn"][0].graph??>
+              '${condition["$relIn"][0].graph}'
+            <#else>
+              NULL
+            </#if>
+          )
+        )
+      <#elseif condition["$relIn"][0] == '*'>
+        AND nodes.id in (SELECT target FROM relations_preselection WHERE label='${relation}')
+      <#else>
+        AND nodes.id in (SELECT target FROM relations_preselection WHERE label='${relation}' AND source_uid='${condition["$relIn"][0]}')
+      </#if>
+    </#if>
+
+    <#-- noRelIN -->
+    <#if condition["$noRelIn"]??>
+      <#if condition["$noRelIn"][0]?is_hash && condition["$noRelIn"][0].id??>
+        AND nodes.id in (SELECT target FROM relations_preselection WHERE label='${relation}' AND source_uid='${condition["$noRelIn"][0].id}'
+          AND source_graph_id = (SELECT id FROM graphs WHERE uid IS NOT DISTINCT FROM
+            <#if condition["$noRelIn"][0].graph??>
+              '${condition["$noRelIn"][0].graph}'
+            <#else>
+              NULL
+            </#if>
+          )
+        )
+      <#elseif condition["$noRelIn"][0] == '*'>
+        AND nodes.id NOT in (SELECT target FROM relations_preselection WHERE label='${relation}')
+      <#else>
+        AND nodes.id NOT in (SELECT target FROM relations_preselection WHERE label='${relation}' AND source_uid='${condition["$noRelIn"][0]}')
+      </#if>
+    </#if>
+
+  </#list>
+),
+
+
+
+
+
+
+final_nodes as (
+  SELECT nodes.* FROM filtered_nodes_on_relations AS nodes
+
+  <#-- Limit and offset -->
+  <#if !query.hasNoConditions() && !query.isCount() && !query.isCountPerGraph()>
+  LIMIT  #{query.getLimit()}
+  OFFSET #{query.getOffset()}
+  </#if>
+)
+
+
+<#-- Count or select check -->
+<#if query.isCount()>
+SELECT COUNT(DISTINCT(node_id)) FROM
+<#elseif query.isCountPerGraph()>
+SELECT (SELECT uid FROM graphs WHERE id = node_graph_id) AS "uid", COUNT(1) FROM
+<#else>
+SELECT
+  "node_id",
+  "node_uid",
+  (SELECT uid FROM graphs WHERE id = node_graph_id) AS "node_graph",
+  "node_created",
+  (SELECT uid FROM creators WHERE id = node_created_by) AS "node_created_by",
+  "node_removed_by",
+  (SELECT uid FROM graphs WHERE id = node_removed_by_graph_id) AS "node_removed_by_graph",
+  "property_uid",
+  (SELECT uid FROM graphs WHERE id = property_graph_id) AS "property_graph",
+  "property_created",
+  "property_creator",
+  "key",
+  "double_value",
+  "boolean_value",
+  "datetime_value",
+  "string_value",
+  "target_id",
+  "target_uid",
+  (SELECT uid FROM graphs WHERE id = target_graph_id) AS "target_graph",
+  "target_created",
+  "target_creator",
+  "replaced_by",
+  (SELECT uid FROM graphs WHERE id = replaced_by_graph_id) AS "replaced_by_graph",
+  "property_removed_by",
+  (SELECT uid FROM graphs WHERE id = property_removed_by_graph_id) AS "property_removed_by_graph",
+  "relation_source_uid",
+  "relation_source_graph",
+  "relation_target_uid",
+  "relation_target_graph",
+  "relation_key",
+  "attribute_datatype"
+FROM
+</#if>
+
+
+(
+    SELECT
+      nodes.id                       as "node_id",
+      nodes.uid                      as "node_uid",
+      nodes.graph                    as "node_graph_id",
+      nodes.created_on               as "node_created",
+      nodes.created_by               as "node_created_by",
+      removed_by_nodes.uid           as "node_removed_by",
+      removed_by_nodes.graph         as "node_removed_by_graph_id",
+      NULL                           as "property_uid",
+      CAST (NULL as integer)         as "property_graph_id",
+      NULL                           as "property_created",
+      NULL                           as "property_creator",
+      NULL                           as "key",
+      NULL                           as "double_value",
+      NULL                           as "boolean_value",
+      NULL                           as "datetime_value",
+      NULL                           as "string_value",
+      0                              as "target_id",
+      NULL                           as "target_uid",
+      CAST (NULL as integer)         as "target_graph_id",
+      timestamp '1970-01-01 00:00'   as "target_created",
+      NULL                           as "target_creator",
+      NULL                           as "replaced_by",
+      CAST (NULL as integer)         as "replaced_by_graph_id",
+      NULL                           as "property_removed_by",
+      CAST (NULL as integer)         as "property_removed_by_graph_id",
+      rs.uid                         as "relation_source_uid",
+      (SELECT graphs.uid FROM graphs WHERE graphs.id = rs.graph) AS "relation_source_graph",
+      rt.uid                         as "relation_target_uid",
+      (SELECT graphs.uid FROM graphs WHERE graphs.id = rt.graph) AS "relation_target_graph",
+      (SELECT label FROM relation_keys WHERE relation_keys.id = relations.key) AS "relation_key",
+      NULL                           as "attribute_datatype"
+
+    FROM final_nodes as nodes
+
+    -- Get node removed by
+    LEFT JOIN nodes removed_by_nodes ON nodes.deleted_by=removed_by_nodes.id
+    LEFT JOIN relations ON relations.node = nodes.id
+    LEFT JOIN nodes rs ON relations.source = rs.id
+    LEFT JOIN nodes rt ON relations.target = rt.id
+
+    WHERE TRUE
+      AND NOT EXISTS (SELECT 1 FROM attributes_preselection WHERE source = nodes.id LIMIT 1)
+      AND NOT EXISTS (SELECT 1 FROM relations_preselection  WHERE source = nodes.id LIMIT 1)
+
+  UNION ALL
+
+    SELECT
+      nodes.id                                  as "node_id",
+      nodes.uid                                 as "node_uid",
+      nodes.graph                               as "node_graph_id",
+      nodes.created_on                          as "node_created",
+      nodes.created_by                          as "node_created_by",
+      removed_by_node_nodes.uid                 as "node_removed_by",
+      removed_by_node_nodes.graph               as "node_removed_by_graph_id",
+      attr_nodes.uid                            as "property_uid",
+      attr_nodes.graph                          as "property_graph_id",
+      attr_nodes.created_on                     as "property_created",
+      attr_creators.uid                         as "property_creator",
+      attributes_preselection.label             as "key",
+      attributes_preselection.double_value      as "double_value",
+      attributes_preselection.boolean_value     as "boolean_value",
+      attributes_preselection.datetime_value    as "datetime_value",
+      attributes_preselection.string_value      as "string_value",
+      NULL                                      as "target_id",
+      NULL                                      as "target_uid",
+      NULL                                      as "target_graph_id",
+      timestamp '1970-01-01 00:00'              as "target_created",
+      NULL                                      as "target_creator",
+      replaced_by_nodes.uid                     as "replaced_by",
+      replaced_by_nodes.graph                   as "replaces_by_graph_id",
+      removed_by_nodes.uid                      as "property_removed_by",
+      removed_by_nodes.graph                    as "property_removed_by_graph_id",
+      rs.uid                         as "relation_source_uid",
+      (SELECT graphs.uid FROM graphs WHERE graphs.id = rs.graph) AS "relation_source_graph",
+      rt.uid                         as "relation_target_uid",
+      (SELECT graphs.uid FROM graphs WHERE graphs.id = rt.graph) AS "relation_target_graph",
+      (SELECT label FROM relation_keys WHERE relation_keys.id = relations.key) AS "relation_key",
+      attributes_preselection.datatype          as "attribute_datatype"
+    FROM final_nodes as nodes
+
+    -- Get attributes
+    JOIN attributes_preselection ON nodes.id=attributes_preselection.source
+
+    ---- Get attribute nodes
+    JOIN nodes attr_nodes ON attributes_preselection.node=attr_nodes.id
+
+    -- Get creators of the attribute
+    JOIN creators attr_creators ON attr_nodes.created_by=attr_creators.id
+
+    -- Get non replaced by
+    LEFT JOIN replaced_attributes ON replaced = attributes_preselection.id
+    LEFT JOIN nodes replaced_by_nodes ON replaced_attributes.replaced_by=replaced_by_nodes.id
+
+    -- Get property removed by
+    LEFT JOIN nodes removed_by_nodes ON attr_nodes.deleted_by = removed_by_nodes.id
+
+    -- Get node removed by
+    LEFT JOIN nodes removed_by_node_nodes ON nodes.deleted_by=removed_by_node_nodes.id
+
+    -- Get relation info
+    LEFT JOIN relations ON relations.node = nodes.id
+    LEFT JOIN nodes rs ON relations.source = rs.id
+    LEFT JOIN nodes rt ON relations.target = rt.id
+
+  UNION ALL
+
+
+    SELECT
+      nodes.id                                as "node_id",
+      nodes.uid                               as "node_uid",
+      nodes.graph                             as "node_graph_id",
+      nodes.created_on                        as "created",
+      nodes.created_by                        as "node_created_by",
+      removed_by_node_nodes.uid               as "node_removed_by",
+      removed_by_node_nodes.graph             as "node_removed_by_graph_id",
+      relation_nodes.uid                      as "property_uid",
+      relation_nodes.graph                    as "property_graph_id",
+      relation_nodes.created_on               as "property_created",
+      relation_creators.uid                   as "property_creator",
+      relations_preselection.label            as "key",
+      NULL                                    as "double_value",
+      NULL                                    as "boolean_value",
+      NULL                                    as "datetime_value",
+      NULL                                    as "string_value",
+      relations_preselection.target           as "target_id",
+      relations_preselection.target_uid       as "target_uid",
+      relations_preselection.target_graph_id  as "target_graph_id",
+      relations_preselection.target_created   as "target_created",
+      relations_preselection.target_creator   as "target_creator",
+      replaced_by_nodes.uid                   as "replaced_by",
+      replaced_by_nodes.graph                 as "replaced_by_graph_id",
+      removed_by_nodes.uid                    as "property_removed_by",
+      removed_by_nodes.graph                  as "property_removed_by_graph_id",
+      rs.uid                         as "relation_source_uid",
+      (SELECT graphs.uid FROM graphs WHERE graphs.id = rs.graph) AS "relation_source_graph",
+      rt.uid                         as "relation_target_uid",
+      (SELECT graphs.uid FROM graphs WHERE graphs.id = rt.graph) AS "relation_target_graph",
+      (SELECT label FROM relation_keys WHERE relation_keys.id = relations.key) AS "relation_key",
+      NULL                                    as "attribute_datatype"
+
+
+    FROM final_nodes as nodes
+
+    -- Get relations
+    JOIN relations_preselection ON nodes.id=relations_preselection.source
+
+    ---- Get relation nodes
+    JOIN nodes relation_nodes ON relations_preselection.node=relation_nodes.id
+
+    LEFT JOIN relations ON relations.node = nodes.id
+    LEFT JOIN nodes rs ON relations.source = rs.id
+    LEFT JOIN nodes rt ON relations.target = rt.id
+
+    -- Get creators of the relation
+    JOIN creators relation_creators ON relation_nodes.created_by=relation_creators.id
+
+    -- Get non replaced by
+    LEFT JOIN replaced_relations ON replaced = relations_preselection.id
+    LEFT JOIN nodes replaced_by_nodes ON replaced_relations.replaced_by=replaced_by_nodes.id
+
+    -- Get property removed by
+    LEFT JOIN nodes removed_by_nodes ON relation_nodes.deleted_by=removed_by_nodes.id
+
+    -- Get node removed by
+    LEFT JOIN nodes removed_by_node_nodes ON nodes.deleted_by=removed_by_node_nodes.id
+
+
+) as individuals WHERE TRUE
+
+  AND node_removed_by is NULL
+  AND property_removed_by IS NULL
+  AND replaced_by IS NULL
+
+<#if query.isCountPerGraph()>
+GROUP BY uid
+</#if>

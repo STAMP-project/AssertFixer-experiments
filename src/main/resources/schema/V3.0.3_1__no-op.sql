@@ -1,0 +1,2 @@
+-- This is an empty changeset to illustrate the version
+-- numbering of to-be-created databases in the future.
