@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>RestManager.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">iextrading4j-test</a> &gt; <a href="../index.html" class="el_bundle">iextrading4j-client</a> &gt; <a href="index.source.html" class="el_package">pl.zankowski.iextrading4j.client.rest.manager</a> &gt; <span class="el_source">RestManager.java</span></div><h1>RestManager.java</h1><pre class="source lang-java linenums">package pl.zankowski.iextrading4j.client.rest.manager;
+
+import pl.zankowski.iextrading4j.api.exception.IEXTradingException;
+
+import javax.ws.rs.client.Invocation;
+import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.Response;
+import java.util.Map;
+
+import static java.util.stream.Collectors.joining;
+
+public class RestManager {
+
+    private static final int SUCCESS = 200;
+    private static final int WRITE_SUCCESS = 201;
+
+    private final RestClient restClient;
+
+<span class="nc" id="L19">    public RestManager(final RestClient restClient) {</span>
+<span class="nc" id="L20">        this.restClient = restClient;</span>
+<span class="nc" id="L21">    }</span>
+
+    public &lt;R&gt; RestResponse&lt;R&gt; executeRequest(final RestRequest&lt;R&gt; restRequest) {
+<span class="nc" id="L24">        final String url = createURL(restRequest);</span>
+
+<span class="nc" id="L26">        final Invocation.Builder invocationBuilder = restClient.getClient().target(url)</span>
+<span class="nc" id="L27">                .request(MediaType.APPLICATION_JSON);</span>
+
+<span class="nc" id="L29">        Response response = null;</span>
+
+        try {
+
+<span class="nc bnc" id="L33" title="All 2 branches missed.">            switch (restRequest.getMethodType()) {</span>
+                case GET:
+<span class="nc" id="L35">                    response = invocationBuilder.get();</span>
+<span class="nc" id="L36">                    break;</span>
+                default:
+<span class="nc" id="L38">                    throw new IllegalStateException(&quot;Method Type not supported.&quot;);</span>
+            }
+
+<span class="nc bnc" id="L41" title="All 2 branches missed.">            if (!isSuccessful(response)) {</span>
+<span class="nc" id="L42">                final String errorMessage = response.readEntity(String.class);</span>
+<span class="nc" id="L43">                throw new IEXTradingException(errorMessage, response.getStatus());</span>
+            }
+
+<span class="nc" id="L46">            return new RestResponseBuilder&lt;R&gt;()</span>
+<span class="nc" id="L47">                    .withMessage(response.getStatusInfo().getReasonPhrase())</span>
+<span class="nc" id="L48">                    .withResponse(response.readEntity(restRequest.getResponseType()))</span>
+<span class="nc" id="L49">                    .build();</span>
+        } finally {
+<span class="nc bnc" id="L51" title="All 4 branches missed.">            if (response != null) {</span>
+<span class="nc" id="L52">                response.close();</span>
+            }
+        }
+    }
+
+    private boolean isSuccessful(final Response response) {
+<span class="nc bnc" id="L58" title="All 4 branches missed.">        return response.getStatus() == SUCCESS || response.getStatus() == WRITE_SUCCESS;</span>
+    }
+
+    private &lt;R&gt; String createURL(final RestRequest&lt;R&gt; restRequest) {
+<span class="nc" id="L62">        return new StringBuilder()</span>
+<span class="nc" id="L63">                .append(getServicePath())</span>
+<span class="nc" id="L64">                .append(createPath(restRequest.getPath(), restRequest.getPathParams()))</span>
+<span class="nc" id="L65">                .append(createQueryParameters(restRequest.getQueryParams()))</span>
+<span class="nc" id="L66">                .toString();</span>
+    }
+
+    private String createPath(final String originalPath, final Map&lt;String, String&gt; pathParams) {
+<span class="nc" id="L70">        String path = originalPath;</span>
+<span class="nc bnc" id="L71" title="All 2 branches missed.">        for (final Map.Entry&lt;String, String&gt; entry : pathParams.entrySet()) {</span>
+<span class="nc" id="L72">            path = path.replaceFirst(&quot;\\{&quot; + entry.getKey() + &quot;\\}&quot;, entry.getValue());</span>
+<span class="nc" id="L73">        }</span>
+
+<span class="nc" id="L75">        return path;</span>
+    }
+
+    private String createQueryParameters(final Map&lt;String, String&gt; queryParams) {
+<span class="nc bnc" id="L79" title="All 2 branches missed.">        if (queryParams.isEmpty()) {</span>
+<span class="nc" id="L80">            return &quot;&quot;;</span>
+        }
+
+<span class="nc" id="L83">        return queryParams.entrySet().stream()</span>
+<span class="nc" id="L84">                .map(this::createQueryParam)</span>
+<span class="nc" id="L85">                .collect(joining(&quot;&amp;&quot;, &quot;?&quot;, &quot;&quot;));</span>
+    }
+
+    private String createQueryParam(final Map.Entry&lt;String, String&gt; queryParam) {
+<span class="nc" id="L89">        return queryParam.getKey() + &quot;=&quot; + queryParam.getValue();</span>
+    }
+
+    private String getServicePath() {
+<span class="nc" id="L93">        return restClient.getRestClientMetadata().getUrl();</span>
+    }
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.7.9.201702052155</span></div></body></html>

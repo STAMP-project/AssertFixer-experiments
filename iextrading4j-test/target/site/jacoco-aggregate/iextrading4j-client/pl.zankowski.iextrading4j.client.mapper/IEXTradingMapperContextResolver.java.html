@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../../jacoco-resources/report.gif" type="image/gif"/><title>IEXTradingMapperContextResolver.java</title><link rel="stylesheet" href="../../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../../index.html" class="el_report">iextrading4j-test</a> &gt; <a href="../index.html" class="el_bundle">iextrading4j-client</a> &gt; <a href="index.source.html" class="el_package">pl.zankowski.iextrading4j.client.mapper</a> &gt; <span class="el_source">IEXTradingMapperContextResolver.java</span></div><h1>IEXTradingMapperContextResolver.java</h1><pre class="source lang-java linenums">package pl.zankowski.iextrading4j.client.mapper;
+
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.Module;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.databind.module.SimpleModule;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import pl.zankowski.iextrading4j.api.marketdata.SystemEventType;
+import pl.zankowski.iextrading4j.api.marketdata.TradingStatusReasonType;
+import pl.zankowski.iextrading4j.api.marketdata.TradingStatusType;
+import pl.zankowski.iextrading4j.api.refdata.DelistingReason;
+import pl.zankowski.iextrading4j.api.refdata.DividendTypeId;
+import pl.zankowski.iextrading4j.api.refdata.FinancialStatus;
+import pl.zankowski.iextrading4j.api.refdata.Flag;
+import pl.zankowski.iextrading4j.api.refdata.IssueEvent;
+import pl.zankowski.iextrading4j.api.refdata.IssueSubType;
+import pl.zankowski.iextrading4j.api.refdata.IssueType;
+import pl.zankowski.iextrading4j.api.refdata.ListingCenter;
+import pl.zankowski.iextrading4j.api.refdata.LuldTier;
+import pl.zankowski.iextrading4j.api.refdata.PaymentFrequency;
+import pl.zankowski.iextrading4j.api.refdata.QualifiedDividendType;
+import pl.zankowski.iextrading4j.api.refdata.SymbolType;
+import pl.zankowski.iextrading4j.api.stocks.ChartRange;
+import pl.zankowski.iextrading4j.api.stocks.DividendQualification;
+import pl.zankowski.iextrading4j.api.stocks.DividendType;
+import pl.zankowski.iextrading4j.client.socket.request.marketdata.deep.DeepChannel;
+import pl.zankowski.iextrading4j.client.socket.request.marketdata.deep.DeepMessageType;
+
+import javax.ws.rs.ext.ContextResolver;
+import javax.ws.rs.ext.Provider;
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+
+@Provider
+public class IEXTradingMapperContextResolver implements ContextResolver&lt;ObjectMapper&gt; {
+
+    private final ObjectMapper objectMapper;
+
+<span class="nc" id="L41">    public IEXTradingMapperContextResolver() {</span>
+<span class="nc" id="L42">        objectMapper = initializeObjectMapper();</span>
+<span class="nc" id="L43">    }</span>
+
+    @Override
+    public ObjectMapper getContext(Class&lt;?&gt; type) {
+<span class="nc" id="L47">        return objectMapper;</span>
+    }
+
+    private ObjectMapper initializeObjectMapper() {
+<span class="nc" id="L51">        final ObjectMapper customMapper = new ObjectMapper();</span>
+
+<span class="nc" id="L53">        customMapper.configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false);</span>
+<span class="nc" id="L54">        customMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);</span>
+
+<span class="nc" id="L56">        customMapper.registerModule(new JavaTimeModule());</span>
+<span class="nc" id="L57">        customMapper.registerModule(iexTradingModule());</span>
+
+<span class="nc" id="L59">        return customMapper;</span>
+    }
+
+    private Module iexTradingModule() {
+<span class="nc" id="L63">        final SimpleModule module = new SimpleModule(&quot;iexTradingModule&quot;);</span>
+
+<span class="nc" id="L65">        module.addDeserializer(BigDecimal.class, new HackyBigDecimalDeserializer());</span>
+<span class="nc" id="L66">        module.addDeserializer(LocalDate.class, new HackyLocalDateDeserializer());</span>
+<span class="nc" id="L67">        module.addDeserializer(LocalDateTime.class, new HackyLocalDateTimeDeserializer());</span>
+
+<span class="nc" id="L69">        module.addSerializer(DeepChannel.class, new DeepChannelSerializer());</span>
+<span class="nc" id="L70">        module.addDeserializer(DeepChannel.class, new DeepChannelDeserializer());</span>
+
+<span class="nc" id="L72">        module.addSerializer(ChartRange.class, new ChartRangeSerializer());</span>
+<span class="nc" id="L73">        module.addDeserializer(ChartRange.class, new ChartRangeDeserializer());</span>
+
+<span class="nc" id="L75">        module.addSerializer(DelistingReason.class, new DelistingReasonSerializer());</span>
+<span class="nc" id="L76">        module.addDeserializer(DelistingReason.class, new DelistingReasonDeserializer());</span>
+
+<span class="nc" id="L78">        module.addSerializer(DividendQualification.class, new DividendQualificationSerializer());</span>
+<span class="nc" id="L79">        module.addDeserializer(DividendQualification.class, new DividendQualificationDeserializer());</span>
+
+<span class="nc" id="L81">        module.addSerializer(DividendType.class, new DividendTypeSerializer());</span>
+<span class="nc" id="L82">        module.addDeserializer(DividendType.class, new DividendTypeDeserializer());</span>
+
+<span class="nc" id="L84">        module.addSerializer(DividendTypeId.class, new DividendTypeIdSerializer());</span>
+<span class="nc" id="L85">        module.addDeserializer(DividendTypeId.class, new DividendTypeIdDeserializer());</span>
+
+<span class="nc" id="L87">        module.addSerializer(FinancialStatus.class, new FinancialStatusSerializer());</span>
+<span class="nc" id="L88">        module.addDeserializer(FinancialStatus.class, new FinancialStatusDeserializer());</span>
+
+<span class="nc" id="L90">        module.addSerializer(Flag.class, new FlagSerializer());</span>
+<span class="nc" id="L91">        module.addDeserializer(Flag.class, new FlagDeserializer());</span>
+
+<span class="nc" id="L93">        module.addSerializer(IssueEvent.class, new IssueEventSerializer());</span>
+<span class="nc" id="L94">        module.addDeserializer(IssueEvent.class, new IssueEventDeserializer());</span>
+
+<span class="nc" id="L96">        module.addSerializer(IssueSubType.class, new IssueSubTypeSerializer());</span>
+<span class="nc" id="L97">        module.addDeserializer(IssueSubType.class, new IssueSubTypeDeserializer());</span>
+
+<span class="nc" id="L99">        module.addSerializer(IssueType.class, new IssueTypeSerializer());</span>
+<span class="nc" id="L100">        module.addDeserializer(IssueType.class, new IssueTypeDeserializer());</span>
+
+<span class="nc" id="L102">        module.addSerializer(ListingCenter.class, new ListingCenterSerializer());</span>
+<span class="nc" id="L103">        module.addDeserializer(ListingCenter.class, new ListingCenterDeserializer());</span>
+
+<span class="nc" id="L105">        module.addSerializer(LuldTier.class, new LuldTierSerializer());</span>
+<span class="nc" id="L106">        module.addDeserializer(LuldTier.class, new LuldTierDeserializer());</span>
+
+<span class="nc" id="L108">        module.addSerializer(PaymentFrequency.class, new PaymentFrequencySerializer());</span>
+<span class="nc" id="L109">        module.addDeserializer(PaymentFrequency.class, new PaymentFrequencyDeserializer());</span>
+
+<span class="nc" id="L111">        module.addSerializer(QualifiedDividendType.class, new QualifiedDividendTypeSerializer());</span>
+<span class="nc" id="L112">        module.addDeserializer(QualifiedDividendType.class, new QualifiedDividendTypeDeserializer());</span>
+
+<span class="nc" id="L114">        module.addSerializer(SymbolType.class, new SymbolTypeSerializer());</span>
+<span class="nc" id="L115">        module.addDeserializer(SymbolType.class, new SymbolTypeDeserializer());</span>
+
+<span class="nc" id="L117">        module.addSerializer(SystemEventType.class, new SystemEventTypeSerializer());</span>
+<span class="nc" id="L118">        module.addDeserializer(SystemEventType.class, new SystemEventTypeDeserializer());</span>
+
+<span class="nc" id="L120">        module.addSerializer(TradingStatusType.class, new TradingStatusTypeSerializer());</span>
+<span class="nc" id="L121">        module.addDeserializer(TradingStatusType.class, new TradingStatusTypeDeserializer());</span>
+
+<span class="nc" id="L123">        module.addSerializer(TradingStatusReasonType.class, new TradingStatusReasonTypeSerializer());</span>
+<span class="nc" id="L124">        module.addDeserializer(TradingStatusReasonType.class, new TradingStatusReasonTypeDeserializer());</span>
+
+<span class="nc" id="L126">        return module;</span>
+    }
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.7.9.201702052155</span></div></body></html>
