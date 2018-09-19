@@ -1,0 +1,449 @@
+[[configure]]
+== Configuration
+
+=== Weld configuration
+
+Weld can be configured per application through the set of properties. All the supported configuration properties are described in the following subsections.
+
+Each configuration property can be specified (by priority in descending order):
+
+. In a properties file named `weld.properties`
+. As a system property
+. By a bootstrap configuration provided by an integrator
+
+If a configuration key is set in multiple sources (e.g. as a system property and in a properties file), the value from the source with higher priority is taken, other values are ignored. Unsupported configuration keys are ignored. If an invalid configuration property value is set, the container automatically detects the problem and treats it as a deployment problem.
+
+[[relaxedConstruction]]
+==== Relaxed construction
+
+CDI requires that beans that are normal-scoped, intercepted or decorated always define a no-argument constructor.
+This requirement applies even if the bean already defines an `@Inject` annotated constructor with parameters.
+This is purely a technical requirement implied by how Java allocates class instances.
+
+Weld is however able to operate fine even if this requirement is not met.
+Weld uses special non-portable JVM APIs that allow it to allocate proxy instances without calling proxy's constructor.
+This mode is not enabled by default. It can be enabled using the following configuration option:
+
+.Supported configuration properties
+[cols=",,",options="header",]
+|=======================================================================
+|Configuration key |Default value |Description
+|`org.jboss.weld.construction.relaxed` |false (true in weld-se)|If set to `true`, then requirements on bean constructors are relaxed.
+|=======================================================================
+
+Note that relaxed construction is enabled by default in <<weld-se,Weld SE>>.
+
+==== Concurrent deployment configuration
+
+By default Weld supports concurrent loading and deploying of beans.
+However, in certain deployment scenarios the default setup may not be
+appropriate.
+
+.Supported configuration properties
+[cols=",,",options="header",]
+|=======================================================================
+|Configuration key |Default value |Description
+|`org.jboss.weld.bootstrap.concurrentDeployment` |true |If set to false, `ConcurrentDeployer` and
+`ConcurrentValidator` will not be used.
+
+|`org.jboss.weld.bootstrap.preloaderThreadPoolSize`
+|`Math.max(1, Runtime.getRuntime().availableProcessors() - 1)` |Weld is
+capable of resolving observer methods for container lifecycle events in
+advance while bean deployer threads are blocked waiting for I/O
+operations (such as classloading). This process is called preloading and
+leads to better CPU utilization and faster application startup time.
+This configuration option specifies the number of threads used for
+preloading. If set to 0, preloading is disabled.
+|=======================================================================
+
+NOTE: The bootstrap configuration may be altered using the deprecated `org.jboss.weld.bootstrap.properties` file located on the classpath (e.g. `WEB-INF/classes/org.jboss.weld.bootstrap.properties` in a web archive). The keys are `concurrentDeployment` and `preloaderThreadPoolSize`.
+
+==== Thread pool configuration
+
+For certain types of tasks Weld uses its own thread pool. The thread
+pool is represented by the `ExecutorServices` service.
+
+First of all, let's see what types of thread pools are available:
+
+[cols=",",options="header",]
+|==========================================
+|Thread pool type|Description
+|`FIXED`|Uses a fixed number of threads. The number of threads remains the same throughout the application.
+|`FIXED_TIMEOUT`|Uses a fixed number of threads. A thread will be stopped after a configured period of inactivity.
+|`SINGLE_THREAD`|A single-threaded thread pool
+|`NONE`|No executor is used by Weld
+|`COMMON`|The default ForkJoinPool.commonPool() is used by Weld. See https://docs.oracle.com/javase/8/docs/api/java/util/concurrent/ForkJoinPool.html#commonPool--[link] for more details
+|==========================================
+
+Now let's see how to configure Weld to use a particular thread pool type:
+
+IMPORTANT: An integrator may choose to use custom implementation of `org.jboss.weld.manager.api.ExecutorServices`. If that's the case, all configuration described in this section
+might be ignored. An example of such integrator is WildFly.
+
+.Supported configuration properties
+[cols=",,",options="header",]
+|=======================================================================
+|Configuration key |Default value |Description
+|`org.jboss.weld.executor.threadPoolType` |`FIXED` (`COMMON` in Weld SE) |The type of the thread pool. Possible values
+are: `FIXED`, `FIXED_TIMEOUT`, `NONE`, `SINGLE_THREAD` and `COMMON`
+
+|`org.jboss.weld.executor.threadPoolSize` |`Runtime.getRuntime().availableProcessors()` |The
+number of threads to be used for bean loading and deployment. Only used by `FIXED` and `FIXED_TIMEOUT`.
+
+|`org.jboss.weld.executor.threadPoolKeepAliveTime` |60 seconds |Passed to the constructor of the
+ThreadPoolExecutor class, maximum time that excess idle threads will
+wait for new tasks before terminating. Only used by `FIXED_TIMEOUT`.
+
+|`org.jboss.weld.executor.threadPoolDebug` |false |If set to true, debug timing information is
+printed to the standard output.
+|=======================================================================
+
+NOTE: It's possible to alter the thread pool configuration using the deprecated `org.jboss.weld.executor.properties` file located on the classpath. The keys are `threadPoolType`, `threadPoolSize`, `threadPoolKeepAliveTime` and `threadPoolDebug`.
+
+==== Non-portable mode during application initialization
+
+By default the application initialization is performed in the portable
+mode which denotes specification-compliant behaviour. However it's also
+possible to enable the non-portable mode, in which some definition
+errors and deployment problems do not cause application initialization
+to abort. Currently the non-portable mode allows extension developers to
+call all the `BeanManager`'s methods before the
+`AfterDeploymentValidation` event is fired.
+
+.Supported configuration properties
+[cols=",,",options="header",]
+|=======================================================================
+|Configuration key |Default value |Description
+|`org.jboss.weld.nonPortableMode` |false|If set to `true`, the non-portable mode is enabled.
+|=======================================================================
+
+NOTE: The main purpose of the non-portable mode is to support some legacy
+extensions. It's highly recommended to use the portable mode whenever
+possible - non-portable mode may lead to unexpected behaviour during
+initialization process.
+
+==== Proxying classes with final methods
+
+Weld offers a non-standard way to create proxies for non-private, non-static final methods.
+When using this option, such final method will be ignored during proxy generation and the Java type
+will be proxied (as opposed to classical behavior when there would be an exception thrown).
+Since the method was ignored during proxy creation, it should never be invoked.
+
+In order to make this work, use the below shown configuration key and pass it a regular expression.
+When Weld finds an unproxyable type which matches this pattern, the final methods will be ignored
+and the type will be proxied.
+
+.Supported configuration properties
+[cols=",,",options="header",]
+|=======================================================================
+|Configuration key |Default value |Description
+|`org.jboss.weld.proxy.ignoreFinalMethods` ||If defined, matching classes will be proxied and final methods ignored.
+|=======================================================================
+
+==== Bounding the cache size for resolved injection points
+
+Weld caches already resolved injection points in order to resolve them
+faster in the future. A separate type-safe resolver exists for
+beans, decorators, disposers, interceptors and observers. Each of them
+stores resolved injection points in its cache, which maximum size is
+bounded by a default value (common to all of them).
+
+.Supported configuration properties
+[cols=",,",options="header",]
+|=======================================================================
+|Configuration key |Default value |Description
+|`org.jboss.weld.resolution.cacheSize` |65536|The upper bound of the cache.
+|=======================================================================
+
+==== Debugging generated bytecode
+
+For debugging purposes, it's possible to dump the generated bytecode of client proxies and enhanced subclasses to the filesystem.
+
+.Supported configuration properties
+[cols=",,",options="header",]
+|=======================================================================
+|Configuration key |Default value |Description
+|`org.jboss.weld.proxy.dump` ||The file path where the files should be stored.
+|=======================================================================
+
+==== Injectable reference lookup optimization
+
+For certain combinations of scopes, the container is permitted to optimize an injectable reference lookup. Enabling this feature brings some performance boost but causes `javax.enterprise.context.spi.AlterableContext.destroy()` not to work properly for `@ApplicationScoped` and `@RequestScoped` beans. Therefore, the optimization is disabled by default.
+
+.Supported configuration properties
+[cols=",,",options="header",]
+|=======================================================================
+|Configuration key |Default value |Description
+|`org.jboss.weld.injection.injectableReferenceOptimization` |false |If set to `true`, the optimization is enabled.
+|=======================================================================
+
+==== Bean identifier index optimization
+
+This optimization is used to reduce the HTTP session replication overhead. However, the inconsistency detection mechanism may cause problems in some development environments. It's recommended to disable this optimization during the development phase.
+
+.Supported configuration properties
+[cols=",,",options="header",]
+|=======================================================================
+|Configuration key |Default value |Description
+|`org.jboss.weld.serialization.beanIdentifierIndexOptimization` |true (false in weld-servlet)|If set to `true`, the optimization is enabled.
+|=======================================================================
+
+NOTE: This optimization is disabled by default in <<weld-servlet,Servlet containers>>.
+
+==== Rolling upgrades ID delimiter
+
+NOTE: This configuration property should only be used if experiencing problems with rolling upgrades.
+
+The delimiter is used to abbreviate a bean archive identifier (which is usually derived from the archive name) before used as a part of an identifier of an internal component (such as bean).
+
+The abbreviation proceeds as follows:
+
+* Try to find the first occurrence of the specified delimiter
+* If not found, the identifier is not abbreviated
+* If found, try to extract the archive suffix (`.war`, `.ear`, etc.) and the final value consists of the part before the delimiter and the archive suffix (if extracted)
+
+Note that the delimiter is used for all bean archives forming the application.
+
+An example: Given an application with two versions going by the names `test__1-1.war` and `test__1-2.war`.
+Weld normally cannot support replication of `@SessionScoped` beans between these two deployments.
+Using this configuration option with delimiter "__" will allow Weld to see both applications simply as `test.war`, hence allowing for session replication.
+
+.Supported configuration properties
+[cols=",,",options="header",]
+|=======================================================================
+|Configuration key |Default value |Description
+|`org.jboss.weld.clustering.rollingUpgradesIdDelimiter` ||The delimiter used during ID generation.
+|=======================================================================
+
+WARNING: Bean archive identifiers are provided by integrators. Therefore, the abbreviation algorithm may not always function properly.
+
+[[config-dev-mode]]
+==== Development Mode
+
+Some features of the <<devmode,development mode>> may have negative impact on the performance and/or functionality of the application. The following configuration properties allow to tune or disable these features, e.g. to specify the set of components which will be monitored.
+
+.Supported configuration properties
+[cols="1,1,1,2",options="header"]
+|=======================================================================
+|Configuration key|Tool|Default value |Description
+|`org.jboss.weld.probe.invocationMonitor.excludeType`|<<probe,Probe>>|'' |A regular expression. If a non-empty string and the base type for an AnnotatedType or a declaring type for an AnnotatedMember matches this pattern the type is excluded from monitoring.
+|`org.jboss.weld.probe.invocationMonitor.skipJavaBeanProperties`|<<probe,Probe>>|'true' |If set to `true`, the JavaBean accessor methods are not monitored.
+|`org.jboss.weld.probe.eventMonitor.excludeType`|<<probe,Probe>>|'' |A regular expression. If a non-empty string  and the runtime class of the event object matches this pattern the event is excluded from monitoring.
+|`org.jboss.weld.probe.eventMonitor.containerLifecycleEvents`|<<probe,Probe>>|'false'|If set to `true` all the container lifecycle events are monitored during bootstrap.
+|`org.jboss.weld.probe.embedInfoSnippet`|<<probe,Probe>>|'true' | If set to `true` an informative HTML snippet will be added to every HTTP response with Content-Type of value `text/html`.
+|`org.jboss.weld.probe.jmxSupport`|<<probe,Probe>>|'false' | If set to `true` one or more MBean components may be registered so that it's possible to use JMX to access the Probe development tool data.
+|`org.jboss.weld.probe.exportDataAfterDeployment`|<<probe,Probe>>|'' | If a non-empty string the Probe data will be automatically exported after deployment validation. The value represents the path of the directory where to export the data file.
+|=======================================================================
+
+TIP: To disable the monitoring entirely set `org.jboss.weld.probe.invocationMonitor.excludeType` and `org.jboss.weld.probe.eventMonitor.excludeType` properties to `.*`.
+
+[[config-conversation-timeout]]
+==== Conversation timeout and Conversation concurrent access timeout
+
+Weld provides configuration properties to override values for default conversation
+timeout and default conversation concurrent access timeout which represents the maximum time
+to wait on the conversation concurrent lock.
+
+.Supported configuration properties
+[cols=",,",options="header",]
+|=======================================================================
+|Configuration key |Default value (ms) |Description
+|`org.jboss.weld.conversation.timeout` |600000| Conversation timeout represent the maximum time during which is the conversation active.
+|`org.jboss.weld.conversation.concurrentAccessTimeout` |1000| Conversation concurrent access timeout represent the maximum time to wait on the conversation concurrent lock.
+|=======================================================================
+
+
+[[veto-types-without-bean-defining-annotation]]
+==== Veto types without bean defining annotation
+
+Sometimes it might be useful to process all types during bootstrap, i.e. fire/observe `ProcessAnnotatedType` event for each Java class discovered, but veto types which are not annotated with a bean defining annotation.
+The main reason is that not all classes that meet all of the necessary conditions are intended to become beans.
+And so vetoing such types helps to conserve memory used by the container.
+Note that if you use `bean-discovey-mode=annotated` (implicit bean archive) then no `ProcessAnnotatedType` will be fired for any such type because it's not discovered at all.
+And there might be portable extensions which use `ProcessAnnotatedType` to extract some important information from classes which are not beans.
+
+Therefore, Weld allows to use `bean-discovey-mode=all` (explicit bean archive) and veto types without a bean defining annotation whose `AnnotatedType#getJavaClass().getName()` matches a regular expression.
+In other words, a type is vetoed if its name matches a regular expression and at the same time is not annotated with a bean defining annotation.
+The functionality is implemented as a built-in portable extension processing all types from all bean archives.
+
+.Supported configuration properties
+[cols=",,",options="header",]
+|=======================================================================
+|Configuration key |Default value |Description
+|`org.jboss.weld.bootstrap.vetoTypesWithoutBeanDefiningAnnotation` || A regular expression. If a non-empty string, then all annotated types whose `AnnotatedType#getJavaClass().getName()` matches this pattern are vetoed if not annotated with a bean defining annotation.
+|=======================================================================
+
+[[remove-unused-beans]]
+==== Memory consumption optimization - removing unused beans
+
+CDI applications consist of user-defined beans implementing the business logic, but also beans coming from libraries (e.g. DeltaSpike) and integrations (e.g. various Java EE technologies - JSF, Bean Validation, Batch).
+Most applications actually use only a small part of the beans provided by libraries and integrations.
+Still, Weld has to retain the metadata for all the beans in memory which can be considerably vast footprint, depending on the application.
+If <<allow-optimized-cleanup>> is allowed, Weld can remove _unused_ beans after bootstrap.
+
+An _unused_ bean:
+
+* is not excluded by the configuration properties described below,
+* is not a built-in bean, session bean, extension, interceptor or decorator,
+* does not have a name
+* does not declare an observer
+* is not eligible for injection to any injection point,
+* does not declare a producer which is eligible for injection to any injection point,
+* is not eligible for injection into any `Instance<X>` injection point.
+
+TIP: If you run <<probe>> and list all the beans in your application, you will almost certainly notice some of them coming from 3rd party libraries which you never use (marked with a trash icon). Those are candidates for _unused beans_ as you can be sure you are not using them.
+
+NOTE: As usual, there is a trade-off between memory consumption and bootstrap time. The results may vary depending on the application, but you should always expect (most probably negligible) increase of the bootstrap time.
+
+The following properties can be used to restrict the set of beans Weld is going to remove, e.g. to eliminate the false positives.
+
+.Supported configuration properties
+[cols=",,",options="header",]
+|=======================================================================
+|Configuration key |Default value |Description
+|`org.jboss.weld.bootstrap.unusedBeans.excludeType` |`ALL`| A regular expression. A bean whose `Bean#getBeanClass()` matches this pattern is never removed. Two special values are considered. `ALL` (default value) means that all beans are excluded. `NONE` means no beans are excluded.
+|`org.jboss.weld.bootstrap.unusedBeans.excludeAnnotation` |`javax\\.ws\\.rs.*`| A regular expression. A bean is not removed if the corresponding `AnnotatedType`, or any member, is annotated with an annotation which matches this pattern. By default, a type annotated with any JAX-RS annotation is excluded from removal.
+|=======================================================================
+
+[[external_config]]
+=== Defining external configuration
+
+Weld allows integrators to provide an external configuration - a class which implements `org.jboss.weld.configuration.spi.ExternalConfiguration` interface.
+This interface has `getConfigurationProperties` method which returns a `Map` with provided configuration and also inherits a `cleanup` method because it extends `org.jboss.weld.bootstrap.api.Service`.
+Below is a short example of `ExternalConfiguration` implementation:
+
+[source.JAVA, java]
+--------------------------------------------------------------------------
+public class MyExternalConfiguration implements ExternalConfiguration {
+    @Override
+    public void cleanup() {
+	// cleanup code
+    }
+
+    @Override
+    public Map<String, Object> getConfigurationProperties() {
+        Map<String, Object> properties = new HashMap<String, Object>();
+        properties.put(ConfigurationKey.CONCURRENT_DEPLOYMENT.get(), false);
+        properties.put(ConfigurationKey.PRELOADER_THREAD_POOL_SIZE.get(), 200);
+        properties.put(ConfigurationKey.PROXY_DUMP.get(), "/home/weld");
+        return properties;
+    }
+}
+--------------------------------------------------------------------------
+
+Bear in mind that because `ExternalConfiguration` extends a `Service` it is required that any custom external configuration implementation is explicitly registered. See <<_the_weld_spi>> for more information.
+
+Last but not least external configuration is considered a source with the lowest priority which means that the properties specified there can be overriden by other sources such as system properties.
+For information on supported configuration keys, see <<_weld_configuration>>. Also note that entries with unsupported properties will be ignored while invalid property values will lead
+to deployment problem.
+
+=== Excluding classes from scanning and deployment
+
+CDI 1.1 allows you to exclude classes in your archive from being
+scanned, having container lifecycle events fired, and being deployed as
+beans. See also
+http://docs.jboss.org/cdi/spec/2.0/cdi-spec.html#exclude_filters[12.4.2
+Exclude filters].
+
+NOTE: Weld still supports the original non-portable way of excluding classes
+from discovery. The formal specification can be found in the xsd,
+located at http://jboss.org/schema/weld/beans_1_1.xsd. Unlike Weld, the
+CDI specification does not support regular expression patterns and `!`
+character to invert the activation condition.
+
+All the configuration is done in the `beans.xml` file. For more
+information see <<packaging-and-deployment>>.
+
+[source.XML, xml]
+------------------------------------------------------------------------------------------------------
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://xmlns.jcp.org/xml/ns/javaee">
+
+    <scan>
+
+        <!-- Don't deploy the classes for the swing app! -->
+        <exclude name="com.acme.swing.**" />
+
+        <!-- Don't include GWT support if GWT is not installed -->
+        <exclude name="com.acme.gwt.**">
+            <if-class-not-available name="com.google.GWT"/>
+        </exclude>
+
+        <!--
+            Exclude types from com.acme.verbose package if the system property verbosity is set to low
+            i.e.
+              java ... -Dverbosity=low
+        -->
+        <exclude name="com.acme.verbose.*">
+            <if-system-property name="verbosity" value="low"/>
+        </exclude>
+
+        <!--
+             Don't include JSF support if Wicket classes are present, and the viewlayer system
+             property is set
+        -->
+        <exclude name="com.acme.jsf.**">
+            <if-class-available name="org.apache.wicket.Wicket"/>
+            <if-system-property name="viewlayer"/>
+        </exclude>
+    </scan>
+
+</beans>
+------------------------------------------------------------------------------------------------------
+
+In this example we show the most common use cases for exercising fine
+control over which classes Weld scans. The first filter excludes all
+types whose package name starts with `com.acme.swing`, and in most cases
+this will be sufficient for your needs.
+
+However, sometimes it's useful to be able to activate the filter
+depending on the environment used. In this case, Weld allows you to
+activate (or deactivate) a filter based on either system properties or
+whether a class is available. The second filter shows the use case of
+disabling scanning of certain classes depending on the capabilities of
+the environment you deploy to - in this case we are excluding GWT
+support (all types whose package name starts with `com.acme.gwt`) if GWT
+is not installed.
+
+NOTE: If you specify just a system property name, Weld will activate the
+filter if that system property has been set (with any value). If you
+also specify the system property value, then Weld will only activate the
+filter if the system property's value matches exactly.
+
+The third filter shows how to exclude all types from a specific package
+(note the `name` attribute has suffix ".*").
+
+The fourth filter shows more a advanced configurations, where we use
+multiple activation conditions to decide whether to activate the filter.
+
+You can combine as many activation conditions as you like (_all_ must be
+true for the filter to be activated). If you want to a filter that is
+active if _any_ of the activation conditions are true, then you need
+multiple identical filters, each with different activation conditions.
+
+
+=== Mapping CDI contexts to HTTP requests
+
+By default, CDI contexts are activated at the beginning of an HTTP
+request processing and deactivated once the processing finishes. This
+may represent an unnecessary overhead in certain situations, for example
+static resource serving.
+
+Weld allows CDI context support to be mapped to a certain subset of
+requests only. A regular expression may be used for filtering HTTP
+requests that should have CDI contexts active during their processing.
+
+[source.XML, xml]
+-----------------------------------------------------------------------------------------------------------
+<web-app version="3.1" xmlns="http://xmlns.jcp.org/xml/ns/javaee/"
+xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+xsi:schemaLocation="http://xmlns.jcp.org/xml/ns/javaee http://xmlns.jcp.org/xml/ns/javaee/web-app_3_1.xsd">
+
+    <context-param>
+        <param-name>org.jboss.weld.context.mapping</param-name>
+        <param-value>.*\.html</param-value>
+    </context-param>
+
+</web-app>
+-----------------------------------------------------------------------------------------------------------
+

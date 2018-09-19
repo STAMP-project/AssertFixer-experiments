@@ -1,0 +1,50 @@
+package org.jboss.weld.tests.metadata.scanning;
+
+import javax.enterprise.inject.spi.BeanManager;
+import javax.enterprise.inject.spi.Extension;
+
+import org.jboss.arquillian.container.test.api.Deployment;
+import org.jboss.arquillian.junit.Arquillian;
+import org.jboss.shrinkwrap.api.Archive;
+import org.jboss.shrinkwrap.api.ShrinkWrap;
+import org.jboss.shrinkwrap.api.asset.Asset;
+import org.jboss.shrinkwrap.api.spec.JavaArchive;
+import org.jboss.weld.tests.metadata.Qux;
+import org.jboss.weld.tests.metadata.scanning.jboss.Baz;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import static org.junit.Assert.assertEquals;
+import static org.jboss.weld.tests.metadata.scanning.Utils.createBeansXml;
+import static org.jboss.weld.tests.metadata.scanning.SystemPropertyExtension.*;
+
+@RunWith(Arquillian.class)
+public class SystemPropertyActivationTest {
+
+    public static final Asset BEANS_XML = createBeansXml(
+            "<weld:scan>"
+                + "<weld:include name=\"" + Bar.class.getName() + "\">"
+                    + "<weld:if-system-property name=\"" + SET_PROPERTY_1 + "\" />"
+                + "</weld:include>"
+                + "<weld:include name=\"" + Foo.class.getName() + "\">"
+                    + "<weld:if-system-property name=\"" + UNSET_PROPERTY_1 + "\" />"
+                + "</weld:include>"
+            + "</weld:scan>");
+
+    @Deployment
+    public static Archive<?> deployment() {
+        return ShrinkWrap.create(JavaArchive.class)
+                .addClass(Utils.class)
+                .addClasses(Bar.class, Foo.class, Baz.class, Qux.class)
+                .addClasses(SystemPropertyExtension.class)
+                .addAsManifestResource(BEANS_XML, "beans.xml")
+                .addAsServiceProvider(Extension.class, SystemPropertyExtension.class);
+    }
+
+    @Test
+    public void test(BeanManager beanManager) {
+        assertEquals(1, beanManager.getBeans(Bar.class).size());
+        assertEquals(0, beanManager.getBeans(Qux.class).size());
+        assertEquals(0, beanManager.getBeans(Foo.class).size());
+        assertEquals(0, beanManager.getBeans(Baz.class).size());
+    }
+}
