@@ -1,0 +1,66 @@
+version: '3.4'
+networks:
+    cluster:
+      driver: bridge
+    test:
+          driver: bridge
+services:
+  broker:
+    build: broker
+    networks:
+      - cluster
+    ports:
+      - "18161:8161"
+  worker:
+    build:
+      context: maestro
+      args:
+        - MAESTRO_VERSION=1.5.0-SNAPSHOT
+      target: maestro-worker
+    networks:
+      - cluster
+      - test
+    depends_on:
+      - broker
+      - sut
+  inspector:
+      build:
+        context: maestro
+        args:
+          - MAESTRO_VERSION=1.5.0-SNAPSHOT
+        target: maestro-inspector
+      ports:
+        - "38000:8000"
+      networks:
+        - cluster
+        - test
+      depends_on:
+        - sut
+        - broker
+  agent:
+      build:
+        context: maestro
+        args:
+          - MAESTRO_VERSION=1.5.0-SNAPSHOT
+        target: maestro-agent
+      ports:
+        - "48000:8000"
+      networks:
+        - cluster
+        - test
+      depends_on:
+        - broker
+  client:
+      build:
+        context: maestro
+        args:
+          - MAESTRO_VERSION=1.5.0-SNAPSHOT
+        target: maestro-client
+      networks:
+        - cluster
+      ports:
+        - "8000:8000"
+      depends_on:
+        - worker
+        - broker
+
