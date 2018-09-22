@@ -1,0 +1,42 @@
+language: java
+
+dist: trusty
+sudo: required
+
+jdk:
+  - oraclejdk8
+
+#notifications:
+#  slack: cloudfoundry:xvgjKLNQTyqAFMnsTywVHik9
+
+install:
+  - sudo sed -i 's/us-central1.gce/us-central1.gce.clouds/' /etc/apt/sources.list
+  - sudo apt-get update
+  - wget --quiet http://www-us.apache.org/dist/lucene/solr/7.4.0/solr-7.4.0.tgz
+  - tar -xf solr-7.4.0.tgz
+  - ./solr-7.4.0/bin/solr start
+  - ./solr-7.4.0/bin/solr create -c solr
+  - sudo apt-get update -y --fix-missing
+  - sudo apt-get purge maven maven2 -y
+  - sudo apt-add-repository ppa:andrei-pozolotin/maven3 -y
+  - sudo apt-get update -y
+  - sudo rm /usr/local/maven-3.1.1 -rf
+#  - sudo apt-get install maven3=3.3.9-001 -y
+  - sudo apt-get install maven3 -y --allow-unauthenticated
+  - sudo chmod 777 /usr/share/maven3/bin/mvn
+  - export PATH=$PATH:/usr/share/maven3/bin
+  - unset M2_HOME
+  - export M2_HOME=/usr/share/maven3
+
+script:
+  - mvn -pl '!spring-eg-content-solr' -pl '!spring-eg-content-solr-boot-starter' deploy --settings settings.xml
+  - mvn -pl spring-eg-content-solr -pl spring-eg-content-commons deploy --settings settings.xml
+  - unset SOLR_PASSWORD
+  - unset SOLR_USERNAME
+  - export SOLR_URL=$INSECURE_SOLR
+  - mvn -pl spring-eg-content-solr -pl spring-eg-content-commons deploy --settings settings.xml
+  - unset SOLR_URL
+  - mvn -pl spring-eg-content-solr-boot-starter deploy --settings settings.xml
+
+
+
