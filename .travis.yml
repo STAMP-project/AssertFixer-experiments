@@ -1,0 +1,23 @@
+jobs:
+  include:
+    - stage: build
+      services:
+        - mysql
+    - stage: deploy
+      script: skip
+      services:
+        - docker
+      before_install:
+        - mvn install -P docker -DskipTests
+        - docker login -u=$DOCKER_USER -p=$DOCKER_PASS
+        - docker-compose build web
+      script: bash docker/push_dev.sh
+      on:
+          branch: dev
+      script: bash docker/push_master.sh
+      on:
+          branch: master
+language: java
+stages:
+  - build
+  - deploy
