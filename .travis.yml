@@ -1,0 +1,30 @@
+jobs:
+  include:
+    - stage: build
+      services:
+        - mysql
+    - stage: deploy-master
+      provider: script
+      script: skip
+      services:
+        - docker
+      before_install:
+        - mvn install -P docker -DskipTests
+        - docker-compose build web
+      script: bash docker/deploy/push_master.sh
+    - stage: deploy-dev
+      provider: script
+      script: skip
+      services:
+        - docker
+      before_install:
+        - mvn install -P docker -DskipTests
+        - docker-compose build web
+      script: bash docker/deploy/push_dev.sh
+language: java
+stages:
+  - build
+  - name: deploy-master
+    if: (NOT type IN (pull_request)) AND (branch = master)
+  - name: deploy-dev
+    if: (NOT type IN (pull_request)) AND (branch = dev)
