@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html
+    xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+    xmlns:sec="http://www.thymeleaf.org/thymeleaf-extras-springsecurity4"
+    xmlns:th="http://www.thymeleaf.org"
+    layout:decorate="~{layout}">
+
+<head>
+    <title>Cluster Explorer</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+</head>
+
+<body>
+<section layout:fragment="content">
+    <div class="container">
+        <script type="application/javascript">
+            // Maintains state of our consumer
+            var ClusterInfo = {
+                clusterId: '[[${cluster.id}]]',
+
+                // Handle cluster node results ajax result
+                handleClusterNodeResults: function(results) {
+                    // Clear nodes table
+                    var table = jQuery('#nodes-tbody');
+                    jQuery(table).empty();
+
+                    // Get and compile template
+                    var source   = jQuery('#nodes-template').html();
+                    var template = Handlebars.compile(source);
+
+                    jQuery.each(results, function(index, result) {
+                        // Generate html from template
+                        var properties = {
+                            clusterId: ClusterInfo.clusterId,
+                            id: result.id,
+                            host: result.host,
+                            port: result.port,
+                            rack: result.rack
+                        };
+                        var resultHtml = template(properties);
+
+                        // Append it to our table
+                        jQuery(table).append(resultHtml);
+                    });
+
+                    // Hide loader
+                    jQuery('#nodes-loader').toggle(false);
+
+                    if (results.length == 0) {
+                        jQuery('#nodes-no-results').toggle(true);
+                    } else {
+                        jQuery('#nodes-no-results').toggle(false);
+                        jQuery('#nodes-table').toggle(true);
+                    }
+                },
+
+                // Handle all topics details results ajax result
+                handleAllTopicsDetails: function(results) {
+                    // Clear topics table
+                    var table = jQuery('#topics-tbody');
+                    jQuery(table).empty();
+
+                    // Get and compile template
+                    var source   = jQuery('#topics-template').html();
+                    var template = Handlebars.compile(source);
+
+                    jQuery.each(results, function(index, result) {
+                        // Generate html from template
+                        var properties = {
+                            topic: result.name,
+                            encodedTopic: encodeURIComponent(result.name),
+                            clusterId: ClusterInfo.clusterId,
+                            internal: result.internal,
+                            partitions_count: result.partitions.length,
+                            isUnderReplicated: result.underReplicated
+                        };
+                        var resultHtml = template(properties);
+
+                        // Append it to our table
+                        jQuery(table).append(resultHtml);
+                    });
+
+                    // Hide loader
+                    jQuery('#topics-loader').toggle(false);
+
+                    if (results.length == 0) {
+                        jQuery('#topics-no-results').toggle(true);
+                    } else {
+                        jQuery('#topics-no-results').toggle(false);
+                        jQuery('#topics-table').toggle(true);
+                    }
+                },
+                loadTopics: function() {
+                    // Fire off request to get topic details
+                    ApiClient.getAllTopicsDetails(ClusterInfo.clusterId, function(results) {
+                        // Handle results
+                        ClusterInfo.handleAllTopicsDetails(results);
+                    });
+                },
+                // Handle submitting new topic form.
+                createNewTopic: function() {
+                    ApiClient.createTopic(
+                        ClusterInfo.clusterId,
+                        jQuery('#topicName').val(),
+                        jQuery('#topicPartitions').val(),
+                        jQuery('#topicReplicas').val(),
+
+                        // Handle results
+                        function(results) {
+                            // Hide modal
+                            jQuery('#createTopicModal').modal('hide');
+
+                            // Reset form
+                            jQuery('#topicName').val("");
+                            jQuery('#topicPartitions').val(1);
+                            jQuery('#topicReplicas').val(1);
+
+                            // Reload topic listing
+                            UITools.showSuccess("Created topic successfully.");
+
+                            // show notification
+                            ClusterInfo.loadTopics();
+                        }
+                    )
+                }
+            };
+
+            // On load, fire off ajax request to load results.
+            jQuery(document).ready(function() {
+                // Chain initial ajax requests.
+                // Request Cluster Information
+                ApiClient.getClusterNodes(ClusterInfo.clusterId, function(results) {
+                    // Handle results
+                    ClusterInfo.handleClusterNodeResults(results);
+
+                    // Fire off request to get topic details
+                    ClusterInfo.loadTopics();
+                });
+            });
+        </script>
+
+        <!-- Brokers -->
+        <div class="row">
+            <div class="col-lg-12">
+                <div class="card">
+                    <div class="card-header">
+                        <i class="fa fa-align-justify"></i>
+                        Cluster <strong th:text="${cluster.name}"></strong> Brokers
+                    </div>
+                    <div class="card-body">
+                        <!-- Display Loader First -->
+                        <div class="alert alert-light" role="alert" id="nodes-loader" style="display: block;">
+                            <div class="progress">
+                                <div
+                                    class="progress-bar progress-bar-striped progress-bar-animated"
+                                    role="progressbar" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100"
+                                    style="width: 100%">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- No Results Found -->
+                        <div class="alert alert-light" role="alert" id="nodes-no-results" style="display: none;">
+                            <h4 class="alert-heading">No Brokers Found</h4>
+                            <p>Looks like we couldn't find any brokers!</p>
+                        </div>
+
+                        <!-- Hide Results Table -->
+                        <table class="table table-bordered table-striped table-sm" id="nodes-table" style="display: none;">
+                            <thead>
+                            <tr>
+                                <th>Broker Id</th>
+                                <th>Hostname</th>
+                                <th>Rack</th>
+                            </tr>
+                            </thead>
+                            <tbody id="nodes-tbody">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Topics -->
+        <div class="row">
+            <div class="col-lg-12">
+                <div class="card">
+                    <div class="card-header">
+                        <i class="fa fa-align-justify"></i>
+                        Cluster <strong th:text="${cluster.name}"></strong> Topics
+
+                        <div class="btn-group float-right" role="group" aria-label="Button group" sec:authorize="hasRole('ROLE_ADMIN')">
+                            <a class="btn" href="#" style="padding-bottom: 0;" data-toggle="modal" data-target="#createTopicModal">
+                                <i class="icon-settings"></i>
+                                &nbsp;Create new
+                            </a>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <!-- Display Loader First -->
+                        <div class="alert alert-light" role="alert" id="topics-loader" style="display: block;">
+                            <div class="progress">
+                                <div
+                                    class="progress-bar progress-bar-striped progress-bar-animated"
+                                    role="progressbar" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100"
+                                    style="width: 100%">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- No Results Found -->
+                        <div class="alert alert-light" role="alert" id="topics-no-results" style="display: none;">
+                            <h4 class="alert-heading">No Topics Found</h4>
+                            <p>Looks like we couldn't find any topics!</p>
+                        </div>
+
+                        <!-- Hide Results Table -->
+                        <table class="table table-bordered table-striped table-sm" id="topics-table" style="display: none;">
+                            <thead>
+                            <tr>
+                                <th>Topic</th>
+                                <th>Partitions</th>
+                                <th>Status</th>
+                            </tr>
+                            </thead>
+                            <tbody id="topics-tbody">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Nodes Template -->
+        <script id="nodes-template" type="text/x-handlebars-template">
+            <tr>
+                <td>
+                    <a href="/cluster/{{clusterId}}/broker/{{id}}">{{id}}</a>
+                </td>
+                <td>{{host}}:{{port}}</td>
+                <td>
+                    {{#if rack}}
+                        {{rack}}
+                    {{else}}
+                        <i>none</i>
+                    {{/if}}
+                </td>
+            </tr>
+        </script>
+
+        <!-- Topics Details Template -->
+        <script id="topics-template" type="text/x-handlebars-template">
+            <tr>
+                <td>
+                    <a href="/cluster/{{clusterId}}/topic/{{encodedTopic}}">
+                        {{topic}}
+                    </a>
+                </td>
+                <td>{{partitions_count}}</td>
+                <td>
+                    {{#if isUnderReplicated}}
+                        <span class="badge badge-warning">Under Replicated</span>
+                    {{else}}
+                        <span class="badge badge-success">Fully Replicated</span>
+                    {{/if}}
+                    {{#if internal}}
+                        <span class="badge badge-info">Internal topic</span>
+                    {{/if}}
+                </td>
+            </tr>
+        </script>
+
+        <!-- Create topic modal -->
+        <div class="modal fade show" id="createTopicModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" style="display: none;" sec:authorize="hasRole('ROLE_ADMIN')">
+            <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h4 class="modal-title">Create new topic on [[${cluster.name}]]</h4>
+                        <button class="close" type="button" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">×</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <form method="post" class="form-horizontal">
+
+                            <!-- Name -->
+                            <div class="form-group row">
+                                <label class="col-md-3 form-control-label" for="topicName">
+                                    Topic Name
+                                </label>
+                                <div class="col-md-9">
+                                    <input
+                                        id="topicName" name="name" class="form-control" type="text"
+                                        placeholder="A unique name to identify this topic">
+                                    <div class="invalid-feedback"></div>
+                                </div>
+                            </div>
+
+                            <!-- Partition Count -->
+                            <div class="form-group row">
+                                <label class="col-md-3 form-control-label" for="topicPartitions">
+                                    Partitions
+                                </label>
+                                <div class="col-md-9">
+                                    <input
+                                        id="topicPartitions" name="partitions" class="form-control" type="text"
+                                        placeholder="How many partitions on this topic"
+                                        value="1">
+                                    <div class="invalid-feedback"></div>
+                                </div>
+                            </div>
+
+                            <!-- Partition Count -->
+                            <div class="form-group row">
+                                <label class="col-md-3 form-control-label" for="topicReplicas">
+                                    Replication factor
+                                </label>
+                                <div class="col-md-9">
+                                    <input
+                                        id="topicReplicas" name="resultsPerPartition" class="form-control" type="text"
+                                        placeholder="Number of replicas"
+                                        th:value="1">
+                                    <div class="invalid-feedback"></div>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="btn btn-secondary" type="button" data-dismiss="modal">Close</button>
+                        <button class="btn btn-primary" type="button" onclick="ClusterInfo.createNewTopic();">Create topic</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</section>
+
+</body>
+</html>
