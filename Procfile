@@ -1,0 +1,1 @@
+web: java -jar target/udemy.spring.onehundretsteps-1.0-SNAPSHOT.jar
