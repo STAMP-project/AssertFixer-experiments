@@ -1,0 +1,258 @@
+<!--
+
+    Copyright (C) 2014-2018 Philip Helger (www.helger.com)
+    philip[at]helger[dot]com
+
+    Licensed under the Apache License, Version 2.0 (the "License");
+    you may not use this file except in compliance with the License.
+    You may obtain a copy of the License at
+
+            http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing, software
+    distributed under the License is distributed on an "AS IS" BASIS,
+    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+    See the License for the specific language governing permissions and
+    limitations under the License.
+
+-->
+<div class="alert alert-info">
+  <div>
+    This site offers a WebService to automatically validate your PEPPOL documents according to the latest PEPPOL rules.
+    The validation service requires UBL files and cannot handle StandardBusinessDocuments.
+  </div>
+</div>
+<p>
+The WSDL file can be found at <a class="external_href" href="/wsdvs?wsdl">/wsdvs?wsdl</a>.
+The endpoint URL for this WebService is <code>/wsdvs</code>. 
+</p>
+
+<!--
+<p>
+A very small Java WS client is available for 
+<a class="file_href" href="File/Validation/peppol-ws-test-client.zip">download</a>. 
+<a class="external_href" target="_blank" href="http://www.apache.org/licenses/LICENSE-2.0.html">Licensed under the Apache Software License 2.0</a>
+</p>
+-->
+
+<h2>Usage</h2>
+<p>This service is currently provided free of charge. 
+   If you want to setup your own service for production usage don't hesitate to contact me at 
+   <em>philip[at]helger[dot]com</em> for support.</p>
+
+<h2>Input parameters</h2>
+<p>It offers one method called "validate" that takes the following arguments:</p>
+<div class="table-responsive">
+  <table class="table table-bordered">
+    <tbody>
+      <tr>
+        <th>Parameter</th>
+        <th>Type</th>
+        <th>Usage</th>
+        <th>Notes</th>
+      </tr>
+      <tr>
+        <td><code>XML</code></td>
+        <td>string</td>
+        <td>required</td>
+        <td>This is the main XML document to be validated.
+            For simplicity it must be provided as an inline string.
+            Must use the same character set as the surrounding SOAP envelope.</td>
+      </tr>
+      <tr>
+        <td><code>VESID</code></td>
+        <td>string</td>
+        <td>required</td>
+        <td>The <code>Validation Executor Set ID</code> to be used. 
+            This is a special ID introduced by PEPPOL practical to clearly identify different validation sets.<br />
+            See <a href="/public/menuitem-validation">supported VES IDs</a> for the list of existing.
+        </td>
+      </tr>
+      <tr>
+        <td><code>DisplayLocale</code></td>
+        <td>string</td>
+        <td>optional</td>
+        <td>
+          <p>This parameter determines the language in which error codes are returned. The following languages are supported:</p>
+          <ul>
+            <li><code>de</code> - German</li>
+            <li><code>en</code> - English</li>
+          </ul>
+          <p>If this parameter is not provided <code>en</code> is used as the default value.</p>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<h3>Example request</h3>
+<code>&lt;?xml version="1.0"?&gt;<br/>
+&lt;S:Envelope xmlns:S="http://schemas.xmlsoap.org/soap/envelope/"&gt;<br/>
+  &lt;S:Body&gt;<br/>
+    &lt;validateRequestInput xmlns="http://peppol.helger.com/ws/documentvalidationservice/201701/" VESID="eu.peppol.bis2:t10:3.3.0" displayLocale="en"&gt;<br/>
+      &lt;XML>&amp;lt;?xml version="1.0" encoding="UTF-8"?&amp;gt;<br/>
+&amp;lt;Invoice:Invoice xmlns:Invoice="urn:oasis:names:specification:ubl:schema:xsd:Invoice-2"&amp;gt;<br/>
+...<br/>
+&amp;lt;/Invoice:Invoice&amp;gt;<br/>
+&lt;/XML&gt;<br/>
+    &lt;/validateRequestInput&gt;<br/>
+  &lt;/S:Body&gt;<br/>
+&lt;/S:Envelope&gt;</code>
+  
+<h2>Return value</h2>
+<p>The response of calling this service is a complex structure with the following items:</p>
+
+<div class="table-responsive">
+  <table class="table table-bordered">
+    <tbody>
+      <tr>
+        <th>Name</th>
+        <th>Type</th>
+        <th>Usage</th>
+        <th>Notes</th>
+      </tr>
+      <tr>
+        <td><code>@success</code></td>
+        <td>boolean</td>
+        <td>required</td>
+        <td>The overall success or error indicator.
+If <code>true</code> validation was successful (no errors occurred)
+If <code>false</code> at least one error was found upon document validation.</td>
+      </tr>
+      <tr>
+        <td><code>@interrupted</code></td>
+        <td>boolean</td>
+        <td>required</td>
+        <td><code>true</code> if the validation was interrupted and not all validation layers were
+executed (e.g. when XSD validation fails, Schematron validation is not performed)
+or <code>false</code> if validation was executed for all layers</td>
+      </tr>
+      <tr>
+        <td><code>@mostSevereErrorLevel</code></td>
+        <td>enumeration</td>
+        <td>optional</td>
+        <td>The most severe error level of all validation results contained in here. 
+            This field has the sole purpose to easily identify whether a document was totally valid 
+            (value <code>SUCCESS</code>), whether some warnings but no errors occurred 
+            (value <code>WARN</code>) or whether at least one error occurred 
+            (value <code>ERROR</code>).</td>
+      </tr>
+      <tr>
+        <td><code>Result</code></td>
+        <td>element</td>
+        <td>0-n times</td>
+        <td>This element contains the results of a single validation layer execution.</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<p>The <code>Result</code> element contains the following fields:</p>
+<div class="table-responsive">
+  <table class="table table-bordered">
+    <tbody>
+      <tr>
+        <th>Name</th>
+        <th>Type</th>
+        <th>Usage</th>
+        <th>Notes</th>
+      </tr>
+      <tr>
+        <td><code>@success</code></td>
+        <td>enumeration</td>
+        <td>required</td>
+        <td>The overall success or error indicator.
+If <code>true</code> validation was successful (no errors occurred).
+If <code>false</code> at least one error was found upon document validation.
+If <code>undefined</code> this validation layer was not executed</td>
+      </tr>
+      <tr>
+        <td><code>@artifactType</code></td>
+        <td>string</td>
+        <td>required</td>
+        <td>
+          <p>The type of validation artefact (e.g. XSD or Schematron) that was used to perform the validation.
+             Currently supported types are:</p>
+          <ul>
+            <li><code>xml</code> - XML well-formedness</li>
+            <li><code>xsd</code> - XML Schema validation</li>
+            <li><code>schematron-pure</code> - <a class="external_href" target="_blank" href="http://www.schematron.com/">Schematron</a> validation (XPath only)</li>
+            <li><code>schematron-sch</code> - <a class="external_href" target="_blank" href="http://www.schematron.com/">Schematron</a> validation (XSLT based)</li>
+            <li><code>schematron-xslt</code> - <a class="external_href" target="_blank" href="http://www.schematron.com/">Schematron</a> validation (precompiled XSLT based)</li>
+          </ul>
+        </td>
+      </tr>
+      <tr>
+        <td><code>@artifactPath</code></td>
+        <td>string</td>
+        <td>required</td>
+        <td>The path to the validation artefact that was used to perform the validation.</td>
+      </tr>
+      <tr>
+        <td><code>Item</code></td>
+        <td>Element</td>
+        <td>0-n times</td>
+        <td>Contains the detail errors occurred in this validation layer.</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<p>The <code>Item</code> element contains the following fields:</p>
+<div class="table-responsive">
+  <table class="table table-bordered">
+    <tbody>
+      <tr>
+        <th>Name</th>
+        <th>Type</th>
+        <th>Usage</th>
+        <th>Notes</th>
+      </tr>
+      <tr>
+        <td><code>@errorLevel</code></td>
+        <td>enumeration</td>
+        <td>required</td>
+        <td>Error level of this item.
+            If it was totally valid (value <code>SUCCESS</code>), 
+            whether some warnings but no errors occurred (value <code>WARN</code>) or 
+            whether at least one error occurred (value <code>ERROR</code>).</td>
+      </tr>
+      <tr>
+        <td><code>@errorID</code></td>
+        <td>string</td>
+        <td>optional</td>
+        <td>The ID of the error</td>
+      </tr>
+      <tr>
+        <td><code>@errorFieldName</code></td>
+        <td>string</td>
+        <td>optional</td>
+        <td>The name of the field where the error occurred</td>
+      </tr>
+      <tr>
+        <td><code>@errorLocation</code></td>
+        <td>string</td>
+        <td>optional</td>
+        <td>The location where the error occurred</td>
+      </tr>
+      <tr>
+        <td><code>@errorText</code></td>
+        <td>string</td>
+        <td>required</td>
+        <td>The error text</td>
+      </tr>
+      <tr>
+        <td><code>@test</code></td>
+        <td>string</td>
+        <td>optional</td>
+        <td>The test that was executed and lead to this error (e.g. Schematron 'test' attribute)</td>
+      </tr>
+      <tr>
+        <td><code>Exception</code></td>
+        <td>string</td>
+        <td>optional</td>
+        <td>The internal exception that occurred</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
