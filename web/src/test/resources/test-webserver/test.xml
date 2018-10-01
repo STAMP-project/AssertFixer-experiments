@@ -1,0 +1,280 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bundle
+	xmlns="http://code.lecousin.net/java/net.lecousin.framework.web/bundle/0.1"
+	xmlns:injection="http://code.lecousin.net/java/net.lecousin.framework.injection/0.1"
+>
+
+	<bundle path="version_redirection">
+		<Injection xmlns="http://code.lecousin.net/java/net.lecousin.framework.injection/0.1">
+			<property name="version" value="1.0"/>
+		</Injection>
+		<bundle path="${version}">
+		</bundle>
+		<processor path="" class="net.lecousin.framework.web.VersionRedirection">
+			<injection:attribute name="version" value="${version}"/>
+		</processor>
+	</bundle>
+	
+	<bundle path="static">
+		<processor path="" class="net.lecousin.framework.web.StaticResourcesProcessor">
+			<injection:attribute name="fromClassPath" value="test-webserver/static"/>
+			<injection:attribute name="directoryPages" value="index.htm,index.html"/>
+		</processor>
+		<processor path="fs" class="net.lecousin.framework.web.StaticResourcesProcessor">
+			<injection:attribute name="fromFileSystem" value="${java.io.tmpdir}"/>
+		</processor>
+		<processor path="fs2" class="net.lecousin.framework.web.StaticResourcesProcessor">
+			<injection:attribute name="fromFileSystem" value="${java.io.tmpdir}/test_web_static"/>
+			<injection:attribute name="directoryPages" value="index.htm,index.html"/>
+		</processor>
+		
+		<bundle path="cached">
+			<pre-filter class="net.lecousin.framework.web.filters.CacheFilter">
+				<injection:attribute name="maxAge" value="1 hour"/>
+			</pre-filter>
+			<processor path="" class="net.lecousin.framework.web.StaticResourcesProcessor">
+				<injection:attribute name="fromClassPath" value="test-webserver/static"/>
+				<injection:attribute name="directoryPages" value="index.htm,index.html"/>
+			</processor>
+		</bundle>
+		
+		<bundle path="restricted">
+			<processor path="" class="net.lecousin.framework.web.StaticResourcesProcessor">
+				<injection:attribute name="fromClassPath" value="test-webserver/static"/>
+				<injection:attribute name="restrictPatterns" value="*.gif,*.htm*"/>
+			</processor>
+		</bundle>
+	</bundle>
+
+	<bundle path="filters">
+		<bundle path="prepost">
+			<pre-filter class="net.lecousin.framework.web.test.TestPreFilter"/>
+			<processor path="test1" class="net.lecousin.framework.web.test.Test1Processor"/>
+			<post-filter class="net.lecousin.framework.web.test.TestPostFilter"/>
+		</bundle>
+		
+		<bundle path="cache">
+			<pre-filter class="net.lecousin.framework.web.filters.CacheFilter">
+				<injection:attribute name="maxAge" value="10 days"/>
+			</pre-filter>
+			<processor path="" class="net.lecousin.framework.web.test.Test1Processor"/>
+			<bundle path="not">
+				<pre-filter class="net.lecousin.framework.web.filters.CacheFilter">
+					<injection:attribute name="maxAge" value="-1"/>
+				</pre-filter>
+				<processor path="" class="net.lecousin.framework.web.test.Test1Processor"/>
+			</bundle>
+		</bundle>
+		
+		<bundle path="security">
+			<Injection xmlns="http://code.lecousin.net/java/net.lecousin.framework.injection/0.1">
+				<Singleton id="testAuthenticationProvider" type="net.lecousin.framework.web.security.IAuthenticationProvider">
+					<class name="net.lecousin.framework.web.test.TestAuthenticationProvider"/>
+				</Singleton>
+				<Singleton id="testRightsManager" type="net.lecousin.framework.web.security.IRightsManager">
+					<class name="net.lecousin.framework.web.security.RightsManager"/>
+				</Singleton>
+			</Injection>
+
+			<pre-filter class="net.lecousin.framework.web.filters.security.GetLoginFromQuery">
+				<injection:attribute name="usernameParameter" value="user"/>
+				<injection:attribute name="passwordParameter" value="pass"/>
+			</pre-filter>
+			<pre-filter class="net.lecousin.framework.web.filters.security.GetLoginFromHTTPHeader">
+				<injection:attribute name="usernameHeader" value="useR"/>
+				<injection:attribute name="passwordHeader" value="pass"/>
+			</pre-filter>
+			<pre-filter class="net.lecousin.framework.web.filters.security.GetTokenFromQuery">
+				<injection:attribute name="tokenType" value="test"/>
+				<injection:attribute name="tokenParameter" value="auth-token"/>
+			</pre-filter>
+			<pre-filter class="net.lecousin.framework.web.filters.security.GetTokenFromHTTPHeader">
+				<injection:attribute name="tokenType" value="test"/>
+				<injection:attribute name="tokenHeader" value="toKen"/>
+			</pre-filter>
+			
+			<bundle path="auth">
+				<pre-filter class="net.lecousin.framework.web.filters.security.RequireAuthentication">
+					<injection:attribute name="authenticationProvider" ref="testAuthenticationProvider"/>
+				</pre-filter>
+				<processor path="test1" class="net.lecousin.framework.web.test.Test1Processor"/>
+			</bundle>
+
+			<bundle path="role1">
+				<pre-filter class="net.lecousin.framework.web.filters.security.RequireRolesFilter">
+					<injection:attribute name="authenticationProvider" ref="testAuthenticationProvider"/>
+					<injection:attribute name="roles" value="Role1"/>
+				</pre-filter>
+				<processor path="test1" class="net.lecousin.framework.web.test.Test1Processor"/>
+			</bundle>
+
+			<bundle path="role2">
+				<pre-filter class="net.lecousin.framework.web.filters.security.RequireRolesFilter">
+					<injection:attribute name="authenticationProvider" ref="testAuthenticationProvider"/>
+					<injection:attribute name="roles" value="Role2"/>
+				</pre-filter>
+				<processor path="test1" class="net.lecousin.framework.web.test.Test1Processor"/>
+			</bundle>
+
+			<bundle path="role1and2">
+				<pre-filter class="net.lecousin.framework.web.filters.security.RequireRolesFilter">
+					<injection:attribute name="authenticationProvider" ref="testAuthenticationProvider"/>
+					<injection:attribute name="roles" value="Role1,Role2"/>
+				</pre-filter>
+				<processor path="test1" class="net.lecousin.framework.web.test.Test1Processor"/>
+			</bundle>
+			
+			<bundle path="b1">
+				<pre-filter class="net.lecousin.framework.web.filters.security.RequireBooleanRight">
+					<injection:attribute name="authenticationProvider" ref="testAuthenticationProvider"/>
+					<injection:attribute name="rightName" value="b1"/>
+					<injection:attribute name="rightValue" value="true"/>
+				</pre-filter>
+				<processor path="test1" class="net.lecousin.framework.web.test.Test1Processor"/>
+
+				<bundle path="b2">
+					<pre-filter class="net.lecousin.framework.web.filters.security.RequireBooleanRight">
+						<injection:attribute name="authenticationProvider" ref="testAuthenticationProvider"/>
+						<injection:attribute name="rightName" value="b2"/>
+						<injection:attribute name="rightValue" value="true"/>
+					</pre-filter>
+					<processor path="test1" class="net.lecousin.framework.web.test.Test1Processor"/>
+				</bundle>
+
+				<bundle path="notb2">
+					<pre-filter class="net.lecousin.framework.web.filters.security.RequireBooleanRight">
+						<injection:attribute name="authenticationProvider" ref="testAuthenticationProvider"/>
+						<injection:attribute name="rightName" value="b2"/>
+						<injection:attribute name="rightValue" value="false"/>
+					</pre-filter>
+					<processor path="test1" class="net.lecousin.framework.web.test.Test1Processor"/>
+				</bundle>
+			</bundle>
+			
+			<bundle path="notb1">
+				<pre-filter class="net.lecousin.framework.web.filters.security.RequireBooleanRight">
+					<injection:attribute name="authenticationProvider" ref="testAuthenticationProvider"/>
+					<injection:attribute name="rightName" value="b1"/>
+					<injection:attribute name="rightValue" value="false"/>
+				</pre-filter>
+				<processor path="test1" class="net.lecousin.framework.web.test.Test1Processor"/>
+
+				<bundle path="b2">
+					<pre-filter class="net.lecousin.framework.web.filters.security.RequireBooleanRight">
+						<injection:attribute name="authenticationProvider" ref="testAuthenticationProvider"/>
+						<injection:attribute name="rightName" value="b2"/>
+						<injection:attribute name="rightValue" value="true"/>
+					</pre-filter>
+					<processor path="test1" class="net.lecousin.framework.web.test.Test1Processor"/>
+				</bundle>
+
+				<bundle path="notb2">
+					<pre-filter class="net.lecousin.framework.web.filters.security.RequireBooleanRight">
+						<injection:attribute name="authenticationProvider" ref="testAuthenticationProvider"/>
+						<injection:attribute name="rightName" value="b2"/>
+						<injection:attribute name="rightValue" value="false"/>
+					</pre-filter>
+					<processor path="test1" class="net.lecousin.framework.web.test.Test1Processor"/>
+				</bundle>
+			</bundle>
+			
+			<bundle path="b2">
+				<pre-filter class="net.lecousin.framework.web.filters.security.RequireBooleanRight">
+					<injection:attribute name="authenticationProvider" ref="testAuthenticationProvider"/>
+					<injection:attribute name="rightName" value="b2"/>
+					<injection:attribute name="rightValue" value="true"/>
+				</pre-filter>
+				<processor path="test1" class="net.lecousin.framework.web.test.Test1Processor"/>
+
+				<bundle path="b1">
+					<pre-filter class="net.lecousin.framework.web.filters.security.RequireBooleanRight">
+						<injection:attribute name="authenticationProvider" ref="testAuthenticationProvider"/>
+						<injection:attribute name="rightName" value="b1"/>
+						<injection:attribute name="rightValue" value="true"/>
+					</pre-filter>
+					<processor path="test1" class="net.lecousin.framework.web.test.Test1Processor"/>
+				</bundle>
+
+				<bundle path="notb1">
+					<pre-filter class="net.lecousin.framework.web.filters.security.RequireBooleanRight">
+						<injection:attribute name="authenticationProvider" ref="testAuthenticationProvider"/>
+						<injection:attribute name="rightName" value="b1"/>
+						<injection:attribute name="rightValue" value="false"/>
+					</pre-filter>
+					<processor path="test1" class="net.lecousin.framework.web.test.Test1Processor"/>
+				</bundle>
+			</bundle>
+			
+			<bundle path="i1_more_than_20">
+				<pre-filter class="net.lecousin.framework.web.filters.security.RequireIntegerRight">
+					<injection:attribute name="authenticationProvider" ref="testAuthenticationProvider"/>
+					<injection:attribute name="rightName" value="i1"/>
+					<injection:attribute name="rightValues" value="[20-1000]"/>
+				</pre-filter>
+				<processor path="test1" class="net.lecousin.framework.web.test.Test1Processor"/>
+			</bundle>
+			
+			<bundle path="i1_less_than_20">
+				<pre-filter class="net.lecousin.framework.web.filters.security.RequireIntegerRight">
+					<injection:attribute name="authenticationProvider" ref="testAuthenticationProvider"/>
+					<injection:attribute name="rightName" value="i1"/>
+					<injection:attribute name="rightValues" value="[0-20["/>
+				</pre-filter>
+				<processor path="test1" class="net.lecousin.framework.web.test.Test1Processor"/>
+			</bundle>
+			
+			<bundle path="session">
+				<pre-filter class="net.lecousin.framework.web.filters.security.LoadAuthenticationFromSession">
+					<injection:attribute name="authenticationProvider" ref="testAuthenticationProvider"/>
+					<injection:attribute name="sessionParameter" value="auth"/>
+				</pre-filter>
+				<pre-filter class="net.lecousin.framework.web.filters.security.RequireAuthentication">
+					<injection:attribute name="authenticationProvider" ref="testAuthenticationProvider"/>
+				</pre-filter>
+				<pre-filter class="net.lecousin.framework.web.filters.security.StoreAuthenticationInSession">
+					<injection:attribute name="authenticationProvider" ref="testAuthenticationProvider"/>
+					<injection:attribute name="sessionParameter" value="auth"/>
+				</pre-filter>
+				<processor path="test1" class="net.lecousin.framework.web.test.Test1Processor"/>				
+			</bundle>
+		</bundle>
+	</bundle>
+
+	<bundle path="security">
+		<Injection xmlns="http://code.lecousin.net/java/net.lecousin.framework.injection/0.1">
+			<Singleton id="testAuthenticationProvider" type="net.lecousin.framework.web.security.IAuthenticationProvider">
+				<class name="net.lecousin.framework.web.test.TestAuthenticationProvider"/>
+			</Singleton>
+			<Singleton id="testRightsManager" type="net.lecousin.framework.web.security.IRightsManager">
+				<class name="net.lecousin.framework.web.security.RightsManager"/>
+			</Singleton>
+		</Injection>
+
+		<pre-filter class="net.lecousin.framework.web.filters.security.GetLoginFromQuery">
+			<injection:attribute name="usernameParameter" value="user"/>
+			<injection:attribute name="passwordParameter" value="pass"/>
+		</pre-filter>
+		<pre-filter class="net.lecousin.framework.web.filters.security.RequireAuthentication">
+			<injection:attribute name="authenticationProvider" ref="testAuthenticationProvider"/>
+		</pre-filter>
+		<processor path="test" class="net.lecousin.framework.web.test.security.TestSecurityProcessor"/>	
+	</bundle>
+	
+	<bundle path="services">
+		<Injection xmlns="http://code.lecousin.net/java/net.lecousin.framework.injection/0.1">
+			<Singleton id="testAuthenticationProvider" type="net.lecousin.framework.web.security.IAuthenticationProvider">
+				<class name="net.lecousin.framework.web.test.TestAuthenticationProvider"/>
+			</Singleton>
+			<Singleton id="testRightsManager" type="net.lecousin.framework.web.security.IRightsManager">
+				<class name="net.lecousin.framework.web.security.RightsManager"/>
+			</Singleton>
+		</Injection>
+
+		<custom-filter class="net.lecousin.framework.web.services.soap.filters.GetAuthenticationRequestFromSOAPHeader"/>
+		<custom-filter class="net.lecousin.framework.web.test.services.soap.TestSoapFilter"/>
+		<service class="net.lecousin.framework.web.test.services.rest.TestRestService"/>
+		<service class="net.lecousin.framework.web.test.services.soap.TestSoapService"/>
+		<processor path="" class="net.lecousin.framework.web.services.doc.WebServicesDocumentation"/>
+	</bundle>
+	
+</bundle>
