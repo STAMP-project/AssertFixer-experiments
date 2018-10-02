@@ -1,0 +1,744 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>CppVisitor.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">RobotArdu</a> &gt; <a href="index.source.html" class="el_package">de.fhg.iais.roberta.syntax.codegen.arduino.mbot</a> &gt; <span class="el_source">CppVisitor.java</span></div><h1>CppVisitor.java</h1><pre class="source lang-java linenums">package de.fhg.iais.roberta.syntax.codegen.arduino.mbot;
+
+import java.util.ArrayList;
+
+import de.fhg.iais.roberta.components.ActorType;
+import de.fhg.iais.roberta.components.SensorType;
+import de.fhg.iais.roberta.components.UsedActor;
+import de.fhg.iais.roberta.components.UsedSensor;
+import de.fhg.iais.roberta.components.arduino.MbotConfiguration;
+import de.fhg.iais.roberta.mode.action.DriveDirection;
+import de.fhg.iais.roberta.mode.action.TurnDirection;
+import de.fhg.iais.roberta.mode.sensor.LightSensorMode;
+import de.fhg.iais.roberta.syntax.MotorDuration;
+import de.fhg.iais.roberta.syntax.Phrase;
+import de.fhg.iais.roberta.syntax.action.control.RelayAction;
+import de.fhg.iais.roberta.syntax.action.display.ClearDisplayAction;
+import de.fhg.iais.roberta.syntax.action.display.ShowPictureAction;
+import de.fhg.iais.roberta.syntax.action.display.ShowTextAction;
+import de.fhg.iais.roberta.syntax.action.light.LightAction;
+import de.fhg.iais.roberta.syntax.action.light.LightStatusAction;
+import de.fhg.iais.roberta.syntax.action.motor.CurveAction;
+import de.fhg.iais.roberta.syntax.action.motor.DriveAction;
+import de.fhg.iais.roberta.syntax.action.motor.MotorDriveStopAction;
+import de.fhg.iais.roberta.syntax.action.motor.MotorGetPowerAction;
+import de.fhg.iais.roberta.syntax.action.motor.MotorOnAction;
+import de.fhg.iais.roberta.syntax.action.motor.MotorSetPowerAction;
+import de.fhg.iais.roberta.syntax.action.motor.MotorStopAction;
+import de.fhg.iais.roberta.syntax.action.motor.TurnAction;
+import de.fhg.iais.roberta.syntax.action.sound.PlayFileAction;
+import de.fhg.iais.roberta.syntax.action.sound.PlayNoteAction;
+import de.fhg.iais.roberta.syntax.action.sound.SayTextAction;
+import de.fhg.iais.roberta.syntax.action.sound.SetLanguageAction;
+import de.fhg.iais.roberta.syntax.action.sound.ToneAction;
+import de.fhg.iais.roberta.syntax.action.sound.VolumeAction;
+import de.fhg.iais.roberta.syntax.actors.arduino.PinWriteValueAction;
+import de.fhg.iais.roberta.syntax.actors.arduino.SerialWriteAction;
+import de.fhg.iais.roberta.syntax.actors.arduino.mbot.DisplayImageAction;
+import de.fhg.iais.roberta.syntax.actors.arduino.mbot.DisplayTextAction;
+import de.fhg.iais.roberta.syntax.actors.arduino.mbot.ExternalLedOffAction;
+import de.fhg.iais.roberta.syntax.actors.arduino.mbot.ExternalLedOnAction;
+import de.fhg.iais.roberta.syntax.actors.arduino.mbot.LedOffAction;
+import de.fhg.iais.roberta.syntax.actors.arduino.mbot.LedOnAction;
+import de.fhg.iais.roberta.syntax.check.hardware.arduino.mbot.UsedHardwareCollectorVisitor;
+import de.fhg.iais.roberta.syntax.codegen.arduino.ArduinoVisitor;
+import de.fhg.iais.roberta.syntax.expressions.arduino.LedMatrix;
+import de.fhg.iais.roberta.syntax.lang.blocksequence.MainTask;
+import de.fhg.iais.roberta.syntax.lang.expr.RgbColor;
+import de.fhg.iais.roberta.syntax.sensor.generic.AccelerometerSensor;
+import de.fhg.iais.roberta.syntax.sensor.generic.BrickSensor;
+import de.fhg.iais.roberta.syntax.sensor.generic.ColorSensor;
+import de.fhg.iais.roberta.syntax.sensor.generic.CompassSensor;
+import de.fhg.iais.roberta.syntax.sensor.generic.EncoderSensor;
+import de.fhg.iais.roberta.syntax.sensor.generic.GyroSensor;
+import de.fhg.iais.roberta.syntax.sensor.generic.InfraredSensor;
+import de.fhg.iais.roberta.syntax.sensor.generic.LightSensor;
+import de.fhg.iais.roberta.syntax.sensor.generic.SoundSensor;
+import de.fhg.iais.roberta.syntax.sensor.generic.TemperatureSensor;
+import de.fhg.iais.roberta.syntax.sensor.generic.TouchSensor;
+import de.fhg.iais.roberta.syntax.sensor.generic.UltrasonicSensor;
+import de.fhg.iais.roberta.syntax.sensor.generic.VoltageSensor;
+import de.fhg.iais.roberta.syntax.sensors.arduino.mbot.AmbientLightSensor;
+import de.fhg.iais.roberta.syntax.sensors.arduino.mbot.FlameSensor;
+import de.fhg.iais.roberta.syntax.sensors.arduino.mbot.GetSampleSensor;
+import de.fhg.iais.roberta.syntax.sensors.arduino.mbot.Joystick;
+import de.fhg.iais.roberta.syntax.sensors.arduino.mbot.PIRMotionSensor;
+import de.fhg.iais.roberta.util.Util1;
+import de.fhg.iais.roberta.util.dbc.Assert;
+import de.fhg.iais.roberta.util.dbc.DbcException;
+import de.fhg.iais.roberta.visitor.AstVisitor;
+import de.fhg.iais.roberta.visitors.arduino.MbotAstVisitor;
+
+/**
+ * This class is implementing {@link AstVisitor}. All methods are implemented and they append a hussentation of a phrase to a StringBuilder. &lt;b&gt;This
+ * representation is correct C code for Arduino.&lt;/b&gt; &lt;br&gt;
+ */
+public class CppVisitor extends ArduinoVisitor implements MbotAstVisitor&lt;Void&gt; {
+    private final MbotConfiguration brickConfiguration;
+    private final boolean isTimerSensorUsed;
+
+    /**
+     * Initialize the C++ code generator visitor.
+     *
+     * @param brickConfiguration hardware configuration of the brick
+     * @param programPhrases to generate the code from
+     * @param indentation to start with. Will be incr/decr depending on block structure
+     */
+    private CppVisitor(MbotConfiguration brickConfiguration, ArrayList&lt;ArrayList&lt;Phrase&lt;Void&gt;&gt;&gt; phrases, int indentation) {
+<span class="fc" id="L88">        super(phrases, indentation);</span>
+<span class="fc" id="L89">        this.brickConfiguration = brickConfiguration;</span>
+<span class="fc" id="L90">        final UsedHardwareCollectorVisitor codePreprocessVisitor = new UsedHardwareCollectorVisitor(phrases, brickConfiguration);</span>
+<span class="fc" id="L91">        this.usedSensors = codePreprocessVisitor.getUsedSensors();</span>
+<span class="fc" id="L92">        this.usedActors = codePreprocessVisitor.getUsedActors();</span>
+<span class="fc" id="L93">        this.isTimerSensorUsed = codePreprocessVisitor.isTimerSensorUsed();</span>
+<span class="fc" id="L94">        this.usedVars = codePreprocessVisitor.getVisitedVars();</span>
+<span class="fc" id="L95">        this.loopsLabels = codePreprocessVisitor.getloopsLabelContainer();</span>
+<span class="fc" id="L96">    }</span>
+
+    /**
+     * factory method to generate C++ code from an AST.&lt;br&gt;
+     *
+     * @param brickConfiguration hardware configuration of the brick
+     * @param programPhrases to generate the code from
+     * @param withWrapping if false the generated code will be without the surrounding configuration code
+     */
+    public static String generate(MbotConfiguration brickConfiguration, ArrayList&lt;ArrayList&lt;Phrase&lt;Void&gt;&gt;&gt; programPhrases, boolean withWrapping) {
+<span class="fc" id="L106">        Assert.notNull(brickConfiguration);</span>
+
+<span class="pc bpc" id="L108" title="1 of 2 branches missed.">        final CppVisitor astVisitor = new CppVisitor(brickConfiguration, programPhrases, withWrapping ? 1 : 0);</span>
+<span class="fc" id="L109">        astVisitor.generateCode(withWrapping);</span>
+<span class="fc" id="L110">        return astVisitor.sb.toString();</span>
+    }
+
+    @Override
+    public Void visitShowPictureAction(ShowPictureAction&lt;Void&gt; showPictureAction) {
+<span class="nc" id="L115">        return null;</span>
+    }
+
+    @Override
+    public Void visitShowTextAction(ShowTextAction&lt;Void&gt; showTextAction) {
+<span class="nc" id="L120">        return null;</span>
+    }
+
+    @Override
+    public Void visitClearDisplayAction(ClearDisplayAction&lt;Void&gt; clearDisplayAction) {
+<span class="nc" id="L125">        return null;</span>
+    }
+
+    @Override
+    public Void visitVolumeAction(VolumeAction&lt;Void&gt; volumeAction) {
+<span class="nc" id="L130">        return null;</span>
+    }
+
+    @Override
+    public Void visitSetLanguageAction(SetLanguageAction&lt;Void&gt; setLanguageAction) {
+<span class="nc" id="L135">        return null;</span>
+    }
+
+    @Override
+    public Void visitSayTextAction(SayTextAction&lt;Void&gt; sayTextAction) {
+<span class="nc" id="L140">        return null;</span>
+    }
+
+    @Override
+    public Void visitLightAction(LightAction&lt;Void&gt; lightAction) {
+<span class="nc" id="L145">        return null;</span>
+
+    }
+
+    @Override
+    public Void visitLightStatusAction(LightStatusAction&lt;Void&gt; lightStatusAction) {
+<span class="nc" id="L151">        return null;</span>
+    }
+
+    @Override
+    public Void visitPlayFileAction(PlayFileAction&lt;Void&gt; playFileAction) {
+<span class="nc" id="L156">        return null;</span>
+    }
+
+    @Override
+    public Void visitToneAction(ToneAction&lt;Void&gt; toneAction) {
+        //8 - sound port
+<span class="fc" id="L162">        this.sb.append(&quot;buzzer.tone(8, &quot;);</span>
+<span class="fc" id="L163">        toneAction.getFrequency().visit(this);</span>
+<span class="fc" id="L164">        this.sb.append(&quot;, &quot;);</span>
+<span class="fc" id="L165">        toneAction.getDuration().visit(this);</span>
+<span class="fc" id="L166">        this.sb.append(&quot;);&quot;);</span>
+<span class="fc" id="L167">        nlIndent();</span>
+<span class="fc" id="L168">        this.sb.append(&quot;delay(20); &quot;);</span>
+<span class="fc" id="L169">        return null;</span>
+    }
+
+    @Override
+    public Void visitPlayNoteAction(PlayNoteAction&lt;Void&gt; playNoteAction) {
+        //8 - sound port
+<span class="fc" id="L175">        this.sb.append(&quot;buzzer.tone(8, &quot;);</span>
+<span class="fc" id="L176">        this.sb.append(playNoteAction.getFrequency());</span>
+<span class="fc" id="L177">        this.sb.append(&quot;, &quot;);</span>
+<span class="fc" id="L178">        this.sb.append(playNoteAction.getDuration());</span>
+<span class="fc" id="L179">        this.sb.append(&quot;);&quot;);</span>
+<span class="fc" id="L180">        nlIndent();</span>
+<span class="fc" id="L181">        this.sb.append(&quot;delay(20); &quot;);</span>
+<span class="fc" id="L182">        return null;</span>
+    }
+
+    @Override
+    public Void visitMotorOnAction(MotorOnAction&lt;Void&gt; motorOnAction) {
+<span class="fc" id="L187">        final MotorDuration&lt;Void&gt; duration = motorOnAction.getParam().getDuration();</span>
+<span class="fc" id="L188">        this.sb.append(motorOnAction.getPort().getOraName()).append(&quot;.run(&quot;);</span>
+<span class="pc bpc" id="L189" title="1 of 2 branches missed.">        if ( this.brickConfiguration.getRightMotorPort().getCodeName().equals(motorOnAction.getPort().getCodeName()) ) {</span>
+<span class="fc" id="L190">            this.sb.append(&quot;-1*&quot;);</span>
+        }
+<span class="fc" id="L192">        this.sb.append(&quot;(&quot;);</span>
+<span class="fc" id="L193">        motorOnAction.getParam().getSpeed().visit(this);</span>
+<span class="fc" id="L194">        this.sb.append(&quot;)*255/100);&quot;);</span>
+<span class="pc bpc" id="L195" title="1 of 2 branches missed.">        if ( duration != null ) {</span>
+<span class="nc" id="L196">            nlIndent();</span>
+<span class="nc" id="L197">            this.sb.append(&quot;delay(&quot;);</span>
+<span class="nc" id="L198">            motorOnAction.getDurationValue().visit(this);</span>
+<span class="nc" id="L199">            this.sb.append(&quot;);&quot;);</span>
+<span class="nc" id="L200">            nlIndent();</span>
+<span class="nc" id="L201">            this.sb.append(motorOnAction.getPort().getCodeName()).append(&quot;.stop();&quot;);</span>
+        }
+<span class="fc" id="L203">        return null;</span>
+    }
+
+    @Override
+    public Void visitMotorSetPowerAction(MotorSetPowerAction&lt;Void&gt; motorSetPowerAction) {
+<span class="nc" id="L208">        return null;</span>
+    }
+
+    @Override
+    public Void visitMotorGetPowerAction(MotorGetPowerAction&lt;Void&gt; motorGetPowerAction) {
+<span class="nc" id="L213">        return null;</span>
+    }
+
+    @Override
+    public Void visitMotorStopAction(MotorStopAction&lt;Void&gt; motorStopAction) {
+<span class="nc" id="L218">        this.sb.append(motorStopAction.getPort().getCodeName()).append(&quot;.stop();&quot;);</span>
+<span class="nc" id="L219">        return null;</span>
+    }
+
+    @Override
+    public Void visitDriveAction(DriveAction&lt;Void&gt; driveAction) {
+<span class="fc" id="L224">        final MotorDuration&lt;Void&gt; duration = driveAction.getParam().getDuration();</span>
+<span class="fc" id="L225">        this.sb.append(&quot;myDrive.drive(&quot;);</span>
+<span class="fc" id="L226">        driveAction.getParam().getSpeed().visit(this);</span>
+<span class="pc bpc" id="L227" title="1 of 2 branches missed.">        this.sb.append(&quot;*255/100, &quot;).append(driveAction.getDirection() == DriveDirection.FOREWARD ? 1 : 0);</span>
+<span class="pc bpc" id="L228" title="1 of 2 branches missed.">        if ( duration != null ) {</span>
+<span class="nc" id="L229">            this.sb.append(&quot;, &quot;);</span>
+<span class="nc" id="L230">            duration.getValue().visit(this);</span>
+        }
+<span class="fc" id="L232">        this.sb.append(&quot;);&quot;);</span>
+<span class="fc" id="L233">        return null;</span>
+    }
+
+    @Override
+    public Void visitCurveAction(CurveAction&lt;Void&gt; curveAction) {
+<span class="nc" id="L238">        final MotorDuration&lt;Void&gt; duration = curveAction.getParamLeft().getDuration();</span>
+<span class="nc" id="L239">        this.sb.append(&quot;myDrive.steer(&quot;);</span>
+<span class="nc" id="L240">        curveAction.getParamLeft().getSpeed().visit(this);</span>
+<span class="nc" id="L241">        this.sb.append(&quot;*255/100, &quot;);</span>
+<span class="nc" id="L242">        curveAction.getParamRight().getSpeed().visit(this);</span>
+<span class="nc bnc" id="L243" title="All 2 branches missed.">        this.sb.append(&quot;*255/100, &quot;).append(curveAction.getDirection() == DriveDirection.FOREWARD ? 1 : 0);</span>
+<span class="nc bnc" id="L244" title="All 2 branches missed.">        if ( duration != null ) {</span>
+<span class="nc" id="L245">            this.sb.append(&quot;, &quot;);</span>
+<span class="nc" id="L246">            duration.getValue().visit(this);</span>
+        }
+<span class="nc" id="L248">        this.sb.append(&quot;);&quot;);</span>
+<span class="nc" id="L249">        return null;</span>
+    }
+
+    @Override
+    public Void visitTurnAction(TurnAction&lt;Void&gt; turnAction) {
+<span class="nc" id="L254">        final MotorDuration&lt;Void&gt; duration = turnAction.getParam().getDuration();</span>
+<span class="nc" id="L255">        this.sb.append(&quot;myDrive.turn(&quot;);</span>
+<span class="nc" id="L256">        turnAction.getParam().getSpeed().visit(this);</span>
+<span class="nc bnc" id="L257" title="All 2 branches missed.">        this.sb.append(&quot;*255/100, &quot;).append(turnAction.getDirection() == TurnDirection.LEFT ? 1 : 0);</span>
+<span class="nc bnc" id="L258" title="All 2 branches missed.">        if ( duration != null ) {</span>
+<span class="nc" id="L259">            this.sb.append(&quot;, &quot;);</span>
+<span class="nc" id="L260">            duration.getValue().visit(this);</span>
+        }
+<span class="nc" id="L262">        this.sb.append(&quot;);&quot;);</span>
+<span class="nc" id="L263">        return null;</span>
+    }
+
+    @Override
+    public Void visitMotorDriveStopAction(MotorDriveStopAction&lt;Void&gt; stopAction) {
+<span class="nc bnc" id="L268" title="All 2 branches missed.">        for ( final UsedActor actor : this.usedActors ) {</span>
+<span class="nc bnc" id="L269" title="All 2 branches missed.">            if ( actor.getType().equals(ActorType.DIFFERENTIAL_DRIVE) ) {</span>
+<span class="nc" id="L270">                this.sb.append(&quot;myDrive.stop();&quot;);</span>
+<span class="nc" id="L271">                break;</span>
+            }
+<span class="nc" id="L273">        }</span>
+<span class="nc" id="L274">        return null;</span>
+    }
+
+    @Override
+    public Void visitLightSensor(LightSensor&lt;Void&gt; lightSensor) {
+<span class="pc bpc" id="L279" title="2 of 3 branches missed.">        switch ( (LightSensorMode) lightSensor.getMode() ) {</span>
+            case LEFT:
+<span class="nc" id="L281">                this.sb.append(&quot;lineFinder&quot; + lightSensor.getPort().getOraName() + &quot;.readSensors&quot; + &quot;()&amp;2&quot;);</span>
+<span class="nc" id="L282">                break;</span>
+            case RIGHT:
+<span class="fc" id="L284">                this.sb.append(&quot;lineFinder&quot; + lightSensor.getPort().getOraName() + &quot;.readSensors&quot; + &quot;()&amp;1&quot;);</span>
+<span class="fc" id="L285">                break;</span>
+            default:
+                break;
+
+        }
+<span class="fc" id="L290">        return null;</span>
+    }
+
+    @Override
+    public Void visitAmbientLightSensor(AmbientLightSensor&lt;Void&gt; lightSensor) {
+<span class="fc" id="L295">        this.sb.append(&quot;myLight&quot; + lightSensor.getPort().getOraName() + &quot;.read()&quot;);</span>
+<span class="fc" id="L296">        return null;</span>
+
+    }
+
+    @Override
+    public Void visitBrickSensor(BrickSensor&lt;Void&gt; brickSensor) {
+
+<span class="nc" id="L303">        return null;</span>
+    }
+
+    @Override
+    public Void visitColorSensor(ColorSensor&lt;Void&gt; colorSensor) {
+
+<span class="nc" id="L309">        return null;</span>
+    }
+
+    @Override
+    public Void visitSoundSensor(SoundSensor&lt;Void&gt; soundSensor) {
+
+<span class="fc" id="L315">        this.sb.append(&quot;mySound&quot; + soundSensor.getPort().getOraName() + &quot;.strength()&quot;);</span>
+<span class="fc" id="L316">        return null;</span>
+    }
+
+    @Override
+    public Void visitEncoderSensor(EncoderSensor&lt;Void&gt; encoderSensor) {
+<span class="nc" id="L321">        return null;</span>
+    }
+
+    @Override
+    public Void visitCompassSensor(CompassSensor&lt;Void&gt; compassSensor) {
+
+<span class="nc" id="L327">        return null;</span>
+    }
+
+    @Override
+    public Void visitGyroSensor(GyroSensor&lt;Void&gt; gyroSensor) {
+<span class="fc" id="L332">        this.sb.append(&quot;myGyro&quot; + gyroSensor.getPort().getOraName() + &quot;.getGyro&quot; + gyroSensor.getMode().toString() + &quot;()&quot;);</span>
+<span class="fc" id="L333">        return null;</span>
+    }
+
+    @Override
+    public Void visitAccelerometer(AccelerometerSensor&lt;Void&gt; accelerometer) {
+<span class="fc" id="L338">        this.sb.append(&quot;myGyro&quot; + accelerometer.getPort().getOraName() + &quot;.getAngle&quot; + accelerometer.getMode() + &quot;()&quot;);</span>
+<span class="fc" id="L339">        return null;</span>
+    }
+
+    @Override
+    public Void visitInfraredSensor(InfraredSensor&lt;Void&gt; infraredSensor) {
+<span class="nc" id="L344">        return null;</span>
+    }
+
+    @Override
+    public Void visitTemperatureSensor(TemperatureSensor&lt;Void&gt; temperatureSensor) {
+<span class="fc" id="L349">        this.sb.append(&quot;myTemp&quot; + temperatureSensor.getPort().getOraName() + &quot;.getTemperature()&quot;);</span>
+<span class="fc" id="L350">        return null;</span>
+    }
+
+    @Override
+    public Void visitTouchSensor(TouchSensor&lt;Void&gt; touchSensor) {
+<span class="fc" id="L355">        this.sb.append(&quot;myTouch&quot; + touchSensor.getPort().getOraName() + &quot;.touched()&quot;);</span>
+<span class="fc" id="L356">        return null;</span>
+    }
+
+    @Override
+    public Void visitUltrasonicSensor(UltrasonicSensor&lt;Void&gt; ultrasonicSensor) {
+<span class="fc" id="L361">        this.sb.append(&quot;ultraSensor&quot; + ultrasonicSensor.getPort().getOraName() + &quot;.distanceCm()&quot;);</span>
+<span class="fc" id="L362">        return null;</span>
+    }
+
+    @Override
+    public Void visitPIRMotionSensor(PIRMotionSensor&lt;Void&gt; motionSensor) {
+<span class="fc" id="L367">        this.sb.append(&quot;pir&quot; + motionSensor.getPort().getOraName() + &quot;.isHumanDetected()&quot;);</span>
+<span class="fc" id="L368">        return null;</span>
+    }
+
+    @Override
+    public Void visitFlameSensor(FlameSensor&lt;Void&gt; flameSensor) {
+<span class="fc" id="L373">        this.sb.append(&quot;flameSensor&quot; + flameSensor.getPort().getOraName() + &quot;.readAnalog()&quot;);</span>
+<span class="fc" id="L374">        return null;</span>
+    }
+
+    @Override
+    public Void visitJoystick(Joystick&lt;Void&gt; joystick) {
+        /*
+         * after understanding how to implement modes this also works:
+         * this.sb.append(&quot;myJoystick&quot; + joystick.getPort().getPortNumber() + &quot;.read&quot; + joystick.getMode().getValues()[0] + &quot;()&quot;);
+         */
+<span class="fc" id="L383">        this.sb.append(&quot;myJoystick&quot; + joystick.getPort().getOraName() + &quot;.read&quot; + joystick.getAxis() + &quot;()&quot;);</span>
+<span class="fc" id="L384">        return null;</span>
+    }
+
+    @Override
+    public Void visitMainTask(MainTask&lt;Void&gt; mainTask) {
+<span class="fc" id="L389">        decrIndentation();</span>
+<span class="fc" id="L390">        mainTask.getVariables().visit(this);</span>
+<span class="fc bfc" id="L391" title="All 2 branches covered.">        if ( this.isTimerSensorUsed ) {</span>
+<span class="fc" id="L392">            nlIndent();</span>
+<span class="fc" id="L393">            this.sb.append(&quot;unsigned long __time = millis(); \n&quot;);</span>
+        }
+<span class="fc" id="L395">        incrIndentation();</span>
+<span class="fc" id="L396">        generateUserDefinedMethods();</span>
+<span class="fc" id="L397">        this.sb.append(&quot;\nvoid setup() \n&quot;);</span>
+<span class="fc" id="L398">        this.sb.append(&quot;{&quot;);</span>
+<span class="fc" id="L399">        nlIndent();</span>
+
+<span class="fc" id="L401">        this.sb.append(&quot;Serial.begin(9600); &quot;);</span>
+<span class="fc bfc" id="L402" title="All 2 branches covered.">        for ( final UsedSensor usedSensor : this.usedSensors ) {</span>
+<span class="pc bfc" id="L403" title="All 2 branches covered.">            switch ( (SensorType) usedSensor.getType() ) {</span>
+                case GYRO:
+                case ACCELEROMETER:
+<span class="fc" id="L406">                    nlIndent();</span>
+<span class="fc" id="L407">                    this.sb.append(&quot;myGyro&quot; + usedSensor.getPort().getOraName() + &quot;.begin();&quot;);</span>
+<span class="fc" id="L408">                    break;</span>
+                default:
+                    break;
+            }
+<span class="fc" id="L412">        }</span>
+<span class="fc" id="L413">        nlIndent();</span>
+<span class="fc" id="L414">        generateUsedVars();</span>
+<span class="fc" id="L415">        this.sb.append(&quot;\n}&quot;);</span>
+<span class="fc bfc" id="L416" title="All 2 branches covered.">        for ( final UsedSensor usedSensor : this.usedSensors ) {</span>
+<span class="fc bfc" id="L417" title="All 4 branches covered.">            switch ( (SensorType) usedSensor.getType() ) {</span>
+                case GYRO:
+<span class="fc" id="L419">                    nlIndent();</span>
+<span class="fc" id="L420">                    this.sb.append(&quot;myGyro&quot; + usedSensor.getPort().getOraName() + &quot;.update();&quot;);</span>
+<span class="fc" id="L421">                    break;</span>
+                case ACCELEROMETER:
+<span class="fc" id="L423">                    nlIndent();</span>
+<span class="fc" id="L424">                    this.sb.append(&quot;myGyro&quot; + usedSensor.getPort().getOraName() + &quot;.update();&quot;);</span>
+<span class="fc" id="L425">                    break;</span>
+                case TEMPERATURE:
+<span class="fc" id="L427">                    nlIndent();</span>
+<span class="fc" id="L428">                    this.sb.append(&quot;myTemp&quot; + usedSensor.getPort().getOraName() + &quot;.update();&quot;);</span>
+<span class="fc" id="L429">                    break;</span>
+                default:
+                    break;
+            }
+<span class="fc" id="L433">        }</span>
+<span class="fc" id="L434">        return null;</span>
+    }
+
+    @Override
+    protected void generateProgramPrefix(boolean withWrapping) {
+<span class="pc bpc" id="L439" title="1 of 2 branches missed.">        if ( !withWrapping ) {</span>
+<span class="nc" id="L440">            return;</span>
+        }
+
+<span class="fc" id="L443">        this.sb.append(&quot;#include &lt;math.h&gt; \n&quot;);</span>
+<span class="fc" id="L444">        this.sb.append(&quot;#include &lt;MeMCore.h&gt; \n&quot;);</span>
+<span class="fc" id="L445">        this.sb.append(&quot;#include &lt;Wire.h&gt;\n&quot;);</span>
+<span class="fc" id="L446">        this.sb.append(&quot;#include &lt;SoftwareSerial.h&gt;\n&quot;);</span>
+<span class="fc" id="L447">        this.sb.append(&quot;#include &lt;RobertaFunctions.h&gt;\n&quot;);</span>
+<span class="fc" id="L448">        this.sb.append(&quot;#include \&quot;MeDrive.h\&quot;\n\n&quot;);</span>
+<span class="fc" id="L449">        this.sb.append(&quot;RobertaFunctions rob;\n&quot;);</span>
+
+<span class="fc" id="L451">        generateSensors();</span>
+<span class="fc" id="L452">        generateActors();</span>
+<span class="fc" id="L453">    }</span>
+
+    @Override
+    protected void generateProgramSuffix(boolean withWrapping) {
+//        if ( withWrapping ) {
+//            this.sb.append(&quot;\n}\n&quot;);
+//        }
+<span class="fc" id="L460">    }</span>
+
+    private void generateSensors() {
+<span class="fc bfc" id="L463" title="All 2 branches covered.">        for ( final UsedSensor usedSensor : this.usedSensors ) {</span>
+<span class="pc bpc" id="L464" title="6 of 16 branches missed.">            switch ( (SensorType) usedSensor.getType() ) {</span>
+                case COLOR:
+<span class="nc" id="L466">                    break;</span>
+                case INFRARED:
+<span class="nc" id="L468">                    break;</span>
+                case ULTRASONIC:
+<span class="fc" id="L470">                    this.sb.append(&quot;MeUltrasonicSensor ultraSensor&quot; + usedSensor.getPort().getOraName() + &quot;(&quot; + usedSensor.getPort().getCodeName() + &quot;);\n&quot;);</span>
+<span class="fc" id="L471">                    break;</span>
+                case PIR_MOTION:
+<span class="fc" id="L473">                    this.sb.append(&quot;MePIRMotionSensor pir&quot; + usedSensor.getPort().getOraName() + &quot;(&quot; + usedSensor.getPort().getCodeName() + &quot;);\n&quot;);</span>
+<span class="fc" id="L474">                    break;</span>
+                case TEMPERATURE:
+<span class="fc" id="L476">                    this.sb.append(&quot;MeHumiture myTemp&quot; + usedSensor.getPort().getOraName() + &quot;(&quot; + usedSensor.getPort().getCodeName() + &quot;);\n&quot;);</span>
+<span class="fc" id="L477">                    break;</span>
+                case TOUCH:
+<span class="fc" id="L479">                    this.sb.append(&quot;MeTouchSensor myTouch&quot; + usedSensor.getPort().getOraName() + &quot;(&quot; + usedSensor.getPort().getCodeName() + &quot;);\n&quot;);</span>
+<span class="fc" id="L480">                    break;</span>
+                case AMBIENT_LIGHT:
+<span class="fc" id="L482">                    this.sb.append(&quot;MeLightSensor myLight&quot; + usedSensor.getPort().getOraName() + &quot;(&quot; + usedSensor.getPort() + &quot;);\n&quot;);</span>
+<span class="fc" id="L483">                    break;</span>
+                case LINE_FOLLOWER:
+<span class="fc" id="L485">                    this.sb.append(&quot;MeLineFollower lineFinder&quot; + usedSensor.getPort().getOraName() + &quot;(&quot; + usedSensor.getPort().getCodeName() + &quot;);\n&quot;);</span>
+<span class="fc" id="L486">                    break;</span>
+                case COMPASS:
+<span class="nc" id="L488">                    break;</span>
+                case GYRO:
+                case ACCELEROMETER:
+<span class="fc" id="L491">                    this.sb.append(&quot;MeGyro myGyro&quot; + usedSensor.getPort().getOraName() + &quot;(&quot; + usedSensor.getPort().getCodeName() + &quot;);\n&quot;);</span>
+<span class="fc" id="L492">                    break;</span>
+                case SOUND:
+<span class="fc" id="L494">                    this.sb.append(&quot;MeSoundSensor mySound&quot; + usedSensor.getPort().getOraName() + &quot;(&quot; + usedSensor.getPort().getCodeName() + &quot;);\n&quot;);</span>
+<span class="fc" id="L495">                    break;</span>
+                case JOYSTICK:
+<span class="fc" id="L497">                    this.sb.append(&quot;MeJoystick myJoystick&quot; + usedSensor.getPort().getOraName() + &quot;(&quot; + usedSensor.getPort().getCodeName() + &quot;);\n&quot;);</span>
+<span class="fc" id="L498">                    break;</span>
+                case FLAMESENSOR:
+<span class="fc" id="L500">                    this.sb.append(&quot;MeFlameSensor flameSensor&quot; + usedSensor.getPort().getOraName() + &quot;(&quot; + usedSensor.getPort().getCodeName() + &quot;);\n&quot;);</span>
+<span class="fc" id="L501">                    break;</span>
+                case VOLTAGE:
+<span class="nc" id="L503">                    this.sb.append(&quot;MePotentiometer myVoltageSensor&quot; + usedSensor.getPort().getOraName() + &quot;(&quot; + usedSensor.getPort().getCodeName() + &quot;);\n&quot;);</span>
+<span class="nc" id="L504">                    break;</span>
+                case TIMER:
+<span class="nc" id="L506">                    break;</span>
+                default:
+<span class="nc" id="L508">                    throw new DbcException(&quot;Sensor is not supported! &quot; + usedSensor.getType());</span>
+            }
+<span class="fc" id="L510">        }</span>
+<span class="fc" id="L511">    }</span>
+
+    private void generateActors() {
+<span class="fc" id="L514">        decrIndentation();</span>
+<span class="fc bfc" id="L515" title="All 2 branches covered.">        for ( final UsedActor usedActor : this.usedActors ) {</span>
+<span class="pc bpc" id="L516" title="4 of 7 branches missed.">            switch ( usedActor.getType() ) {</span>
+                case LED_ON_BOARD:
+<span class="nc" id="L518">                    this.sb.append(&quot;MeRGBLed rgbled_7(7, 7==7?2:4);\n&quot;);</span>
+<span class="nc" id="L519">                    break;</span>
+                case GEARED_MOTOR:
+<span class="fc" id="L521">                    this.sb.append(&quot;MeDCMotor &quot; + usedActor.getPort().getOraName() + &quot;(&quot; + usedActor.getPort().getCodeName() + &quot;);\n&quot;);</span>
+<span class="fc" id="L522">                    break;</span>
+                case DIFFERENTIAL_DRIVE:
+<span class="fc" id="L524">                    this.sb.append(</span>
+                        &quot;MeDrive myDrive(&quot;
+<span class="fc" id="L526">                            + this.brickConfiguration.getLeftMotorPort().getCodeName()</span>
+                            + &quot;, &quot;
+<span class="fc" id="L528">                            + this.brickConfiguration.getRightMotorPort().getCodeName()</span>
+                            + &quot;);\n&quot;);
+<span class="fc" id="L530">                    break;</span>
+                case EXTERNAL_LED:
+<span class="nc" id="L532">                    this.sb.append(&quot;MeRGBLed rgbled_&quot; + usedActor.getPort().getOraName() + &quot;(&quot; + usedActor.getPort().getOraName() + &quot;, 4);\n&quot;);</span>
+<span class="nc" id="L533">                    break;</span>
+                case LED_MATRIX:
+<span class="nc" id="L535">                    this.sb.append(&quot;MeLEDMatrix myLEDMatrix_&quot; + usedActor.getPort().getOraName() + &quot;(&quot; + usedActor.getPort().getOraName() + &quot;);\n&quot;);</span>
+<span class="nc" id="L536">                    break;</span>
+                case BUZZER:
+<span class="fc" id="L538">                    this.sb.append(&quot;MeBuzzer buzzer;\n&quot;);</span>
+<span class="fc" id="L539">                    break;</span>
+                default:
+<span class="nc" id="L541">                    throw new DbcException(&quot;Actor is not supported! &quot; + usedActor.getType());</span>
+            }
+<span class="fc" id="L543">        }</span>
+<span class="fc" id="L544">    }</span>
+
+    @Override
+    public Void visitLedOnAction(LedOnAction&lt;Void&gt; ledOnAction) {
+<span class="nc" id="L548">        this.sb.append(&quot;rgbled_7.setColor(&quot;);</span>
+<span class="nc bnc" id="L549" title="All 2 branches missed.">        if ( ledOnAction.getSide().equals(&quot;Left&quot;) ) {</span>
+<span class="nc" id="L550">            this.sb.append(&quot;1, &quot;);</span>
+        } else {
+<span class="nc" id="L552">            this.sb.append(&quot;2, &quot;);</span>
+        }
+<span class="nc bnc" id="L554" title="All 30 branches missed.">        switch ( ledOnAction.getLedColor().toString() ) {</span>
+            case &quot;ColorConst [RED]&quot;:
+<span class="nc" id="L556">                this.sb.append(&quot;255, 0, 0&quot;);</span>
+<span class="nc" id="L557">                break;</span>
+            case &quot;ColorConst [BLACK]&quot;:
+<span class="nc" id="L559">                this.sb.append(&quot;0, 0, 0&quot;);</span>
+<span class="nc" id="L560">                break;</span>
+            case &quot;ColorConst [BLUE]&quot;:
+<span class="nc" id="L562">                this.sb.append(&quot;0, 0, 255&quot;);</span>
+<span class="nc" id="L563">                break;</span>
+            case &quot;ColorConst [GREEN]&quot;:
+<span class="nc" id="L565">                this.sb.append(&quot;0, 255, 0&quot;);</span>
+<span class="nc" id="L566">                break;</span>
+            case &quot;ColorConst [YELLOW]&quot;:
+<span class="nc" id="L568">                this.sb.append(&quot;255, 255, 0&quot;);</span>
+<span class="nc" id="L569">                break;</span>
+            case &quot;ColorConst [WHITE]&quot;:
+<span class="nc" id="L571">                this.sb.append(&quot;255, 255, 255&quot;);</span>
+<span class="nc" id="L572">                break;</span>
+            case &quot;ColorConst [BROWN]&quot;:
+<span class="nc" id="L574">                this.sb.append(&quot;102, 51, 0&quot;);</span>
+<span class="nc" id="L575">                break;</span>
+            default:
+<span class="nc" id="L577">                ledOnAction.getLedColor().visit(this);</span>
+                break;
+
+        }
+<span class="nc" id="L581">        this.sb.append(&quot;);&quot;);</span>
+<span class="nc" id="L582">        nlIndent();</span>
+<span class="nc" id="L583">        this.sb.append(&quot;rgbled_7.show();&quot;);</span>
+<span class="nc" id="L584">        return null;</span>
+    }
+
+    @Override
+    public Void visitLedOffAction(LedOffAction&lt;Void&gt; ledOffAction) {
+<span class="nc" id="L589">        this.sb.append(&quot;rgbled_7.setColor(&quot;);</span>
+<span class="nc bnc" id="L590" title="All 2 branches missed.">        if ( ledOffAction.getSide().equals(&quot;Left&quot;) ) {</span>
+<span class="nc" id="L591">            this.sb.append(&quot;1, &quot;);</span>
+        } else {
+<span class="nc" id="L593">            this.sb.append(&quot;2, &quot;);</span>
+        }
+<span class="nc" id="L595">        this.sb.append(&quot;0, 0, 0);&quot;);</span>
+<span class="nc" id="L596">        nlIndent();</span>
+<span class="nc" id="L597">        this.sb.append(&quot;rgbled_7.show();&quot;);</span>
+<span class="nc" id="L598">        return null;</span>
+    }
+
+    @Override
+    public Void visitExternalLedOnAction(ExternalLedOnAction&lt;Void&gt; externalLedOnAction) {
+<span class="nc" id="L603">        this.sb.append(&quot;rgbled_&quot;).append(externalLedOnAction.getPort().getValues()[0]).append(&quot;.setColor(&quot;).append(externalLedOnAction.getLedNo() + &quot;, &quot;);</span>
+<span class="nc bnc" id="L604" title="All 30 branches missed.">        switch ( externalLedOnAction.getLedColor().toString() ) {</span>
+            case &quot;ColorConst [RED]&quot;:
+<span class="nc" id="L606">                this.sb.append(&quot;255, 0, 0&quot;);</span>
+<span class="nc" id="L607">                break;</span>
+            case &quot;ColorConst [BLACK]&quot;:
+<span class="nc" id="L609">                this.sb.append(&quot;0, 0, 0&quot;);</span>
+<span class="nc" id="L610">                break;</span>
+            case &quot;ColorConst [BLUE]&quot;:
+<span class="nc" id="L612">                this.sb.append(&quot;0, 0, 255&quot;);</span>
+<span class="nc" id="L613">                break;</span>
+            case &quot;ColorConst [GREEN]&quot;:
+<span class="nc" id="L615">                this.sb.append(&quot;0, 255, 0&quot;);</span>
+<span class="nc" id="L616">                break;</span>
+            case &quot;ColorConst [YELLOW]&quot;:
+<span class="nc" id="L618">                this.sb.append(&quot;255, 255, 0&quot;);</span>
+<span class="nc" id="L619">                break;</span>
+            case &quot;ColorConst [WHITE]&quot;:
+<span class="nc" id="L621">                this.sb.append(&quot;255, 255, 255&quot;);</span>
+<span class="nc" id="L622">                break;</span>
+            case &quot;ColorConst [BROWN]&quot;:
+<span class="nc" id="L624">                this.sb.append(&quot;102, 51, 0&quot;);</span>
+<span class="nc" id="L625">                break;</span>
+            default:
+<span class="nc" id="L627">                externalLedOnAction.getLedColor().visit(this);</span>
+                break;
+
+        }
+<span class="nc" id="L631">        this.sb.append(&quot;);&quot;);</span>
+<span class="nc" id="L632">        nlIndent();</span>
+<span class="nc" id="L633">        this.sb.append(&quot;rgbled_&quot; + externalLedOnAction.getPort().getValues()[0] + &quot;.show();&quot;);</span>
+<span class="nc" id="L634">        return null;</span>
+    }
+
+    @Override
+    public Void visitExternalLedOffAction(ExternalLedOffAction&lt;Void&gt; externalLedOffAction) {
+<span class="nc" id="L639">        this.sb.append(&quot;rgbled_&quot; + externalLedOffAction.getPort().getValues()[0] + &quot;.setColor(&quot;);</span>
+<span class="nc" id="L640">        this.sb.append(externalLedOffAction.getLedNo());</span>
+<span class="nc" id="L641">        this.sb.append(&quot;, 0, 0, 0);&quot;);</span>
+<span class="nc" id="L642">        nlIndent();</span>
+<span class="nc" id="L643">        this.sb.append(&quot;rgbled_&quot; + externalLedOffAction.getPort().getValues()[0] + &quot;.show();&quot;);</span>
+<span class="nc" id="L644">        return null;</span>
+    }
+
+    @Override
+    public Void visitVoltageSensor(VoltageSensor&lt;Void&gt; voltageSensor) {
+<span class="nc" id="L649">        this.sb.append(&quot;myVoltageSensor&quot; + voltageSensor.getPort().getOraName() + &quot;.read()&quot;);</span>
+<span class="nc" id="L650">        return null;</span>
+    }
+
+    @Override
+    public Void visitRgbColor(RgbColor&lt;Void&gt; rgbColor) {
+<span class="nc" id="L655">        rgbColor.getR().visit(this);</span>
+<span class="nc" id="L656">        this.sb.append(&quot;, &quot;);</span>
+<span class="nc" id="L657">        rgbColor.getG().visit(this);</span>
+<span class="nc" id="L658">        this.sb.append(&quot;, &quot;);</span>
+<span class="nc" id="L659">        rgbColor.getB().visit(this);</span>
+<span class="nc" id="L660">        return null;</span>
+    }
+
+    @Override
+    public Void visitImage(LedMatrix&lt;Void&gt; ledMatrix) {
+<span class="nc" id="L665">        ledMatrix.getImage();</span>
+<span class="nc" id="L666">        return null;</span>
+    }
+
+    @Override
+    public Void visitDisplayImageAction(DisplayImageAction&lt;Void&gt; displayImageAction) {
+<span class="nc" id="L671">        String valuesToDisplay = displayImageAction.getValuesToDisplay().toString();</span>
+<span class="nc" id="L672">        valuesToDisplay = valuesToDisplay.replaceAll(&quot;   &quot;, &quot;-&quot;);</span>
+<span class="nc" id="L673">        valuesToDisplay = valuesToDisplay.replaceAll(&quot;  &quot;, &quot;-&quot;);</span>
+<span class="nc" id="L674">        valuesToDisplay = valuesToDisplay.replaceAll(&quot; #&quot;, &quot;#&quot;);</span>
+<span class="nc" id="L675">        final String[] valuesToDisplayArray = valuesToDisplay.split(&quot;\n&quot;);</span>
+<span class="nc" id="L676">        final char[][] imageCharacterMatrix = new char[8][16];</span>
+<span class="nc" id="L677">        valuesToDisplayArray[0] = valuesToDisplayArray[0].split(&quot;Image \\[ \\[&quot;)[1].split(&quot;]&quot;)[0];</span>
+<span class="nc" id="L678">        imageCharacterMatrix[0] = valuesToDisplayArray[0].replaceAll(&quot;,&quot;, &quot;&quot;).toCharArray();</span>
+<span class="nc bnc" id="L679" title="All 2 branches missed.">        for ( int i = 1; i &lt; 8; i++ ) {</span>
+<span class="nc" id="L680">            valuesToDisplayArray[i] = valuesToDisplayArray[i].replaceAll(&quot;\\[|\\]|\\] \\]&quot;, &quot;&quot;);</span>
+<span class="nc" id="L681">            imageCharacterMatrix[i] = valuesToDisplayArray[i].replaceAll(&quot;,&quot;, &quot;&quot;).toCharArray();</span>
+        }
+<span class="nc" id="L683">        final int[] imageBitmap = new int[16];</span>
+<span class="nc bnc" id="L684" title="All 2 branches missed.">        for ( int i = 0; i &lt; 16; i++ ) {</span>
+<span class="nc bnc" id="L685" title="All 2 branches missed.">            for ( int j = 0; j &lt; 8; j++ ) {</span>
+<span class="nc bnc" id="L686" title="All 2 branches missed.">                if ( imageCharacterMatrix[j][i] == '#' ) {</span>
+<span class="nc" id="L687">                    imageBitmap[i] += Util1.pow2(7 - j);</span>
+                }
+            }
+        }
+<span class="nc" id="L691">        this.sb.append(&quot;unsigned char drawBuffer[16];&quot;);</span>
+<span class="nc" id="L692">        nlIndent();</span>
+<span class="nc" id="L693">        this.sb.append(&quot;unsigned char *drawTemp;&quot;);</span>
+<span class="nc" id="L694">        nlIndent();</span>
+
+<span class="nc" id="L696">        this.sb.append(&quot;drawTemp = new unsigned char[16]{&quot;);</span>
+<span class="nc bnc" id="L697" title="All 2 branches missed.">        for ( int i = 0; i &lt; 15; i++ ) {</span>
+<span class="nc" id="L698">            this.sb.append(imageBitmap[i]);</span>
+<span class="nc" id="L699">            this.sb.append(&quot;, &quot;);</span>
+        }
+<span class="nc" id="L701">        this.sb.append(imageBitmap[15]);</span>
+<span class="nc" id="L702">        this.sb.append(&quot;};&quot;);</span>
+<span class="nc" id="L703">        nlIndent();</span>
+<span class="nc" id="L704">        this.sb.append(&quot;memcpy(drawBuffer,drawTemp,16);&quot;);</span>
+<span class="nc" id="L705">        nlIndent();</span>
+<span class="nc" id="L706">        this.sb.append(&quot;free(drawTemp);&quot;);</span>
+<span class="nc" id="L707">        nlIndent();</span>
+<span class="nc" id="L708">        this.sb.append(&quot;myLEDMatrix_&quot; + displayImageAction.getPort().getValues()[0] + &quot;.drawBitmap(0, 0, 16, drawBuffer);&quot;);</span>
+<span class="nc" id="L709">        nlIndent();</span>
+<span class="nc" id="L710">        return null;</span>
+    }
+
+    @Override
+    public Void visitDisplayTextAction(DisplayTextAction&lt;Void&gt; displayTextAction) {
+<span class="nc" id="L715">        this.sb.append(&quot;myLEDMatrix_&quot; + displayTextAction.getPort().getValues()[0] + &quot;.drawStr(0, 7, &quot;);</span>
+<span class="nc" id="L716">        displayTextAction.getMsg().visit(this);</span>
+<span class="nc" id="L717">        this.sb.append(&quot;);&quot;);</span>
+<span class="nc" id="L718">        return null;</span>
+    }
+
+    @Override
+    public Void visitMbotGetSampleSensor(GetSampleSensor&lt;Void&gt; getSampleSensor) {
+<span class="nc" id="L723">        return null;</span>
+    }
+
+    @Override
+    public Void visitRelayAction(RelayAction&lt;Void&gt; relayAction) {
+<span class="nc" id="L728">        return null;</span>
+    }
+
+    @Override
+    public Void visitPinWriteValueAction(PinWriteValueAction&lt;Void&gt; pinWriteValueSensor) {
+        // TODO Auto-generated method stub
+<span class="nc" id="L734">        return null;</span>
+    }
+
+    @Override
+    public Void visitSerialWriteAction(SerialWriteAction&lt;Void&gt; serialWriteAction) {
+        // TODO Auto-generated method stub
+<span class="nc" id="L740">        return null;</span>
+    }
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

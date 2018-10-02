@@ -1,0 +1,172 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>VarDeclaration.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">OpenRobertaRobot</a> &gt; <a href="index.source.html" class="el_package">de.fhg.iais.roberta.syntax.lang.expr</a> &gt; <span class="el_source">VarDeclaration.java</span></div><h1>VarDeclaration.java</h1><pre class="source lang-java linenums">package de.fhg.iais.roberta.syntax.lang.expr;
+
+import java.util.List;
+
+import de.fhg.iais.roberta.blockly.generated.Block;
+import de.fhg.iais.roberta.blockly.generated.Field;
+import de.fhg.iais.roberta.blockly.generated.Mutation;
+import de.fhg.iais.roberta.blockly.generated.Value;
+import de.fhg.iais.roberta.syntax.BlockTypeContainer;
+import de.fhg.iais.roberta.syntax.BlocklyBlockProperties;
+import de.fhg.iais.roberta.syntax.BlocklyComment;
+import de.fhg.iais.roberta.syntax.BlocklyConstants;
+import de.fhg.iais.roberta.syntax.Phrase;
+import de.fhg.iais.roberta.transformer.ExprParam;
+import de.fhg.iais.roberta.transformer.Jaxb2AstTransformer;
+import de.fhg.iais.roberta.transformer.JaxbTransformerHelper;
+import de.fhg.iais.roberta.typecheck.BlocklyType;
+import de.fhg.iais.roberta.util.dbc.Assert;
+import de.fhg.iais.roberta.visitor.AstVisitor;
+import de.fhg.iais.roberta.visitor.lang.AstLanguageVisitor;
+
+/**
+ * This class represents the &lt;b&gt;robGlobalvariables_declare&lt;/b&gt; blocks from Blockly into the AST (abstract syntax tree). Object from this class will generate
+ * code for creating a variable.&lt;br/&gt;
+ * &lt;br&gt;
+ * User must provide name of the variable, type of the variable and initial value. To create an instance from this class use the method
+ * {@link #make(BlocklyType, String, Expr, BlocklyBlockProperties, BlocklyComment)}.&lt;br&gt;
+ */
+public class VarDeclaration&lt;V&gt; extends Expr&lt;V&gt; {
+    private final BlocklyType typeVar;
+    private final String name;
+    private final Phrase&lt;V&gt; value;
+    private final boolean next;
+    private final boolean global;
+
+    private VarDeclaration(
+        BlocklyType typeVar,
+        String name,
+        Phrase&lt;V&gt; value,
+        boolean next,
+        boolean global,
+        BlocklyBlockProperties properties,
+        BlocklyComment comment) {
+<span class="fc" id="L44">        super(BlockTypeContainer.getByName(&quot;VAR_DECLARATION&quot;), properties, comment);</span>
+<span class="pc bpc" id="L45" title="3 of 6 branches missed.">        Assert.isTrue(!name.equals(&quot;&quot;) &amp;&amp; typeVar != null &amp;&amp; value.isReadOnly());</span>
+<span class="fc" id="L46">        this.name = name;</span>
+<span class="fc" id="L47">        this.typeVar = typeVar;</span>
+<span class="fc" id="L48">        this.value = value;</span>
+<span class="fc" id="L49">        this.next = next;</span>
+<span class="fc" id="L50">        this.global = global;</span>
+<span class="fc" id="L51">        setReadOnly();</span>
+<span class="fc" id="L52">    }</span>
+
+    /**
+     * creates instance of {@link VarDeclaration}. This instance is read only and can not be modified.
+     *
+     * @param typeVar type of the variable; must be &lt;b&gt;not&lt;/b&gt; null,
+     * @param name of the variable; must be &lt;b&gt;non-empty&lt;/b&gt; string,
+     * @param value initialization value of the variable; must be &lt;b&gt;not&lt;/b&gt; null,
+     * @param properties of the block (see {@link BlocklyBlockProperties}),
+     * @param comment added from the user,
+     * @return read only object of class {@link VarDeclaration}
+     */
+    public static &lt;V&gt; VarDeclaration&lt;V&gt; make(
+        BlocklyType typeVar,
+        String name,
+        Expr&lt;V&gt; value,
+        boolean next,
+        boolean global,
+        BlocklyBlockProperties properties,
+        BlocklyComment comment) {
+<span class="fc" id="L72">        return new VarDeclaration&lt;V&gt;(typeVar, name, value, next, global, properties, comment);</span>
+    }
+
+    /**
+     * @return type of the variable
+     */
+    public BlocklyType getTypeVar() {
+<span class="fc" id="L79">        return this.typeVar;</span>
+    }
+
+    /**
+     * @return name of the variable
+     */
+    public String getName() {
+<span class="fc" id="L86">        return this.name;</span>
+    }
+
+    /**
+     * @return the value
+     */
+    public Phrase&lt;V&gt; getValue() {
+<span class="fc" id="L93">        return this.value;</span>
+    }
+
+    /**
+     * @return the next
+     */
+    public boolean isNext() {
+<span class="nc" id="L100">        return this.next;</span>
+    }
+
+    /**
+     * @return the global
+     */
+    public boolean isGlobal() {
+<span class="nc" id="L107">        return this.global;</span>
+    }
+
+    @Override
+    public int getPrecedence() {
+<span class="nc" id="L112">        return 999;</span>
+    }
+
+    @Override
+    public Assoc getAssoc() {
+<span class="nc" id="L117">        return Assoc.NONE;</span>
+    }
+
+    @Override
+    protected V accept(AstVisitor&lt;V&gt; visitor) {
+<span class="fc" id="L122">        return ((AstLanguageVisitor&lt;V&gt;) visitor).visitVarDeclaration(this);</span>
+    }
+
+    @Override
+    public BlocklyType getVarType() {
+<span class="nc" id="L127">        return this.typeVar;</span>
+    }
+
+    @Override
+    public String toString() {
+<span class="fc" id="L132">        return &quot;VarDeclaration [&quot; + this.typeVar + &quot;, &quot; + this.name + &quot;, &quot; + this.value + &quot;, &quot; + this.next + &quot;, &quot; + this.global + &quot;]&quot;;</span>
+    }
+
+    /**
+     * Transformation from JAXB object to corresponding AST object.
+     *
+     * @param block for transformation
+     * @param helper class for making the transformation
+     * @return corresponding AST object
+     */
+    public static &lt;V&gt; Phrase&lt;V&gt; jaxbToAst(Block block, Jaxb2AstTransformer&lt;V&gt; helper) {
+<span class="pc bpc" id="L143" title="1 of 2 branches missed.">        boolean isGlobalVariable = block.getType().equals(BlocklyConstants.ROB_LOCAL_VARIABLES_DECLARE) ? false : true;</span>
+<span class="fc" id="L144">        List&lt;Field&gt; fields = helper.extractFields(block, (short) 2);</span>
+<span class="fc" id="L145">        List&lt;Value&gt; values = helper.extractValues(block, (short) 1);</span>
+<span class="fc" id="L146">        BlocklyType typeVar = BlocklyType.get(helper.extractField(fields, BlocklyConstants.TYPE));</span>
+<span class="fc" id="L147">        String name = helper.extractField(fields, BlocklyConstants.VAR);</span>
+<span class="fc" id="L148">        Phrase&lt;V&gt; expr = helper.extractValue(values, new ExprParam(BlocklyConstants.VALUE, typeVar));</span>
+<span class="fc" id="L149">        boolean next = block.getMutation().isNext();</span>
+
+<span class="fc" id="L151">        return VarDeclaration</span>
+<span class="fc" id="L152">            .make(typeVar, name, helper.convertPhraseToExpr(expr), next, isGlobalVariable, helper.extractBlockProperties(block), helper.extractComment(block));</span>
+    }
+
+    @Override
+    public Block astToBlock() {
+
+<span class="fc" id="L158">        Block jaxbDestination = new Block();</span>
+<span class="fc" id="L159">        JaxbTransformerHelper.setBasicProperties(this, jaxbDestination);</span>
+<span class="fc" id="L160">        Mutation mutation = new Mutation();</span>
+<span class="fc" id="L161">        mutation.setNext(this.next);</span>
+<span class="fc" id="L162">        mutation.setDeclarationType(getTypeVar().getBlocklyName());</span>
+<span class="fc" id="L163">        jaxbDestination.setMutation(mutation);</span>
+<span class="fc" id="L164">        JaxbTransformerHelper.addField(jaxbDestination, BlocklyConstants.VAR, getName());</span>
+<span class="fc" id="L165">        JaxbTransformerHelper.addField(jaxbDestination, BlocklyConstants.TYPE, getTypeVar().getBlocklyName());</span>
+<span class="fc" id="L166">        JaxbTransformerHelper.addValue(jaxbDestination, BlocklyConstants.VALUE, this.value);</span>
+
+<span class="fc" id="L168">        return jaxbDestination;</span>
+    }
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

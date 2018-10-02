@@ -1,0 +1,161 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>CompilerFeedback.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">RobotEV3</a> &gt; <a href="index.source.html" class="el_package">de.fhg.iais.roberta.components.ev3</a> &gt; <span class="el_source">CompilerFeedback.java</span></div><h1>CompilerFeedback.java</h1><pre class="source lang-java linenums">package de.fhg.iais.roberta.components.ev3;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
+
+import javax.tools.Diagnostic;
+import javax.tools.DiagnosticCollector;
+import javax.tools.JavaFileObject;
+import javax.tools.SimpleJavaFileObject;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+public class CompilerFeedback {
+<span class="fc" id="L17">    private static final Logger LOG = LoggerFactory.getLogger(CompilerFeedback.class);</span>
+    private final boolean success;
+<span class="fc" id="L19">    private final List&lt;CompilerMessage&gt; messages = new ArrayList&lt;&gt;();</span>
+
+<span class="fc" id="L21">    public CompilerFeedback(final Boolean success, final DiagnosticCollector&lt;JavaFileObject&gt; diagnostics) {</span>
+<span class="pc bpc" id="L22" title="2 of 4 branches missed.">        this.success = success != null &amp;&amp; success;</span>
+<span class="fc bfc" id="L23" title="All 2 branches covered.">        for ( Diagnostic&lt;? extends JavaFileObject&gt; diagnostic : diagnostics.getDiagnostics() ) {</span>
+<span class="fc" id="L24">            this.messages.add(new CompilerMessage(diagnostic));</span>
+<span class="fc" id="L25">        }</span>
+<span class="fc" id="L26">    }</span>
+
+    public boolean isSuccess() {
+<span class="fc" id="L29">        return this.success;</span>
+    }
+
+    @Override
+    public String toString() {
+<span class="nc" id="L34">        final StringBuilder sb = new StringBuilder();</span>
+
+<span class="nc" id="L36">        sb.append(&quot;SUCCESS: &quot;).append(this.success).append('\n');</span>
+<span class="nc" id="L37">        final int iTop = this.messages.size();</span>
+<span class="nc bnc" id="L38" title="All 2 branches missed.">        for ( int i = 0; i &lt; iTop; i++ ) {</span>
+<span class="nc" id="L39">            sb.append(&quot;\n[MESSAGE &quot;).append(i + 1).append(&quot; OF &quot;).append(iTop).append(&quot;]\n\n&quot;);</span>
+<span class="nc" id="L40">            sb.append(this.messages.get(i).toStringForDebugging()).append(&quot;\n&quot;);</span>
+        }
+<span class="nc" id="L42">        return sb.toString();</span>
+    }
+
+    public final static class CompilerMessage {
+        public final Diagnostic&lt;? extends JavaFileObject&gt; compilerInfo;
+
+        public final String typeOfProblem;
+        public final String typeOfProblem_forDebugging;
+
+        public final String multiLineMessage;
+
+        public final int lineNumber;
+        public final int columnNumber;
+
+        public final int textHighlightPos_lineStart;
+        public final int textHighlightPos_problemStart;
+        public final int textHighlightPos_problemEnd;
+
+        public final String sourceCode;
+        public final String codeOfConcern;
+        public final String codeOfConcernLong;
+
+<span class="fc" id="L64">        CompilerMessage(final Diagnostic&lt;? extends JavaFileObject&gt; diagnostic) {</span>
+
+<span class="fc" id="L66">            final JavaFileObject sourceFileObject = diagnostic.getSource();</span>
+<span class="fc" id="L67">            String sourceCodePreliminary = null;</span>
+<span class="pc bpc" id="L68" title="1 of 2 branches missed.">            if ( sourceFileObject instanceof SimpleJavaFileObject ) {</span>
+<span class="fc" id="L69">                final SimpleJavaFileObject simpleSourceFileObject = (SimpleJavaFileObject) sourceFileObject;</span>
+
+                try {
+<span class="fc" id="L72">                    final CharSequence charSequence = simpleSourceFileObject.getCharContent(false);</span>
+<span class="fc" id="L73">                    sourceCodePreliminary = charSequence.toString();</span>
+<span class="nc" id="L74">                } catch ( IOException e ) {</span>
+<span class="nc" id="L75">                    CompilerFeedback.LOG.error(e.getMessage());</span>
+<span class="fc" id="L76">                }</span>
+            }
+<span class="pc bpc" id="L78" title="1 of 2 branches missed.">            if ( sourceCodePreliminary == null ) {</span>
+<span class="nc" id="L79">                this.sourceCode = &quot;[SOURCE CODE UNAVAILABLE]&quot;;</span>
+            } else {
+<span class="fc" id="L81">                this.sourceCode = sourceCodePreliminary;</span>
+            }
+
+<span class="fc" id="L84">            this.compilerInfo = diagnostic;</span>
+
+<span class="fc" id="L86">            this.typeOfProblem = diagnostic.getKind().name();</span>
+<span class="fc" id="L87">            this.typeOfProblem_forDebugging = &quot;toString() = &quot; + diagnostic.getKind().toString() + &quot;; name() = &quot; + this.typeOfProblem;</span>
+
+<span class="fc" id="L89">            this.lineNumber = (int) this.compilerInfo.getLineNumber();</span>
+<span class="fc" id="L90">            this.columnNumber = (int) this.compilerInfo.getColumnNumber();</span>
+
+<span class="fc" id="L92">            final int sourceLen = this.sourceCode.length();</span>
+<span class="fc" id="L93">            this.textHighlightPos_lineStart = (int) Math.min(Math.max(0, diagnostic.getStartPosition()), sourceLen);</span>
+<span class="fc" id="L94">            this.textHighlightPos_problemStart = (int) Math.min(Math.max(0, diagnostic.getPosition()), sourceLen);</span>
+<span class="fc" id="L95">            this.textHighlightPos_problemEnd = (int) Math.min(Math.max(0, diagnostic.getEndPosition()), sourceLen);</span>
+
+<span class="fc" id="L97">            final StringBuilder reformattedMessage = new StringBuilder();</span>
+<span class="fc" id="L98">            final String message = diagnostic.getMessage(Locale.US);</span>
+<span class="fc" id="L99">            final int messageCutOffPosition = message.indexOf(&quot;location:&quot;);</span>
+            final String[] messageParts;
+<span class="pc bpc" id="L101" title="1 of 2 branches missed.">            if ( messageCutOffPosition &gt;= 0 ) {</span>
+<span class="nc" id="L102">                messageParts = message.substring(0, messageCutOffPosition).split(&quot;\n&quot;);</span>
+            } else {
+<span class="fc" id="L104">                messageParts = message.split(&quot;\n&quot;);</span>
+            }
+<span class="fc bfc" id="L106" title="All 2 branches covered.">            for ( String s : messageParts ) {</span>
+<span class="fc" id="L107">                String s2 = s.trim();</span>
+<span class="pc bpc" id="L108" title="1 of 2 branches missed.">                if ( s2.length() &gt; 0 ) {</span>
+                    boolean lengthChanged;
+                    do {
+<span class="fc" id="L111">                        final int lBeforeReplace = s2.length();</span>
+<span class="fc" id="L112">                        s2 = s2.replace(&quot;  &quot;, &quot; &quot;);</span>
+<span class="pc bpc" id="L113" title="1 of 2 branches missed.">                        lengthChanged = (s2.length() != lBeforeReplace);</span>
+<span class="pc bpc" id="L114" title="1 of 2 branches missed.">                    } while ( lengthChanged );</span>
+<span class="fc" id="L115">                    reformattedMessage.append(s2).append(&quot;\n&quot;);</span>
+                }
+            }
+
+<span class="fc" id="L119">            this.codeOfConcern = this.sourceCode.substring(this.textHighlightPos_problemStart, this.textHighlightPos_problemEnd);</span>
+<span class="fc" id="L120">            this.codeOfConcernLong = this.sourceCode.substring(this.textHighlightPos_lineStart, this.textHighlightPos_problemEnd);</span>
+<span class="pc bpc" id="L121" title="1 of 2 branches missed.">            if ( !this.codeOfConcern.isEmpty() ) {</span>
+<span class="nc" id="L122">                reformattedMessage.append(&quot;Code of concern: \&quot;&quot;).append(this.codeOfConcern).append('\&quot;');</span>
+            }
+<span class="fc" id="L124">            this.multiLineMessage = reformattedMessage.toString();</span>
+<span class="fc" id="L125">        }</span>
+
+        public String toStringForList() {
+
+<span class="nc bnc" id="L129" title="All 2 branches missed.">            if ( this.compilerInfo == null ) {</span>
+<span class="nc" id="L130">                return &quot;No compiler!&quot;;</span>
+            } else {
+<span class="nc" id="L132">                return this.compilerInfo.getCode();</span>
+            }
+        }
+
+        public String toStringForDebugging() {
+
+<span class="nc" id="L138">            final StringBuilder ret = new StringBuilder();</span>
+
+<span class="nc" id="L140">            ret.append(&quot;Type of problem: &quot;).append(this.typeOfProblem_forDebugging).append(&quot;\n\n&quot;);</span>
+<span class="nc" id="L141">            ret.append(&quot;Message:\n&quot;).append(this.multiLineMessage).append(&quot;\n\n&quot;);</span>
+
+<span class="nc" id="L143">            ret.append(this.compilerInfo.getCode()).append(&quot;\n\n&quot;);</span>
+
+<span class="nc" id="L145">            ret.append(&quot;line number: &quot;).append(this.lineNumber).append(&quot;\n&quot;);</span>
+<span class="nc" id="L146">            ret.append(&quot;column number: &quot;).append(this.columnNumber).append(&quot;\n&quot;);</span>
+
+<span class="nc" id="L148">            ret.append(&quot;textHighlightPos_lineStart: &quot;).append(this.textHighlightPos_lineStart).append(&quot;\n&quot;);</span>
+<span class="nc" id="L149">            ret.append(&quot;textHighlightPos_problemStart: &quot;).append(this.textHighlightPos_problemStart).append(&quot;\n&quot;);</span>
+<span class="nc" id="L150">            ret.append(&quot;textHighlightPos_problemEnd: &quot;).append(this.textHighlightPos_problemEnd).append(&quot;\n&quot;);</span>
+
+<span class="nc" id="L152">            return ret.toString();</span>
+        }
+
+        @Override
+        public String toString() {
+<span class="nc" id="L157">            return this.typeOfProblem + &quot;: &quot; + this.multiLineMessage + &quot;\n&quot;;</span>
+        }
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

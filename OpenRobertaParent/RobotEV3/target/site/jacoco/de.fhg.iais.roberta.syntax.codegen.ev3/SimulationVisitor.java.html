@@ -1,0 +1,400 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>SimulationVisitor.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">RobotEV3</a> &gt; <a href="index.source.html" class="el_package">de.fhg.iais.roberta.syntax.codegen.ev3</a> &gt; <span class="el_source">SimulationVisitor.java</span></div><h1>SimulationVisitor.java</h1><pre class="source lang-java linenums">package de.fhg.iais.roberta.syntax.codegen.ev3;
+
+import java.util.ArrayList;
+
+import de.fhg.iais.roberta.components.Configuration;
+import de.fhg.iais.roberta.inter.mode.action.IDriveDirection;
+import de.fhg.iais.roberta.inter.mode.action.ILanguage;
+import de.fhg.iais.roberta.inter.mode.action.ITurnDirection;
+import de.fhg.iais.roberta.mode.action.DriveDirection;
+import de.fhg.iais.roberta.mode.action.Language;
+import de.fhg.iais.roberta.mode.action.TurnDirection;
+import de.fhg.iais.roberta.mode.sensor.ColorSensorMode;
+import de.fhg.iais.roberta.mode.sensor.CompassSensorMode;
+import de.fhg.iais.roberta.mode.sensor.GyroSensorMode;
+import de.fhg.iais.roberta.mode.sensor.LightSensorMode;
+import de.fhg.iais.roberta.mode.sensor.MotorTachoMode;
+import de.fhg.iais.roberta.syntax.BlockTypeContainer;
+import de.fhg.iais.roberta.syntax.BlockTypeContainer.BlockType;
+import de.fhg.iais.roberta.syntax.MotorDuration;
+import de.fhg.iais.roberta.syntax.Phrase;
+import de.fhg.iais.roberta.syntax.action.display.ClearDisplayAction;
+import de.fhg.iais.roberta.syntax.action.display.ShowPictureAction;
+import de.fhg.iais.roberta.syntax.action.display.ShowTextAction;
+import de.fhg.iais.roberta.syntax.action.light.LightAction;
+import de.fhg.iais.roberta.syntax.action.light.LightStatusAction;
+import de.fhg.iais.roberta.syntax.action.motor.CurveAction;
+import de.fhg.iais.roberta.syntax.action.motor.DriveAction;
+import de.fhg.iais.roberta.syntax.action.motor.MotorDriveStopAction;
+import de.fhg.iais.roberta.syntax.action.motor.MotorGetPowerAction;
+import de.fhg.iais.roberta.syntax.action.motor.MotorOnAction;
+import de.fhg.iais.roberta.syntax.action.motor.MotorSetPowerAction;
+import de.fhg.iais.roberta.syntax.action.motor.MotorStopAction;
+import de.fhg.iais.roberta.syntax.action.motor.TurnAction;
+import de.fhg.iais.roberta.syntax.action.sound.PlayFileAction;
+import de.fhg.iais.roberta.syntax.action.sound.SayTextAction;
+import de.fhg.iais.roberta.syntax.action.sound.SetLanguageAction;
+import de.fhg.iais.roberta.syntax.action.sound.VolumeAction;
+import de.fhg.iais.roberta.syntax.codegen.RobotSimulationVisitor;
+import de.fhg.iais.roberta.syntax.sensor.generic.BrickSensor;
+import de.fhg.iais.roberta.syntax.sensor.generic.ColorSensor;
+import de.fhg.iais.roberta.syntax.sensor.generic.CompassSensor;
+import de.fhg.iais.roberta.syntax.sensor.generic.EncoderSensor;
+import de.fhg.iais.roberta.syntax.sensor.generic.GyroSensor;
+import de.fhg.iais.roberta.syntax.sensor.generic.IRSeekerSensor;
+import de.fhg.iais.roberta.syntax.sensor.generic.InfraredSensor;
+import de.fhg.iais.roberta.syntax.sensor.generic.LightSensor;
+import de.fhg.iais.roberta.syntax.sensor.generic.SoundSensor;
+import de.fhg.iais.roberta.syntax.sensor.generic.TouchSensor;
+import de.fhg.iais.roberta.syntax.sensor.generic.UltrasonicSensor;
+import de.fhg.iais.roberta.util.dbc.Assert;
+import de.fhg.iais.roberta.util.dbc.DbcException;
+
+public class SimulationVisitor extends RobotSimulationVisitor&lt;Void&gt; {
+    private static final String MOTOR_LEFT = &quot;CONST.MOTOR_LEFT&quot;;
+    private static final String MOTOR_RIGHT = &quot;CONST.MOTOR_RIGHT&quot;;
+
+    private SimulationVisitor(Configuration brickConfiguration, ILanguage language) {
+<span class="fc" id="L58">        super(brickConfiguration);</span>
+<span class="fc" id="L59">    }</span>
+
+    public static String generate(Configuration brickConfiguration, ArrayList&lt;ArrayList&lt;Phrase&lt;Void&gt;&gt;&gt; phrasesSet, ILanguage language) {
+<span class="pc bpc" id="L62" title="1 of 2 branches missed.">        Assert.isTrue(!phrasesSet.isEmpty());</span>
+<span class="fc" id="L63">        Assert.notNull(brickConfiguration);</span>
+
+<span class="fc" id="L65">        SimulationVisitor astVisitor = new SimulationVisitor(brickConfiguration, language);</span>
+<span class="fc" id="L66">        astVisitor.generateCodeFromPhrases(phrasesSet);</span>
+<span class="fc" id="L67">        return astVisitor.sb.toString();</span>
+    }
+
+    @Override
+    public Void visitDriveAction(DriveAction&lt;Void&gt; driveAction) {
+<span class="fc" id="L72">        String end = createClosingBracket();</span>
+<span class="fc" id="L73">        this.sb.append(&quot;createDriveAction(&quot;);</span>
+<span class="fc" id="L74">        driveAction.getParam().getSpeed().visit(this);</span>
+<span class="fc" id="L75">        IDriveDirection leftMotorRotationDirection = this.brickConfiguration.getActorOnPort(this.brickConfiguration.getLeftMotorPort()).getRotationDirection();</span>
+<span class="fc" id="L76">        DriveDirection driveDirection = (DriveDirection) driveAction.getDirection();</span>
+<span class="pc bpc" id="L77" title="1 of 2 branches missed.">        if ( leftMotorRotationDirection != DriveDirection.FOREWARD ) {</span>
+<span class="nc bnc" id="L78" title="All 2 branches missed.">            driveDirection = getDriveDirection(driveAction.getDirection() == DriveDirection.FOREWARD);</span>
+        }
+<span class="fc" id="L80">        this.sb.append(&quot;, CONST.&quot; + driveDirection);</span>
+<span class="fc" id="L81">        MotorDuration&lt;Void&gt; duration = driveAction.getParam().getDuration();</span>
+<span class="fc" id="L82">        appendDuration(duration);</span>
+<span class="fc" id="L83">        this.sb.append(end);</span>
+<span class="fc" id="L84">        return null;</span>
+    }
+
+    @Override
+    public Void visitCurveAction(CurveAction&lt;Void&gt; curveAction) {
+<span class="fc" id="L89">        String end = createClosingBracket();</span>
+<span class="fc" id="L90">        this.sb.append(&quot;createCurveAction(&quot;);</span>
+<span class="fc" id="L91">        curveAction.getParamLeft().getSpeed().visit(this);</span>
+<span class="fc" id="L92">        this.sb.append(&quot;, &quot;);</span>
+<span class="fc" id="L93">        curveAction.getParamRight().getSpeed().visit(this);</span>
+<span class="fc" id="L94">        IDriveDirection leftMotorRotationDirection = this.brickConfiguration.getActorOnPort(this.brickConfiguration.getLeftMotorPort()).getRotationDirection();</span>
+<span class="fc" id="L95">        DriveDirection driveDirection = (DriveDirection) curveAction.getDirection();</span>
+<span class="pc bpc" id="L96" title="1 of 2 branches missed.">        if ( leftMotorRotationDirection != DriveDirection.FOREWARD ) {</span>
+<span class="nc bnc" id="L97" title="All 2 branches missed.">            driveDirection = getDriveDirection(curveAction.getDirection() == DriveDirection.FOREWARD);</span>
+        }
+<span class="fc" id="L99">        this.sb.append(&quot;, CONST.&quot; + driveDirection);</span>
+<span class="fc" id="L100">        MotorDuration&lt;Void&gt; duration = curveAction.getParamLeft().getDuration();</span>
+<span class="fc" id="L101">        appendDuration(duration);</span>
+<span class="fc" id="L102">        this.sb.append(end);</span>
+<span class="fc" id="L103">        return null;</span>
+    }
+
+    @Override
+    public Void visitTurnAction(TurnAction&lt;Void&gt; turnAction) {
+<span class="fc" id="L108">        String end = createClosingBracket();</span>
+<span class="fc" id="L109">        this.sb.append(&quot;createTurnAction(&quot;);</span>
+<span class="fc" id="L110">        turnAction.getParam().getSpeed().visit(this);</span>
+<span class="fc" id="L111">        IDriveDirection leftMotorRotationDirection = this.brickConfiguration.getActorOnPort(this.brickConfiguration.getLeftMotorPort()).getRotationDirection();</span>
+<span class="fc" id="L112">        ITurnDirection turnDirection = turnAction.getDirection();</span>
+<span class="pc bpc" id="L113" title="1 of 2 branches missed.">        if ( leftMotorRotationDirection != DriveDirection.FOREWARD ) {</span>
+<span class="nc bnc" id="L114" title="All 2 branches missed.">            turnDirection = getTurnDirection(turnAction.getDirection() == TurnDirection.LEFT);</span>
+        }
+<span class="fc" id="L116">        this.sb.append(&quot;, CONST.&quot; + turnDirection);</span>
+<span class="fc" id="L117">        MotorDuration&lt;Void&gt; duration = turnAction.getParam().getDuration();</span>
+<span class="fc" id="L118">        appendDuration(duration);</span>
+<span class="fc" id="L119">        this.sb.append(end);</span>
+<span class="fc" id="L120">        return null;</span>
+    }
+
+    @Override
+    public Void visitLightAction(LightAction&lt;Void&gt; lightAction) {
+<span class="fc" id="L125">        String end = createClosingBracket();</span>
+<span class="fc" id="L126">        this.sb.append(&quot;createTurnLight(CONST.&quot; + lightAction.getColor() + &quot;, CONST.&quot; + lightAction.getMode());</span>
+<span class="fc" id="L127">        this.sb.append(end);</span>
+<span class="fc" id="L128">        return null;</span>
+    }
+
+    @Override
+    public Void visitLightStatusAction(LightStatusAction&lt;Void&gt; lightStatusAction) {
+<span class="fc" id="L133">        String end = createClosingBracket();</span>
+<span class="fc" id="L134">        this.sb.append(&quot;createStatusLight(CONST.&quot; + lightStatusAction.getStatus());</span>
+<span class="fc" id="L135">        this.sb.append(end);</span>
+<span class="fc" id="L136">        return null;</span>
+    }
+
+    @Override
+    public Void visitMotorGetPowerAction(MotorGetPowerAction&lt;Void&gt; motorGetPowerAction) {
+<span class="pc bpc" id="L141" title="1 of 2 branches missed.">        this.sb.append(&quot;createGetMotorPower(&quot; + (motorGetPowerAction.getPort().getOraName().equals(&quot;B&quot;) ? MOTOR_RIGHT : MOTOR_LEFT).toString() + &quot;)&quot;);</span>
+<span class="fc" id="L142">        return null;</span>
+    }
+
+    @Override
+    public Void visitMotorOnAction(MotorOnAction&lt;Void&gt; motorOnAction) {
+<span class="fc bfc" id="L147" title="All 2 branches covered.">        boolean isDuration = motorOnAction.getParam().getDuration() != null;</span>
+<span class="fc" id="L148">        String end = createClosingBracket();</span>
+<span class="fc" id="L149">        this.sb.append(&quot;createMotorOnAction(&quot;);</span>
+<span class="fc" id="L150">        motorOnAction.getParam().getSpeed().visit(this);</span>
+<span class="fc bfc" id="L151" title="All 2 branches covered.">        this.sb.append(&quot;, &quot; + (motorOnAction.getPort().getOraName().equals(&quot;B&quot;) ? MOTOR_RIGHT : MOTOR_LEFT).toString());</span>
+<span class="fc bfc" id="L152" title="All 2 branches covered.">        if ( isDuration ) {</span>
+<span class="fc" id="L153">            this.sb.append(&quot;, createDuration(CONST.&quot;);</span>
+<span class="fc" id="L154">            this.sb.append(motorOnAction.getParam().getDuration().getType().toString() + &quot;, &quot;);</span>
+<span class="fc" id="L155">            motorOnAction.getParam().getDuration().getValue().visit(this);</span>
+<span class="fc" id="L156">            this.sb.append(&quot;)&quot;);</span>
+        }
+<span class="fc" id="L158">        this.sb.append(end);</span>
+<span class="fc" id="L159">        return null;</span>
+    }
+
+    @Override
+    public Void visitMotorSetPowerAction(MotorSetPowerAction&lt;Void&gt; motorSetPowerAction) {
+<span class="nc" id="L164">        String end = createClosingBracket();</span>
+<span class="nc bnc" id="L165" title="All 2 branches missed.">        this.sb.append(&quot;createSetMotorPowerAction(&quot; + (motorSetPowerAction.getPort().getOraName().equals(&quot;B&quot;) ? MOTOR_RIGHT : MOTOR_LEFT).toString() + &quot;, &quot;);</span>
+<span class="nc" id="L166">        motorSetPowerAction.getPower().visit(this);</span>
+<span class="nc" id="L167">        this.sb.append(end);</span>
+<span class="nc" id="L168">        return null;</span>
+    }
+
+    @Override
+    public Void visitMotorStopAction(MotorStopAction&lt;Void&gt; motorStopAction) {
+<span class="fc" id="L173">        String end = createClosingBracket();</span>
+<span class="fc" id="L174">        this.sb.append(&quot;createStopMotorAction(&quot;);</span>
+<span class="fc bfc" id="L175" title="All 2 branches covered.">        this.sb.append((motorStopAction.getPort().getOraName().equals(&quot;B&quot;) ? MOTOR_RIGHT : MOTOR_LEFT).toString());</span>
+<span class="fc" id="L176">        this.sb.append(end);</span>
+<span class="fc" id="L177">        return null;</span>
+    }
+
+    @Override
+    public Void visitClearDisplayAction(ClearDisplayAction&lt;Void&gt; clearDisplayAction) {
+<span class="fc" id="L182">        String end = createClosingBracket();</span>
+<span class="fc" id="L183">        this.sb.append(&quot;createClearDisplayAction(&quot;);</span>
+<span class="fc" id="L184">        this.sb.append(end);</span>
+<span class="fc" id="L185">        return null;</span>
+    }
+
+    @Override
+    public Void visitVolumeAction(VolumeAction&lt;Void&gt; volumeAction) {
+<span class="nc bnc" id="L190" title="All 2 branches missed.">        if ( volumeAction.getMode() == VolumeAction.Mode.SET ) {</span>
+<span class="nc" id="L191">            String end = createClosingBracket();</span>
+<span class="nc" id="L192">            this.sb.append(&quot;createSetVolumeAction(CONST.&quot; + volumeAction.getMode() + &quot;, &quot;);</span>
+<span class="nc" id="L193">            volumeAction.getVolume().visit(this);</span>
+<span class="nc" id="L194">            this.sb.append(end);</span>
+<span class="nc" id="L195">        } else {</span>
+<span class="nc" id="L196">            this.sb.append(&quot;createGetVolume()&quot;);</span>
+        }
+<span class="nc" id="L198">        return null;</span>
+    }
+
+    private String getLanguageString(ILanguage language) {
+<span class="nc bnc" id="L202" title="All 12 branches missed.">        switch ( (Language) language ) {</span>
+            case GERMAN:
+<span class="nc" id="L204">                return &quot;de-DE&quot;;</span>
+            case ENGLISH:
+<span class="nc" id="L206">                return &quot;en-US&quot;;</span>
+            case FRENCH:
+<span class="nc" id="L208">                return &quot;fr-FR&quot;;</span>
+            case SPANISH:
+<span class="nc" id="L210">                return &quot;es-ES&quot;;</span>
+            case ITALIAN:
+<span class="nc" id="L212">                return &quot;it-IT&quot;;</span>
+            case DUTCH:
+<span class="nc" id="L214">                return &quot;nl-NL&quot;;</span>
+            case POLISH:
+<span class="nc" id="L216">                return &quot;pl-PL&quot;;</span>
+            case RUSSIAN:
+<span class="nc" id="L218">                return &quot;ru-RU&quot;;</span>
+            case PORTUGUESE:
+<span class="nc" id="L220">                return &quot;pt-BR&quot;;</span>
+            case JAPANESE:
+<span class="nc" id="L222">                return &quot;ja-JP&quot;;</span>
+            case CHINESE:
+<span class="nc" id="L224">                return &quot;zh-CN&quot;;</span>
+            default:
+<span class="nc" id="L226">                return &quot;&quot;;</span>
+        }
+    }
+
+    @Override
+    public Void visitSetLanguageAction(SetLanguageAction&lt;Void&gt; setLanguageAction) {
+<span class="nc" id="L232">        String end = createClosingBracket();</span>
+<span class="nc" id="L233">        this.sb.append(&quot;createSetLanguageAction(createConstant(CONST.STRING_CONST, \'&quot;);</span>
+<span class="nc" id="L234">        this.sb.append(getLanguageString(setLanguageAction.getLanguage()));</span>
+<span class="nc" id="L235">        this.sb.append(&quot;\')&quot;);</span>
+<span class="nc" id="L236">        this.sb.append(end);</span>
+<span class="nc" id="L237">        return null;</span>
+    }
+
+    @Override
+    public Void visitSayTextAction(SayTextAction&lt;Void&gt; sayTextAction) {
+<span class="nc" id="L242">        String end = createClosingBracket();</span>
+        // this.sb.append(&quot;createSetLanguageAction(createConstant(CONST.STRING_CONST,
+        // \'&quot;);
+        // this.sb.append(this.getLanguageString(this.language));
+        // this.sb.append(&quot;\')&quot;);
+        // this.sb.append(end);
+        // this.visitExprStmt();
+<span class="nc" id="L249">        this.sb.append(&quot;createSayTextAction(&quot;);</span>
+<span class="nc bnc" id="L250" title="All 2 branches missed.">        if ( !sayTextAction.getMsg().getKind().hasName(&quot;STRING_CONST&quot;) ) {</span>
+<span class="nc" id="L251">            this.sb.append(&quot;String(&quot;);</span>
+<span class="nc" id="L252">            sayTextAction.getMsg().visit(this);</span>
+<span class="nc" id="L253">            this.sb.append(&quot;)&quot;);</span>
+        } else {
+<span class="nc" id="L255">            sayTextAction.getMsg().visit(this);</span>
+        }
+<span class="nc" id="L257">        BlockType emptyBlock = BlockTypeContainer.getByName(&quot;EMPTY_EXPR&quot;);</span>
+<span class="nc bnc" id="L258" title="All 4 branches missed.">        if ( !(sayTextAction.getSpeed().getKind().equals(emptyBlock) &amp;&amp; sayTextAction.getPitch().getKind().equals(emptyBlock)) ) {</span>
+<span class="nc" id="L259">            this.sb.append(&quot;,&quot;);</span>
+<span class="nc" id="L260">            sayTextAction.getSpeed().visit(this);</span>
+<span class="nc" id="L261">            this.sb.append(&quot;,&quot;);</span>
+<span class="nc" id="L262">            sayTextAction.getPitch().visit(this);</span>
+        }
+        // this.sb.append(&quot;)&quot;);
+<span class="nc" id="L265">        this.sb.append(end);</span>
+<span class="nc" id="L266">        return null;</span>
+    }
+
+    @Override
+    public Void visitPlayFileAction(PlayFileAction&lt;Void&gt; playFileAction) {
+<span class="nc" id="L271">        String end = createClosingBracket();</span>
+<span class="nc" id="L272">        this.sb.append(&quot;createPlayFileAction(&quot; + playFileAction.getFileName());</span>
+<span class="nc" id="L273">        this.sb.append(end);</span>
+<span class="nc" id="L274">        return null;</span>
+    }
+
+    @Override
+    public Void visitShowPictureAction(ShowPictureAction&lt;Void&gt; showPictureAction) {
+<span class="fc" id="L279">        String end = createClosingBracket();</span>
+<span class="fc" id="L280">        this.sb.append(&quot;createShowPictureAction('&quot; + showPictureAction.getPicture() + &quot;', &quot;);</span>
+<span class="fc" id="L281">        showPictureAction.getX().visit(this);</span>
+<span class="fc" id="L282">        this.sb.append(&quot;, &quot;);</span>
+<span class="fc" id="L283">        showPictureAction.getY().visit(this);</span>
+<span class="fc" id="L284">        this.sb.append(end);</span>
+<span class="fc" id="L285">        return null;</span>
+    }
+
+    @Override
+    public Void visitShowTextAction(ShowTextAction&lt;Void&gt; showTextAction) {
+<span class="fc" id="L290">        String end = createClosingBracket();</span>
+<span class="fc" id="L291">        this.sb.append(&quot;createShowTextAction(&quot;);</span>
+<span class="fc" id="L292">        showTextAction.getMsg().visit(this);</span>
+<span class="fc" id="L293">        this.sb.append(&quot;, &quot;);</span>
+<span class="fc" id="L294">        showTextAction.getX().visit(this);</span>
+<span class="fc" id="L295">        this.sb.append(&quot;, &quot;);</span>
+<span class="fc" id="L296">        showTextAction.getY().visit(this);</span>
+<span class="fc" id="L297">        this.sb.append(end);</span>
+<span class="fc" id="L298">        return null;</span>
+    }
+
+    @Override
+    public Void visitMotorDriveStopAction(MotorDriveStopAction&lt;Void&gt; stopAction) {
+<span class="fc" id="L303">        String end = createClosingBracket();</span>
+<span class="fc" id="L304">        this.sb.append(&quot;createStopDrive(&quot;);</span>
+<span class="fc" id="L305">        this.sb.append(end);</span>
+<span class="fc" id="L306">        return null;</span>
+    }
+
+    @Override
+    public Void visitBrickSensor(BrickSensor&lt;Void&gt; brickSensor) {
+<span class="nc" id="L311">        this.sb.append(&quot;createGetSample(CONST.BUTTONS, CONST.&quot; + brickSensor.getPort() + &quot;)&quot;);</span>
+<span class="nc" id="L312">        return null;</span>
+    }
+
+    @Override
+    public Void visitColorSensor(ColorSensor&lt;Void&gt; colorSensor) {
+<span class="fc" id="L317">        this.sb.append(&quot;createGetSample(CONST.COLOR, CONST.&quot; + ((ColorSensorMode) colorSensor.getMode()).getModeValue() + &quot;)&quot;);</span>
+<span class="fc" id="L318">        return null;</span>
+    }
+
+    @Override
+    public Void visitLightSensor(LightSensor&lt;Void&gt; lightSensor) {
+<span class="nc" id="L323">        this.sb.append(&quot;createGetSample(CONST.LIGHT, CONST.&quot; + ((LightSensorMode) lightSensor.getMode()).getModeValue() + &quot;)&quot;);</span>
+<span class="nc" id="L324">        return null;</span>
+    }
+
+    @Override
+    public Void visitEncoderSensor(EncoderSensor&lt;Void&gt; encoderSensor) {
+<span class="fc bfc" id="L329" title="All 2 branches covered.">        String encoderMotor = (encoderSensor.getPort().getOraName().equals(&quot;B&quot;) ? MOTOR_RIGHT : MOTOR_LEFT).toString();</span>
+<span class="fc bfc" id="L330" title="All 2 branches covered.">        if ( encoderSensor.getMode() == MotorTachoMode.RESET ) {</span>
+<span class="fc" id="L331">            String end = createClosingBracket();</span>
+<span class="fc" id="L332">            this.sb.append(&quot;createResetEncoderSensor(&quot; + encoderMotor);</span>
+<span class="fc" id="L333">            this.sb.append(end);</span>
+<span class="fc" id="L334">        } else {</span>
+<span class="fc" id="L335">            this.sb.append(&quot;createGetSampleEncoderSensor(&quot; + encoderMotor + &quot;, CONST.&quot; + encoderSensor.getMode() + &quot;)&quot;);</span>
+        }
+<span class="fc" id="L337">        return null;</span>
+    }
+
+    @Override
+    public Void visitGyroSensor(GyroSensor&lt;Void&gt; gyroSensor) {
+<span class="fc bfc" id="L342" title="All 2 branches covered.">        if ( gyroSensor.getMode() == GyroSensorMode.RESET ) {</span>
+<span class="fc" id="L343">            String end = createClosingBracket();</span>
+<span class="fc" id="L344">            this.sb.append(&quot;createResetGyroSensor(&quot;);</span>
+<span class="fc" id="L345">            this.sb.append(end);</span>
+<span class="fc" id="L346">        } else {</span>
+<span class="fc" id="L347">            this.sb.append(&quot;createGetGyroSensorSample(CONST.GYRO, CONST.&quot; + gyroSensor.getMode() + &quot;)&quot;);</span>
+        }
+<span class="fc" id="L349">        return null;</span>
+    }
+
+    @Override
+    public Void visitCompassSensor(CompassSensor&lt;Void&gt; compassSensor) {
+<span class="nc bnc" id="L354" title="All 4 branches missed.">        switch ( (CompassSensorMode) compassSensor.getMode() ) {</span>
+            case CALIBRATE:
+<span class="nc" id="L356">                this.sb.append(&quot;&quot;);</span>
+<span class="nc" id="L357">                break;</span>
+            case ANGLE:
+<span class="nc" id="L359">                this.sb.append(&quot;null&quot;);</span>
+<span class="nc" id="L360">                break;</span>
+            case COMPASS:
+<span class="nc" id="L362">                this.sb.append(&quot;null&quot;);</span>
+<span class="nc" id="L363">                break;</span>
+            default:
+<span class="nc" id="L365">                throw new DbcException(&quot;Invalid Compass Mode!&quot;);</span>
+        }
+<span class="nc" id="L367">        return null;</span>
+    }
+
+    @Override
+    public Void visitInfraredSensor(InfraredSensor&lt;Void&gt; infraredSensor) {
+<span class="nc" id="L372">        this.sb.append(&quot;createGetSample(CONST.INFRARED, CONST.&quot; + infraredSensor.getMode() + &quot;)&quot;);</span>
+<span class="nc" id="L373">        return null;</span>
+    }
+
+    @Override
+    public Void visitIRSeekerSensor(IRSeekerSensor&lt;Void&gt; irSeekerSensor) {
+<span class="nc" id="L378">        this.sb.append(&quot;null&quot;);</span>
+<span class="nc" id="L379">        return null;</span>
+    }
+
+    @Override
+    public Void visitTouchSensor(TouchSensor&lt;Void&gt; touchSensor) {
+<span class="fc" id="L384">        this.sb.append(&quot;createGetSample(CONST.TOUCH)&quot;);</span>
+<span class="fc" id="L385">        return null;</span>
+    }
+
+    @Override
+    public Void visitUltrasonicSensor(UltrasonicSensor&lt;Void&gt; ultrasonicSensor) {
+<span class="fc" id="L390">        this.sb.append(&quot;createGetSample(CONST.ULTRASONIC, CONST.&quot; + ultrasonicSensor.getMode() + &quot;)&quot;);</span>
+<span class="fc" id="L391">        return null;</span>
+    }
+
+    @Override
+    public Void visitSoundSensor(SoundSensor&lt;Void&gt; soundSensor) {
+<span class="fc" id="L396">        this.sb.append(&quot;createGetSample(CONST.SOUND)&quot;);</span>
+<span class="fc" id="L397">        return null;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

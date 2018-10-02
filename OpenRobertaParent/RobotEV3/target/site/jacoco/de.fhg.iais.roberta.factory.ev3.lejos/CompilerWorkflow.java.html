@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>CompilerWorkflow.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">RobotEV3</a> &gt; <a href="index.source.html" class="el_package">de.fhg.iais.roberta.factory.ev3.lejos</a> &gt; <span class="el_source">CompilerWorkflow.java</span></div><h1>CompilerWorkflow.java</h1><pre class="source lang-java linenums">package de.fhg.iais.roberta.factory.ev3.lejos;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import de.fhg.iais.roberta.blockly.generated.BlockSet;
+import de.fhg.iais.roberta.components.Configuration;
+import de.fhg.iais.roberta.components.ev3.EV3Configuration;
+import de.fhg.iais.roberta.components.ev3.JavaSourceCompiler;
+import de.fhg.iais.roberta.factory.AbstractCompilerWorkflow;
+import de.fhg.iais.roberta.factory.IRobotFactory;
+import de.fhg.iais.roberta.inter.mode.action.ILanguage;
+import de.fhg.iais.roberta.syntax.codegen.ev3.JavaVisitor;
+import de.fhg.iais.roberta.transformer.BlocklyProgramAndConfigTransformer;
+import de.fhg.iais.roberta.transformer.ev3.Jaxb2Ev3ConfigurationTransformer;
+import de.fhg.iais.roberta.util.Key;
+import de.fhg.iais.roberta.util.jaxb.JaxbHelper;
+
+public class CompilerWorkflow extends AbstractCompilerWorkflow {
+<span class="fc" id="L20">    private static final Logger LOG = LoggerFactory.getLogger(CompilerWorkflow.class);</span>
+    public final String pathToCrosscompilerBaseDir;
+    public final String crossCompilerResourcesDir;
+
+<span class="fc" id="L24">    public CompilerWorkflow(String pathToCrosscompilerBaseDir, String crossCompilerResourcesDir) {</span>
+<span class="fc" id="L25">        this.pathToCrosscompilerBaseDir = pathToCrosscompilerBaseDir;</span>
+<span class="fc" id="L26">        this.crossCompilerResourcesDir = crossCompilerResourcesDir;</span>
+
+<span class="fc" id="L28">    }</span>
+
+    @Override
+    public String generateSourceCode(String token, String programName, BlocklyProgramAndConfigTransformer data, ILanguage language) {
+<span class="nc" id="L32">        return JavaVisitor.generate(programName, (EV3Configuration) data.getBrickConfiguration(), data.getProgramTransformer().getTree(), true, language);</span>
+    }
+
+    @Override
+    public Key compileSourceCode(String token, String programName, String sourceCode, ILanguage language, Object flagProvider) {
+        //Ev3CompilerWorkflow.LOG.info(&quot;generated code:\n{}&quot;, sourceCode); // only needed for EXTREME debugging
+        try {
+<span class="nc" id="L39">            storeGeneratedProgram(token, programName, sourceCode, this.pathToCrosscompilerBaseDir, &quot;.java&quot;);</span>
+<span class="nc" id="L40">        } catch ( Exception e ) {</span>
+<span class="nc" id="L41">            CompilerWorkflow.LOG.error(&quot;Storing the generated program into directory &quot; + token + &quot; failed&quot;, e);</span>
+<span class="nc" id="L42">            return Key.COMPILERWORKFLOW_ERROR_PROGRAM_STORE_FAILED;</span>
+<span class="nc" id="L43">        }</span>
+
+<span class="nc" id="L45">        JavaSourceCompiler scp = new JavaSourceCompiler(programName, sourceCode, this.crossCompilerResourcesDir);</span>
+<span class="nc" id="L46">        boolean isSuccess = scp.compileAndPackage(this.pathToCrosscompilerBaseDir, token);</span>
+<span class="nc bnc" id="L47" title="All 2 branches missed.">        if ( !isSuccess ) {</span>
+<span class="nc" id="L48">            LOG.error(&quot;build exception. Messages from the build script are:\n&quot; + scp.getCompilationMessages());</span>
+<span class="nc" id="L49">            return Key.COMPILERWORKFLOW_ERROR_PROGRAM_COMPILE_FAILED;</span>
+        } else {
+<span class="nc" id="L51">            LOG.info(&quot;jar for program {} generated successfully&quot;, programName);</span>
+<span class="nc" id="L52">            return Key.COMPILERWORKFLOW_SUCCESS;</span>
+        }
+    }
+
+    @Override
+    public Configuration generateConfiguration(IRobotFactory factory, String blocklyXml) throws Exception {
+<span class="nc" id="L58">        BlockSet project = JaxbHelper.xml2BlockSet(blocklyXml);</span>
+<span class="nc" id="L59">        Jaxb2Ev3ConfigurationTransformer transformer = new Jaxb2Ev3ConfigurationTransformer(factory);</span>
+<span class="nc" id="L60">        return transformer.transform(project);</span>
+    }
+
+    @Override
+    public String getCompiledCode() {
+<span class="nc" id="L65">        return null;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

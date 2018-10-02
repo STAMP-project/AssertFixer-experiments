@@ -1,0 +1,589 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>ArduinoVisitor.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">RobotArdu</a> &gt; <a href="index.source.html" class="el_package">de.fhg.iais.roberta.syntax.codegen.arduino</a> &gt; <span class="el_source">ArduinoVisitor.java</span></div><h1>ArduinoVisitor.java</h1><pre class="source lang-java linenums">package de.fhg.iais.roberta.syntax.codegen.arduino;
+
+import java.util.ArrayList;
+import java.util.Set;
+
+import de.fhg.iais.roberta.components.UsedActor;
+import de.fhg.iais.roberta.components.UsedConfigurationBlock;
+import de.fhg.iais.roberta.components.UsedSensor;
+import de.fhg.iais.roberta.mode.general.IndexLocation;
+import de.fhg.iais.roberta.mode.sensor.TimerSensorMode;
+import de.fhg.iais.roberta.syntax.Phrase;
+import de.fhg.iais.roberta.syntax.codegen.RobotCppVisitor;
+import de.fhg.iais.roberta.syntax.lang.expr.Binary;
+import de.fhg.iais.roberta.syntax.lang.expr.Binary.Op;
+import de.fhg.iais.roberta.syntax.lang.expr.ListCreate;
+import de.fhg.iais.roberta.syntax.lang.expr.MathConst;
+import de.fhg.iais.roberta.syntax.lang.expr.Var;
+import de.fhg.iais.roberta.syntax.lang.expr.VarDeclaration;
+import de.fhg.iais.roberta.syntax.lang.functions.FunctionNames;
+import de.fhg.iais.roberta.syntax.lang.functions.GetSubFunct;
+import de.fhg.iais.roberta.syntax.lang.functions.IndexOfFunct;
+import de.fhg.iais.roberta.syntax.lang.functions.LengthOfIsEmptyFunct;
+import de.fhg.iais.roberta.syntax.lang.functions.ListGetIndex;
+import de.fhg.iais.roberta.syntax.lang.functions.ListSetIndex;
+import de.fhg.iais.roberta.syntax.lang.functions.MathConstrainFunct;
+import de.fhg.iais.roberta.syntax.lang.functions.MathNumPropFunct;
+import de.fhg.iais.roberta.syntax.lang.functions.MathOnListFunct;
+import de.fhg.iais.roberta.syntax.lang.functions.MathPowerFunct;
+import de.fhg.iais.roberta.syntax.lang.functions.MathRandomFloatFunct;
+import de.fhg.iais.roberta.syntax.lang.functions.MathRandomIntFunct;
+import de.fhg.iais.roberta.syntax.lang.functions.TextJoinFunct;
+import de.fhg.iais.roberta.syntax.lang.functions.TextPrintFunct;
+import de.fhg.iais.roberta.syntax.lang.stmt.AssignStmt;
+import de.fhg.iais.roberta.syntax.lang.stmt.RepeatStmt;
+import de.fhg.iais.roberta.syntax.lang.stmt.WaitStmt;
+import de.fhg.iais.roberta.syntax.lang.stmt.WaitTimeStmt;
+import de.fhg.iais.roberta.syntax.sensor.generic.TimerSensor;
+import de.fhg.iais.roberta.typecheck.BlocklyType;
+import de.fhg.iais.roberta.util.dbc.DbcException;
+
+public abstract class ArduinoVisitor extends RobotCppVisitor {
+
+    protected Set&lt;UsedSensor&gt; usedSensors;
+    protected Set&lt;UsedConfigurationBlock&gt; usedConfigurationBlocks;
+    protected Set&lt;UsedActor&gt; usedActors;
+    protected ArrayList&lt;VarDeclaration&lt;Void&gt;&gt; usedVars;
+
+    protected ArduinoVisitor(ArrayList&lt;ArrayList&lt;Phrase&lt;Void&gt;&gt;&gt; programPhrases, int indentation) {
+<span class="fc" id="L49">        super(programPhrases, indentation);</span>
+<span class="fc" id="L50">    }</span>
+
+    protected void generateUsedVars() {
+<span class="fc bfc" id="L53" title="All 2 branches covered.">        for ( VarDeclaration&lt;Void&gt; var : this.usedVars ) {</span>
+<span class="fc bfc" id="L54" title="All 2 branches covered.">            if ( !var.getValue().getKind().hasName(&quot;EMPTY_EXPR&quot;) ) {</span>
+<span class="pc bpc" id="L55" title="3 of 4 branches missed.">                if ( var.getTypeVar().isArray() &amp;&amp; !var.getValue().getKind().hasName(&quot;EMPTY_EXPR&quot;) ) {</span>
+<span class="nc" id="L56">                    int size = 0;</span>
+<span class="nc bnc" id="L57" title="All 2 branches missed.">                    if ( var.getValue().getKind().hasName(&quot;SENSOR_EXPR&quot;) ) {</span>
+<span class="nc" id="L58">                        size = 3;</span>
+                    } else {
+<span class="nc" id="L60">                        ListCreate&lt;Void&gt; list = (ListCreate&lt;Void&gt;) var.getValue();</span>
+<span class="nc" id="L61">                        size = list.getValue().get().size();</span>
+                    }
+<span class="nc" id="L63">                    this.sb.append(&quot;__&quot; + var.getName() + &quot;Len = &quot;).append(size).append(&quot;;&quot;);</span>
+<span class="nc" id="L64">                    this.nlIndent();</span>
+<span class="nc" id="L65">                    this.sb.append(getLanguageVarTypeFromBlocklyType(var.getTypeVar())).append(&quot; &quot;);</span>
+<span class="nc" id="L66">                    this.sb.append(&quot;__&quot; + var.getName()).append(&quot;[]&quot;).append(&quot; = &quot;);</span>
+<span class="nc" id="L67">                    var.getValue().visit(this);</span>
+<span class="nc" id="L68">                    this.sb.append(&quot;;&quot;);</span>
+<span class="nc" id="L69">                    this.nlIndent();</span>
+                }
+<span class="fc" id="L71">                this.sb.append(var.getName());</span>
+<span class="pc bpc" id="L72" title="1 of 2 branches missed.">                if ( var.getTypeVar().isArray() ) {</span>
+<span class="nc" id="L73">                    this.sb.append(&quot; = (&quot;);</span>
+<span class="nc" id="L74">                    this.sb.append(getLanguageVarTypeFromBlocklyType(var.getTypeVar())).append(&quot;*)malloc(&quot;);</span>
+<span class="nc" id="L75">                    this.sb.append(&quot;sizeof(&quot;);</span>
+<span class="nc" id="L76">                    this.sb.append(getLanguageVarTypeFromBlocklyType(var.getTypeVar())).append(&quot;)*&quot;);</span>
+<span class="nc" id="L77">                    this.sb.append(&quot;__&quot; + var.getName() + &quot;Len&quot;).append(&quot;)&quot;).append(&quot;;&quot;);</span>
+<span class="nc" id="L78">                    this.nlIndent();</span>
+<span class="nc" id="L79">                    this.sb.append(&quot;rob.createArray(&quot;).append(var.getName()).append(&quot;, &quot;);</span>
+<span class="nc" id="L80">                    this.sb.append(&quot;__&quot; + var.getName() + &quot;Len&quot;).append(&quot;, &quot;).append(&quot;__&quot; + var.getName());</span>
+<span class="nc" id="L81">                    this.sb.append(&quot;)&quot;);</span>
+                } else {
+<span class="fc" id="L83">                    this.sb.append(&quot; = &quot;);</span>
+<span class="fc" id="L84">                    var.getValue().visit(this);</span>
+                }
+<span class="fc" id="L86">                this.sb.append(&quot;;&quot;);</span>
+<span class="fc" id="L87">                this.nlIndent();</span>
+            } else {
+<span class="pc bpc" id="L89" title="1 of 2 branches missed.">                if ( var.getTypeVar().isArray() ) {</span>
+<span class="nc" id="L90">                    this.sb.append(&quot;__&quot; + var.getName() + &quot;Len = &quot;).append(0);</span>
+<span class="nc" id="L91">                    this.sb.append(&quot;;&quot;);</span>
+<span class="nc" id="L92">                    this.nlIndent();</span>
+                }
+            }
+<span class="fc" id="L95">        }</span>
+<span class="fc" id="L96">    }</span>
+
+    @Override
+    public Void visitVarDeclaration(VarDeclaration&lt;Void&gt; var) {
+<span class="pc bpc" id="L100" title="1 of 2 branches missed.">        if ( var.toString().contains(&quot;false, false&quot;) ) {</span>
+<span class="nc" id="L101">            this.sb.append(getLanguageVarTypeFromBlocklyType(var.getTypeVar())).append(&quot; &quot;);</span>
+<span class="nc" id="L102">            this.sb.append(var.getName());</span>
+<span class="nc bnc" id="L103" title="All 2 branches missed.">            this.sb.append(var.getTypeVar().isArray() ? &quot;[]&quot; : &quot;&quot;);</span>
+        } else {
+<span class="pc bpc" id="L105" title="1 of 2 branches missed.">            if ( var.getTypeVar().isArray() ) {</span>
+<span class="nc" id="L106">                this.sb.append(&quot;int &quot; + &quot;__&quot; + var.getName() + &quot;Len;&quot;);</span>
+<span class="nc" id="L107">                this.nlIndent();</span>
+            }
+<span class="fc" id="L109">            this.sb.append(getLanguageVarTypeFromBlocklyType(var.getTypeVar())).append(&quot; &quot;);</span>
+<span class="pc bpc" id="L110" title="1 of 2 branches missed.">            this.sb.append(var.getTypeVar().isArray() ? &quot;*&quot; : &quot;&quot;);</span>
+<span class="fc" id="L111">            this.sb.append(var.getName());</span>
+        }
+<span class="fc" id="L113">        return null;</span>
+    }
+
+    @Override
+    public Void visitAssignStmt(AssignStmt&lt;Void&gt; assignStmt) {
+<span class="pc bpc" id="L118" title="3 of 4 branches missed.">        if ( assignStmt.getExpr().getKind().hasName(&quot;LIST_CREATE&quot;) &amp;&amp; !assignStmt.getExpr().getKind().hasName(&quot;EMPTY_EXPR&quot;) ) {</span>
+<span class="nc" id="L119">            int size = 0;</span>
+<span class="nc" id="L120">            this.sb.append(getLanguageVarTypeFromBlocklyType(assignStmt.getExpr().getVarType())).append(&quot; &quot;);</span>
+<span class="nc" id="L121">            this.sb.append(&quot;__&quot;);</span>
+<span class="nc" id="L122">            assignStmt.getName().visit(this);</span>
+<span class="nc" id="L123">            this.sb.append(assignStmt.getProperty().getBlocklyId().replaceAll(&quot;[^A-Za-z]+&quot;, &quot;&quot;)).append(&quot;[]&quot;).append(&quot; = &quot;);</span>
+<span class="nc" id="L124">            assignStmt.getExpr().visit(this);</span>
+<span class="nc" id="L125">            this.sb.append(&quot;;&quot;);</span>
+<span class="nc" id="L126">            this.nlIndent();</span>
+<span class="nc bnc" id="L127" title="All 2 branches missed.">            if ( assignStmt.getExpr().getKind().hasName(&quot;SENSOR_EXPR&quot;) ) {</span>
+<span class="nc" id="L128">                size = 3;</span>
+            } else {
+<span class="nc" id="L130">                ListCreate&lt;Void&gt; list = (ListCreate&lt;Void&gt;) assignStmt.getExpr();</span>
+<span class="nc bnc" id="L131" title="All 2 branches missed.">                size = assignStmt.getExpr().getKind().hasName(&quot;SENSOR_EXPR&quot;) ? 3 : list.getValue().get().size();</span>
+            }
+<span class="nc" id="L133">            this.sb.append(&quot;__&quot;);</span>
+<span class="nc" id="L134">            assignStmt.getName().visit(this);</span>
+<span class="nc" id="L135">            this.sb.append(&quot;Len = &quot;).append(size).append(&quot;;&quot;);</span>
+<span class="nc" id="L136">            this.nlIndent();</span>
+        }
+<span class="fc" id="L138">        assignStmt.getName().visit(this);</span>
+
+<span class="fc" id="L140">        this.sb.append(&quot; = &quot;);</span>
+<span class="pc bpc" id="L141" title="1 of 2 branches missed.">        if ( !assignStmt.getExpr().getKind().hasName(&quot;EMPTY_EXPR&quot;) ) {</span>
+<span class="pc bpc" id="L142" title="1 of 2 branches missed.">            if ( assignStmt.getExpr().getKind().hasName(&quot;LIST_CREATE&quot;) ) {</span>
+<span class="nc" id="L143">                this.sb.append(&quot;(&quot;).append(getLanguageVarTypeFromBlocklyType(assignStmt.getExpr().getVarType())).append(&quot;*)realloc(&quot;);</span>
+<span class="nc" id="L144">                assignStmt.getName().visit(this);</span>
+<span class="nc" id="L145">                this.sb.append(&quot;, &quot;).append(&quot;sizeof(&quot;);</span>
+<span class="nc" id="L146">                this.sb.append(getLanguageVarTypeFromBlocklyType(assignStmt.getExpr().getVarType())).append(&quot;)*&quot;);</span>
+<span class="nc" id="L147">                this.sb.append(&quot;__&quot;);</span>
+<span class="nc" id="L148">                assignStmt.getName().visit(this);</span>
+<span class="nc" id="L149">                this.sb.append(&quot;Len);&quot;);</span>
+<span class="nc" id="L150">                this.nlIndent();</span>
+<span class="nc" id="L151">                this.sb.append(&quot;rob.createArray(&quot;);</span>
+<span class="nc" id="L152">                assignStmt.getName().visit(this);</span>
+<span class="nc" id="L153">                this.sb.append(&quot;, &quot;);</span>
+<span class="nc" id="L154">                this.sb.append(&quot;__&quot;);</span>
+<span class="nc" id="L155">                assignStmt.getName().visit(this);</span>
+<span class="nc" id="L156">                this.sb.append(&quot;Len, &quot;).append(&quot;__&quot;);</span>
+<span class="nc" id="L157">                assignStmt.getName().visit(this);</span>
+<span class="nc" id="L158">                this.sb.append(assignStmt.getProperty().getBlocklyId().replaceAll(&quot;[^A-Za-z]+&quot;, &quot;&quot;)).append(&quot;)&quot;);</span>
+            } else {
+<span class="fc" id="L160">                assignStmt.getExpr().visit(this);</span>
+            }
+        }
+<span class="fc" id="L163">        this.sb.append(&quot;;&quot;);</span>
+<span class="fc" id="L164">        return null;</span>
+    }
+
+    @Override
+    public Void visitMathConst(MathConst&lt;Void&gt; mathConst) { // TODO Unify the math consts for all systems
+<span class="pc bpc" id="L169" title="1 of 7 branches missed.">        switch ( mathConst.getMathConst() ) {</span>
+            case PI:
+<span class="fc" id="L171">                this.sb.append(&quot;PI&quot;);</span>
+<span class="fc" id="L172">                break;</span>
+            case E:
+<span class="fc" id="L174">                this.sb.append(&quot;M_E&quot;);</span>
+<span class="fc" id="L175">                break;</span>
+            case GOLDEN_RATIO:
+<span class="fc" id="L177">                this.sb.append(&quot;GOLDEN_RATIO&quot;);</span>
+<span class="fc" id="L178">                break;</span>
+            case SQRT2:
+<span class="fc" id="L180">                this.sb.append(&quot;M_SQRT2&quot;);</span>
+<span class="fc" id="L181">                break;</span>
+            case SQRT1_2:
+<span class="fc" id="L183">                this.sb.append(&quot;M_SQRT1_2&quot;);</span>
+<span class="fc" id="L184">                break;</span>
+            // IEEE 754 floating point representation
+            case INFINITY:
+<span class="fc" id="L187">                this.sb.append(&quot;INFINITY&quot;);</span>
+<span class="fc" id="L188">                break;</span>
+            default:
+                break;
+        }
+<span class="fc" id="L192">        return null;</span>
+    }
+
+    @Override
+    public Void visitBinary(Binary&lt;Void&gt; binary) {
+<span class="fc" id="L197">        Op op = binary.getOp();</span>
+<span class="fc bfc" id="L198" title="All 2 branches covered.">        if ( op == Op.MOD ) {</span>
+<span class="fc" id="L199">            appendFloatModulo(binary);</span>
+<span class="fc" id="L200">            return null;</span>
+        }
+<span class="fc" id="L202">        generateSubExpr(this.sb, false, binary.getLeft(), binary);</span>
+<span class="fc" id="L203">        String sym = getBinaryOperatorSymbol(op);</span>
+<span class="fc" id="L204">        this.sb.append(whitespace() + sym + whitespace());</span>
+<span class="pc bpc" id="L205" title="1 of 2 branches missed.">        if ( op == Op.TEXT_APPEND ) {</span>
+<span class="nc" id="L206">            appendCastToStringIfBoolean(binary);</span>
+<span class="nc" id="L207">            return null;</span>
+<span class="fc bfc" id="L208" title="All 2 branches covered.">        } else if ( op == Op.DIVIDE ) {</span>
+<span class="fc" id="L209">            appendCastToFloat(binary);</span>
+<span class="fc" id="L210">            return null;</span>
+        } else {
+<span class="fc" id="L212">            generateSubExpr(this.sb, parenthesesCheck(binary), binary.getRight(), binary);</span>
+        }
+<span class="fc" id="L214">        return null;</span>
+    }
+
+    private void appendFloatModulo(Binary&lt;Void&gt; binary) {
+<span class="fc" id="L218">        this.sb.append(&quot;fmod(&quot;);</span>
+<span class="fc" id="L219">        generateSubExpr(this.sb, false, binary.getLeft(), binary);</span>
+<span class="fc" id="L220">        this.sb.append(&quot;, &quot;);</span>
+<span class="fc" id="L221">        generateSubExpr(this.sb, parenthesesCheck(binary), binary.getRight(), binary);</span>
+<span class="fc" id="L222">        this.sb.append(&quot;)&quot;);</span>
+<span class="fc" id="L223">    }</span>
+
+    private void appendCastToFloat(Binary&lt;Void&gt; binary) {
+<span class="fc" id="L226">        this.sb.append(&quot;((float) &quot;);</span>
+<span class="fc" id="L227">        generateSubExpr(this.sb, parenthesesCheck(binary), binary.getRight(), binary);</span>
+<span class="fc" id="L228">        this.sb.append(&quot;)&quot;);</span>
+<span class="fc" id="L229">    }</span>
+
+    private void appendCastToStringIfBoolean(Binary&lt;Void&gt; binary) {
+<span class="nc bnc" id="L232" title="All 2 branches missed.">        if ( binary.getRight().getVarType() == BlocklyType.BOOLEAN ) {</span>
+<span class="nc" id="L233">            this.sb.append(&quot;rob.boolToString(&quot;);</span>
+<span class="nc" id="L234">            generateSubExpr(this.sb, false, binary.getRight(), binary);</span>
+<span class="nc" id="L235">            this.sb.append(&quot;)&quot;);</span>
+        } else {
+<span class="nc" id="L237">            generateSubExpr(this.sb, false, binary.getRight(), binary);</span>
+        }
+<span class="nc" id="L239">    }</span>
+
+    @Override
+    public Void visitRepeatStmt(RepeatStmt&lt;Void&gt; repeatStmt) {
+<span class="pc bpc" id="L243" title="1 of 2 branches missed.">        boolean isWaitStmt = repeatStmt.getMode() == RepeatStmt.Mode.WAIT;</span>
+<span class="pc bpc" id="L244" title="1 of 2 branches missed.">        boolean isArduinoLoop = repeatStmt.getMode() == RepeatStmt.Mode.FOREVER_ARDU;</span>
+<span class="pc bpc" id="L245" title="5 of 6 branches missed.">        switch ( repeatStmt.getMode() ) {</span>
+            case UNTIL:
+            case WHILE:
+            case FOREVER:
+<span class="nc" id="L249">                increaseLoopCounter();</span>
+<span class="nc" id="L250">                generateCodeFromStmtCondition(&quot;while&quot;, repeatStmt.getExpr());</span>
+<span class="nc" id="L251">                break;</span>
+            case TIMES:
+            case FOR:
+<span class="nc" id="L254">                increaseLoopCounter();</span>
+<span class="nc" id="L255">                generateCodeFromStmtConditionFor(&quot;for&quot;, repeatStmt.getExpr());</span>
+<span class="nc" id="L256">                break;</span>
+            case WAIT:
+<span class="nc" id="L258">                generateCodeFromStmtCondition(&quot;if&quot;, repeatStmt.getExpr());</span>
+<span class="nc" id="L259">                break;</span>
+            case FOR_EACH:
+<span class="nc" id="L261">                increaseLoopCounter();</span>
+                String varType;
+<span class="nc" id="L263">                String expression = repeatStmt.getExpr().toString();</span>
+<span class="nc" id="L264">                String segments[] = expression.split(&quot;,&quot;);</span>
+<span class="nc" id="L265">                String element = segments[2];</span>
+<span class="nc" id="L266">                String arr = null;</span>
+<span class="nc bnc" id="L267" title="All 2 branches missed.">                if ( expression.contains(&quot;NUMBER&quot;) ) {</span>
+<span class="nc" id="L268">                    varType = &quot;double&quot;;</span>
+<span class="nc bnc" id="L269" title="All 2 branches missed.">                } else if ( expression.contains(&quot;BOOLEAN&quot;) ) {</span>
+<span class="nc" id="L270">                    varType = &quot;bool&quot;;</span>
+                } else {
+<span class="nc" id="L272">                    varType = &quot;String&quot;;</span>
+                }
+<span class="nc bnc" id="L274" title="All 2 branches missed.">                if ( !segments[6].contains(&quot;java.util&quot;) ) {</span>
+<span class="nc" id="L275">                    arr = segments[6].substring(segments[6].indexOf(&quot;[&quot;) + 1, segments[6].indexOf(&quot;]&quot;));</span>
+<span class="nc" id="L276">                    this.sb.append(&quot;for(&quot; + varType + whitespace() + element + &quot; = 0;&quot; + element + &quot; &lt; &quot; + &quot;__&quot; + arr + &quot;Len; &quot; + element + &quot;++) {&quot;);</span>
+                } else {
+<span class="nc" id="L278">                    this.sb.append(&quot;while(false){&quot;);</span>
+                }
+<span class="nc" id="L280">                break;</span>
+            case FOREVER_ARDU:
+<span class="fc" id="L282">                increaseLoopCounter();</span>
+<span class="fc" id="L283">                this.sb.append(&quot;void loop()&quot;);</span>
+<span class="fc" id="L284">                this.nlIndent();</span>
+<span class="fc" id="L285">                this.sb.append(&quot;{&quot;);</span>
+<span class="fc" id="L286">                break;</span>
+            default:
+                break;
+        }
+<span class="fc" id="L290">        incrIndentation();</span>
+<span class="fc" id="L291">        repeatStmt.getList().visit(this);</span>
+<span class="pc bpc" id="L292" title="1 of 2 branches missed.">        if ( !isWaitStmt ) {</span>
+<span class="fc" id="L293">            addContinueLabelToLoop();</span>
+<span class="pc bpc" id="L294" title="1 of 2 branches missed.">            if ( !isArduinoLoop ) {</span>
+<span class="nc" id="L295">                this.nlIndent();</span>
+<span class="nc" id="L296">                this.sb.append(&quot;delay(1);&quot;);</span>
+            }
+        } else {
+<span class="nc" id="L299">            appendBreakStmt();</span>
+        }
+<span class="fc" id="L301">        decrIndentation();</span>
+<span class="fc" id="L302">        this.nlIndent();</span>
+<span class="fc" id="L303">        this.sb.append(&quot;}&quot;);</span>
+<span class="fc" id="L304">        addBreakLabelToLoop(isWaitStmt);</span>
+
+<span class="fc" id="L306">        return null;</span>
+    }
+
+    @Override
+    public Void visitWaitStmt(WaitStmt&lt;Void&gt; waitStmt) {
+<span class="nc" id="L311">        this.sb.append(&quot;while (true) {&quot;);</span>
+<span class="nc" id="L312">        incrIndentation();</span>
+<span class="nc" id="L313">        visitStmtList(waitStmt.getStatements());</span>
+<span class="nc" id="L314">        this.nlIndent();</span>
+<span class="nc" id="L315">        this.sb.append(&quot;delay(1);&quot;);</span>
+<span class="nc" id="L316">        decrIndentation();</span>
+<span class="nc" id="L317">        this.nlIndent();</span>
+<span class="nc" id="L318">        this.sb.append(&quot;}&quot;);</span>
+<span class="nc" id="L319">        return null;</span>
+    }
+
+    @Override
+    public Void visitMathPowerFunct(MathPowerFunct&lt;Void&gt; mathPowerFunct) {
+<span class="nc" id="L324">        this.sb.append(&quot;pow(&quot;);</span>
+<span class="nc" id="L325">        super.visitMathPowerFunct(mathPowerFunct);</span>
+<span class="nc" id="L326">        return null;</span>
+    }
+
+    @Override
+    public Void visitTextJoinFunct(TextJoinFunct&lt;Void&gt; textJoinFunct) {
+<span class="nc" id="L331">        return null;</span>
+    }
+
+    @Override
+    public Void visitGetSubFunct(GetSubFunct&lt;Void&gt; getSubFunct) {
+<span class="nc" id="L336">        return null;</span>
+    }
+
+    @Override
+    public Void visitTextPrintFunct(TextPrintFunct&lt;Void&gt; textPrintFunct) {
+<span class="nc" id="L341">        return null;</span>
+    }
+
+    @Override
+    public Void visitWaitTimeStmt(WaitTimeStmt&lt;Void&gt; waitTimeStmt) {
+<span class="fc" id="L346">        this.sb.append(&quot;delay(&quot;);</span>
+<span class="fc" id="L347">        waitTimeStmt.getTime().visit(this);</span>
+<span class="fc" id="L348">        this.sb.append(&quot;);&quot;);</span>
+<span class="fc" id="L349">        return null;</span>
+    }
+
+    protected void arrayLen(Var&lt;Void&gt; arr) {
+<span class="nc" id="L353">        this.sb.append(&quot;__&quot; + arr.getValue() + &quot;Len&quot;);</span>
+<span class="nc" id="L354">    }</span>
+
+    @Override
+    public Void visitIndexOfFunct(IndexOfFunct&lt;Void&gt; indexOfFunct) {
+<span class="nc bnc" id="L358" title="All 2 branches missed.">        if ( indexOfFunct.getParam().get(0).toString().contains(&quot;ListCreate &quot;) ) {</span>
+<span class="nc" id="L359">            this.sb.append(&quot;null&quot;);</span>
+<span class="nc" id="L360">            return null;</span>
+        }
+<span class="nc bnc" id="L362" title="All 2 branches missed.">        String methodName = indexOfFunct.getLocation() == IndexLocation.LAST ? &quot;rob.arrFindLast(&quot; : &quot;rob.arrFindFirst(&quot;;</span>
+<span class="nc" id="L363">        this.sb.append(methodName);</span>
+<span class="nc" id="L364">        arrayLen((Var&lt;Void&gt;) indexOfFunct.getParam().get(0));</span>
+<span class="nc" id="L365">        this.sb.append(&quot;, &quot;);</span>
+<span class="nc" id="L366">        indexOfFunct.getParam().get(0).visit(this);</span>
+<span class="nc" id="L367">        this.sb.append(&quot;, &quot;);</span>
+<span class="nc" id="L368">        indexOfFunct.getParam().get(1).visit(this);</span>
+<span class="nc" id="L369">        this.sb.append(&quot;)&quot;);</span>
+<span class="nc" id="L370">        return null;</span>
+    }
+
+    @Override
+    public Void visitLengthOfIsEmptyFunct(LengthOfIsEmptyFunct&lt;Void&gt; lengthOfIsEmptyFunct) {
+<span class="pc bpc" id="L375" title="1 of 2 branches missed.">        if ( lengthOfIsEmptyFunct.getParam().get(0).toString().contains(&quot;ListCreate &quot;) ) {</span>
+<span class="fc" id="L376">            this.sb.append(&quot;NULL&quot;);</span>
+<span class="fc" id="L377">            return null;</span>
+        }
+<span class="nc bnc" id="L379" title="All 2 branches missed.">        if ( lengthOfIsEmptyFunct.getFunctName() == FunctionNames.LIST_IS_EMPTY ) {</span>
+<span class="nc" id="L380">            this.sb.append(&quot;(&quot;);</span>
+<span class="nc" id="L381">            arrayLen((Var&lt;Void&gt;) lengthOfIsEmptyFunct.getParam().get(0));</span>
+<span class="nc" id="L382">            this.sb.append(&quot; == 0)&quot;);</span>
+        } else {
+<span class="nc" id="L384">            arrayLen((Var&lt;Void&gt;) lengthOfIsEmptyFunct.getParam().get(0));</span>
+        }
+<span class="nc" id="L386">        return null;</span>
+    }
+
+    @Override
+    public Void visitListGetIndex(ListGetIndex&lt;Void&gt; listGetIndex) {
+<span class="nc bnc" id="L391" title="All 2 branches missed.">        if ( listGetIndex.getParam().get(0).toString().contains(&quot;ListCreate &quot;) ) {</span>
+<span class="nc" id="L392">            this.sb.append(&quot;null&quot;);</span>
+<span class="nc" id="L393">            return null;</span>
+        }
+<span class="nc" id="L395">        listGetIndex.getParam().get(0).visit(this);</span>
+<span class="nc" id="L396">        this.sb.append(&quot;[&quot;);</span>
+<span class="pc bnc" id="L397" title="All 6 branches missed.">        switch ( (IndexLocation) listGetIndex.getLocation() ) {</span>
+            case FROM_START:
+<span class="nc" id="L399">                listGetIndex.getParam().get(1).visit(this);</span>
+<span class="nc" id="L400">                break;</span>
+            case FROM_END:
+<span class="nc" id="L402">                arrayLen((Var&lt;Void&gt;) listGetIndex.getParam().get(0));</span>
+<span class="nc" id="L403">                this.sb.append(&quot; - 1 - &quot;);</span>
+<span class="nc" id="L404">                listGetIndex.getParam().get(1).visit(this);</span>
+<span class="nc" id="L405">                break;</span>
+            case FIRST:
+<span class="nc" id="L407">                this.sb.append(&quot;0&quot;);</span>
+<span class="nc" id="L408">                break;</span>
+            case LAST:
+<span class="nc" id="L410">                arrayLen((Var&lt;Void&gt;) listGetIndex.getParam().get(0));</span>
+<span class="nc" id="L411">                this.sb.append(&quot; - 1&quot;);</span>
+<span class="nc" id="L412">                break;</span>
+            case RANDOM:
+<span class="nc" id="L414">                this.sb.append(&quot;rob.randomIntegerInRange(0, &quot;);</span>
+<span class="nc" id="L415">                arrayLen((Var&lt;Void&gt;) listGetIndex.getParam().get(0));</span>
+<span class="nc" id="L416">                this.sb.append(&quot;)&quot;);</span>
+                break;
+        }
+<span class="nc" id="L419">        this.sb.append(&quot;]&quot;);</span>
+<span class="nc" id="L420">        return null;</span>
+    }
+
+    @Override
+    public Void visitListSetIndex(ListSetIndex&lt;Void&gt; listSetIndex) {
+<span class="nc bnc" id="L425" title="All 2 branches missed.">        if ( listSetIndex.getParam().get(0).toString().contains(&quot;ListCreate &quot;) ) {</span>
+<span class="nc" id="L426">            return null;</span>
+        }
+<span class="nc" id="L428">        listSetIndex.getParam().get(0).visit(this);</span>
+<span class="nc" id="L429">        this.sb.append(&quot;[&quot;);</span>
+<span class="nc bnc" id="L430" title="All 6 branches missed.">        switch ( (IndexLocation) listSetIndex.getLocation() ) {</span>
+            case FROM_START:
+<span class="nc" id="L432">                listSetIndex.getParam().get(2).visit(this);</span>
+<span class="nc" id="L433">                break;</span>
+            case FROM_END:
+<span class="nc" id="L435">                arrayLen((Var&lt;Void&gt;) listSetIndex.getParam().get(0));</span>
+<span class="nc" id="L436">                this.sb.append(&quot; - 1 - &quot;);</span>
+<span class="nc" id="L437">                listSetIndex.getParam().get(2).visit(this);</span>
+<span class="nc" id="L438">                break;</span>
+            case FIRST:
+<span class="nc" id="L440">                this.sb.append(&quot;0&quot;);</span>
+<span class="nc" id="L441">                break;</span>
+            case LAST:
+<span class="nc" id="L443">                arrayLen((Var&lt;Void&gt;) listSetIndex.getParam().get(0));</span>
+<span class="nc" id="L444">                this.sb.append(&quot; - 1&quot;);</span>
+<span class="nc" id="L445">                break;</span>
+            case RANDOM:
+<span class="nc" id="L447">                this.sb.append(&quot;rob.randomIntegerInRange(0, &quot;);</span>
+<span class="nc" id="L448">                arrayLen((Var&lt;Void&gt;) listSetIndex.getParam().get(0));</span>
+<span class="nc" id="L449">                this.sb.append(&quot;)&quot;);</span>
+                break;
+        }
+<span class="nc" id="L452">        this.sb.append(&quot;]&quot;);</span>
+<span class="nc" id="L453">        this.sb.append(&quot; = &quot;);</span>
+<span class="nc" id="L454">        listSetIndex.getParam().get(1).visit(this);</span>
+<span class="nc" id="L455">        return null;</span>
+    }
+
+    @Override
+    public Void visitMathConstrainFunct(MathConstrainFunct&lt;Void&gt; mathConstrainFunct) {
+<span class="fc" id="L460">        this.sb.append(&quot;rob.clamp(&quot;);</span>
+<span class="fc" id="L461">        mathConstrainFunct.getParam().get(0).visit(this);</span>
+<span class="fc" id="L462">        this.sb.append(&quot;, &quot;);</span>
+<span class="fc" id="L463">        mathConstrainFunct.getParam().get(1).visit(this);</span>
+<span class="fc" id="L464">        this.sb.append(&quot;, &quot;);</span>
+<span class="fc" id="L465">        mathConstrainFunct.getParam().get(2).visit(this);</span>
+<span class="fc" id="L466">        this.sb.append(&quot;)&quot;);</span>
+<span class="fc" id="L467">        return null;</span>
+    }
+
+    @Override
+    public Void visitMathNumPropFunct(MathNumPropFunct&lt;Void&gt; mathNumPropFunct) {
+<span class="pc bpc" id="L472" title="1 of 8 branches missed.">        switch ( mathNumPropFunct.getFunctName() ) {</span>
+            case EVEN:
+<span class="fc" id="L474">                this.sb.append(&quot;(fmod(&quot;);</span>
+<span class="fc" id="L475">                mathNumPropFunct.getParam().get(0).visit(this);</span>
+<span class="fc" id="L476">                this.sb.append(&quot;, 2) == 0&quot;);</span>
+<span class="fc" id="L477">                break;</span>
+            case ODD:
+<span class="fc" id="L479">                this.sb.append(&quot;(fmod(&quot;);</span>
+<span class="fc" id="L480">                mathNumPropFunct.getParam().get(0).visit(this);</span>
+<span class="fc" id="L481">                this.sb.append(&quot;, 2) != 0&quot;);</span>
+<span class="fc" id="L482">                break;</span>
+            case PRIME:
+<span class="fc" id="L484">                this.sb.append(&quot;rob.isPrime(&quot;);</span>
+<span class="fc" id="L485">                mathNumPropFunct.getParam().get(0).visit(this);</span>
+<span class="fc" id="L486">                break;</span>
+            case WHOLE:
+<span class="fc" id="L488">                this.sb.append(&quot;rob.isWhole(&quot;);</span>
+<span class="fc" id="L489">                mathNumPropFunct.getParam().get(0).visit(this);</span>
+<span class="fc" id="L490">                break;</span>
+            case POSITIVE:
+<span class="fc" id="L492">                this.sb.append(&quot;(&quot;);</span>
+<span class="fc" id="L493">                mathNumPropFunct.getParam().get(0).visit(this);</span>
+<span class="fc" id="L494">                this.sb.append(&quot; &gt; 0&quot;);</span>
+<span class="fc" id="L495">                break;</span>
+            case NEGATIVE:
+<span class="fc" id="L497">                this.sb.append(&quot;(&quot;);</span>
+<span class="fc" id="L498">                mathNumPropFunct.getParam().get(0).visit(this);</span>
+<span class="fc" id="L499">                this.sb.append(&quot; &lt; 0&quot;);</span>
+<span class="fc" id="L500">                break;</span>
+            case DIVISIBLE_BY:
+<span class="fc" id="L502">                this.sb.append(&quot;(fmod(&quot;);</span>
+<span class="fc" id="L503">                mathNumPropFunct.getParam().get(0).visit(this);</span>
+<span class="fc" id="L504">                this.sb.append(&quot;,&quot;);</span>
+<span class="fc" id="L505">                mathNumPropFunct.getParam().get(1).visit(this);</span>
+<span class="fc" id="L506">                this.sb.append(&quot;) == 0&quot;);</span>
+<span class="fc" id="L507">                break;</span>
+            default:
+                break;
+        }
+<span class="fc" id="L511">        this.sb.append(&quot;)&quot;);</span>
+<span class="fc" id="L512">        return null;</span>
+    }
+
+    @Override
+    public Void visitMathOnListFunct(MathOnListFunct&lt;Void&gt; mathOnListFunct) {
+<span class="pc bpc" id="L517" title="1 of 2 branches missed.">        if ( mathOnListFunct.getParam().get(0).toString().contains(&quot;ListCreate &quot;) ) {</span>
+<span class="fc" id="L518">            this.sb.append(&quot;null&quot;);</span>
+<span class="fc" id="L519">            return null;</span>
+        }
+<span class="nc bnc" id="L521" title="All 9 branches missed.">        switch ( mathOnListFunct.getFunctName() ) {</span>
+            case SUM:
+<span class="nc" id="L523">                this.sb.append(&quot;rob.arrSum(&quot;);</span>
+<span class="nc" id="L524">                break;</span>
+            case MIN:
+<span class="nc" id="L526">                this.sb.append(&quot;rob.arrMin(&quot;);</span>
+<span class="nc" id="L527">                break;</span>
+            case MAX:
+<span class="nc" id="L529">                this.sb.append(&quot;rob.arrMax(&quot;);</span>
+<span class="nc" id="L530">                break;</span>
+            case AVERAGE:
+<span class="nc" id="L532">                this.sb.append(&quot;rob.arrMean(&quot;);</span>
+<span class="nc" id="L533">                break;</span>
+            case MEDIAN:
+<span class="nc" id="L535">                this.sb.append(&quot;rob.arrMedian(&quot;);</span>
+<span class="nc" id="L536">                break;</span>
+            case STD_DEV:
+<span class="nc" id="L538">                this.sb.append(&quot;rob.arrStandardDeviatioin(&quot;);</span>
+<span class="nc" id="L539">                break;</span>
+            case RANDOM:
+<span class="nc" id="L541">                this.sb.append(&quot;rob.arrRand(&quot;);</span>
+<span class="nc" id="L542">                break;</span>
+            case MODE:
+<span class="nc" id="L544">                this.sb.append(&quot;rob.arrMode(&quot;);</span>
+<span class="nc" id="L545">                break;</span>
+            default:
+                break;
+        }
+<span class="nc" id="L549">        arrayLen((Var&lt;Void&gt;) mathOnListFunct.getParam().get(0));</span>
+<span class="nc" id="L550">        this.sb.append(&quot;, &quot;);</span>
+<span class="nc" id="L551">        mathOnListFunct.getParam().get(0).visit(this);</span>
+<span class="nc" id="L552">        this.sb.append(&quot;)&quot;);</span>
+<span class="nc" id="L553">        return null;</span>
+    }
+
+    @Override
+    public Void visitMathRandomFloatFunct(MathRandomFloatFunct&lt;Void&gt; mathRandomFloatFunct) {
+<span class="nc" id="L558">        this.sb.append(&quot;rob.randomFloat()&quot;);</span>
+<span class="nc" id="L559">        return null;</span>
+    }
+
+    @Override
+    public Void visitMathRandomIntFunct(MathRandomIntFunct&lt;Void&gt; mathRandomIntFunct) {
+<span class="fc" id="L564">        this.sb.append(&quot;rob.randomIntegerInRange(&quot;);</span>
+<span class="fc" id="L565">        mathRandomIntFunct.getParam().get(0).visit(this);</span>
+<span class="fc" id="L566">        this.sb.append(&quot;, &quot;);</span>
+<span class="fc" id="L567">        mathRandomIntFunct.getParam().get(1).visit(this);</span>
+<span class="fc" id="L568">        this.sb.append(&quot;)&quot;);</span>
+<span class="fc" id="L569">        return null;</span>
+    }
+
+    //@Override
+    public Void visitTimerSensor(TimerSensor&lt;Void&gt; timerSensor) {
+<span class="pc bpc" id="L574" title="1 of 3 branches missed.">        switch ( (TimerSensorMode) timerSensor.getMode() ) {</span>
+            case DEFAULT:
+            case VALUE:
+<span class="fc" id="L577">                this.sb.append(&quot;(int) (millis() - __time)&quot;);</span>
+<span class="fc" id="L578">                break;</span>
+            case RESET:
+<span class="fc" id="L580">                this.sb.append(&quot;__time = millis();&quot;);</span>
+<span class="fc" id="L581">                break;</span>
+            default:
+<span class="nc" id="L583">                throw new DbcException(&quot;Invalid Time Mode!&quot;);</span>
+        }
+<span class="fc" id="L585">        return null;</span>
+    }
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

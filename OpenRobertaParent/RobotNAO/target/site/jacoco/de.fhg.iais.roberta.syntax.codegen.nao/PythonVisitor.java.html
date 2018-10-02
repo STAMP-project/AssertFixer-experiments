@@ -1,0 +1,1461 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>PythonVisitor.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">RobotNAO</a> &gt; <a href="index.source.html" class="el_package">de.fhg.iais.roberta.syntax.codegen.nao</a> &gt; <span class="el_source">PythonVisitor.java</span></div><h1>PythonVisitor.java</h1><pre class="source lang-java linenums">package de.fhg.iais.roberta.syntax.codegen.nao;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
+
+import org.apache.commons.lang3.StringUtils;
+
+import de.fhg.iais.roberta.components.UsedSensor;
+import de.fhg.iais.roberta.components.nao.NAOConfiguration;
+import de.fhg.iais.roberta.inter.mode.action.ILanguage;
+import de.fhg.iais.roberta.inter.mode.sensor.IPort;
+import de.fhg.iais.roberta.mode.action.DriveDirection;
+import de.fhg.iais.roberta.mode.action.Language;
+import de.fhg.iais.roberta.mode.action.TurnDirection;
+import de.fhg.iais.roberta.mode.action.nao.Camera;
+import de.fhg.iais.roberta.mode.general.IndexLocation;
+import de.fhg.iais.roberta.mode.sensor.nao.DetectedFaceMode;
+import de.fhg.iais.roberta.mode.sensor.nao.DetectedMarkMode;
+import de.fhg.iais.roberta.syntax.BlockTypeContainer;
+import de.fhg.iais.roberta.syntax.BlockTypeContainer.BlockType;
+import de.fhg.iais.roberta.syntax.BlocklyConstants;
+import de.fhg.iais.roberta.syntax.Phrase;
+import de.fhg.iais.roberta.syntax.action.nao.Animation;
+import de.fhg.iais.roberta.syntax.action.nao.ApplyPosture;
+import de.fhg.iais.roberta.syntax.action.nao.Autonomous;
+import de.fhg.iais.roberta.syntax.action.nao.ForgetFace;
+import de.fhg.iais.roberta.syntax.action.nao.GetLanguage;
+import de.fhg.iais.roberta.syntax.action.nao.GetVolume;
+import de.fhg.iais.roberta.syntax.action.nao.Hand;
+import de.fhg.iais.roberta.syntax.action.nao.LearnFace;
+import de.fhg.iais.roberta.syntax.action.nao.LedOff;
+import de.fhg.iais.roberta.syntax.action.nao.LedReset;
+import de.fhg.iais.roberta.syntax.action.nao.MoveJoint;
+import de.fhg.iais.roberta.syntax.action.nao.PlayFile;
+import de.fhg.iais.roberta.syntax.action.nao.PointLookAt;
+import de.fhg.iais.roberta.syntax.action.nao.RandomEyesDuration;
+import de.fhg.iais.roberta.syntax.action.nao.RastaDuration;
+import de.fhg.iais.roberta.syntax.action.nao.RecordVideo;
+import de.fhg.iais.roberta.syntax.action.nao.SetIntensity;
+import de.fhg.iais.roberta.syntax.action.nao.SetLeds;
+import de.fhg.iais.roberta.syntax.action.nao.SetMode;
+import de.fhg.iais.roberta.syntax.action.nao.SetStiffness;
+import de.fhg.iais.roberta.syntax.action.nao.SetVolume;
+import de.fhg.iais.roberta.syntax.action.nao.Stop;
+import de.fhg.iais.roberta.syntax.action.nao.TakePicture;
+import de.fhg.iais.roberta.syntax.action.nao.TurnDegrees;
+import de.fhg.iais.roberta.syntax.action.nao.WalkAsync;
+import de.fhg.iais.roberta.syntax.action.nao.WalkDistance;
+import de.fhg.iais.roberta.syntax.action.nao.WalkTo;
+import de.fhg.iais.roberta.syntax.action.sound.PlayFileAction;
+import de.fhg.iais.roberta.syntax.action.sound.PlayNoteAction;
+import de.fhg.iais.roberta.syntax.action.sound.SayTextAction;
+import de.fhg.iais.roberta.syntax.action.sound.SetLanguageAction;
+import de.fhg.iais.roberta.syntax.action.sound.ToneAction;
+import de.fhg.iais.roberta.syntax.action.sound.VolumeAction;
+import de.fhg.iais.roberta.syntax.check.hardware.nao.UsedHardwareCollectorVisitor;
+import de.fhg.iais.roberta.syntax.codegen.RobotPythonVisitor;
+import de.fhg.iais.roberta.syntax.lang.blocksequence.MainTask;
+import de.fhg.iais.roberta.syntax.lang.expr.ConnectConst;
+import de.fhg.iais.roberta.syntax.lang.expr.EmptyExpr;
+import de.fhg.iais.roberta.syntax.lang.expr.EmptyList;
+import de.fhg.iais.roberta.syntax.lang.expr.ListCreate;
+import de.fhg.iais.roberta.syntax.lang.expr.RgbColor;
+import de.fhg.iais.roberta.syntax.lang.expr.VarDeclaration;
+import de.fhg.iais.roberta.syntax.lang.expr.nao.ColorHexString;
+import de.fhg.iais.roberta.syntax.lang.functions.GetSubFunct;
+import de.fhg.iais.roberta.syntax.lang.functions.IndexOfFunct;
+import de.fhg.iais.roberta.syntax.lang.functions.LengthOfIsEmptyFunct;
+import de.fhg.iais.roberta.syntax.lang.functions.ListGetIndex;
+import de.fhg.iais.roberta.syntax.lang.functions.ListRepeat;
+import de.fhg.iais.roberta.syntax.lang.functions.ListSetIndex;
+import de.fhg.iais.roberta.syntax.lang.functions.MathConstrainFunct;
+import de.fhg.iais.roberta.syntax.lang.functions.MathNumPropFunct;
+import de.fhg.iais.roberta.syntax.lang.functions.MathOnListFunct;
+import de.fhg.iais.roberta.syntax.lang.functions.MathRandomFloatFunct;
+import de.fhg.iais.roberta.syntax.lang.functions.MathRandomIntFunct;
+import de.fhg.iais.roberta.syntax.lang.functions.TextJoinFunct;
+import de.fhg.iais.roberta.syntax.lang.functions.TextPrintFunct;
+import de.fhg.iais.roberta.syntax.lang.stmt.ExprStmt;
+import de.fhg.iais.roberta.syntax.lang.stmt.Stmt;
+import de.fhg.iais.roberta.syntax.lang.stmt.StmtList;
+import de.fhg.iais.roberta.syntax.lang.stmt.WaitStmt;
+import de.fhg.iais.roberta.syntax.lang.stmt.WaitTimeStmt;
+import de.fhg.iais.roberta.syntax.sensor.generic.AccelerometerSensor;
+import de.fhg.iais.roberta.syntax.sensor.generic.GyroSensor;
+import de.fhg.iais.roberta.syntax.sensor.generic.TouchSensor;
+import de.fhg.iais.roberta.syntax.sensor.generic.UltrasonicSensor;
+import de.fhg.iais.roberta.syntax.sensor.nao.DetectFace;
+import de.fhg.iais.roberta.syntax.sensor.nao.DetectedFaceInformation;
+import de.fhg.iais.roberta.syntax.sensor.nao.DetectedMark;
+import de.fhg.iais.roberta.syntax.sensor.nao.ElectricCurrent;
+import de.fhg.iais.roberta.syntax.sensor.nao.FsrSensor;
+import de.fhg.iais.roberta.syntax.sensor.nao.GetSampleSensor;
+import de.fhg.iais.roberta.syntax.sensor.nao.NaoMarkInformation;
+import de.fhg.iais.roberta.syntax.sensor.nao.RecognizeWord;
+import de.fhg.iais.roberta.util.dbc.Assert;
+import de.fhg.iais.roberta.util.dbc.DbcException;
+import de.fhg.iais.roberta.visitor.AstVisitor;
+import de.fhg.iais.roberta.visitor.nao.NaoAstVisitor;
+
+/**
+ * This class is implementing {@link AstVisitor}. All methods are implemented and they append a human-readable Python code representation of a phrase to a
+ * StringBuilder. &lt;b&gt;This representation is correct Python code.&lt;/b&gt; &lt;br&gt;
+ */
+public class PythonVisitor extends RobotPythonVisitor implements NaoAstVisitor&lt;Void&gt; {
+
+    protected Set&lt;UsedSensor&gt; usedSensors;
+
+    protected ILanguage language;
+
+    /**
+     * initialize the Python code generator visitor.
+     *
+     * @param brickConfiguration hardware configuration of the brick
+     * @param programPhrases to generate the code from
+     * @param indentation to start with. Will be ince/decr depending on block structure
+     */
+    private PythonVisitor(NAOConfiguration brickConfiguration, ArrayList&lt;ArrayList&lt;Phrase&lt;Void&gt;&gt;&gt; programPhrases, int indentation, ILanguage language) {
+<span class="fc" id="L120">        super(programPhrases, indentation);</span>
+
+<span class="fc" id="L122">        UsedHardwareCollectorVisitor checker = new UsedHardwareCollectorVisitor(programPhrases, brickConfiguration);</span>
+<span class="fc" id="L123">        this.usedSensors = checker.getUsedSensors();</span>
+<span class="fc" id="L124">        this.usedGlobalVarInFunctions = checker.getMarkedVariablesAsGlobal();</span>
+<span class="fc" id="L125">        this.isProgramEmpty = checker.isProgramEmpty();</span>
+<span class="fc" id="L126">        this.loopsLabels = checker.getloopsLabelContainer();</span>
+
+<span class="fc" id="L128">        this.language = language;</span>
+<span class="fc" id="L129">    }</span>
+
+    /**
+     * factory method to generate Python code from an AST.&lt;br&gt;
+     *
+     * @param programName name of the program
+     * @param brickConfiguration hardware configuration of the brick
+     * @param phrases to generate the code from
+     */
+    public static String generate(
+        NAOConfiguration brickConfiguration,
+        ArrayList&lt;ArrayList&lt;Phrase&lt;Void&gt;&gt;&gt; phrasesSet,
+        boolean withWrapping,
+        ILanguage language) {
+<span class="fc" id="L143">        Assert.notNull(brickConfiguration);</span>
+
+<span class="fc" id="L145">        PythonVisitor astVisitor = new PythonVisitor(brickConfiguration, phrasesSet, 0, language);</span>
+<span class="fc" id="L146">        astVisitor.generateCode(withWrapping);</span>
+
+<span class="fc" id="L148">        return astVisitor.sb.toString();</span>
+    }
+
+    @Override
+    public Void visitRgbColor(RgbColor&lt;Void&gt; rgbColor) {
+<span class="fc" id="L153">        this.sb.append(&quot;BlocklyMethods.rgb2hex(&quot;);</span>
+<span class="fc" id="L154">        rgbColor.getR().visit(this);</span>
+<span class="fc" id="L155">        this.sb.append(&quot;, &quot;);</span>
+<span class="fc" id="L156">        rgbColor.getG().visit(this);</span>
+<span class="fc" id="L157">        this.sb.append(&quot;, &quot;);</span>
+<span class="fc" id="L158">        rgbColor.getB().visit(this);</span>
+<span class="fc" id="L159">        this.sb.append(&quot;)&quot;);</span>
+<span class="fc" id="L160">        return null;</span>
+    }
+
+    @Override
+    public Void visitEmptyExpr(EmptyExpr&lt;Void&gt; emptyExpr) {
+<span class="nc bnc" id="L165" title="All 8 branches missed.">        switch ( emptyExpr.getDefVal() ) {</span>
+            case ARRAY_STRING:
+<span class="nc" id="L167">                this.sb.append(&quot;BlocklyMethods.createListWith(\&quot;\&quot;)&quot;);</span>
+<span class="nc" id="L168">                break;</span>
+            case STRING:
+<span class="nc" id="L170">                this.sb.append(&quot;\&quot;\&quot;&quot;);</span>
+<span class="nc" id="L171">                break;</span>
+            case BOOLEAN:
+<span class="nc" id="L173">                this.sb.append(&quot;True&quot;);</span>
+<span class="nc" id="L174">                break;</span>
+            case NUMBER_INT:
+<span class="nc" id="L176">                this.sb.append(&quot;0&quot;);</span>
+<span class="nc" id="L177">                break;</span>
+            case ARRAY:
+<span class="nc" id="L179">                break;</span>
+            case NULL:
+<span class="nc" id="L181">                break;</span>
+            case COLOR:
+<span class="nc" id="L183">                break;</span>
+            default:
+<span class="nc" id="L185">                this.sb.append(&quot;[[EmptyExpr [defVal=&quot; + emptyExpr.getDefVal() + &quot;]]]&quot;);</span>
+                break;
+        }
+<span class="nc" id="L188">        return null;</span>
+    }
+
+    @Override
+    public Void visitWaitStmt(WaitStmt&lt;Void&gt; waitStmt) {
+<span class="nc" id="L193">        this.sb.append(&quot;while True:&quot;);</span>
+<span class="nc" id="L194">        incrIndentation();</span>
+<span class="nc" id="L195">        visitStmtList(waitStmt.getStatements());</span>
+<span class="nc" id="L196">        nlIndent();</span>
+<span class="nc" id="L197">        this.sb.append(&quot;h.wait(15)&quot;);</span>
+<span class="nc" id="L198">        decrIndentation();</span>
+<span class="nc" id="L199">        return null;</span>
+    }
+
+    @Override
+    public Void visitWaitTimeStmt(WaitTimeStmt&lt;Void&gt; waitTimeStmt) {
+<span class="nc" id="L204">        this.sb.append(&quot;h.wait(&quot;);</span>
+<span class="nc" id="L205">        waitTimeStmt.getTime().visit(this);</span>
+<span class="nc" id="L206">        this.sb.append(&quot;)&quot;);</span>
+<span class="nc" id="L207">        return null;</span>
+    }
+
+    @Override
+    public Void visitMainTask(MainTask&lt;Void&gt; mainTask) {
+<span class="fc" id="L212">        StmtList&lt;Void&gt; variables = mainTask.getVariables();</span>
+<span class="fc" id="L213">        variables.visit(this);</span>
+<span class="fc" id="L214">        generateUserDefinedMethods();</span>
+<span class="fc" id="L215">        this.sb.append(&quot;\n\ndef run():&quot;);</span>
+<span class="fc" id="L216">        incrIndentation();</span>
+<span class="fc bfc" id="L217" title="All 2 branches covered.">        if ( mainTask.getDebug().equals(&quot;TRUE&quot;) ) {</span>
+<span class="fc" id="L218">            nlIndent();</span>
+<span class="fc" id="L219">            this.sb.append(&quot;h.setAutonomousLife('ON')&quot;);</span>
+        } else {
+<span class="fc" id="L221">            nlIndent();</span>
+<span class="fc" id="L222">            this.sb.append(&quot;h.setAutonomousLife('OFF')&quot;);</span>
+        }
+<span class="fc" id="L224">        List&lt;Stmt&lt;Void&gt;&gt; variableList = variables.get();</span>
+<span class="fc bfc" id="L225" title="All 2 branches covered.">        if ( !variableList.isEmpty() ) {</span>
+<span class="fc" id="L226">            nlIndent();</span>
+            // insert global statement for all variables
+            // TODO: there must be an easier way without the casts
+            // TODO: we'd only list variables that we change, ideally we'd do this in
+            // visitAssignStmt(), but we must only to this once per method and visitAssignStmt()
+            // would need the list of mainTask variables (store in the class?)
+            // TODO: I could store the names as a list in the instance and filter it against the parameters
+            // in visitMethodVoid, visitMethodReturn
+<span class="fc" id="L234">            this.sb.append(&quot;global &quot;);</span>
+<span class="fc" id="L235">            boolean first = true;</span>
+<span class="fc bfc" id="L236" title="All 2 branches covered.">            for ( Stmt&lt;Void&gt; s : variables.get() ) {</span>
+<span class="fc" id="L237">                ExprStmt&lt;Void&gt; es = (ExprStmt&lt;Void&gt;) s;</span>
+<span class="fc" id="L238">                VarDeclaration&lt;Void&gt; vd = (VarDeclaration&lt;Void&gt;) es.getExpr();</span>
+<span class="pc bpc" id="L239" title="1 of 2 branches missed.">                if ( first ) {</span>
+<span class="fc" id="L240">                    first = false;</span>
+                } else {
+<span class="nc" id="L242">                    this.sb.append(&quot;, &quot;);</span>
+                }
+<span class="fc" id="L244">                this.sb.append(vd.getName());</span>
+<span class="fc" id="L245">            }</span>
+        }
+<span class="fc" id="L247">        return null;</span>
+    }
+
+    @Override
+    public Void visitTextPrintFunct(TextPrintFunct&lt;Void&gt; textPrintFunct) {
+<span class="nc" id="L252">        this.sb.append(&quot;print(&quot;);</span>
+<span class="nc" id="L253">        textPrintFunct.getParam().get(0).visit(this);</span>
+<span class="nc" id="L254">        this.sb.append(&quot;)&quot;);</span>
+<span class="nc" id="L255">        return null;</span>
+    }
+
+    @Override
+    public Void visitGetSubFunct(GetSubFunct&lt;Void&gt; getSubFunct) {
+<span class="nc" id="L260">        this.sb.append(&quot;BlocklyMethods.listsGetSubList( &quot;);</span>
+<span class="nc" id="L261">        getSubFunct.getParam().get(0).visit(this);</span>
+<span class="nc" id="L262">        this.sb.append(&quot;, &quot;);</span>
+<span class="nc" id="L263">        IndexLocation where1 = (IndexLocation) getSubFunct.getStrParam().get(0);</span>
+<span class="nc" id="L264">        this.sb.append(getEnumCode(where1));</span>
+<span class="nc bnc" id="L265" title="All 4 branches missed.">        if ( (where1 == IndexLocation.FROM_START) || (where1 == IndexLocation.FROM_END) ) {</span>
+<span class="nc" id="L266">            this.sb.append(&quot;, &quot;);</span>
+<span class="nc" id="L267">            getSubFunct.getParam().get(1).visit(this);</span>
+        }
+<span class="nc" id="L269">        this.sb.append(&quot;, &quot;);</span>
+<span class="nc" id="L270">        IndexLocation where2 = (IndexLocation) getSubFunct.getStrParam().get(1);</span>
+<span class="nc" id="L271">        this.sb.append(getEnumCode(where2));</span>
+<span class="nc bnc" id="L272" title="All 4 branches missed.">        if ( (where2 == IndexLocation.FROM_START) || (where2 == IndexLocation.FROM_END) ) {</span>
+<span class="nc" id="L273">            this.sb.append(&quot;, &quot;);</span>
+<span class="nc bnc" id="L274" title="All 2 branches missed.">            if ( getSubFunct.getParam().size() == 3 ) {</span>
+<span class="nc" id="L275">                getSubFunct.getParam().get(2).visit(this);</span>
+            } else {
+<span class="nc" id="L277">                getSubFunct.getParam().get(1).visit(this);</span>
+            }
+        }
+<span class="nc" id="L280">        this.sb.append(&quot;)&quot;);</span>
+<span class="nc" id="L281">        return null;</span>
+
+    }
+
+    @Override
+    public Void visitIndexOfFunct(IndexOfFunct&lt;Void&gt; indexOfFunct) {
+<span class="nc bnc" id="L287" title="All 3 branches missed.">        switch ( (IndexLocation) indexOfFunct.getLocation() ) {</span>
+            case FIRST:
+<span class="nc" id="L289">                this.sb.append(&quot;BlocklyMethods.findFirst( &quot;);</span>
+<span class="nc" id="L290">                indexOfFunct.getParam().get(0).visit(this);</span>
+<span class="nc" id="L291">                this.sb.append(&quot;, &quot;);</span>
+<span class="nc" id="L292">                indexOfFunct.getParam().get(1).visit(this);</span>
+<span class="nc" id="L293">                this.sb.append(&quot;)&quot;);</span>
+<span class="nc" id="L294">                break;</span>
+            case LAST:
+<span class="nc" id="L296">                this.sb.append(&quot;BlocklyMethods.findLast( &quot;);</span>
+<span class="nc" id="L297">                indexOfFunct.getParam().get(0).visit(this);</span>
+<span class="nc" id="L298">                this.sb.append(&quot;, &quot;);</span>
+<span class="nc" id="L299">                indexOfFunct.getParam().get(1).visit(this);</span>
+<span class="nc" id="L300">                this.sb.append(&quot;)&quot;);</span>
+<span class="nc" id="L301">                break;</span>
+            default:
+                break;
+        }
+<span class="nc" id="L305">        return null;</span>
+    }
+
+    @Override
+    public Void visitLengthOfIsEmptyFunct(LengthOfIsEmptyFunct&lt;Void&gt; lengthOfIsEmptyFunct) {
+<span class="nc bnc" id="L310" title="All 3 branches missed.">        switch ( lengthOfIsEmptyFunct.getFunctName() ) {</span>
+            case LISTS_LENGTH:
+<span class="nc" id="L312">                this.sb.append(&quot;BlocklyMethods.length( &quot;);</span>
+<span class="nc" id="L313">                lengthOfIsEmptyFunct.getParam().get(0).visit(this);</span>
+<span class="nc" id="L314">                this.sb.append(&quot;)&quot;);</span>
+<span class="nc" id="L315">                break;</span>
+
+            case LIST_IS_EMPTY:
+<span class="nc" id="L318">                this.sb.append(&quot;BlocklyMethods.isEmpty( &quot;);</span>
+<span class="nc" id="L319">                lengthOfIsEmptyFunct.getParam().get(0).visit(this);</span>
+<span class="nc" id="L320">                this.sb.append(&quot;)&quot;);</span>
+<span class="nc" id="L321">                break;</span>
+            default:
+                break;
+        }
+<span class="nc" id="L325">        return null;</span>
+    }
+
+    @Override
+    public Void visitEmptyList(EmptyList&lt;Void&gt; emptyList) {
+<span class="nc" id="L330">        this.sb.append(&quot;[]&quot;);</span>
+<span class="nc" id="L331">        return null;</span>
+    }
+
+    @Override
+    public Void visitListCreate(ListCreate&lt;Void&gt; listCreate) {
+<span class="nc" id="L336">        this.sb.append(&quot;BlocklyMethods.createListWith(&quot;);</span>
+<span class="nc" id="L337">        listCreate.getValue().visit(this);</span>
+<span class="nc" id="L338">        this.sb.append(&quot;)&quot;);</span>
+<span class="nc" id="L339">        return null;</span>
+    }
+
+    @Override
+    public Void visitListRepeat(ListRepeat&lt;Void&gt; listRepeat) {
+<span class="nc" id="L344">        this.sb.append(&quot;BlocklyMethods.createListWithItem(&quot;);</span>
+<span class="nc" id="L345">        listRepeat.getParam().get(0).visit(this);</span>
+<span class="nc" id="L346">        this.sb.append(&quot;, &quot;);</span>
+<span class="nc" id="L347">        listRepeat.getParam().get(1).visit(this);</span>
+<span class="nc" id="L348">        this.sb.append(&quot;)&quot;);</span>
+<span class="nc" id="L349">        return null;</span>
+    }
+
+    @Override
+    public Void visitListGetIndex(ListGetIndex&lt;Void&gt; listGetIndex) {
+<span class="nc" id="L354">        this.sb.append(&quot;BlocklyMethods.listsGetIndex(&quot;);</span>
+<span class="nc" id="L355">        listGetIndex.getParam().get(0).visit(this);</span>
+<span class="nc" id="L356">        this.sb.append(&quot;, &quot;);</span>
+<span class="nc" id="L357">        this.sb.append(getEnumCode(listGetIndex.getElementOperation()));</span>
+<span class="nc" id="L358">        this.sb.append(&quot;, &quot;);</span>
+<span class="nc" id="L359">        this.sb.append(getEnumCode(listGetIndex.getLocation()));</span>
+<span class="nc bnc" id="L360" title="All 2 branches missed.">        if ( listGetIndex.getParam().size() == 2 ) {</span>
+<span class="nc" id="L361">            this.sb.append(&quot;, &quot;);</span>
+<span class="nc" id="L362">            listGetIndex.getParam().get(1).visit(this);</span>
+        }
+<span class="nc" id="L364">        this.sb.append(&quot;)&quot;);</span>
+<span class="nc" id="L365">        return null;</span>
+    }
+
+    @Override
+    public Void visitListSetIndex(ListSetIndex&lt;Void&gt; listSetIndex) {
+<span class="nc" id="L370">        this.sb.append(&quot;BlocklyMethods.listsSetIndex(&quot;);</span>
+<span class="nc" id="L371">        listSetIndex.getParam().get(0).visit(this);</span>
+<span class="nc" id="L372">        this.sb.append(&quot;, &quot;);</span>
+<span class="nc" id="L373">        this.sb.append(getEnumCode(listSetIndex.getElementOperation()));</span>
+<span class="nc" id="L374">        this.sb.append(&quot;, &quot;);</span>
+<span class="nc" id="L375">        listSetIndex.getParam().get(1).visit(this);</span>
+<span class="nc" id="L376">        this.sb.append(&quot;, &quot;);</span>
+<span class="nc" id="L377">        this.sb.append(getEnumCode(listSetIndex.getLocation()));</span>
+<span class="nc bnc" id="L378" title="All 2 branches missed.">        if ( listSetIndex.getParam().size() == 3 ) {</span>
+<span class="nc" id="L379">            this.sb.append(&quot;, &quot;);</span>
+<span class="nc" id="L380">            listSetIndex.getParam().get(2).visit(this);</span>
+        }
+<span class="nc" id="L382">        this.sb.append(&quot;)&quot;);</span>
+<span class="nc" id="L383">        return null;</span>
+    }
+
+    @Override
+    public Void visitMathConstrainFunct(MathConstrainFunct&lt;Void&gt; mathConstrainFunct) {
+<span class="nc" id="L388">        this.sb.append(&quot;BlocklyMethods.clamp(&quot;);</span>
+<span class="nc" id="L389">        mathConstrainFunct.getParam().get(0).visit(this);</span>
+<span class="nc" id="L390">        this.sb.append(&quot;, &quot;);</span>
+<span class="nc" id="L391">        mathConstrainFunct.getParam().get(1).visit(this);</span>
+<span class="nc" id="L392">        this.sb.append(&quot;, &quot;);</span>
+<span class="nc" id="L393">        mathConstrainFunct.getParam().get(2).visit(this);</span>
+<span class="nc" id="L394">        this.sb.append(&quot;)&quot;);</span>
+<span class="nc" id="L395">        return null;</span>
+    }
+
+    @Override
+    public Void visitMathNumPropFunct(MathNumPropFunct&lt;Void&gt; mathNumPropFunct) {
+<span class="nc bnc" id="L400" title="All 8 branches missed.">        switch ( mathNumPropFunct.getFunctName() ) {</span>
+            case EVEN:
+<span class="nc" id="L402">                this.sb.append(&quot;BlocklyMethods.isEven(&quot;);</span>
+<span class="nc" id="L403">                mathNumPropFunct.getParam().get(0).visit(this);</span>
+<span class="nc" id="L404">                this.sb.append(&quot;)&quot;);</span>
+<span class="nc" id="L405">                break;</span>
+            case ODD:
+<span class="nc" id="L407">                this.sb.append(&quot;BlocklyMethods.isOdd(&quot;);</span>
+<span class="nc" id="L408">                mathNumPropFunct.getParam().get(0).visit(this);</span>
+<span class="nc" id="L409">                this.sb.append(&quot;)&quot;);</span>
+<span class="nc" id="L410">                break;</span>
+            case PRIME:
+<span class="nc" id="L412">                this.sb.append(&quot;BlocklyMethods.isPrime(&quot;);</span>
+<span class="nc" id="L413">                mathNumPropFunct.getParam().get(0).visit(this);</span>
+<span class="nc" id="L414">                this.sb.append(&quot;)&quot;);</span>
+<span class="nc" id="L415">                break;</span>
+            case WHOLE:
+<span class="nc" id="L417">                this.sb.append(&quot;BlocklyMethods.isWhole(&quot;);</span>
+<span class="nc" id="L418">                mathNumPropFunct.getParam().get(0).visit(this);</span>
+<span class="nc" id="L419">                this.sb.append(&quot;)&quot;);</span>
+<span class="nc" id="L420">                break;</span>
+            case POSITIVE:
+<span class="nc" id="L422">                this.sb.append(&quot;BlocklyMethods.isPositive(&quot;);</span>
+<span class="nc" id="L423">                mathNumPropFunct.getParam().get(0).visit(this);</span>
+<span class="nc" id="L424">                this.sb.append(&quot;)&quot;);</span>
+<span class="nc" id="L425">                break;</span>
+            case NEGATIVE:
+<span class="nc" id="L427">                this.sb.append(&quot;BlocklyMethods.isNegative(&quot;);</span>
+<span class="nc" id="L428">                mathNumPropFunct.getParam().get(0).visit(this);</span>
+<span class="nc" id="L429">                this.sb.append(&quot;)&quot;);</span>
+<span class="nc" id="L430">                break;</span>
+            case DIVISIBLE_BY:
+<span class="nc" id="L432">                this.sb.append(&quot;BlocklyMethods.isDivisibleBy(&quot;);</span>
+<span class="nc" id="L433">                mathNumPropFunct.getParam().get(0).visit(this);</span>
+<span class="nc" id="L434">                this.sb.append(&quot;, &quot;);</span>
+<span class="nc" id="L435">                mathNumPropFunct.getParam().get(1).visit(this);</span>
+<span class="nc" id="L436">                this.sb.append(&quot;)&quot;);</span>
+<span class="nc" id="L437">                break;</span>
+            default:
+                break;
+        }
+<span class="nc" id="L441">        return null;</span>
+    }
+
+    @Override
+    public Void visitMathOnListFunct(MathOnListFunct&lt;Void&gt; mathOnListFunct) {
+<span class="nc bnc" id="L446" title="All 9 branches missed.">        switch ( mathOnListFunct.getFunctName() ) {</span>
+            case SUM:
+<span class="nc" id="L448">                this.sb.append(&quot;BlocklyMethods.sumOnList(&quot;);</span>
+<span class="nc" id="L449">                mathOnListFunct.getParam().get(0).visit(this);</span>
+<span class="nc" id="L450">                break;</span>
+            case MIN:
+<span class="nc" id="L452">                this.sb.append(&quot;BlocklyMethods.minOnList(&quot;);</span>
+<span class="nc" id="L453">                mathOnListFunct.getParam().get(0).visit(this);</span>
+<span class="nc" id="L454">                break;</span>
+            case MAX:
+<span class="nc" id="L456">                this.sb.append(&quot;BlocklyMethods.maxOnList(&quot;);</span>
+<span class="nc" id="L457">                mathOnListFunct.getParam().get(0).visit(this);</span>
+<span class="nc" id="L458">                break;</span>
+            case AVERAGE:
+<span class="nc" id="L460">                this.sb.append(&quot;BlocklyMethods.averageOnList(&quot;);</span>
+<span class="nc" id="L461">                mathOnListFunct.getParam().get(0).visit(this);</span>
+<span class="nc" id="L462">                break;</span>
+            case MEDIAN:
+<span class="nc" id="L464">                this.sb.append(&quot;BlocklyMethods.medianOnList(&quot;);</span>
+<span class="nc" id="L465">                mathOnListFunct.getParam().get(0).visit(this);</span>
+<span class="nc" id="L466">                break;</span>
+            case STD_DEV:
+<span class="nc" id="L468">                this.sb.append(&quot;BlocklyMethods.standardDeviatioin(&quot;);</span>
+<span class="nc" id="L469">                mathOnListFunct.getParam().get(0).visit(this);</span>
+<span class="nc" id="L470">                break;</span>
+            case RANDOM:
+<span class="nc" id="L472">                this.sb.append(&quot;BlocklyMethods.randOnList(&quot;);</span>
+<span class="nc" id="L473">                mathOnListFunct.getParam().get(0).visit(this);</span>
+<span class="nc" id="L474">                break;</span>
+            case MODE:
+<span class="nc" id="L476">                this.sb.append(&quot;BlocklyMethods.modeOnList(&quot;);</span>
+<span class="nc" id="L477">                mathOnListFunct.getParam().get(0).visit(this);</span>
+<span class="nc" id="L478">                break;</span>
+            default:
+                break;
+        }
+<span class="nc" id="L482">        this.sb.append(&quot;)&quot;);</span>
+<span class="nc" id="L483">        return null;</span>
+    }
+
+    @Override
+    public Void visitMathRandomFloatFunct(MathRandomFloatFunct&lt;Void&gt; mathRandomFloatFunct) {
+<span class="nc" id="L488">        this.sb.append(&quot;BlocklyMethods.randDouble()&quot;);</span>
+<span class="nc" id="L489">        return null;</span>
+    }
+
+    @Override
+    public Void visitMathRandomIntFunct(MathRandomIntFunct&lt;Void&gt; mathRandomIntFunct) {
+<span class="nc" id="L494">        this.sb.append(&quot;BlocklyMethods.randInt(&quot;);</span>
+<span class="nc" id="L495">        mathRandomIntFunct.getParam().get(0).visit(this);</span>
+<span class="nc" id="L496">        this.sb.append(&quot;, &quot;);</span>
+<span class="nc" id="L497">        mathRandomIntFunct.getParam().get(1).visit(this);</span>
+<span class="nc" id="L498">        this.sb.append(&quot;)&quot;);</span>
+<span class="nc" id="L499">        return null;</span>
+    }
+
+    @Override
+    public Void visitTextJoinFunct(TextJoinFunct&lt;Void&gt; textJoinFunct) {
+<span class="nc" id="L504">        this.sb.append(&quot;BlocklyMethods.textJoin(&quot;);</span>
+<span class="nc" id="L505">        textJoinFunct.getParam().visit(this);</span>
+<span class="nc" id="L506">        this.sb.append(&quot;)&quot;);</span>
+<span class="nc" id="L507">        return null;</span>
+    }
+
+    @Override
+    public Void visitSetMode(SetMode&lt;Void&gt; setMode) {
+<span class="nc" id="L512">        this.sb.append(&quot;h.mode(&quot;);</span>
+<span class="nc bnc" id="L513" title="All 4 branches missed.">        switch ( setMode.getModus() ) {</span>
+            case ACTIVE:
+<span class="nc" id="L515">                this.sb.append(&quot;1)&quot;);</span>
+<span class="nc" id="L516">                break;</span>
+            case REST:
+<span class="nc" id="L518">                this.sb.append(&quot;2)&quot;);</span>
+<span class="nc" id="L519">                break;</span>
+            case SIT:
+<span class="nc" id="L521">                this.sb.append(&quot;3)&quot;);</span>
+                break;
+        }
+<span class="nc" id="L524">        return null;</span>
+    }
+
+    @Override
+    public Void visitApplyPosture(ApplyPosture&lt;Void&gt; applyPosture) {
+<span class="nc" id="L529">        this.sb.append(&quot;h.applyPosture(&quot;);</span>
+<span class="nc bnc" id="L530" title="All 10 branches missed.">        switch ( applyPosture.getPosture() ) {</span>
+            case STAND:
+<span class="nc" id="L532">                this.sb.append(&quot;\&quot;Stand\&quot;)&quot;);</span>
+<span class="nc" id="L533">                break;</span>
+            case STANDINIT:
+<span class="nc" id="L535">                this.sb.append(&quot;\&quot;StandInit\&quot;)&quot;);</span>
+<span class="nc" id="L536">                break;</span>
+            case STANDZERO:
+<span class="nc" id="L538">                this.sb.append(&quot;\&quot;StandZero\&quot;)&quot;);</span>
+<span class="nc" id="L539">                break;</span>
+            case SITRELAX:
+<span class="nc" id="L541">                this.sb.append(&quot;\&quot;SitRelax\&quot;)&quot;);</span>
+<span class="nc" id="L542">                break;</span>
+            case SIT:
+<span class="nc" id="L544">                this.sb.append(&quot;\&quot;Sit\&quot;)&quot;);</span>
+<span class="nc" id="L545">                break;</span>
+            case LYINGBELLY:
+<span class="nc" id="L547">                this.sb.append(&quot;\&quot;LyingBelly\&quot;)&quot;);</span>
+<span class="nc" id="L548">                break;</span>
+            case LYINGBACK:
+<span class="nc" id="L550">                this.sb.append(&quot;\&quot;LyingBack\&quot;)&quot;);</span>
+<span class="nc" id="L551">                break;</span>
+            case CROUCH:
+<span class="nc" id="L553">                this.sb.append(&quot;\&quot;Crouch\&quot;)&quot;);</span>
+<span class="nc" id="L554">                break;</span>
+            case REST:
+<span class="nc" id="L556">                this.sb.append(&quot;\&quot;Rest\&quot;)&quot;);</span>
+                break;
+        }
+<span class="nc" id="L559">        return null;</span>
+    }
+
+    @Override
+    public Void visitSetStiffness(SetStiffness&lt;Void&gt; setStiffness) {
+<span class="nc" id="L564">        this.sb.append(&quot;h.stiffness(&quot;);</span>
+<span class="nc bnc" id="L565" title="All 9 branches missed.">        switch ( setStiffness.getBodyPart() ) {</span>
+            case BODY:
+<span class="nc" id="L567">                this.sb.append(&quot;\&quot;Body\&quot;&quot;);</span>
+<span class="nc" id="L568">                break;</span>
+            case HEAD:
+<span class="nc" id="L570">                this.sb.append(&quot;\&quot;Head\&quot;&quot;);</span>
+<span class="nc" id="L571">                break;</span>
+            case ARMS:
+<span class="nc" id="L573">                this.sb.append(&quot;\&quot;Arms\&quot;&quot;);</span>
+<span class="nc" id="L574">                break;</span>
+            case LEFTARM:
+<span class="nc" id="L576">                this.sb.append(&quot;\&quot;LArm\&quot;&quot;);</span>
+<span class="nc" id="L577">                break;</span>
+            case RIGHTARM:
+<span class="nc" id="L579">                this.sb.append(&quot;\&quot;RArm\&quot;&quot;);</span>
+<span class="nc" id="L580">                break;</span>
+            case LEGS:
+<span class="nc" id="L582">                this.sb.append(&quot;\&quot;Legs\&quot;&quot;);</span>
+<span class="nc" id="L583">                break;</span>
+            case LEFTLEG:
+<span class="nc" id="L585">                this.sb.append(&quot;\&quot;LLeg\&quot;&quot;);</span>
+<span class="nc" id="L586">                break;</span>
+            case RIHTLEG:
+<span class="nc" id="L588">                this.sb.append(&quot;\&quot;RLeg\&quot;&quot;);</span>
+                break;
+        }
+
+<span class="nc bnc" id="L592" title="All 3 branches missed.">        switch ( setStiffness.getOnOff() ) {</span>
+            case ON:
+<span class="nc" id="L594">                this.sb.append(&quot;, 1)&quot;);</span>
+<span class="nc" id="L595">                break;</span>
+            case OFF:
+<span class="nc" id="L597">                this.sb.append(&quot;, 2)&quot;);</span>
+                break;
+        }
+<span class="nc" id="L600">        return null;</span>
+    }
+
+    @Override
+    public Void visitAutonomous(Autonomous&lt;Void&gt; autonomous) {
+<span class="nc" id="L605">        this.sb.append(&quot;h.setAutonomousLife(&quot; + getEnumCode(autonomous.getOnOff()).toUpperCase() + &quot;)&quot;);</span>
+<span class="nc" id="L606">        return null;</span>
+    }
+
+    @Override
+    public Void visitHand(Hand&lt;Void&gt; hand) {
+<span class="nc" id="L611">        this.sb.append(&quot;h.hand(&quot;);</span>
+<span class="nc bnc" id="L612" title="All 3 branches missed.">        switch ( hand.getTurnDirection() ) {</span>
+            case LEFT:
+<span class="nc" id="L614">                this.sb.append(&quot;\&quot;LHand\&quot;&quot;);</span>
+<span class="nc" id="L615">                break;</span>
+            case RIGHT:
+<span class="nc" id="L617">                this.sb.append(&quot;\&quot;RHand\&quot;&quot;);</span>
+                break;
+        }
+
+<span class="nc bnc" id="L621" title="All 4 branches missed.">        switch ( hand.getModus() ) {</span>
+            case ACTIVE:
+<span class="nc" id="L623">                this.sb.append(&quot;, 1)&quot;);</span>
+<span class="nc" id="L624">                break;</span>
+            case REST:
+<span class="nc" id="L626">                this.sb.append(&quot;, 2)&quot;);</span>
+<span class="nc" id="L627">                break;</span>
+            case SIT:
+<span class="nc" id="L629">                this.sb.append(&quot;, 3)&quot;);</span>
+<span class="nc" id="L630">                break;</span>
+            default:
+                break;
+        }
+<span class="nc" id="L634">        return null;</span>
+    }
+
+    @Override
+    public Void visitMoveJoint(MoveJoint&lt;Void&gt; moveJoint) {
+<span class="nc" id="L639">        this.sb.append(&quot;h.moveJoint(&quot;);</span>
+<span class="nc bnc" id="L640" title="All 27 branches missed.">        switch ( moveJoint.getJoint() ) {</span>
+            case HEADYAW:
+<span class="nc" id="L642">                this.sb.append(&quot;\&quot;HeadYaw\&quot;&quot;);</span>
+<span class="nc" id="L643">                break;</span>
+            case HEADPITCH:
+<span class="nc" id="L645">                this.sb.append(&quot;\&quot;HeadPitch\&quot;&quot;);</span>
+<span class="nc" id="L646">                break;</span>
+            case LSHOULDERPITCH:
+<span class="nc" id="L648">                this.sb.append(&quot;\&quot;LShoulderPitch\&quot;&quot;);</span>
+<span class="nc" id="L649">                break;</span>
+            case LSHOULDERROLL:
+<span class="nc" id="L651">                this.sb.append(&quot;\&quot;LShoulderRoll\&quot;&quot;);</span>
+<span class="nc" id="L652">                break;</span>
+            case LELBOWYAW:
+<span class="nc" id="L654">                this.sb.append(&quot;\&quot;LElbowYaw\&quot;&quot;);</span>
+<span class="nc" id="L655">                break;</span>
+            case LELBOWROLL:
+<span class="nc" id="L657">                this.sb.append(&quot;\&quot;LElbowRoll\&quot;&quot;);</span>
+<span class="nc" id="L658">                break;</span>
+            case LWRISTYAW:
+<span class="nc" id="L660">                this.sb.append(&quot;\&quot;LWristYaw\&quot;&quot;);</span>
+<span class="nc" id="L661">                break;</span>
+            case LHAND:
+<span class="nc" id="L663">                this.sb.append(&quot;\&quot;LHand\&quot;&quot;);</span>
+<span class="nc" id="L664">                break;</span>
+            case LHIPYAWPITCH:
+<span class="nc" id="L666">                this.sb.append(&quot;\&quot;LHipYawPitch\&quot;&quot;);</span>
+<span class="nc" id="L667">                break;</span>
+            case LHIPROLL:
+<span class="nc" id="L669">                this.sb.append(&quot;\&quot;LHipRoll\&quot;&quot;);</span>
+<span class="nc" id="L670">                break;</span>
+            case LHIPPITCH:
+<span class="nc" id="L672">                this.sb.append(&quot;\&quot;LHipPitch\&quot;&quot;);</span>
+<span class="nc" id="L673">                break;</span>
+            case LKNEEPITCH:
+<span class="nc" id="L675">                this.sb.append(&quot;\&quot;LKneePitch\&quot;&quot;);</span>
+<span class="nc" id="L676">                break;</span>
+            case LANKLEPITCH:
+<span class="nc" id="L678">                this.sb.append(&quot;\&quot;LAnklePitch\&quot;&quot;);</span>
+<span class="nc" id="L679">                break;</span>
+            case RANKLEROLL:
+<span class="nc" id="L681">                this.sb.append(&quot;\&quot;RAnkleRoll\&quot;&quot;);</span>
+<span class="nc" id="L682">                break;</span>
+            case RHIPYAWPITCH:
+<span class="nc" id="L684">                this.sb.append(&quot;\&quot;RHipYawPitch\&quot;&quot;);</span>
+<span class="nc" id="L685">                break;</span>
+            case RHIPROLL:
+<span class="nc" id="L687">                this.sb.append(&quot;\&quot;RHipRoll\&quot;&quot;);</span>
+<span class="nc" id="L688">                break;</span>
+            case RHIPPITCH:
+<span class="nc" id="L690">                this.sb.append(&quot;\&quot;RHipPitch\&quot;&quot;);</span>
+<span class="nc" id="L691">                break;</span>
+            case RKNEEPITCH:
+<span class="nc" id="L693">                this.sb.append(&quot;\&quot;RKneePitch\&quot;&quot;);</span>
+<span class="nc" id="L694">                break;</span>
+            case RANKLEPITCH:
+<span class="nc" id="L696">                this.sb.append(&quot;\&quot;RAnklePitch\&quot;&quot;);</span>
+<span class="nc" id="L697">                break;</span>
+            case RSHOULDERPITCH:
+<span class="nc" id="L699">                this.sb.append(&quot;\&quot;RShoulderPitch\&quot;&quot;);</span>
+<span class="nc" id="L700">                break;</span>
+            case RSHOULDERROLL:
+<span class="nc" id="L702">                this.sb.append(&quot;\&quot;RShoulderRoll\&quot;&quot;);</span>
+<span class="nc" id="L703">                break;</span>
+            case RELBOWYAW:
+<span class="nc" id="L705">                this.sb.append(&quot;\&quot;RElbowYaw\&quot;&quot;);</span>
+<span class="nc" id="L706">                break;</span>
+            case RELBOWROLL:
+<span class="nc" id="L708">                this.sb.append(&quot;\&quot;RElbowRoll\&quot;&quot;);</span>
+<span class="nc" id="L709">                break;</span>
+            case RWRISTYAW:
+<span class="nc" id="L711">                this.sb.append(&quot;\&quot;RWristYaw\&quot;&quot;);</span>
+<span class="nc" id="L712">                break;</span>
+            case RHAND:
+<span class="nc" id="L714">                this.sb.append(&quot;\&quot;RHand\&quot;&quot;);</span>
+<span class="nc" id="L715">                break;</span>
+            case LANKLEROLL:
+<span class="nc" id="L717">                this.sb.append(&quot;\&quot;LAnkleRoll\&quot;&quot;);</span>
+<span class="nc" id="L718">                break;</span>
+            default:
+                break;
+        }
+<span class="nc" id="L722">        this.sb.append(&quot;, &quot;);</span>
+<span class="nc" id="L723">        moveJoint.getDegrees().visit(this);</span>
+<span class="nc" id="L724">        this.sb.append(&quot;, &quot;);</span>
+<span class="nc bnc" id="L725" title="All 3 branches missed.">        switch ( moveJoint.getRelativeAbsolute() ) {</span>
+            case ABSOLUTE:
+<span class="nc" id="L727">                this.sb.append(&quot;1)&quot;);</span>
+<span class="nc" id="L728">                break;</span>
+            case RELATIVE:
+<span class="nc" id="L730">                this.sb.append(&quot;2)&quot;);</span>
+                break;
+        }
+<span class="nc" id="L733">        return null;</span>
+    }
+
+    @Override
+    public Void visitWalkDistance(WalkDistance&lt;Void&gt; walkDistance) {
+<span class="fc" id="L738">        this.sb.append(&quot;h.walk(&quot;);</span>
+<span class="pc bpc" id="L739" title="1 of 2 branches missed.">        if ( walkDistance.getWalkDirection() == DriveDirection.BACKWARD ) {</span>
+<span class="nc" id="L740">            this.sb.append(&quot;-&quot;);</span>
+        }
+<span class="fc" id="L742">        walkDistance.getDistanceToWalk().visit(this);</span>
+<span class="fc" id="L743">        this.sb.append(&quot;, 0, 0)&quot;);</span>
+<span class="fc" id="L744">        return null;</span>
+    }
+
+    @Override
+    public Void visitTurnDegrees(TurnDegrees&lt;Void&gt; turnDegrees) {
+<span class="nc" id="L749">        this.sb.append(&quot;h.walk(0, 0,&quot;);</span>
+<span class="nc bnc" id="L750" title="All 2 branches missed.">        if ( turnDegrees.getTurnDirection() == TurnDirection.RIGHT ) {</span>
+<span class="nc" id="L751">            this.sb.append(&quot;-&quot;);</span>
+        }
+<span class="nc" id="L753">        turnDegrees.getDegreesToTurn().visit(this);</span>
+<span class="nc" id="L754">        this.sb.append(&quot;)&quot;);</span>
+<span class="nc" id="L755">        return null;</span>
+    }
+
+    @Override
+    public Void visitWalkTo(WalkTo&lt;Void&gt; walkTo) {
+<span class="nc" id="L760">        this.sb.append(&quot;h.walk(&quot;);</span>
+<span class="nc" id="L761">        walkTo.getWalkToX().visit(this);</span>
+<span class="nc" id="L762">        this.sb.append(&quot;,&quot;);</span>
+<span class="nc" id="L763">        walkTo.getWalkToY().visit(this);</span>
+<span class="nc" id="L764">        this.sb.append(&quot;,&quot;);</span>
+<span class="nc" id="L765">        walkTo.getWalkToTheta().visit(this);</span>
+<span class="nc" id="L766">        this.sb.append(&quot;)&quot;);</span>
+
+<span class="nc" id="L768">        return null;</span>
+    }
+
+    @Override
+    public Void visitStop(Stop&lt;Void&gt; stop) {
+<span class="nc" id="L773">        this.sb.append(&quot;h.stop()&quot;);</span>
+
+<span class="nc" id="L775">        return null;</span>
+    }
+
+    @Override
+    public Void visitAnimation(Animation&lt;Void&gt; animation) {
+<span class="nc bnc" id="L780" title="All 5 branches missed.">        switch ( animation.getMove() ) {</span>
+            case TAICHI:
+<span class="nc" id="L782">                this.sb.append(&quot;h.taiChi()&quot;);</span>
+<span class="nc" id="L783">                break;</span>
+            case BLINK:
+<span class="nc" id="L785">                this.sb.append(&quot;h.blink()&quot;);</span>
+<span class="nc" id="L786">                break;</span>
+            case WAVE:
+<span class="nc" id="L788">                this.sb.append(&quot;h.wave()&quot;);</span>
+<span class="nc" id="L789">                break;</span>
+            case WIPEFOREHEAD:
+<span class="nc" id="L791">                this.sb.append(&quot;h.wipeForehead()&quot;);</span>
+                break;
+        }
+<span class="nc" id="L794">        return null;</span>
+    }
+
+    @Override
+    public Void visitPointLookAt(PointLookAt&lt;Void&gt; pointLookAt) {
+<span class="nc" id="L799">        this.sb.append(&quot;h.pointLookAt(&quot; + getEnumCode(pointLookAt.getPointLook()));</span>
+<span class="nc" id="L800">        this.sb.append(&quot;, &quot; + pointLookAt.getFrame().getValues()[0] + &quot;, &quot;);</span>
+
+<span class="nc" id="L802">        pointLookAt.getpointX().visit(this);</span>
+<span class="nc" id="L803">        this.sb.append(&quot;, &quot;);</span>
+<span class="nc" id="L804">        pointLookAt.getpointY().visit(this);</span>
+<span class="nc" id="L805">        this.sb.append(&quot;, &quot;);</span>
+<span class="nc" id="L806">        pointLookAt.getpointZ().visit(this);</span>
+<span class="nc" id="L807">        this.sb.append(&quot;, &quot;);</span>
+<span class="nc" id="L808">        pointLookAt.getSpeed().visit(this);</span>
+<span class="nc" id="L809">        this.sb.append(&quot;)&quot;);</span>
+<span class="nc" id="L810">        return null;</span>
+    }
+
+    @Override
+    public Void visitSetVolume(SetVolume&lt;Void&gt; setVolume) {
+<span class="nc" id="L815">        this.sb.append(&quot;h.setVolume(&quot;);</span>
+<span class="nc" id="L816">        setVolume.getVolume().visit(this);</span>
+<span class="nc" id="L817">        this.sb.append(&quot;)&quot;);</span>
+<span class="nc" id="L818">        return null;</span>
+    }
+
+    @Override
+    public Void visitGetVolume(GetVolume&lt;Void&gt; getVolume) {
+<span class="nc" id="L823">        this.sb.append(&quot;h.getVolume()&quot;);</span>
+<span class="nc" id="L824">        return null;</span>
+    }
+
+    private String getLanguageString(ILanguage language) {
+<span class="nc bnc" id="L828" title="All 22 branches missed.">        switch ( (Language) language ) {</span>
+            case GERMAN:
+<span class="nc" id="L830">                return &quot;German&quot;;</span>
+            case ENGLISH:
+<span class="nc" id="L832">                return &quot;English&quot;;</span>
+            case FRENCH:
+<span class="nc" id="L834">                return &quot;French&quot;;</span>
+            case JAPANESE:
+<span class="nc" id="L836">                return &quot;Japanese&quot;;</span>
+            case CHINESE:
+<span class="nc" id="L838">                return &quot;Chinese&quot;;</span>
+            case SPANISH:
+<span class="nc" id="L840">                return &quot;Spanish&quot;;</span>
+            case KOREAN:
+<span class="nc" id="L842">                return &quot;Korean&quot;;</span>
+            case ITALIAN:
+<span class="nc" id="L844">                return &quot;Italian&quot;;</span>
+            case DUTCH:
+<span class="nc" id="L846">                return &quot;Dutch&quot;;</span>
+            case FINNISH:
+<span class="nc" id="L848">                return &quot;Finnish&quot;;</span>
+            case POLISH:
+<span class="nc" id="L850">                return &quot;Polish&quot;;</span>
+            case RUSSIAN:
+<span class="nc" id="L852">                return &quot;Russian&quot;;</span>
+            case TURKISH:
+<span class="nc" id="L854">                return &quot;Turkish&quot;;</span>
+            case ARABIC:
+<span class="nc" id="L856">                return &quot;Arabic&quot;;</span>
+            case CZECH:
+<span class="nc" id="L858">                return &quot;Czech&quot;;</span>
+            case PORTUGUESE:
+<span class="nc" id="L860">                return &quot;Portuguese&quot;;</span>
+            case BRAZILIAN:
+<span class="nc" id="L862">                return &quot;Brazilian&quot;;</span>
+            case SWEDISH:
+<span class="nc" id="L864">                return &quot;Swedish&quot;;</span>
+            case DANISH:
+<span class="nc" id="L866">                return &quot;Danish&quot;;</span>
+            case NORWEGIAN:
+<span class="nc" id="L868">                return &quot;Norwegian&quot;;</span>
+            case GREEK:
+<span class="nc" id="L870">                return &quot;Greek&quot;;</span>
+            default:
+<span class="nc" id="L872">                return &quot;English&quot;;</span>
+        }
+    }
+
+    @Override
+    public Void visitSetLanguageAction(SetLanguageAction&lt;Void&gt; setLanguageAction) {
+<span class="nc" id="L878">        this.sb.append(&quot;h.setLanguage(\&quot;&quot;);</span>
+<span class="nc" id="L879">        this.sb.append(this.getLanguageString(setLanguageAction.getLanguage()));</span>
+<span class="nc" id="L880">        this.sb.append(&quot;\&quot;)&quot;);</span>
+<span class="nc" id="L881">        return null;</span>
+    }
+
+    @Override
+    public Void visitGetLanguage(GetLanguage&lt;Void&gt; getLanguage) {
+<span class="nc" id="L886">        this.sb.append(&quot;h.getLanguage()&quot;);</span>
+<span class="nc" id="L887">        return null;</span>
+    }
+
+    @Override
+    public Void visitSayTextAction(SayTextAction&lt;Void&gt; sayTextAction) {
+<span class="fc" id="L892">        this.sb.append(&quot;h.say(&quot;);</span>
+<span class="pc bpc" id="L893" title="1 of 2 branches missed.">        if ( !sayTextAction.getMsg().getKind().hasName(&quot;STRING_CONST&quot;) ) {</span>
+<span class="fc" id="L894">            this.sb.append(&quot;str(&quot;);</span>
+<span class="fc" id="L895">            sayTextAction.getMsg().visit(this);</span>
+<span class="fc" id="L896">            this.sb.append(&quot;)&quot;);</span>
+        } else {
+<span class="nc" id="L898">            sayTextAction.getMsg().visit(this);</span>
+        }
+<span class="fc" id="L900">        BlockType emptyBlock = BlockTypeContainer.getByName(&quot;EMPTY_EXPR&quot;);</span>
+<span class="pc bpc" id="L901" title="2 of 4 branches missed.">        if ( !(sayTextAction.getSpeed().getKind().equals(emptyBlock) &amp;&amp; sayTextAction.getPitch().getKind().equals(emptyBlock)) ) {</span>
+<span class="nc" id="L902">            this.sb.append(&quot;,&quot;);</span>
+<span class="nc" id="L903">            sayTextAction.getSpeed().visit(this);</span>
+<span class="nc" id="L904">            this.sb.append(&quot;,&quot;);</span>
+<span class="nc" id="L905">            sayTextAction.getPitch().visit(this);</span>
+        }
+<span class="fc" id="L907">        this.sb.append(&quot;)&quot;);</span>
+<span class="fc" id="L908">        return null;</span>
+    }
+
+    @Override
+    public Void visitToneAction(ToneAction&lt;Void&gt; toneAction) {
+<span class="nc" id="L913">        return null;</span>
+    }
+
+    @Override
+    public Void visitPlayNoteAction(PlayNoteAction&lt;Void&gt; playNoteAction) {
+<span class="nc" id="L918">        return null;</span>
+    }
+
+    @Override
+    public Void visitVolumeAction(VolumeAction&lt;Void&gt; volumeAction) {
+<span class="nc" id="L923">        return null;</span>
+    }
+
+    @Override
+    public Void visitPlayFileAction(PlayFileAction&lt;Void&gt; playFileAction) {
+<span class="nc" id="L928">        return null;</span>
+    }
+
+    @Override
+    public Void visitPlayFile(PlayFile&lt;Void&gt; playFile) {
+<span class="nc" id="L933">        this.sb.append(&quot;h.playFile(&quot;);</span>
+<span class="nc" id="L934">        playFile.getMsg().visit(this);</span>
+<span class="nc" id="L935">        this.sb.append(&quot;)&quot;);</span>
+<span class="nc" id="L936">        return null;</span>
+    }
+
+    @Override
+    public Void visitSetLeds(SetLeds&lt;Void&gt; setLeds) {
+<span class="nc" id="L941">        this.sb.append(&quot;h.setLeds(&quot;);</span>
+<span class="nc bnc" id="L942" title="All 12 branches missed.">        switch ( setLeds.getLed() ) {</span>
+            case ALL:
+<span class="nc" id="L944">                this.sb.append(&quot;\&quot;AllLeds\&quot;, &quot;);</span>
+<span class="nc" id="L945">                break;</span>
+            case CHEST:
+<span class="nc" id="L947">                this.sb.append(&quot;\&quot;ChestLeds\&quot;, &quot;);</span>
+<span class="nc" id="L948">                break;</span>
+            case EARS:
+<span class="nc" id="L950">                this.sb.append(&quot;\&quot;EarLeds\&quot;, &quot;);</span>
+<span class="nc" id="L951">                break;</span>
+            case EYES:
+<span class="nc" id="L953">                this.sb.append(&quot;\&quot;FaceLeds\&quot;, &quot;);</span>
+<span class="nc" id="L954">                break;</span>
+            case HEAD:
+<span class="nc" id="L956">                this.sb.append(&quot;\&quot;BrainLeds\&quot;, &quot;);</span>
+<span class="nc" id="L957">                break;</span>
+            case LEFTEAR:
+<span class="nc" id="L959">                this.sb.append(&quot;\&quot;LeftEarLeds\&quot;, &quot;);</span>
+<span class="nc" id="L960">                break;</span>
+            case LEFTEYE:
+<span class="nc" id="L962">                this.sb.append(&quot;\&quot;LeftFaceLeds\&quot;, &quot;);</span>
+<span class="nc" id="L963">                break;</span>
+            case LEFTFOOT:
+<span class="nc" id="L965">                this.sb.append(&quot;\&quot;LeftFootLeds\&quot;, &quot;);</span>
+<span class="nc" id="L966">                break;</span>
+            case RIGHTEAR:
+<span class="nc" id="L968">                this.sb.append(&quot;\&quot;RightEarLeds\&quot;, &quot;);</span>
+<span class="nc" id="L969">                break;</span>
+            case RIGHTEYE:
+<span class="nc" id="L971">                this.sb.append(&quot;\&quot;RightFaceLeds\&quot;, &quot;);</span>
+<span class="nc" id="L972">                break;</span>
+            case RIGHTFOOT:
+<span class="nc" id="L974">                this.sb.append(&quot;\&quot;RightFootLeds\&quot;, &quot;);</span>
+                break;
+        }
+<span class="nc" id="L977">        setLeds.getColor().visit(this);</span>
+<span class="nc" id="L978">        this.sb.append(&quot;, 0.1)&quot;);</span>
+<span class="nc" id="L979">        return null;</span>
+    }
+
+    @Override
+    public Void visitSetIntensity(SetIntensity&lt;Void&gt; setIntensity) {
+<span class="nc" id="L984">        this.sb.append(&quot;h.setIntensity(&quot;);</span>
+<span class="nc bnc" id="L985" title="All 12 branches missed.">        switch ( setIntensity.getLed() ) {</span>
+            case ALL:
+<span class="nc" id="L987">                this.sb.append(&quot;\&quot;AllLeds\&quot;, &quot;);</span>
+<span class="nc" id="L988">                break;</span>
+            case CHEST:
+<span class="nc" id="L990">                this.sb.append(&quot;\&quot;ChestLeds\&quot;, &quot;);</span>
+<span class="nc" id="L991">                break;</span>
+            case EARS:
+<span class="nc" id="L993">                this.sb.append(&quot;\&quot;EarLeds\&quot;, &quot;);</span>
+<span class="nc" id="L994">                break;</span>
+            case EYES:
+<span class="nc" id="L996">                this.sb.append(&quot;\&quot;FaceLeds\&quot;, &quot;);</span>
+<span class="nc" id="L997">                break;</span>
+            case HEAD:
+<span class="nc" id="L999">                this.sb.append(&quot;\&quot;BrainLeds\&quot;, &quot;);</span>
+<span class="nc" id="L1000">                break;</span>
+            case LEFTEAR:
+<span class="nc" id="L1002">                this.sb.append(&quot;\&quot;LeftEarLeds\&quot;, &quot;);</span>
+<span class="nc" id="L1003">                break;</span>
+            case LEFTEYE:
+<span class="nc" id="L1005">                this.sb.append(&quot;\&quot;LeftFaceLeds\&quot;, &quot;);</span>
+<span class="nc" id="L1006">                break;</span>
+            case LEFTFOOT:
+<span class="nc" id="L1008">                this.sb.append(&quot;\&quot;LeftFootLeds\&quot;, &quot;);</span>
+<span class="nc" id="L1009">                break;</span>
+            case RIGHTEAR:
+<span class="nc" id="L1011">                this.sb.append(&quot;\&quot;RightEarLeds\&quot;, &quot;);</span>
+<span class="nc" id="L1012">                break;</span>
+            case RIGHTEYE:
+<span class="nc" id="L1014">                this.sb.append(&quot;\&quot;RightFaceLeds\&quot;, &quot;);</span>
+<span class="nc" id="L1015">                break;</span>
+            case RIGHTFOOT:
+<span class="nc" id="L1017">                this.sb.append(&quot;\&quot;RightFootLeds\&quot;, &quot;);</span>
+                break;
+        }
+<span class="nc" id="L1020">        setIntensity.getIntensity().visit(this);</span>
+<span class="nc" id="L1021">        this.sb.append(&quot;)&quot;);</span>
+<span class="nc" id="L1022">        return null;</span>
+    }
+
+    /*@Override
+    public Void visitLedColor(LedColor&lt;Void&gt; ledColor) {
+        this.sb.append(ledColor.getRedChannel() + &quot;, &quot; + ledColor.getGreenChannel() + &quot;, &quot; + ledColor.getBlueChannel() + &quot;, 255&quot;);
+        return null;
+    }*/
+
+    @Override
+    public Void visitLedOff(LedOff&lt;Void&gt; ledOff) {
+<span class="nc" id="L1033">        this.sb.append(&quot;h.ledOff(&quot;);</span>
+<span class="nc bnc" id="L1034" title="All 12 branches missed.">        switch ( ledOff.getLed() ) {</span>
+            case ALL:
+<span class="nc" id="L1036">                this.sb.append(&quot;\&quot;AllLeds\&quot;&quot;);</span>
+<span class="nc" id="L1037">                break;</span>
+            case CHEST:
+<span class="nc" id="L1039">                this.sb.append(&quot;\&quot;ChestLeds\&quot;&quot;);</span>
+<span class="nc" id="L1040">                break;</span>
+            case EARS:
+<span class="nc" id="L1042">                this.sb.append(&quot;\&quot;EarLeds\&quot;&quot;);</span>
+<span class="nc" id="L1043">                break;</span>
+            case EYES:
+<span class="nc" id="L1045">                this.sb.append(&quot;\&quot;FaceLeds\&quot;&quot;);</span>
+<span class="nc" id="L1046">                break;</span>
+            case HEAD:
+<span class="nc" id="L1048">                this.sb.append(&quot;\&quot;BrainLeds\&quot;&quot;);</span>
+<span class="nc" id="L1049">                break;</span>
+            case LEFTEAR:
+<span class="nc" id="L1051">                this.sb.append(&quot;\&quot;LeftEarLeds\&quot;&quot;);</span>
+<span class="nc" id="L1052">                break;</span>
+            case LEFTEYE:
+<span class="nc" id="L1054">                this.sb.append(&quot;\&quot;LeftFaceLeds\&quot;&quot;);</span>
+<span class="nc" id="L1055">                break;</span>
+            case LEFTFOOT:
+<span class="nc" id="L1057">                this.sb.append(&quot;\&quot;LeftFootLeds\&quot;&quot;);</span>
+<span class="nc" id="L1058">                break;</span>
+            case RIGHTEAR:
+<span class="nc" id="L1060">                this.sb.append(&quot;\&quot;RightEarLeds\&quot;&quot;);</span>
+<span class="nc" id="L1061">                break;</span>
+            case RIGHTEYE:
+<span class="nc" id="L1063">                this.sb.append(&quot;\&quot;RightFaceLeds\&quot;&quot;);</span>
+<span class="nc" id="L1064">                break;</span>
+            case RIGHTFOOT:
+<span class="nc" id="L1066">                this.sb.append(&quot;\&quot;RightFootLeds\&quot;&quot;);</span>
+                break;
+        }
+<span class="nc" id="L1069">        this.sb.append(&quot;)&quot;);</span>
+<span class="nc" id="L1070">        return null;</span>
+    }
+
+    @Override
+    public Void visitLedReset(LedReset&lt;Void&gt; ledReset) {
+<span class="nc" id="L1075">        this.sb.append(&quot;h.ledReset(&quot;);</span>
+<span class="nc bnc" id="L1076" title="All 12 branches missed.">        switch ( ledReset.getLed() ) {</span>
+            case ALL:
+<span class="nc" id="L1078">                this.sb.append(&quot;\&quot;AllLeds\&quot;&quot;);</span>
+<span class="nc" id="L1079">                break;</span>
+            case CHEST:
+<span class="nc" id="L1081">                this.sb.append(&quot;\&quot;ChestLeds\&quot;&quot;);</span>
+<span class="nc" id="L1082">                break;</span>
+            case EARS:
+<span class="nc" id="L1084">                this.sb.append(&quot;\&quot;EarLeds\&quot;&quot;);</span>
+<span class="nc" id="L1085">                break;</span>
+            case EYES:
+<span class="nc" id="L1087">                this.sb.append(&quot;\&quot;FaceLeds\&quot;&quot;);</span>
+<span class="nc" id="L1088">                break;</span>
+            case HEAD:
+<span class="nc" id="L1090">                this.sb.append(&quot;\&quot;BrainLeds\&quot;&quot;);</span>
+<span class="nc" id="L1091">                break;</span>
+            case LEFTEAR:
+<span class="nc" id="L1093">                this.sb.append(&quot;\&quot;LeftEarLeds\&quot;&quot;);</span>
+<span class="nc" id="L1094">                break;</span>
+            case LEFTEYE:
+<span class="nc" id="L1096">                this.sb.append(&quot;\&quot;LeftFaceLeds\&quot;&quot;);</span>
+<span class="nc" id="L1097">                break;</span>
+            case LEFTFOOT:
+<span class="nc" id="L1099">                this.sb.append(&quot;\&quot;LeftFootLeds\&quot;&quot;);</span>
+<span class="nc" id="L1100">                break;</span>
+            case RIGHTEAR:
+<span class="nc" id="L1102">                this.sb.append(&quot;\&quot;RightEarLeds\&quot;&quot;);</span>
+<span class="nc" id="L1103">                break;</span>
+            case RIGHTEYE:
+<span class="nc" id="L1105">                this.sb.append(&quot;\&quot;RightFaceLeds\&quot;&quot;);</span>
+<span class="nc" id="L1106">                break;</span>
+            case RIGHTFOOT:
+<span class="nc" id="L1108">                this.sb.append(&quot;\&quot;RightFootLeds\&quot;&quot;);</span>
+                break;
+        }
+<span class="nc" id="L1111">        this.sb.append(&quot;)&quot;);</span>
+<span class="nc" id="L1112">        return null;</span>
+    }
+
+    @Override
+    public Void visitRandomEyesDuration(RandomEyesDuration&lt;Void&gt; randomEyesDuration) {
+<span class="nc" id="L1117">        this.sb.append(&quot;h.randomEyes(&quot;);</span>
+<span class="nc" id="L1118">        randomEyesDuration.getDuration().visit(this);</span>
+<span class="nc" id="L1119">        this.sb.append(&quot;)&quot;);</span>
+<span class="nc" id="L1120">        return null;</span>
+    }
+
+    @Override
+    public Void visitRastaDuration(RastaDuration&lt;Void&gt; rastaDuration) {
+<span class="nc" id="L1125">        this.sb.append(&quot;h.rasta(&quot;);</span>
+<span class="nc" id="L1126">        rastaDuration.getDuration().visit(this);</span>
+<span class="nc" id="L1127">        this.sb.append(&quot;)&quot;);</span>
+<span class="nc" id="L1128">        return null;</span>
+    }
+
+    @Override
+    public Void visitTouchSensor(TouchSensor&lt;Void&gt; touchSensor) {
+<span class="fc" id="L1133">        this.sb.append(&quot;h.touchsensors(&quot;);</span>
+<span class="fc" id="L1134">        this.sb.append(getEnumCode(touchSensor.getPort()));</span>
+<span class="fc" id="L1135">        this.sb.append(&quot;, &quot;);</span>
+<span class="fc" id="L1136">        this.sb.append(getEnumCode(touchSensor.getSlot()));</span>
+<span class="fc" id="L1137">        this.sb.append(&quot;)&quot;);</span>
+<span class="fc" id="L1138">        return null;</span>
+    }
+
+    @Override
+    public Void visitUltrasonicSensor(UltrasonicSensor&lt;Void&gt; sonar) {
+<span class="fc" id="L1143">        this.sb.append(&quot;h.ultrasonic()&quot;);</span>
+<span class="fc" id="L1144">        return null;</span>
+    }
+
+    @Override
+    public Void visitGyroSensor(GyroSensor&lt;Void&gt; gyrometer) {
+<span class="fc" id="L1149">        this.sb.append(&quot;h.gyrometer(&quot;);</span>
+<span class="fc" id="L1150">        this.sb.append(getEnumCode((gyrometer.getPort())));</span>
+<span class="fc" id="L1151">        this.sb.append(&quot;)&quot;);</span>
+<span class="fc" id="L1152">        return null;</span>
+    }
+
+    @Override
+    public Void visitAccelerometer(AccelerometerSensor&lt;Void&gt; accelerometer) {
+<span class="fc" id="L1157">        this.sb.append(&quot;h.accelerometer(&quot;);</span>
+<span class="fc" id="L1158">        this.sb.append(getEnumCode(accelerometer.getPort()));</span>
+<span class="fc" id="L1159">        this.sb.append(&quot;)&quot;);</span>
+<span class="fc" id="L1160">        return null;</span>
+    }
+
+    @Override
+    public Void visitFsrSensor(FsrSensor&lt;Void&gt; fsr) {
+<span class="fc" id="L1165">        this.sb.append(&quot;h.fsr(&quot;);</span>
+<span class="fc" id="L1166">        this.sb.append(getEnumCode(fsr.getPort()));</span>
+<span class="fc" id="L1167">        this.sb.append(&quot;)&quot;);</span>
+<span class="fc" id="L1168">        return null;</span>
+    }
+
+    @Override
+    public Void visitNaoMark(DetectedMark&lt;Void&gt; detectedMark) {
+<span class="fc" id="L1173">        this.sb.append(&quot;h.getDetectedMark&quot;);</span>
+<span class="fc bfc" id="L1174" title="All 2 branches covered.">        if ( detectedMark.getMode() == DetectedMarkMode.IDALL ) {</span>
+<span class="fc" id="L1175">            this.sb.append(&quot;s&quot;);</span>
+        }
+<span class="fc" id="L1177">        this.sb.append(&quot;()&quot;);</span>
+<span class="fc" id="L1178">        return null;</span>
+    }
+
+    @Override
+    public Void visitTakePicture(TakePicture&lt;Void&gt; takePicture) {
+<span class="nc" id="L1183">        this.sb.append(&quot;h.takePicture(&quot;);</span>
+<span class="nc bnc" id="L1184" title="All 2 branches missed.">        if ( takePicture.getCamera() == Camera.TOP ) {</span>
+<span class="nc" id="L1185">            this.sb.append(&quot;\&quot;Top\&quot;, &quot;);</span>
+<span class="nc bnc" id="L1186" title="All 2 branches missed.">        } else if ( takePicture.getCamera() == Camera.BOTTOM ) {</span>
+<span class="nc" id="L1187">            this.sb.append(&quot;\&quot;Bottom\&quot;, &quot;);</span>
+        }
+<span class="nc" id="L1189">        takePicture.getPictureName().visit(this);</span>
+<span class="nc" id="L1190">        this.sb.append(&quot;)&quot;);</span>
+<span class="nc" id="L1191">        return null;</span>
+    }
+
+    @Override
+    public Void visitRecordVideo(RecordVideo&lt;Void&gt; recordVideo) {
+<span class="nc" id="L1196">        this.sb.append(&quot;h.recordVideo(&quot;);</span>
+<span class="nc bnc" id="L1197" title="All 4 branches missed.">        switch ( recordVideo.getResolution() ) {</span>
+            case LOW:
+<span class="nc" id="L1199">                this.sb.append(&quot;0, &quot;);</span>
+<span class="nc" id="L1200">                break;</span>
+            case MED:
+<span class="nc" id="L1202">                this.sb.append(&quot;1, &quot;);</span>
+<span class="nc" id="L1203">                break;</span>
+            case HIGH:
+<span class="nc" id="L1205">                this.sb.append(&quot;2, &quot;);</span>
+                break;
+        }
+<span class="nc bnc" id="L1208" title="All 3 branches missed.">        switch ( recordVideo.getCamera() ) {</span>
+            case TOP:
+<span class="nc" id="L1210">                this.sb.append(&quot;\&quot;Top\&quot;, &quot;);</span>
+<span class="nc" id="L1211">                break;</span>
+            case BOTTOM:
+<span class="nc" id="L1213">                this.sb.append(&quot;\&quot;Bottom\&quot;, &quot;);</span>
+                break;
+        }
+<span class="nc" id="L1216">        recordVideo.getDuration().visit(this);</span>
+<span class="nc" id="L1217">        this.sb.append(&quot;, &quot;);</span>
+<span class="nc" id="L1218">        recordVideo.getVideoName().visit(this);</span>
+<span class="nc" id="L1219">        this.sb.append(&quot;)&quot;);</span>
+<span class="nc" id="L1220">        return null;</span>
+    }
+
+    @Override
+    public Void visitLearnFace(LearnFace&lt;Void&gt; learnFace) {
+<span class="nc" id="L1225">        this.sb.append(&quot;faceRecognitionModule.learnFace(&quot;);</span>
+<span class="nc" id="L1226">        learnFace.getFaceName().visit(this);</span>
+<span class="nc" id="L1227">        this.sb.append(&quot;)&quot;);</span>
+<span class="nc" id="L1228">        return null;</span>
+    }
+
+    @Override
+    public Void visitForgetFace(ForgetFace&lt;Void&gt; forgetFace) {
+<span class="nc" id="L1233">        this.sb.append(&quot;faceRecognitionModule.forgetFace(&quot;);</span>
+<span class="nc" id="L1234">        forgetFace.getFaceName().visit(this);</span>
+<span class="nc" id="L1235">        this.sb.append(&quot;)&quot;);</span>
+<span class="nc" id="L1236">        return null;</span>
+    }
+
+    @Override
+    public Void visitDetectFace(DetectFace&lt;Void&gt; detectFace) {
+<span class="fc" id="L1241">        this.sb.append(&quot;faceRecognitionModule.detectFace&quot;);</span>
+<span class="fc bfc" id="L1242" title="All 2 branches covered.">        if ( detectFace.getMode() == DetectedFaceMode.NAMEALL ) {</span>
+<span class="fc" id="L1243">            this.sb.append(&quot;s&quot;);</span>
+        }
+<span class="fc" id="L1245">        this.sb.append(&quot;()&quot;);</span>
+<span class="fc" id="L1246">        return null;</span>
+    }
+
+    @Override
+    public Void visitGetSampleSensor(GetSampleSensor&lt;Void&gt; sensorGetSample) {
+<span class="nc" id="L1251">        return sensorGetSample.getSensor().visit(this);</span>
+    }
+
+    @Override
+    public Void visitElectricCurrent(ElectricCurrent&lt;Void&gt; electricCurrent) {
+<span class="fc" id="L1256">        String side_axis = electricCurrent.getSlot().toString().toLowerCase();</span>
+<span class="fc" id="L1257">        String[] slots = side_axis.split(&quot;_&quot;);</span>
+
+<span class="fc" id="L1259">        IPort portType = electricCurrent.getPort();</span>
+<span class="fc" id="L1260">        String port = portType.toString().toLowerCase();</span>
+<span class="fc" id="L1261">        port = StringUtils.capitalize(port);</span>
+
+<span class="fc" id="L1263">        String side = extractSideFromSlot(slots, portType);</span>
+<span class="fc" id="L1264">        String axis1 = extractAxis1FromSlot(slots);</span>
+<span class="fc" id="L1265">        String axis2 = extractAxis2FromSlot(slots);</span>
+<span class="fc" id="L1266">        String jointActuator = constructJointActuator(portType, port, side, axis1, axis2);</span>
+
+<span class="fc" id="L1268">        this.sb.append(&quot;h.getElectricCurrent('&quot;);</span>
+<span class="fc" id="L1269">        this.sb.append(jointActuator);</span>
+<span class="fc" id="L1270">        this.sb.append(&quot;')&quot;);</span>
+<span class="fc" id="L1271">        return null;</span>
+    }
+
+    private String constructJointActuator(IPort portType, String port, String side, String axis1, String axis2) {
+<span class="fc bfc" id="L1275" title="All 2 branches covered.">        if ( portType.getCodeName().equals(&quot;HEAD&quot;) ) {</span>
+<span class="fc" id="L1276">            return port + side;</span>
+        } else {
+<span class="fc" id="L1278">            return side + port + axis1 + axis2;</span>
+        }
+    }
+
+    private String extractSideFromSlot(String[] slots, IPort portType) {
+        String side;
+<span class="fc" id="L1284">        side = Character.toString(slots[0].toUpperCase().charAt(0));</span>
+<span class="fc bfc" id="L1285" title="All 2 branches covered.">        if ( portType.getCodeName().equals(&quot;HEAD&quot;) ) {</span>
+<span class="fc" id="L1286">            side = StringUtils.capitalize(slots[0].toLowerCase());</span>
+        }
+<span class="fc" id="L1288">        return side;</span>
+    }
+
+    private String extractAxis1FromSlot(String[] slots) {
+<span class="fc bfc" id="L1292" title="All 2 branches covered.">        if ( slots.length &gt; 1 ) {</span>
+<span class="fc" id="L1293">            return StringUtils.capitalize(slots[1].toLowerCase());</span>
+        }
+<span class="fc" id="L1295">        return &quot;&quot;;</span>
+    }
+
+    private String extractAxis2FromSlot(String[] slots) {
+<span class="fc bfc" id="L1299" title="All 2 branches covered.">        if ( slots.length == 3 ) {</span>
+<span class="fc" id="L1300">            return StringUtils.capitalize(slots[2].toLowerCase());</span>
+        }
+<span class="fc" id="L1302">        return &quot;&quot;;</span>
+    }
+
+    @Override
+    protected void generateProgramPrefix(boolean withWrapping) {
+<span class="pc bpc" id="L1307" title="1 of 2 branches missed.">        if ( !withWrapping ) {</span>
+<span class="fc" id="L1308">            return;</span>
+        }
+<span class="nc" id="L1310">        this.sb.append(&quot;#!/usr/bin/python\n\n&quot;);</span>
+<span class="nc" id="L1311">        this.sb.append(&quot;import math\n&quot;);</span>
+<span class="nc" id="L1312">        this.sb.append(&quot;import time\n&quot;);</span>
+<span class="nc" id="L1313">        this.sb.append(&quot;from roberta import Hal\n&quot;);</span>
+<span class="nc" id="L1314">        this.sb.append(&quot;from roberta import BlocklyMethods\n&quot;);</span>
+<span class="nc" id="L1315">        this.sb.append(&quot;h = Hal()\n&quot;);</span>
+<span class="nc" id="L1316">        this.generateSensors();</span>
+
+<span class="nc bnc" id="L1318" title="All 2 branches missed.">        if ( !this.loopsLabels.isEmpty() ) {</span>
+<span class="nc" id="L1319">            nlIndent();</span>
+<span class="nc" id="L1320">            this.sb.append(&quot;class BreakOutOfALoop(Exception): pass\n&quot;);</span>
+<span class="nc" id="L1321">            this.sb.append(&quot;class ContinueLoop(Exception): pass\n\n&quot;);</span>
+        }
+<span class="nc" id="L1323">    }</span>
+
+    @Override
+    protected void generateProgramSuffix(boolean withWrapping) {
+<span class="pc bpc" id="L1327" title="1 of 2 branches missed.">        if ( !withWrapping ) {</span>
+<span class="fc" id="L1328">            return;</span>
+        }
+<span class="nc" id="L1330">        this.sb.append(&quot;\n\n&quot;);</span>
+<span class="nc" id="L1331">        this.sb.append(&quot;def main():\n&quot;);</span>
+<span class="nc" id="L1332">        this.sb.append(INDENT).append(&quot;try:\n&quot;);</span>
+<span class="nc" id="L1333">        this.sb.append(INDENT).append(INDENT).append(&quot;run()\n&quot;);</span>
+<span class="nc" id="L1334">        this.sb.append(INDENT).append(&quot;except Exception as e:\n&quot;);</span>
+<span class="nc" id="L1335">        this.sb.append(INDENT).append(INDENT).append(&quot;h.say(\&quot;Error!\&quot; + str(e))\n&quot;);</span>
+<span class="nc" id="L1336">        this.sb.append(INDENT).append(&quot;finally:\n&quot;);</span>
+<span class="nc" id="L1337">        this.removeSensors();</span>
+
+<span class="nc" id="L1339">        this.sb.append(INDENT).append(INDENT).append(&quot;h.myBroker.shutdown()&quot;);</span>
+
+<span class="nc" id="L1341">        this.sb.append(&quot;\n\n&quot;);</span>
+<span class="nc" id="L1342">        this.sb.append(&quot;if __name__ == \&quot;__main__\&quot;:\n&quot;);</span>
+<span class="nc" id="L1343">        this.sb.append(INDENT).append(&quot;main()&quot;);</span>
+<span class="nc" id="L1344">    }</span>
+
+    @Override
+    public Void visitConnectConst(ConnectConst&lt;Void&gt; connectConst) {
+<span class="nc" id="L1348">        return null;</span>
+    }
+
+    @Override
+    public Void visitWalkAsync(WalkAsync&lt;Void&gt; walkAsync) {
+<span class="nc" id="L1353">        this.sb.append(&quot;h.walkAsync(&quot;);</span>
+<span class="nc" id="L1354">        walkAsync.getXSpeed().visit(this);</span>
+<span class="nc" id="L1355">        this.sb.append(&quot;, &quot;);</span>
+<span class="nc" id="L1356">        walkAsync.getYSpeed().visit(this);</span>
+<span class="nc" id="L1357">        this.sb.append(&quot;, &quot;);</span>
+<span class="nc" id="L1358">        walkAsync.getZSpeed().visit(this);</span>
+<span class="nc" id="L1359">        this.sb.append(&quot;)&quot;);</span>
+<span class="nc" id="L1360">        return null;</span>
+    }
+
+    private void generateSensors() {
+<span class="nc bnc" id="L1364" title="All 2 branches missed.">        for ( UsedSensor usedSensor : this.usedSensors ) {</span>
+<span class="nc bnc" id="L1365" title="All 45 branches missed.">            switch ( usedSensor.getType().toString() ) {</span>
+                case BlocklyConstants.COLOR:
+<span class="nc" id="L1367">                    break;</span>
+                case BlocklyConstants.INFRARED:
+<span class="nc" id="L1369">                    break;</span>
+                case BlocklyConstants.ULTRASONIC:
+<span class="nc" id="L1371">                    this.sb.append(&quot;h.sonar.subscribe(\&quot;OpenRobertaApp\&quot;)\n&quot;);</span>
+<span class="nc" id="L1372">                    break;</span>
+                case BlocklyConstants.DETECT_MARK:
+<span class="nc" id="L1374">                    this.sb.append(&quot;h.mark.subscribe(\&quot;RobertaLab\&quot;, 500, 0.0)\n&quot;);</span>
+<span class="nc" id="L1375">                    break;</span>
+                case BlocklyConstants.NAO_FACE:
+<span class="nc" id="L1377">                    this.sb.append(&quot;\nfrom roberta import FaceRecognitionModule\n&quot;);</span>
+<span class="nc" id="L1378">                    this.sb.append(&quot;faceRecognitionModule = FaceRecognitionModule(\&quot;faceRecognitionModule\&quot;)\n&quot;);</span>
+<span class="nc" id="L1379">                    break;</span>
+                case BlocklyConstants.NAO_SPEECH:
+<span class="nc" id="L1381">                    this.sb.append(&quot;\nfrom roberta import SpeechRecognitionModule\n&quot;);</span>
+<span class="nc" id="L1382">                    this.sb.append(&quot;speechRecognitionModule = SpeechRecognitionModule(\&quot;speechRecognitionModule\&quot;)\n&quot;);</span>
+<span class="nc" id="L1383">                    this.sb.append(&quot;speechRecognitionModule.pauseASR()\n&quot;);</span>
+<span class="nc" id="L1384">                    break;</span>
+                case BlocklyConstants.LIGHT:
+                case BlocklyConstants.COMPASS:
+                case BlocklyConstants.SOUND:
+                case BlocklyConstants.TOUCH:
+                case BlocklyConstants.GYRO:
+                case BlocklyConstants.ACCELEROMETER:
+<span class="nc" id="L1391">                    break;</span>
+                default:
+
+<span class="nc" id="L1394">                    throw new DbcException(&quot;Sensor is not supported!&quot; + usedSensor.getType().toString());</span>
+            }
+<span class="nc" id="L1396">        }</span>
+<span class="nc" id="L1397">    }</span>
+
+    private void removeSensors() {
+<span class="nc bnc" id="L1400" title="All 2 branches missed.">        for ( UsedSensor usedSensor : this.usedSensors ) {</span>
+<span class="nc bnc" id="L1401" title="All 45 branches missed.">            switch ( usedSensor.getType().toString() ) {</span>
+                case BlocklyConstants.COLOR:
+<span class="nc" id="L1403">                    break;</span>
+                case BlocklyConstants.INFRARED:
+<span class="nc" id="L1405">                    break;</span>
+                case BlocklyConstants.ULTRASONIC:
+<span class="nc" id="L1407">                    this.sb.append(INDENT).append(INDENT).append(&quot;h.sonar.unsubscribe(\&quot;OpenRobertaApp\&quot;)\n&quot;);</span>
+<span class="nc" id="L1408">                    break;</span>
+                case BlocklyConstants.DETECT_MARK:
+<span class="nc" id="L1410">                    this.sb.append(INDENT).append(INDENT).append(&quot;h.mark.unsubscribe(\&quot;RobertaLab\&quot;)\n&quot;);</span>
+<span class="nc" id="L1411">                    break;</span>
+                case BlocklyConstants.NAO_FACE:
+<span class="nc" id="L1413">                    this.sb.append(INDENT).append(INDENT).append(&quot;faceRecognitionModule.unsubscribe()\n&quot;);</span>
+<span class="nc" id="L1414">                    break;</span>
+                case BlocklyConstants.NAO_SPEECH:
+<span class="nc" id="L1416">                    this.sb.append(INDENT).append(INDENT).append(&quot;speechRecognitionModule.unsubscribe()\n&quot;);</span>
+                case BlocklyConstants.LIGHT:
+                case BlocklyConstants.COMPASS:
+                case BlocklyConstants.SOUND:
+                case BlocklyConstants.TOUCH:
+                case BlocklyConstants.GYRO:
+                case BlocklyConstants.ACCELEROMETER:
+<span class="nc" id="L1423">                    break;</span>
+                default:
+<span class="nc" id="L1425">                    throw new DbcException(&quot;Sensor is not supported!&quot;);</span>
+            }
+<span class="nc" id="L1427">        }</span>
+<span class="nc" id="L1428">    }</span>
+
+    @Override
+    public Void visitColorHexString(ColorHexString&lt;Void&gt; colorHexString) {
+<span class="nc" id="L1432">        this.sb.append(colorHexString.getValue().replaceAll(&quot;#&quot;, &quot;0x&quot;));</span>
+<span class="nc" id="L1433">        return null;</span>
+    }
+
+    @Override
+    public Void visitRecognizeWord(RecognizeWord&lt;Void&gt; recognizeWord) {
+<span class="nc" id="L1438">        this.sb.append(&quot;speechRecognitionModule.recognizeWordFromDictionary(&quot;);</span>
+<span class="nc" id="L1439">        recognizeWord.getVocabulary().visit(this);</span>
+<span class="nc" id="L1440">        this.sb.append(&quot;)&quot;);</span>
+<span class="nc" id="L1441">        return null;</span>
+    }
+
+    @Override
+    public Void visitNaoMarkInformation(NaoMarkInformation&lt;Void&gt; naoMarkInformation) {
+<span class="fc" id="L1446">        this.sb.append(&quot;h.getNaoMarkInformation(&quot;);</span>
+<span class="fc" id="L1447">        naoMarkInformation.getNaoMarkId().visit(this);</span>
+<span class="fc" id="L1448">        this.sb.append(&quot;)&quot;);</span>
+<span class="fc" id="L1449">        return null;</span>
+    }
+
+    @Override
+    public Void visitDetecedFaceInformation(DetectedFaceInformation&lt;Void&gt; detectedFaceInformation) {
+<span class="fc" id="L1454">        this.sb.append(&quot;faceRecognitionModule.getFaceInformation(&quot;);</span>
+<span class="fc" id="L1455">        detectedFaceInformation.getFaceName().visit(this);</span>
+<span class="fc" id="L1456">        this.sb.append(&quot;)&quot;);</span>
+<span class="fc" id="L1457">        return null;</span>
+    }
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

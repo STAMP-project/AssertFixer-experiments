@@ -1,0 +1,161 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>Factory.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">RobotNXT</a> &gt; <a href="index.source.html" class="el_package">de.fhg.iais.roberta.factory.nxt</a> &gt; <span class="el_source">Factory.java</span></div><h1>Factory.java</h1><pre class="source lang-java linenums">package de.fhg.iais.roberta.factory.nxt;
+
+import java.util.ArrayList;
+import java.util.Map;
+import java.util.Properties;
+
+import de.fhg.iais.roberta.components.Configuration;
+import de.fhg.iais.roberta.factory.AbstractRobotFactory;
+import de.fhg.iais.roberta.factory.ICompilerWorkflow;
+import de.fhg.iais.roberta.factory.IRobotFactory;
+import de.fhg.iais.roberta.inter.mode.action.IActorPort;
+import de.fhg.iais.roberta.inter.mode.action.IShowPicture;
+import de.fhg.iais.roberta.inter.mode.general.IPickColor;
+import de.fhg.iais.roberta.inter.mode.sensor.ISensorPort;
+import de.fhg.iais.roberta.mode.action.ActorPort;
+import de.fhg.iais.roberta.mode.general.nxt.PickColor;
+import de.fhg.iais.roberta.mode.sensor.SensorPort;
+import de.fhg.iais.roberta.syntax.Phrase;
+import de.fhg.iais.roberta.syntax.check.program.RobotCommonCheckVisitor;
+import de.fhg.iais.roberta.syntax.check.program.RobotSimulationCheckVisitor;
+import de.fhg.iais.roberta.syntax.check.program.nxt.BrickCheckVisitor;
+import de.fhg.iais.roberta.syntax.check.program.nxt.SimulationCheckVisitor;
+import de.fhg.iais.roberta.util.RobertaProperties;
+import de.fhg.iais.roberta.util.Util1;
+
+public class Factory extends AbstractRobotFactory {
+    private final CompilerWorkflow robotCompilerWorkflow;
+    private final SimCompilerWorkflow simCompilerWorkflow;
+    private final Properties nxtProperties;
+    private final String name;
+    private final int robotPropertyNumber;
+<span class="fc" id="L32">    Map&lt;String, SensorPort&gt; sensorToPorts = IRobotFactory.getSensorPortsFromProperties(Util1.loadProperties(&quot;classpath:NXTports.properties&quot;));</span>
+<span class="fc" id="L33">    Map&lt;String, ActorPort&gt; actorToPorts = IRobotFactory.getActorPortsFromProperties(Util1.loadProperties(&quot;classpath:NXTports.properties&quot;));</span>
+
+    public Factory(RobertaProperties robertaProperties) {
+<span class="fc" id="L36">        super(robertaProperties);</span>
+<span class="fc" id="L37">        this.nxtProperties = Util1.loadProperties(&quot;classpath:NXT.properties&quot;);</span>
+<span class="fc" id="L38">        this.name = this.nxtProperties.getProperty(&quot;robot.name&quot;);</span>
+<span class="fc" id="L39">        this.robotPropertyNumber = robertaProperties.getRobotNumberFromProperty(this.name);</span>
+<span class="fc" id="L40">        this.robotCompilerWorkflow =</span>
+            new CompilerWorkflow(
+<span class="fc" id="L42">                robertaProperties.getTempDirForUserProjects(),</span>
+<span class="fc" id="L43">                robertaProperties.getStringProperty(&quot;robot.plugin.&quot; + this.robotPropertyNumber + &quot;.compiler.resources.dir&quot;));</span>
+<span class="fc" id="L44">        this.simCompilerWorkflow = new SimCompilerWorkflow();</span>
+<span class="fc" id="L45">        addBlockTypesFromProperties(&quot;NXT.properties&quot;, this.nxtProperties);</span>
+<span class="fc" id="L46">    }</span>
+
+    @Override
+    public IPickColor getPickColor(String color) {
+<span class="fc" id="L50">        return IRobotFactory.getModeValue(color, PickColor.class);</span>
+    }
+
+    @Override
+    public IShowPicture getShowPicture(String picture) {
+<span class="nc" id="L55">        return null;</span>
+    }
+
+    @Override
+    public ISensorPort getSensorPort(String port) {
+<span class="fc" id="L60">        return getSensorPortValue(port, this.sensorToPorts);</span>
+    }
+
+    @Override
+    public IActorPort getActorPort(String port) {
+<span class="fc" id="L65">        return getActorPortValue(port, this.actorToPorts);</span>
+    }
+
+    @Override
+    public String getFileExtension() {
+<span class="nc" id="L70">        return &quot;nxc&quot;;</span>
+    }
+
+    @Override
+    public ICompilerWorkflow getRobotCompilerWorkflow() {
+<span class="nc" id="L75">        return this.robotCompilerWorkflow;</span>
+    }
+
+    @Override
+    public ICompilerWorkflow getSimCompilerWorkflow() {
+<span class="nc" id="L80">        return this.simCompilerWorkflow;</span>
+    }
+
+    @Override
+    public String getProgramToolboxBeginner() {
+<span class="nc" id="L85">        return this.nxtProperties.getProperty(&quot;robot.program.toolbox.beginner&quot;);</span>
+    }
+
+    @Override
+    public String getProgramToolboxExpert() {
+<span class="nc" id="L90">        return this.nxtProperties.getProperty(&quot;robot.program.toolbox.expert&quot;);</span>
+    }
+
+    @Override
+    public String getProgramDefault() {
+<span class="nc" id="L95">        return this.nxtProperties.getProperty(&quot;robot.program.default&quot;);</span>
+    }
+
+    @Override
+    public String getConfigurationToolbox() {
+<span class="nc" id="L100">        return this.nxtProperties.getProperty(&quot;robot.configuration.toolbox&quot;);</span>
+    }
+
+    @Override
+    public String getConfigurationDefault() {
+<span class="nc" id="L105">        return this.nxtProperties.getProperty(&quot;robot.configuration.default&quot;);</span>
+    }
+
+    @Override
+    public String getRealName() {
+<span class="nc" id="L110">        return this.nxtProperties.getProperty(&quot;robot.real.name&quot;);</span>
+    }
+
+    @Override
+    public Boolean hasSim() {
+<span class="nc bnc" id="L115" title="All 2 branches missed.">        return this.nxtProperties.getProperty(&quot;robot.sim&quot;).equals(&quot;true&quot;) ? true : false;</span>
+    }
+
+    @Override
+    public String getInfo() {
+<span class="nc bnc" id="L120" title="All 2 branches missed.">        return this.nxtProperties.getProperty(&quot;robot.info&quot;) != null ? this.nxtProperties.getProperty(&quot;robot.info&quot;) : &quot;#&quot;;</span>
+    }
+
+    @Override
+    public Boolean isBeta() {
+<span class="nc bnc" id="L125" title="All 2 branches missed.">        return this.nxtProperties.getProperty(&quot;robot.beta&quot;) != null ? true : false;</span>
+    }
+
+    @Override
+    public String getConnectionType() {
+<span class="nc" id="L130">        return this.nxtProperties.getProperty(&quot;robot.connection&quot;);</span>
+    }
+
+    @Override
+    public RobotSimulationCheckVisitor getSimProgramCheckVisitor(Configuration brickConfiguration) {
+<span class="nc" id="L135">        return new SimulationCheckVisitor(brickConfiguration);</span>
+    }
+
+    @Override
+    public RobotCommonCheckVisitor getRobotProgramCheckVisitor(Configuration brickConfiguration) {
+<span class="nc" id="L140">        return new BrickCheckVisitor(brickConfiguration);</span>
+    }
+
+    @Override
+    public Boolean hasConfiguration() {
+<span class="nc" id="L145">        return Boolean.parseBoolean(this.nxtProperties.getProperty(&quot;robot.configuration&quot;));</span>
+    }
+
+    @Override
+    public String getGroup() {
+<span class="nc bnc" id="L150" title="All 2 branches missed.">        return this.robertaProperties.getStringProperty(&quot;robot.plugin.&quot; + this.robotPropertyNumber + &quot;.group&quot;) != null</span>
+<span class="nc" id="L151">            ? this.robertaProperties.getStringProperty(&quot;robot.plugin.&quot; + this.robotPropertyNumber + &quot;.group&quot;)</span>
+            : this.name;
+    }
+
+    @Override
+    public String generateCode(Configuration brickConfiguration, ArrayList&lt;ArrayList&lt;Phrase&lt;Void&gt;&gt;&gt; phrasesSet, boolean withWrapping) {
+<span class="nc" id="L157">        return null;</span>
+    }
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

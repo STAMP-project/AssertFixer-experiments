@@ -1,0 +1,164 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>ArduinoCompilerWorkflow.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">RobotArdu</a> &gt; <a href="index.source.html" class="el_package">de.fhg.iais.roberta.factory.arduino</a> &gt; <span class="el_source">ArduinoCompilerWorkflow.java</span></div><h1>ArduinoCompilerWorkflow.java</h1><pre class="source lang-java linenums">package de.fhg.iais.roberta.factory.arduino;
+
+import java.io.File;
+import java.lang.ProcessBuilder.Redirect;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.Base64;
+
+import org.apache.commons.io.FileUtils;
+import org.apache.commons.lang3.SystemUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import de.fhg.iais.roberta.blockly.generated.BlockSet;
+import de.fhg.iais.roberta.components.Configuration;
+import de.fhg.iais.roberta.components.arduino.ArduinoConfiguration;
+import de.fhg.iais.roberta.factory.AbstractCompilerWorkflow;
+import de.fhg.iais.roberta.factory.IRobotFactory;
+import de.fhg.iais.roberta.inter.mode.action.ILanguage;
+import de.fhg.iais.roberta.syntax.codegen.arduino.arduino.CppVisitor;
+import de.fhg.iais.roberta.transformer.BlocklyProgramAndConfigTransformer;
+import de.fhg.iais.roberta.transformers.arduino.Jaxb2ArduinoConfigurationTransformer;
+import de.fhg.iais.roberta.util.Key;
+import de.fhg.iais.roberta.util.jaxb.JaxbHelper;
+
+public class ArduinoCompilerWorkflow extends AbstractCompilerWorkflow {
+
+<span class="fc" id="L28">    private static final Logger LOG = LoggerFactory.getLogger(ArduinoCompilerWorkflow.class);</span>
+
+    public final String pathToCrosscompilerBaseDir;
+    public final String robotCompilerResourcesDir;
+    public final String robotCompilerDir;
+    private final String robot;
+
+<span class="fc" id="L35">    private String compiledHex = &quot;error&quot;;</span>
+
+<span class="fc" id="L37">    public ArduinoCompilerWorkflow(String pathToCrosscompilerBaseDir, String robotCompilerResourcesDir, String robotCompilerDir, String robot) {</span>
+<span class="fc" id="L38">        this.pathToCrosscompilerBaseDir = pathToCrosscompilerBaseDir;</span>
+<span class="fc" id="L39">        this.robotCompilerResourcesDir = robotCompilerResourcesDir;</span>
+<span class="fc" id="L40">        this.robotCompilerDir = robotCompilerDir;</span>
+<span class="fc" id="L41">        this.robot = robot;</span>
+<span class="fc" id="L42">    }</span>
+
+    @Override
+    public String generateSourceCode(String token, String programName, BlocklyProgramAndConfigTransformer data, ILanguage language) {
+<span class="nc bnc" id="L46" title="All 2 branches missed.">        if ( data.getErrorMessage() != null ) {</span>
+<span class="nc" id="L47">            return null;</span>
+        }
+        try {
+<span class="nc" id="L50">            ArduinoConfiguration configuration = ((ArduinoConfiguration) data.getBrickConfiguration());</span>
+<span class="nc" id="L51">            String sourceCode = CppVisitor.generate(configuration, data.getProgramTransformer().getTree(), true);</span>
+<span class="nc" id="L52">            ArduinoCompilerWorkflow.LOG.info(&quot;generating arduino c++ code&quot;);</span>
+<span class="nc" id="L53">            return sourceCode;</span>
+<span class="nc" id="L54">        } catch ( Exception e ) {</span>
+<span class="nc" id="L55">            LOG.error(&quot;generating source code failed&quot;, e);</span>
+<span class="nc" id="L56">            return null;</span>
+        }
+    }
+
+    @Override
+    public Key compileSourceCode(String token, String programName, String sourceCode, ILanguage language, Object flagProvider) {
+        try {
+<span class="nc" id="L63">            storeGeneratedProgram(token, programName, sourceCode, this.pathToCrosscompilerBaseDir, &quot;.ino&quot;);</span>
+<span class="nc" id="L64">        } catch ( Exception e ) {</span>
+<span class="nc" id="L65">            ArduinoCompilerWorkflow.LOG.error(&quot;Storing the generated program into directory &quot; + token + &quot; failed&quot;, e);</span>
+<span class="nc" id="L66">            return Key.COMPILERWORKFLOW_ERROR_PROGRAM_STORE_FAILED;</span>
+<span class="nc" id="L67">        }</span>
+
+<span class="nc" id="L69">        Key messageKey = runBuild(token, programName, &quot;generated.main&quot;);</span>
+<span class="nc bnc" id="L70" title="All 2 branches missed.">        if ( messageKey == Key.COMPILERWORKFLOW_SUCCESS ) {</span>
+<span class="nc" id="L71">            ArduinoCompilerWorkflow.LOG.info(&quot;hex for program {} generated successfully&quot;, programName);</span>
+        } else {
+<span class="nc" id="L73">            ArduinoCompilerWorkflow.LOG.info(messageKey.toString());</span>
+        }
+<span class="nc bnc" id="L75" title="All 2 branches missed.">        return sourceCode == null ? Key.COMPILERWORKFLOW_ERROR_PROGRAM_COMPILE_FAILED : messageKey;</span>
+    }
+
+    @Override
+    public Configuration generateConfiguration(IRobotFactory factory, String blocklyXml) throws Exception {
+<span class="nc" id="L80">        BlockSet project = JaxbHelper.xml2BlockSet(blocklyXml);</span>
+<span class="nc" id="L81">        Jaxb2ArduinoConfigurationTransformer transformer = new Jaxb2ArduinoConfigurationTransformer(factory);</span>
+<span class="nc" id="L82">        return transformer.transform(project);</span>
+    }
+
+    @Override
+    public String getCompiledCode() {
+<span class="nc" id="L87">        return this.compiledHex;</span>
+    }
+
+    /**
+     * 1. Make target folder (if not exists).&lt;br&gt;
+     * 2. Clean target folder (everything inside).&lt;br&gt;
+     * 3. Compile .java files to .class.&lt;br&gt;
+     * 4. Make jar from class files and add META-INF entries.&lt;br&gt;
+     *
+     * @param token
+     * @param mainFile
+     * @param mainPackage
+     */
+    private Key runBuild(String token, String mainFile, String mainPackage) {
+<span class="nc" id="L101">        final StringBuilder sb = new StringBuilder();</span>
+
+<span class="nc" id="L103">        String scriptName = this.robotCompilerResourcesDir + &quot;/linux/arduino-builder&quot;;</span>
+<span class="nc" id="L104">        String os = &quot;linux&quot;;</span>
+
+<span class="nc bnc" id="L106" title="All 2 branches missed.">        if ( SystemUtils.IS_OS_WINDOWS ) {</span>
+<span class="nc" id="L107">            scriptName = this.robotCompilerResourcesDir + &quot;/windows/arduino-builder.exe&quot;;</span>
+<span class="nc" id="L108">            os = &quot;windows&quot;;</span>
+<span class="nc bnc" id="L109" title="All 2 branches missed.">        } else if ( SystemUtils.IS_OS_MAC ) {</span>
+<span class="nc" id="L110">            scriptName = this.robotCompilerResourcesDir + &quot;/osx/arduino-builder&quot;;</span>
+<span class="nc" id="L111">            os = &quot;osx&quot;;</span>
+        }
+
+<span class="nc" id="L114">        Path path = Paths.get(this.pathToCrosscompilerBaseDir + token + &quot;/&quot; + mainFile);</span>
+<span class="nc" id="L115">        Path base = Paths.get(&quot;&quot;);</span>
+
+        try {
+<span class="nc" id="L118">            String fqbnArg = &quot;&quot;;</span>
+<span class="nc bnc" id="L119" title="All 2 branches missed.">            if ( this.robot.equals(&quot;uno&quot;) ) {</span>
+<span class="nc" id="L120">                fqbnArg = &quot;-fqbn=arduino:avr:uno&quot;;</span>
+<span class="nc bnc" id="L121" title="All 2 branches missed.">            } else if ( this.robot.equals(&quot;mega&quot;) ) {</span>
+<span class="nc" id="L122">                fqbnArg = &quot;-fqbn=arduino:avr:mega:cpu=atmega2560&quot;;</span>
+<span class="nc bnc" id="L123" title="All 2 branches missed.">            } else if ( this.robot.equals(&quot;nano&quot;) ) {</span>
+<span class="nc" id="L124">                fqbnArg = &quot;-fqbn=arduino:avr:nano:cpu=atmega328&quot;;</span>
+            }
+
+<span class="nc" id="L127">            ProcessBuilder procBuilder =</span>
+                new ProcessBuilder(
+                    new String[] {
+                        scriptName,
+                        &quot;-hardware=&quot; + this.robotCompilerResourcesDir + &quot;/hardware&quot;,
+                        &quot;-tools=&quot; + this.robotCompilerResourcesDir + &quot;/&quot; + os + &quot;/tools-builder&quot;,
+                        &quot;-libraries=&quot; + this.robotCompilerResourcesDir + &quot;/libraries&quot;,
+                        fqbnArg,
+                        &quot;-prefs=compiler.path=&quot; + this.robotCompilerDir,
+<span class="nc" id="L136">                        &quot;-build-path=&quot; + base.resolve(path).toAbsolutePath().normalize().toString() + &quot;/target/&quot;,</span>
+<span class="nc" id="L137">                        base.resolve(path).toAbsolutePath().normalize().toString() + &quot;/src/&quot; + mainFile + &quot;.ino&quot;</span>
+                    });
+
+<span class="nc" id="L140">            procBuilder.redirectInput(Redirect.INHERIT);</span>
+<span class="nc" id="L141">            procBuilder.redirectOutput(Redirect.INHERIT);</span>
+<span class="nc" id="L142">            procBuilder.redirectError(Redirect.INHERIT);</span>
+<span class="nc" id="L143">            Process p = procBuilder.start();</span>
+<span class="nc" id="L144">            int ecode = p.waitFor();</span>
+<span class="nc" id="L145">            System.err.println(&quot;Exit code &quot; + ecode);</span>
+
+<span class="nc bnc" id="L147" title="All 2 branches missed.">            if ( ecode != 0 ) {</span>
+<span class="nc" id="L148">                return Key.COMPILERWORKFLOW_ERROR_PROGRAM_COMPILE_FAILED;</span>
+            }
+<span class="nc" id="L150">            this.compiledHex = FileUtils.readFileToString(new File(path + &quot;/target/&quot; + mainFile + &quot;.ino.hex&quot;), &quot;UTF-8&quot;);</span>
+<span class="nc" id="L151">            Base64.Encoder urec = Base64.getEncoder();</span>
+<span class="nc" id="L152">            this.compiledHex = urec.encodeToString(this.compiledHex.getBytes());</span>
+<span class="nc" id="L153">            return Key.COMPILERWORKFLOW_SUCCESS;</span>
+<span class="nc" id="L154">        } catch ( Exception e ) {</span>
+<span class="nc bnc" id="L155" title="All 2 branches missed.">            if ( sb.length() &gt; 0 ) {</span>
+<span class="nc" id="L156">                ArduinoCompilerWorkflow.LOG.error(&quot;build exception. Messages from the build script are:\n&quot; + sb.toString(), e);</span>
+            } else {
+<span class="nc" id="L158">                ArduinoCompilerWorkflow.LOG.error(&quot;exception when preparing the build&quot;, e);</span>
+            }
+<span class="nc" id="L160">            return Key.COMPILERWORKFLOW_ERROR_PROGRAM_COMPILE_FAILED;</span>
+        }
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

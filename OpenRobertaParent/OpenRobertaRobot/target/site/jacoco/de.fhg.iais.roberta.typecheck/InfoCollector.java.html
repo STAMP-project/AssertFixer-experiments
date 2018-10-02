@@ -1,0 +1,714 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>InfoCollector.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">OpenRobertaRobot</a> &gt; <a href="index.source.html" class="el_package">de.fhg.iais.roberta.typecheck</a> &gt; <span class="el_source">InfoCollector.java</span></div><h1>InfoCollector.java</h1><pre class="source lang-java linenums">package de.fhg.iais.roberta.typecheck;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import de.fhg.iais.roberta.syntax.Phrase;
+import de.fhg.iais.roberta.syntax.action.communication.BluetoothCheckConnectAction;
+import de.fhg.iais.roberta.syntax.action.communication.BluetoothConnectAction;
+import de.fhg.iais.roberta.syntax.action.communication.BluetoothReceiveAction;
+import de.fhg.iais.roberta.syntax.action.communication.BluetoothSendAction;
+import de.fhg.iais.roberta.syntax.action.communication.BluetoothWaitForConnectionAction;
+import de.fhg.iais.roberta.syntax.action.display.ClearDisplayAction;
+import de.fhg.iais.roberta.syntax.action.display.ShowPictureAction;
+import de.fhg.iais.roberta.syntax.action.display.ShowTextAction;
+import de.fhg.iais.roberta.syntax.action.light.LightAction;
+import de.fhg.iais.roberta.syntax.action.light.LightStatusAction;
+import de.fhg.iais.roberta.syntax.action.motor.CurveAction;
+import de.fhg.iais.roberta.syntax.action.motor.DriveAction;
+import de.fhg.iais.roberta.syntax.action.motor.MotorDriveStopAction;
+import de.fhg.iais.roberta.syntax.action.motor.MotorGetPowerAction;
+import de.fhg.iais.roberta.syntax.action.motor.MotorOnAction;
+import de.fhg.iais.roberta.syntax.action.motor.MotorSetPowerAction;
+import de.fhg.iais.roberta.syntax.action.motor.MotorStopAction;
+import de.fhg.iais.roberta.syntax.action.motor.TurnAction;
+import de.fhg.iais.roberta.syntax.action.sound.PlayFileAction;
+import de.fhg.iais.roberta.syntax.action.sound.PlayNoteAction;
+import de.fhg.iais.roberta.syntax.action.sound.SayTextAction;
+import de.fhg.iais.roberta.syntax.action.sound.SetLanguageAction;
+import de.fhg.iais.roberta.syntax.action.sound.ToneAction;
+import de.fhg.iais.roberta.syntax.action.sound.VolumeAction;
+import de.fhg.iais.roberta.syntax.lang.blocksequence.ActivityTask;
+import de.fhg.iais.roberta.syntax.lang.blocksequence.Location;
+import de.fhg.iais.roberta.syntax.lang.blocksequence.MainTask;
+import de.fhg.iais.roberta.syntax.lang.blocksequence.StartActivityTask;
+import de.fhg.iais.roberta.syntax.lang.expr.ActionExpr;
+import de.fhg.iais.roberta.syntax.lang.expr.Binary;
+import de.fhg.iais.roberta.syntax.lang.expr.BoolConst;
+import de.fhg.iais.roberta.syntax.lang.expr.ColorConst;
+import de.fhg.iais.roberta.syntax.lang.expr.ConnectConst;
+import de.fhg.iais.roberta.syntax.lang.expr.EmptyExpr;
+import de.fhg.iais.roberta.syntax.lang.expr.EmptyList;
+import de.fhg.iais.roberta.syntax.lang.expr.ExprList;
+import de.fhg.iais.roberta.syntax.lang.expr.FunctionExpr;
+import de.fhg.iais.roberta.syntax.lang.expr.ListCreate;
+import de.fhg.iais.roberta.syntax.lang.expr.MathConst;
+import de.fhg.iais.roberta.syntax.lang.expr.MethodExpr;
+import de.fhg.iais.roberta.syntax.lang.expr.NullConst;
+import de.fhg.iais.roberta.syntax.lang.expr.NumConst;
+import de.fhg.iais.roberta.syntax.lang.expr.RgbColor;
+import de.fhg.iais.roberta.syntax.lang.expr.SensorExpr;
+import de.fhg.iais.roberta.syntax.lang.expr.ShadowExpr;
+import de.fhg.iais.roberta.syntax.lang.expr.StmtExpr;
+import de.fhg.iais.roberta.syntax.lang.expr.StringConst;
+import de.fhg.iais.roberta.syntax.lang.expr.Unary;
+import de.fhg.iais.roberta.syntax.lang.expr.Var;
+import de.fhg.iais.roberta.syntax.lang.expr.VarDeclaration;
+import de.fhg.iais.roberta.syntax.lang.functions.GetSubFunct;
+import de.fhg.iais.roberta.syntax.lang.functions.IndexOfFunct;
+import de.fhg.iais.roberta.syntax.lang.functions.LengthOfIsEmptyFunct;
+import de.fhg.iais.roberta.syntax.lang.functions.ListGetIndex;
+import de.fhg.iais.roberta.syntax.lang.functions.ListRepeat;
+import de.fhg.iais.roberta.syntax.lang.functions.ListSetIndex;
+import de.fhg.iais.roberta.syntax.lang.functions.MathConstrainFunct;
+import de.fhg.iais.roberta.syntax.lang.functions.MathNumPropFunct;
+import de.fhg.iais.roberta.syntax.lang.functions.MathOnListFunct;
+import de.fhg.iais.roberta.syntax.lang.functions.MathPowerFunct;
+import de.fhg.iais.roberta.syntax.lang.functions.MathRandomFloatFunct;
+import de.fhg.iais.roberta.syntax.lang.functions.MathRandomIntFunct;
+import de.fhg.iais.roberta.syntax.lang.functions.MathSingleFunct;
+import de.fhg.iais.roberta.syntax.lang.functions.TextJoinFunct;
+import de.fhg.iais.roberta.syntax.lang.functions.TextPrintFunct;
+import de.fhg.iais.roberta.syntax.lang.methods.MethodCall;
+import de.fhg.iais.roberta.syntax.lang.methods.MethodIfReturn;
+import de.fhg.iais.roberta.syntax.lang.methods.MethodReturn;
+import de.fhg.iais.roberta.syntax.lang.methods.MethodVoid;
+import de.fhg.iais.roberta.syntax.lang.stmt.ActionStmt;
+import de.fhg.iais.roberta.syntax.lang.stmt.AssignStmt;
+import de.fhg.iais.roberta.syntax.lang.stmt.ExprStmt;
+import de.fhg.iais.roberta.syntax.lang.stmt.FunctionStmt;
+import de.fhg.iais.roberta.syntax.lang.stmt.IfStmt;
+import de.fhg.iais.roberta.syntax.lang.stmt.MethodStmt;
+import de.fhg.iais.roberta.syntax.lang.stmt.RepeatStmt;
+import de.fhg.iais.roberta.syntax.lang.stmt.SensorStmt;
+import de.fhg.iais.roberta.syntax.lang.stmt.StmtFlowCon;
+import de.fhg.iais.roberta.syntax.lang.stmt.StmtList;
+import de.fhg.iais.roberta.syntax.lang.stmt.StmtTextComment;
+import de.fhg.iais.roberta.syntax.lang.stmt.WaitStmt;
+import de.fhg.iais.roberta.syntax.lang.stmt.WaitTimeStmt;
+import de.fhg.iais.roberta.syntax.sensor.generic.BrickSensor;
+import de.fhg.iais.roberta.syntax.sensor.generic.ColorSensor;
+import de.fhg.iais.roberta.syntax.sensor.generic.CompassSensor;
+import de.fhg.iais.roberta.syntax.sensor.generic.EncoderSensor;
+import de.fhg.iais.roberta.syntax.sensor.generic.GetSampleSensor;
+import de.fhg.iais.roberta.syntax.sensor.generic.GyroSensor;
+import de.fhg.iais.roberta.syntax.sensor.generic.InfraredSensor;
+import de.fhg.iais.roberta.syntax.sensor.generic.LightSensor;
+import de.fhg.iais.roberta.syntax.sensor.generic.SoundSensor;
+import de.fhg.iais.roberta.syntax.sensor.generic.TemperatureSensor;
+import de.fhg.iais.roberta.syntax.sensor.generic.TimerSensor;
+import de.fhg.iais.roberta.syntax.sensor.generic.TouchSensor;
+import de.fhg.iais.roberta.syntax.sensor.generic.UltrasonicSensor;
+import de.fhg.iais.roberta.visitor.AstVisitor;
+import de.fhg.iais.roberta.visitor.actor.AstActorCommunicationVisitor;
+import de.fhg.iais.roberta.visitor.actor.AstActorDisplayVisitor;
+import de.fhg.iais.roberta.visitor.actor.AstActorLightVisitor;
+import de.fhg.iais.roberta.visitor.actor.AstActorMotorVisitor;
+import de.fhg.iais.roberta.visitor.actor.AstActorSoundVisitor;
+import de.fhg.iais.roberta.visitor.lang.AstLanguageVisitor;
+import de.fhg.iais.roberta.visitor.sensor.AstSensorsVisitor;
+
+/**
+ * This class is implementing {@link AstVisitor}. All methods are implemented and they append a human-readable JAVA code representation of a phrase to a
+ * StringBuilder. &lt;b&gt;This representation is correct JAVA code.&lt;/b&gt; &lt;br&gt;
+ */
+public class InfoCollector&lt;T&gt; implements AstLanguageVisitor&lt;T&gt;, AstSensorsVisitor&lt;T&gt;, AstActorCommunicationVisitor&lt;T&gt;, AstActorDisplayVisitor&lt;T&gt;,
+    AstActorMotorVisitor&lt;T&gt;, AstActorLightVisitor&lt;T&gt;, AstActorSoundVisitor&lt;T&gt; {
+
+<span class="nc" id="L118">    private final List&lt;NepoInfo&gt; infos = new ArrayList&lt;&gt;();</span>
+
+    /**
+     * initialize the info collector visitor.
+     */
+<span class="nc" id="L123">    private InfoCollector() {</span>
+<span class="nc" id="L124">    }</span>
+
+    /**
+     * collects the infos generated during typechecking for an AST. This is done by a visitor, which is an instance of this class&lt;br&gt;
+     *
+     * @param phrase whose infos should be collected
+     * @return list of collected infos
+     */
+    public static &lt;T&gt; List&lt;NepoInfo&gt; collectInfos(Phrase&lt;T&gt; phrase) //
+    {
+<span class="nc" id="L134">        InfoCollector&lt;T&gt; astVisitor = new InfoCollector&lt;&gt;();</span>
+<span class="nc" id="L135">        phrase.visit(astVisitor);</span>
+<span class="nc" id="L136">        return astVisitor.infos;</span>
+    }
+
+    @Override
+    public T visitNumConst(NumConst&lt;T&gt; numConst) {
+<span class="nc" id="L141">        extractInfos(numConst);</span>
+<span class="nc" id="L142">        return null;</span>
+    }
+
+    @Override
+    public T visitMathConst(MathConst&lt;T&gt; mathConst) {
+<span class="nc" id="L147">        extractInfos(mathConst);</span>
+<span class="nc" id="L148">        return null;</span>
+    }
+
+    @Override
+    public T visitBoolConst(BoolConst&lt;T&gt; boolConst) {
+<span class="nc" id="L153">        extractInfos(boolConst);</span>
+<span class="nc" id="L154">        return null;</span>
+    }
+
+    @Override
+    public T visitStringConst(StringConst&lt;T&gt; stringConst) {
+<span class="nc" id="L159">        extractInfos(stringConst);</span>
+<span class="nc" id="L160">        return null;</span>
+    }
+
+    @Override
+    public T visitNullConst(NullConst&lt;T&gt; nullConst) {
+<span class="nc" id="L165">        extractInfos(nullConst);</span>
+<span class="nc" id="L166">        return null;</span>
+    }
+
+    @Override
+    public T visitColorConst(ColorConst&lt;T&gt; colorConst) {
+<span class="nc" id="L171">        extractInfos(colorConst);</span>
+<span class="nc" id="L172">        return null;</span>
+    }
+
+    @Override
+    public T visitVar(Var&lt;T&gt; var) {
+<span class="nc" id="L177">        extractInfos(var);</span>
+<span class="nc" id="L178">        return null;</span>
+    }
+
+    @Override
+    public T visitUnary(Unary&lt;T&gt; unary) {
+<span class="nc" id="L183">        extractInfos(unary);</span>
+<span class="nc" id="L184">        return null;</span>
+    }
+
+    @Override
+    public T visitBinary(Binary&lt;T&gt; binary) {
+<span class="nc" id="L189">        extractInfos(binary);</span>
+<span class="nc" id="L190">        return null;</span>
+    }
+
+    @Override
+    public T visitMathPowerFunct(MathPowerFunct&lt;T&gt; func) {
+<span class="nc" id="L195">        extractInfos(func);</span>
+<span class="nc" id="L196">        return null;</span>
+    }
+
+    @Override
+    public T visitActionExpr(ActionExpr&lt;T&gt; actionExpr) {
+<span class="nc" id="L201">        extractInfos(actionExpr);</span>
+<span class="nc" id="L202">        return null;</span>
+    }
+
+    @Override
+    public T visitSensorExpr(SensorExpr&lt;T&gt; sensorExpr) {
+<span class="nc" id="L207">        extractInfos(sensorExpr);</span>
+<span class="nc" id="L208">        return null;</span>
+    }
+
+    @Override
+    public T visitEmptyExpr(EmptyExpr&lt;T&gt; emptyExpr) {
+<span class="nc" id="L213">        extractInfos(emptyExpr);</span>
+<span class="nc" id="L214">        return null;</span>
+    }
+
+    @Override
+    public T visitExprList(ExprList&lt;T&gt; exprList) {
+<span class="nc" id="L219">        extractInfos(exprList);</span>
+<span class="nc" id="L220">        return null;</span>
+    }
+
+    @Override
+    public T visitActionStmt(ActionStmt&lt;T&gt; actionStmt) {
+<span class="nc" id="L225">        extractInfos(actionStmt);</span>
+<span class="nc" id="L226">        return null;</span>
+    }
+
+    @Override
+    public T visitAssignStmt(AssignStmt&lt;T&gt; assignStmt) {
+<span class="nc" id="L231">        extractInfos(assignStmt);</span>
+<span class="nc" id="L232">        return null;</span>
+    }
+
+    @Override
+    public T visitExprStmt(ExprStmt&lt;T&gt; exprStmt) {
+<span class="nc" id="L237">        extractInfos(exprStmt);</span>
+<span class="nc" id="L238">        return null;</span>
+    }
+
+    @Override
+    public T visitIfStmt(IfStmt&lt;T&gt; ifStmt) {
+<span class="nc" id="L243">        extractInfos(ifStmt);</span>
+<span class="nc" id="L244">        return null;</span>
+    }
+
+    @Override
+    public T visitRepeatStmt(RepeatStmt&lt;T&gt; repeatStmt) {
+<span class="nc" id="L249">        extractInfos(repeatStmt);</span>
+<span class="nc" id="L250">        return null;</span>
+    }
+
+    @Override
+    public T visitSensorStmt(SensorStmt&lt;T&gt; sensorStmt) {
+<span class="nc" id="L255">        extractInfos(sensorStmt);</span>
+<span class="nc" id="L256">        return null;</span>
+    }
+
+    @Override
+    public T visitStmtFlowCon(StmtFlowCon&lt;T&gt; stmtFlowCon) {
+<span class="nc" id="L261">        extractInfos(stmtFlowCon);</span>
+<span class="nc" id="L262">        return null;</span>
+    }
+
+    @Override
+    public T visitStmtList(StmtList&lt;T&gt; stmtList) {
+<span class="nc" id="L267">        extractInfos(stmtList);</span>
+<span class="nc" id="L268">        return null;</span>
+    }
+
+    @Override
+    public T visitDriveAction(DriveAction&lt;T&gt; driveAction) {
+<span class="nc" id="L273">        extractInfos(driveAction);</span>
+<span class="nc" id="L274">        return null;</span>
+    }
+
+    @Override
+    public T visitTurnAction(TurnAction&lt;T&gt; turnAction) {
+<span class="nc" id="L279">        extractInfos(turnAction);</span>
+<span class="nc" id="L280">        return null;</span>
+    }
+
+    @Override
+    public T visitLightAction(LightAction&lt;T&gt; lightAction) {
+<span class="nc" id="L285">        extractInfos(lightAction);</span>
+<span class="nc" id="L286">        return null;</span>
+    }
+
+    @Override
+    public T visitLightStatusAction(LightStatusAction&lt;T&gt; lightStatusAction) {
+<span class="nc" id="L291">        extractInfos(lightStatusAction);</span>
+<span class="nc" id="L292">        return null;</span>
+    }
+
+    @Override
+    public T visitMotorGetPowerAction(MotorGetPowerAction&lt;T&gt; motorGetPowerAction) {
+<span class="nc" id="L297">        extractInfos(motorGetPowerAction);</span>
+<span class="nc" id="L298">        return null;</span>
+    }
+
+    @Override
+    public T visitMotorOnAction(MotorOnAction&lt;T&gt; motorOnAction) {
+<span class="nc" id="L303">        extractInfos(motorOnAction);</span>
+<span class="nc" id="L304">        return null;</span>
+    }
+
+    @Override
+    public T visitMotorSetPowerAction(MotorSetPowerAction&lt;T&gt; motorSetPowerAction) {
+<span class="nc" id="L309">        extractInfos(motorSetPowerAction);</span>
+<span class="nc" id="L310">        return null;</span>
+    }
+
+    @Override
+    public T visitMotorStopAction(MotorStopAction&lt;T&gt; motorStopAction) {
+<span class="nc" id="L315">        extractInfos(motorStopAction);</span>
+<span class="nc" id="L316">        return null;</span>
+    }
+
+    @Override
+    public T visitClearDisplayAction(ClearDisplayAction&lt;T&gt; clearDisplayAction) {
+<span class="nc" id="L321">        extractInfos(clearDisplayAction);</span>
+<span class="nc" id="L322">        return null;</span>
+    }
+
+    @Override
+    public T visitVolumeAction(VolumeAction&lt;T&gt; volumeAction) {
+<span class="nc" id="L327">        extractInfos(volumeAction);</span>
+<span class="nc" id="L328">        return null;</span>
+    }
+
+    @Override
+    public T visitSetLanguageAction(SetLanguageAction&lt;T&gt; setLanguageAction) {
+<span class="nc" id="L333">        extractInfos(setLanguageAction);</span>
+<span class="nc" id="L334">        return null;</span>
+    }
+
+    @Override
+    public T visitSayTextAction(SayTextAction&lt;T&gt; sayTextAction) {
+<span class="nc" id="L339">        extractInfos(sayTextAction);</span>
+<span class="nc" id="L340">        return null;</span>
+    }
+
+    @Override
+    public T visitPlayFileAction(PlayFileAction&lt;T&gt; playFileAction) {
+<span class="nc" id="L345">        extractInfos(playFileAction);</span>
+<span class="nc" id="L346">        return null;</span>
+    }
+
+    @Override
+    public T visitShowPictureAction(ShowPictureAction&lt;T&gt; showPictureAction) {
+<span class="nc" id="L351">        extractInfos(showPictureAction);</span>
+<span class="nc" id="L352">        return null;</span>
+    }
+
+    @Override
+    public T visitShowTextAction(ShowTextAction&lt;T&gt; showTextAction) {
+<span class="nc" id="L357">        extractInfos(showTextAction);</span>
+<span class="nc" id="L358">        return null;</span>
+    }
+
+    @Override
+    public T visitMotorDriveStopAction(MotorDriveStopAction&lt;T&gt; stopAction) {
+<span class="nc" id="L363">        extractInfos(stopAction);</span>
+<span class="nc" id="L364">        return null;</span>
+    }
+
+    @Override
+    public T visitToneAction(ToneAction&lt;T&gt; toneAction) {
+<span class="nc" id="L369">        extractInfos(toneAction);</span>
+<span class="nc" id="L370">        return null;</span>
+    }
+
+    @Override
+    public T visitPlayNoteAction(PlayNoteAction&lt;T&gt; playNoteAction) {
+<span class="nc" id="L375">        extractInfos(playNoteAction);</span>
+<span class="nc" id="L376">        return null;</span>
+    }
+
+    @Override
+    public T visitBrickSensor(BrickSensor&lt;T&gt; brickSensor) {
+<span class="nc" id="L381">        extractInfos(brickSensor);</span>
+<span class="nc" id="L382">        return null;</span>
+    }
+
+    @Override
+    public T visitColorSensor(ColorSensor&lt;T&gt; colorSensor) {
+<span class="nc" id="L387">        extractInfos(colorSensor);</span>
+<span class="nc" id="L388">        return null;</span>
+    }
+
+    @Override
+    public T visitRgbColor(RgbColor&lt;T&gt; rgbColor) {
+<span class="nc" id="L393">        extractInfos(rgbColor);</span>
+<span class="nc" id="L394">        return null;</span>
+    }
+
+    @Override
+    public T visitEncoderSensor(EncoderSensor&lt;T&gt; encoderSensor) {
+<span class="nc" id="L399">        extractInfos(encoderSensor);</span>
+<span class="nc" id="L400">        return null;</span>
+    }
+
+    @Override
+    public T visitGyroSensor(GyroSensor&lt;T&gt; gyroSensor) {
+<span class="nc" id="L405">        extractInfos(gyroSensor);</span>
+<span class="nc" id="L406">        return null;</span>
+    }
+
+    @Override
+    public T visitInfraredSensor(InfraredSensor&lt;T&gt; infraredSensor) {
+<span class="nc" id="L411">        extractInfos(infraredSensor);</span>
+<span class="nc" id="L412">        return null;</span>
+    }
+
+    @Override
+    public T visitTimerSensor(TimerSensor&lt;T&gt; timerSensor) {
+<span class="nc" id="L417">        extractInfos(timerSensor);</span>
+<span class="nc" id="L418">        return null;</span>
+    }
+
+    @Override
+    public T visitTouchSensor(TouchSensor&lt;T&gt; touchSensor) {
+<span class="nc" id="L423">        extractInfos(touchSensor);</span>
+<span class="nc" id="L424">        return null;</span>
+    }
+
+    @Override
+    public T visitUltrasonicSensor(UltrasonicSensor&lt;T&gt; ultrasonicSensor) {
+<span class="nc" id="L429">        extractInfos(ultrasonicSensor);</span>
+<span class="nc" id="L430">        return null;</span>
+    }
+
+    @Override
+    public T visitMainTask(MainTask&lt;T&gt; mainTask) {
+<span class="nc" id="L435">        extractInfos(mainTask);</span>
+<span class="nc" id="L436">        return null;</span>
+    }
+
+    @Override
+    public T visitActivityTask(ActivityTask&lt;T&gt; activityTask) {
+<span class="nc" id="L441">        extractInfos(activityTask);</span>
+<span class="nc" id="L442">        return null;</span>
+    }
+
+    @Override
+    public T visitStartActivityTask(StartActivityTask&lt;T&gt; startActivityTask) {
+<span class="nc" id="L447">        extractInfos(startActivityTask);</span>
+<span class="nc" id="L448">        return null;</span>
+    }
+
+    @Override
+    public T visitWaitStmt(WaitStmt&lt;T&gt; waitStmt) {
+<span class="nc" id="L453">        extractInfos(waitStmt);</span>
+<span class="nc" id="L454">        return null;</span>
+    }
+
+    private void extractInfos(Phrase&lt;T&gt; phrase) {
+<span class="nc" id="L458">        this.infos.addAll(phrase.getInfos().getInfos());</span>
+<span class="nc" id="L459">    }</span>
+
+    @Override
+    public T visitLocation(Location&lt;T&gt; location) {
+        // TODO Auto-generated method stub
+<span class="nc" id="L464">        return null;</span>
+    }
+
+    @Override
+    public T visitEmptyList(EmptyList&lt;T&gt; emptyList) {
+        // TODO Auto-generated method stub
+<span class="nc" id="L470">        return null;</span>
+    }
+
+    @Override
+    public T visitGetSampleSensor(GetSampleSensor&lt;T&gt; sensorGetSample) {
+        // TODO Auto-generated method stub
+<span class="nc" id="L476">        return null;</span>
+    }
+
+    @Override
+    public T visitTextPrintFunct(TextPrintFunct&lt;T&gt; textPrintFunct) {
+        // TODO Auto-generated method stub
+<span class="nc" id="L482">        return null;</span>
+    }
+
+    @Override
+    public T visitFunctionStmt(FunctionStmt&lt;T&gt; functionStmt) {
+        // TODO Auto-generated method stub
+<span class="nc" id="L488">        return null;</span>
+    }
+
+    @Override
+    public T visitFunctionExpr(FunctionExpr&lt;T&gt; functionExpr) {
+        // TODO Auto-generated method stub
+<span class="nc" id="L494">        return null;</span>
+    }
+
+    @Override
+    public T visitGetSubFunct(GetSubFunct&lt;T&gt; getSubFunct) {
+        // TODO Auto-generated method stub
+<span class="nc" id="L500">        return null;</span>
+    }
+
+    @Override
+    public T visitIndexOfFunct(IndexOfFunct&lt;T&gt; indexOfFunct) {
+        // TODO Auto-generated method stub
+<span class="nc" id="L506">        return null;</span>
+    }
+
+    @Override
+    public T visitLengthOfIsEmptyFunct(LengthOfIsEmptyFunct&lt;T&gt; lengthOfIsEmptyFunct) {
+        // TODO Auto-generated method stub
+<span class="nc" id="L512">        return null;</span>
+    }
+
+    @Override
+    public T visitListCreate(ListCreate&lt;T&gt; listCreate) {
+        // TODO Auto-generated method stub
+<span class="nc" id="L518">        return null;</span>
+    }
+
+    @Override
+    public T visitListGetIndex(ListGetIndex&lt;T&gt; listGetIndex) {
+        // TODO Auto-generated method stub
+<span class="nc" id="L524">        return null;</span>
+    }
+
+    @Override
+    public T visitListRepeat(ListRepeat&lt;T&gt; listRepeat) {
+        // TODO Auto-generated method stub
+<span class="nc" id="L530">        return null;</span>
+    }
+
+    @Override
+    public T visitListSetIndex(ListSetIndex&lt;T&gt; listSetIndex) {
+        // TODO Auto-generated method stub
+<span class="nc" id="L536">        return null;</span>
+    }
+
+    @Override
+    public T visitMathConstrainFunct(MathConstrainFunct&lt;T&gt; mathConstrainFunct) {
+        // TODO Auto-generated method stub
+<span class="nc" id="L542">        return null;</span>
+    }
+
+    @Override
+    public T visitMathNumPropFunct(MathNumPropFunct&lt;T&gt; mathNumPropFunct) {
+        // TODO Auto-generated method stub
+<span class="nc" id="L548">        return null;</span>
+    }
+
+    @Override
+    public T visitMathOnListFunct(MathOnListFunct&lt;T&gt; mathOnListFunct) {
+        // TODO Auto-generated method stub
+<span class="nc" id="L554">        return null;</span>
+    }
+
+    @Override
+    public T visitMathRandomFloatFunct(MathRandomFloatFunct&lt;T&gt; mathRandomFloatFunct) {
+        // TODO Auto-generated method stub
+<span class="nc" id="L560">        return null;</span>
+    }
+
+    @Override
+    public T visitMathRandomIntFunct(MathRandomIntFunct&lt;T&gt; mathRandomIntFunct) {
+        // TODO Auto-generated method stub
+<span class="nc" id="L566">        return null;</span>
+    }
+
+    @Override
+    public T visitMathSingleFunct(MathSingleFunct&lt;T&gt; mathSingleFunct) {
+        // TODO Auto-generated method stub
+<span class="nc" id="L572">        return null;</span>
+    }
+
+    @Override
+    public T visitTextJoinFunct(TextJoinFunct&lt;T&gt; textJoinFunct) {
+        // TODO Auto-generated method stub
+<span class="nc" id="L578">        return null;</span>
+    }
+
+    @Override
+    public T visitWaitTimeStmt(WaitTimeStmt&lt;T&gt; waitTimeStmt) {
+        // TODO Auto-generated method stub
+<span class="nc" id="L584">        return null;</span>
+    }
+
+    @Override
+    public T visitVarDeclaration(VarDeclaration&lt;T&gt; var) {
+        // TODO Auto-generated method stub
+<span class="nc" id="L590">        return null;</span>
+    }
+
+    @Override
+    public T visitMethodVoid(MethodVoid&lt;T&gt; methodVoid) {
+        // TODO Auto-generated method stub
+<span class="nc" id="L596">        return null;</span>
+    }
+
+    @Override
+    public T visitMethodReturn(MethodReturn&lt;T&gt; methodReturn) {
+        // TODO Auto-generated method stub
+<span class="nc" id="L602">        return null;</span>
+    }
+
+    @Override
+    public T visitMethodIfReturn(MethodIfReturn&lt;T&gt; methodIfReturn) {
+        // TODO Auto-generated method stub
+<span class="nc" id="L608">        return null;</span>
+    }
+
+    @Override
+    public T visitMethodStmt(MethodStmt&lt;T&gt; methodStmt) {
+        // TODO Auto-generated method stub
+<span class="nc" id="L614">        return null;</span>
+    }
+
+    @Override
+    public T visitMethodCall(MethodCall&lt;T&gt; methodCall) {
+        // TODO Auto-generated method stub
+<span class="nc" id="L620">        return null;</span>
+    }
+
+    @Override
+    public T visitMethodExpr(MethodExpr&lt;T&gt; methodExpr) {
+        // TODO Auto-generated method stub
+<span class="nc" id="L626">        return null;</span>
+    }
+
+    @Override
+    public T visitBluetoothReceiveAction(BluetoothReceiveAction&lt;T&gt; clearDisplayAction) {
+        // TODO Auto-generated method stub
+<span class="nc" id="L632">        return null;</span>
+    }
+
+    @Override
+    public T visitBluetoothConnectAction(BluetoothConnectAction&lt;T&gt; clearDisplayAction) {
+        // TODO Auto-generated method stub
+<span class="nc" id="L638">        return null;</span>
+    }
+
+    @Override
+    public T visitBluetoothSendAction(BluetoothSendAction&lt;T&gt; clearDisplayAction) {
+        // TODO Auto-generated method stub
+<span class="nc" id="L644">        return null;</span>
+    }
+
+    @Override
+    public T visitBluetoothWaitForConnectionAction(BluetoothWaitForConnectionAction&lt;T&gt; bluetoothWaitForConnection) {
+        // TODO Auto-generated method stub
+<span class="nc" id="L650">        return null;</span>
+    }
+
+    @Override
+    public T visitStmtExpr(StmtExpr&lt;T&gt; stmtExpr) {
+        // TODO Auto-generated method stub
+<span class="nc" id="L656">        return null;</span>
+    }
+
+    @Override
+    public T visitShadowExpr(ShadowExpr&lt;T&gt; shadowExpr) {
+        // TODO Auto-generated method stub
+<span class="nc" id="L662">        return null;</span>
+    }
+
+    @Override
+    public T visitLightSensor(LightSensor&lt;T&gt; lightSensor) {
+        // TODO Auto-generated method stub
+<span class="nc" id="L668">        return null;</span>
+    }
+
+    @Override
+    public T visitSoundSensor(SoundSensor&lt;T&gt; lightSensor) {
+        // TODO Auto-generated method stub
+<span class="nc" id="L674">        return null;</span>
+    }
+
+    @Override
+    public T visitCurveAction(CurveAction&lt;T&gt; driveAction) {
+        // TODO Auto-generated method stub
+<span class="nc" id="L680">        return null;</span>
+    }
+
+    @Override
+    public T visitCompassSensor(CompassSensor&lt;T&gt; compassSensor) {
+        // TODO Auto-generated method stub
+<span class="nc" id="L686">        return null;</span>
+    }
+
+    @Override
+    public T visitConnectConst(ConnectConst&lt;T&gt; connectConst) {
+        // TODO Auto-generated method stub
+<span class="nc" id="L692">        return null;</span>
+    }
+
+    @Override
+    public T visitBluetoothCheckConnectAction(BluetoothCheckConnectAction&lt;T&gt; bluetoothCheckConnectAction) {
+        // TODO Auto-generated method stub
+<span class="nc" id="L698">        return null;</span>
+    }
+
+    @Override
+    public T visitTemperatureSensor(TemperatureSensor&lt;T&gt; temperatureSensor) {
+        // TODO Auto-generated method stub
+<span class="nc" id="L704">        return null;</span>
+    }
+
+    @Override
+    public T visitStmtTextComment(StmtTextComment&lt;T&gt; stmtTextComment) {
+        // TODO Auto-generated method stub
+<span class="nc" id="L710">        return null;</span>
+    }
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

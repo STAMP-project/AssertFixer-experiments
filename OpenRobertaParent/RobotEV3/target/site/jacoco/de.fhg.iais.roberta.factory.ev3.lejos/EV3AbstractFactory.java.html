@@ -1,0 +1,172 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>EV3AbstractFactory.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">RobotEV3</a> &gt; <a href="index.source.html" class="el_package">de.fhg.iais.roberta.factory.ev3.lejos</a> &gt; <span class="el_source">EV3AbstractFactory.java</span></div><h1>EV3AbstractFactory.java</h1><pre class="source lang-java linenums">package de.fhg.iais.roberta.factory.ev3.lejos;
+
+import java.util.ArrayList;
+import java.util.Map;
+import java.util.Properties;
+
+import com.google.inject.AbstractModule;
+
+import de.fhg.iais.roberta.components.Configuration;
+import de.fhg.iais.roberta.factory.AbstractRobotFactory;
+import de.fhg.iais.roberta.factory.ICompilerWorkflow;
+import de.fhg.iais.roberta.factory.IRobotFactory;
+import de.fhg.iais.roberta.factory.ev3.Ev3GuiceModule;
+import de.fhg.iais.roberta.factory.ev3.Ev3SimCompilerWorkflow;
+import de.fhg.iais.roberta.inter.mode.action.IActorPort;
+import de.fhg.iais.roberta.inter.mode.action.IShowPicture;
+import de.fhg.iais.roberta.inter.mode.sensor.ISensorPort;
+import de.fhg.iais.roberta.mode.action.ActorPort;
+import de.fhg.iais.roberta.mode.action.ev3.ShowPicture;
+import de.fhg.iais.roberta.mode.sensor.SensorPort;
+import de.fhg.iais.roberta.syntax.Phrase;
+import de.fhg.iais.roberta.syntax.check.program.RobotCommonCheckVisitor;
+import de.fhg.iais.roberta.syntax.check.program.RobotSimulationCheckVisitor;
+import de.fhg.iais.roberta.syntax.check.program.ev3.BrickCheckVisitor;
+import de.fhg.iais.roberta.syntax.check.program.ev3.SimulationCheckVisitor;
+import de.fhg.iais.roberta.util.RobertaProperties;
+import de.fhg.iais.roberta.util.Util1;
+
+public abstract class EV3AbstractFactory extends AbstractRobotFactory {
+    private static final String ROBOT_PLUGIN_PREFIX = &quot;robot.plugin.&quot;;
+    protected Ev3SimCompilerWorkflow simCompilerWorkflow;
+    protected ICompilerWorkflow robotCompilerWorkflow;
+    protected Properties ev3Properties;
+    protected String name;
+    protected int robotPropertyNumber;
+<span class="fc" id="L36">    Map&lt;String, SensorPort&gt; sensorToPorts = IRobotFactory.getSensorPortsFromProperties(Util1.loadProperties(&quot;classpath:EV3ports.properties&quot;));</span>
+<span class="fc" id="L37">    Map&lt;String, ActorPort&gt; actorToPorts = IRobotFactory.getActorPortsFromProperties(Util1.loadProperties(&quot;classpath:EV3ports.properties&quot;));</span>
+
+    public EV3AbstractFactory(RobertaProperties robertaProperties, String propertyName) {
+<span class="fc" id="L40">        super(robertaProperties);</span>
+<span class="fc" id="L41">        this.ev3Properties = Util1.loadProperties(&quot;classpath:&quot; + propertyName);</span>
+<span class="fc" id="L42">        this.name = this.ev3Properties.getProperty(&quot;robot.name&quot;);</span>
+<span class="fc" id="L43">        this.robotPropertyNumber = robertaProperties.getRobotNumberFromProperty(this.name);</span>
+<span class="fc" id="L44">        this.robotCompilerWorkflow =</span>
+            new CompilerWorkflow(
+<span class="fc" id="L46">                robertaProperties.getTempDirForUserProjects(),</span>
+<span class="fc" id="L47">                robertaProperties.getStringProperty(ROBOT_PLUGIN_PREFIX + this.robotPropertyNumber + &quot;.compiler.resources.dir&quot;));</span>
+
+<span class="fc" id="L49">        this.simCompilerWorkflow = new Ev3SimCompilerWorkflow();</span>
+
+<span class="fc" id="L51">        addBlockTypesFromProperties(propertyName, this.ev3Properties);</span>
+
+<span class="fc" id="L53">    }</span>
+
+    @Override
+    public ISensorPort getSensorPort(String port) {
+<span class="fc" id="L57">        return getSensorPortValue(port, this.sensorToPorts);</span>
+    }
+
+    @Override
+    public IActorPort getActorPort(String port) {
+<span class="fc" id="L62">        return getActorPortValue(port, this.actorToPorts);</span>
+    }
+
+    @Override
+    public IShowPicture getShowPicture(String picture) {
+<span class="fc" id="L67">        return IRobotFactory.getModeValue(picture, ShowPicture.class);</span>
+    }
+
+    @Override
+    public ICompilerWorkflow getSimCompilerWorkflow() {
+<span class="nc" id="L72">        return this.simCompilerWorkflow;</span>
+    }
+
+    @Override
+    public ICompilerWorkflow getRobotCompilerWorkflow() {
+<span class="nc" id="L77">        return this.robotCompilerWorkflow;</span>
+    }
+
+    @Override
+    public AbstractModule getGuiceModule() {
+<span class="nc" id="L82">        return new Ev3GuiceModule(this.robertaProperties.getRobertaProperties());</span>
+    }
+
+    @Override
+    public String getFileExtension() {
+<span class="nc" id="L87">        return &quot;java&quot;;</span>
+    }
+
+    @Override
+    public String getProgramToolboxBeginner() {
+<span class="nc" id="L92">        return this.ev3Properties.getProperty(&quot;robot.program.toolbox.beginner&quot;);</span>
+    }
+
+    @Override
+    public String getProgramToolboxExpert() {
+<span class="nc" id="L97">        return this.ev3Properties.getProperty(&quot;robot.program.toolbox.expert&quot;);</span>
+    }
+
+    @Override
+    public String getProgramDefault() {
+<span class="nc" id="L102">        return this.ev3Properties.getProperty(&quot;robot.program.default&quot;);</span>
+    }
+
+    @Override
+    public String getConfigurationToolbox() {
+<span class="nc" id="L107">        return this.ev3Properties.getProperty(&quot;robot.configuration.toolbox&quot;);</span>
+    }
+
+    @Override
+    public String getConfigurationDefault() {
+<span class="nc" id="L112">        return this.ev3Properties.getProperty(&quot;robot.configuration.default&quot;);</span>
+    }
+
+    @Override
+    public String getRealName() {
+<span class="nc" id="L117">        return this.ev3Properties.getProperty(&quot;robot.real.name&quot;);</span>
+    }
+
+    @Override
+    public Boolean hasSim() {
+<span class="nc bnc" id="L122" title="All 2 branches missed.">        return this.ev3Properties.getProperty(&quot;robot.sim&quot;).equals(&quot;true&quot;) ? true : false;</span>
+    }
+
+    @Override
+    public String getInfo() {
+<span class="nc bnc" id="L127" title="All 2 branches missed.">        return this.ev3Properties.getProperty(&quot;robot.info&quot;) != null ? this.ev3Properties.getProperty(&quot;robot.info&quot;) : &quot;#&quot;;</span>
+    }
+
+    @Override
+    public Boolean isBeta() {
+<span class="nc bnc" id="L132" title="All 2 branches missed.">        return this.ev3Properties.getProperty(&quot;robot.beta&quot;) != null ? true : false;</span>
+    }
+
+    @Override
+    public String getConnectionType() {
+<span class="nc" id="L137">        return this.ev3Properties.getProperty(&quot;robot.connection&quot;);</span>
+    }
+
+    @Override
+    public RobotSimulationCheckVisitor getSimProgramCheckVisitor(Configuration brickConfiguration) {
+<span class="nc" id="L142">        return new SimulationCheckVisitor(brickConfiguration);</span>
+    }
+
+    @Override
+    public RobotCommonCheckVisitor getRobotProgramCheckVisitor(Configuration brickConfiguration) {
+<span class="nc" id="L147">        return new BrickCheckVisitor(brickConfiguration);</span>
+    }
+
+    @Override
+    public Boolean hasConfiguration() {
+<span class="nc" id="L152">        return Boolean.parseBoolean(this.ev3Properties.getProperty(&quot;robot.configuration&quot;));</span>
+    }
+
+    @Override
+    public String getGroup() {
+<span class="nc bnc" id="L157" title="All 2 branches missed.">        return this.robertaProperties.getStringProperty(ROBOT_PLUGIN_PREFIX + this.robotPropertyNumber + &quot;.group&quot;) != null</span>
+<span class="nc" id="L158">            ? this.robertaProperties.getStringProperty(ROBOT_PLUGIN_PREFIX + this.robotPropertyNumber + &quot;.group&quot;)</span>
+            : this.name;
+    }
+
+    @Override
+    public String generateCode(Configuration brickConfiguration, ArrayList&lt;ArrayList&lt;Phrase&lt;Void&gt;&gt;&gt; phrasesSet, boolean withWrapping) {
+<span class="nc" id="L164">        return null;</span>
+    }
+
+    @Override
+    public String getMenuVersion() {
+<span class="nc" id="L169">        return this.ev3Properties.getProperty(&quot;robot.menu.verision&quot;);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

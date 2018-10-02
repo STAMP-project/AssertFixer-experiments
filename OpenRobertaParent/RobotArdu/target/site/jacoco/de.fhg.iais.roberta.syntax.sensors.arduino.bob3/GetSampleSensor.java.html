@@ -1,0 +1,203 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>GetSampleSensor.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">RobotArdu</a> &gt; <a href="index.source.html" class="el_package">de.fhg.iais.roberta.syntax.sensors.arduino.bob3</a> &gt; <span class="el_source">GetSampleSensor.java</span></div><h1>GetSampleSensor.java</h1><pre class="source lang-java linenums">package de.fhg.iais.roberta.syntax.sensors.arduino.bob3;
+
+import java.util.List;
+
+import de.fhg.iais.roberta.blockly.generated.Block;
+import de.fhg.iais.roberta.blockly.generated.Field;
+import de.fhg.iais.roberta.components.SensorType;
+import de.fhg.iais.roberta.factory.IRobotFactory;
+import de.fhg.iais.roberta.mode.sensors.arduino.bob3.GetSampleType;
+import de.fhg.iais.roberta.syntax.BlockTypeContainer;
+import de.fhg.iais.roberta.syntax.BlocklyBlockProperties;
+import de.fhg.iais.roberta.syntax.BlocklyComment;
+import de.fhg.iais.roberta.syntax.BlocklyConstants;
+import de.fhg.iais.roberta.syntax.Phrase;
+import de.fhg.iais.roberta.syntax.sensor.Sensor;
+import de.fhg.iais.roberta.syntax.sensor.SensorMetaDataBean;
+import de.fhg.iais.roberta.syntax.sensor.generic.LightSensor;
+import de.fhg.iais.roberta.syntax.sensor.generic.TemperatureSensor;
+import de.fhg.iais.roberta.syntax.sensor.generic.TimerSensor;
+import de.fhg.iais.roberta.syntax.sensor.generic.TouchSensor;
+import de.fhg.iais.roberta.transformer.Jaxb2AstTransformer;
+import de.fhg.iais.roberta.transformer.JaxbTransformerHelper;
+import de.fhg.iais.roberta.util.dbc.Assert;
+import de.fhg.iais.roberta.util.dbc.DbcException;
+import de.fhg.iais.roberta.visitor.AstVisitor;
+import de.fhg.iais.roberta.visitors.arduino.Bob3AstVisitor;
+
+/**
+ * This class represents the &lt;b&gt;robSensors_getSample&lt;/b&gt; block from Blockly into the AST (abstract syntax tree). Object from this class will generate code for
+ * setting the mode of the sensor or getting a sample from the sensor.&lt;br/&gt;
+ * &lt;br&gt;
+ * The client must provide the {@link SensorType} and port. See enum {@link SensorType} for all possible type of sensors.&lt;br&gt;
+ * &lt;br&gt;
+ * To create an instance from this class use the method {@link #make}.&lt;br&gt;
+ */
+public class GetSampleSensor&lt;V&gt; extends Sensor&lt;V&gt; {
+    private final Sensor&lt;V&gt; sensor;
+    private final String port;
+    private final String slot;
+    private final GetSampleType sensorType;
+    private final boolean isPortInMutation;
+
+    private GetSampleSensor(
+        GetSampleType sensorType,
+        String port,
+        String slot,
+        boolean isPortInMutation,
+        BlocklyBlockProperties properties,
+        BlocklyComment comment,
+        IRobotFactory factory) {
+<span class="nc" id="L51">        super(BlockTypeContainer.getByName(&quot;SENSOR_GET_SAMPLE&quot;), properties, comment);</span>
+<span class="nc bnc" id="L52" title="All 2 branches missed.">        Assert.isTrue(sensorType != null);</span>
+<span class="nc" id="L53">        this.port = port;</span>
+<span class="nc" id="L54">        this.slot = slot;</span>
+<span class="nc" id="L55">        this.sensorType = sensorType;</span>
+<span class="nc" id="L56">        this.isPortInMutation = isPortInMutation;</span>
+        SensorMetaDataBean sensorMetaDataBean;
+
+<span class="nc bnc" id="L59" title="All 22 branches missed.">        switch ( sensorType.getSensorType() ) {</span>
+            case BlocklyConstants.TOUCH:
+<span class="nc" id="L61">                sensorMetaDataBean =</span>
+                    new SensorMetaDataBean(
+<span class="nc" id="L63">                        factory.getSensorPort(port),</span>
+<span class="nc" id="L64">                        factory.getTimerSensorMode(BlocklyConstants.VALUE),</span>
+<span class="nc" id="L65">                        factory.getSlot(slot),</span>
+                        this.isPortInMutation);
+<span class="nc" id="L67">                this.sensor = TouchSensor.make(sensorMetaDataBean, properties, comment);</span>
+<span class="nc" id="L68">                break;</span>
+            case BlocklyConstants.TIME:
+<span class="nc" id="L70">                sensorMetaDataBean =</span>
+                    new SensorMetaDataBean(
+<span class="nc" id="L72">                        factory.getSensorPort(BlocklyConstants.NO_PORT),</span>
+<span class="nc" id="L73">                        factory.getTimerSensorMode(BlocklyConstants.VALUE),</span>
+<span class="nc" id="L74">                        factory.getSlot(BlocklyConstants.EMPTY_SLOT),</span>
+                        isPortInMutation);
+<span class="nc" id="L76">                this.sensor = TimerSensor.make(sensorMetaDataBean, properties, comment);</span>
+<span class="nc" id="L77">                break;</span>
+            case BlocklyConstants.LIGHT_LEVEL:
+<span class="nc" id="L79">                sensorMetaDataBean =</span>
+                    new SensorMetaDataBean(
+<span class="nc" id="L81">                        factory.getSensorPort(BlocklyConstants.NO_PORT),</span>
+<span class="nc" id="L82">                        factory.getLightSensorMode(BlocklyConstants.DEFAULT),</span>
+<span class="nc" id="L83">                        factory.getSlot(BlocklyConstants.EMPTY_SLOT),</span>
+                        isPortInMutation);
+<span class="nc" id="L85">                this.sensor = LightSensor.make(sensorMetaDataBean, properties, comment);</span>
+<span class="nc" id="L86">                break;</span>
+            case BlocklyConstants.TEMPERATURE:
+<span class="nc" id="L88">                sensorMetaDataBean =</span>
+                    new SensorMetaDataBean(
+<span class="nc" id="L90">                        factory.getSensorPort(port),</span>
+<span class="nc" id="L91">                        factory.getTemperatureSensorMode(BlocklyConstants.DEFAULT),</span>
+<span class="nc" id="L92">                        factory.getSlot(BlocklyConstants.EMPTY_SLOT),</span>
+                        isPortInMutation);
+<span class="nc" id="L94">                this.sensor = TemperatureSensor.make(sensorMetaDataBean, properties, comment);</span>
+<span class="nc" id="L95">                break;</span>
+            case BlocklyConstants.CODE:
+<span class="nc" id="L97">                this.sensor = CodePadSensor.make(properties, comment);</span>
+<span class="nc" id="L98">                break;</span>
+            default:
+<span class="nc" id="L100">                throw new DbcException(&quot;Invalid sensor &quot; + sensorType.getSensorType() + &quot;!&quot;);</span>
+        }
+<span class="nc" id="L102">        setReadOnly();</span>
+<span class="nc" id="L103">    }</span>
+
+    /**
+     * Create object of the class {@link GetSampleSensor}.
+     *
+     * @param isPortInMutation
+     * @param sensorType; must be &lt;b&gt;not&lt;/b&gt; null,
+     * @param port on which the sensor is connected; must be &lt;b&gt;non-empty&lt;/b&gt; string,
+     * @param properties of the block (see {@link BlocklyBlockProperties}),
+     * @param comment added from the user,
+     * @return read only object of class {@link GetSampleSensor}
+     */
+    public static &lt;V&gt; GetSampleSensor&lt;V&gt; make(
+        GetSampleType sensorType,
+        String armSide,
+        String armPart,
+        boolean isPortInMutation,
+        BlocklyBlockProperties properties,
+        BlocklyComment comment,
+        IRobotFactory factory) {
+<span class="nc" id="L123">        return new GetSampleSensor&lt;&gt;(sensorType, armSide, armPart, isPortInMutation, properties, comment, factory);</span>
+    }
+
+    /**
+     * @return the sensor
+     */
+    public Sensor&lt;V&gt; getSensor() {
+<span class="nc" id="L130">        return this.sensor;</span>
+    }
+
+    /**
+     * @return arm side
+     */
+    public String getArmSide() {
+<span class="nc" id="L137">        return this.port;</span>
+    }
+
+    public GetSampleType getSensorType() {
+<span class="nc" id="L141">        return this.sensorType;</span>
+    }
+
+    /**
+     * @return arm part
+     */
+    public String getArmPart() {
+<span class="nc" id="L148">        return this.slot;</span>
+    }
+
+    @Override
+    public String toString() {
+<span class="nc" id="L153">        return &quot;GetSampleSensor [sensor=&quot; + this.sensor + &quot;]&quot;;</span>
+    }
+
+    @Override
+    protected V accept(AstVisitor&lt;V&gt; visitor) {
+<span class="nc" id="L158">        return ((Bob3AstVisitor&lt;V&gt;) visitor).visitBob3GetSampleSensor(this);</span>
+    }
+
+    /**
+     * Transformation from JAXB object to corresponding AST object.
+     *
+     * @param block for transformation
+     * @param helper class for making the transformation
+     * @return corresponding AST object
+     */
+    public static &lt;V&gt; Phrase&lt;V&gt; jaxbToAst(Block block, Jaxb2AstTransformer&lt;V&gt; helper) {
+<span class="nc" id="L169">        List&lt;Field&gt; fields = helper.extractFields(block, (short) 3);</span>
+<span class="nc" id="L170">        String armSide = &quot;&quot;;</span>
+<span class="nc" id="L171">        String armPart = &quot;&quot;;</span>
+<span class="nc" id="L172">        String modeName = helper.extractField(fields, BlocklyConstants.SENSORTYPE);</span>
+<span class="nc" id="L173">        String portNameType = GetSampleType.get(modeName).getArmPart();</span>
+<span class="nc bnc" id="L174" title="All 2 branches missed.">        if ( !portNameType.equals(&quot;&quot;) ) {</span>
+<span class="nc" id="L175">            armSide = helper.extractField(fields, BlocklyConstants.ARMSIDE);</span>
+<span class="nc" id="L176">            armPart = helper.extractField(fields, BlocklyConstants.ARMPART);</span>
+        }
+<span class="nc bnc" id="L178" title="All 2 branches missed.">        boolean isPortInMutation = block.getMutation().getPort() != null;</span>
+<span class="nc" id="L179">        return GetSampleSensor.make(</span>
+<span class="nc" id="L180">            GetSampleType.get(modeName),</span>
+            armSide,
+            armPart,
+            isPortInMutation,
+<span class="nc" id="L184">            helper.extractBlockProperties(block),</span>
+<span class="nc" id="L185">            helper.extractComment(block),</span>
+<span class="nc" id="L186">            helper.getModeFactory());</span>
+    }
+
+    @Override
+    public Block astToBlock() {
+<span class="nc" id="L191">        Block jaxbDestination = new Block();</span>
+<span class="nc" id="L192">        JaxbTransformerHelper.setBasicProperties(this.sensor, jaxbDestination);</span>
+<span class="nc" id="L193">        JaxbTransformerHelper.addField(jaxbDestination, BlocklyConstants.SENSORTYPE, getSensorType().name());</span>
+<span class="nc" id="L194">        String portNameType = GetSampleType.get(getSensorType().name()).getArmPart();</span>
+<span class="nc bnc" id="L195" title="All 2 branches missed.">        if ( !portNameType.equals(&quot;&quot;) ) {</span>
+<span class="nc" id="L196">            JaxbTransformerHelper.addField(jaxbDestination, getSensorType().getArmSide(), getSensorType().getArmPart());</span>
+        }
+
+<span class="nc" id="L199">        return null;</span>
+    }
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

@@ -1,0 +1,645 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>RobotCommonCheckVisitor.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">OpenRobertaRobot</a> &gt; <a href="index.source.html" class="el_package">de.fhg.iais.roberta.syntax.check.program</a> &gt; <span class="el_source">RobotCommonCheckVisitor.java</span></div><h1>RobotCommonCheckVisitor.java</h1><pre class="source lang-java linenums">package de.fhg.iais.roberta.syntax.check.program;
+
+import java.util.ArrayList;
+
+import de.fhg.iais.roberta.components.Actor;
+import de.fhg.iais.roberta.components.Configuration;
+import de.fhg.iais.roberta.inter.mode.action.IActorPort;
+import de.fhg.iais.roberta.syntax.MotorDuration;
+import de.fhg.iais.roberta.syntax.Phrase;
+import de.fhg.iais.roberta.syntax.action.Action;
+import de.fhg.iais.roberta.syntax.action.MoveAction;
+import de.fhg.iais.roberta.syntax.action.communication.BluetoothCheckConnectAction;
+import de.fhg.iais.roberta.syntax.action.communication.BluetoothConnectAction;
+import de.fhg.iais.roberta.syntax.action.communication.BluetoothReceiveAction;
+import de.fhg.iais.roberta.syntax.action.communication.BluetoothSendAction;
+import de.fhg.iais.roberta.syntax.action.communication.BluetoothWaitForConnectionAction;
+import de.fhg.iais.roberta.syntax.action.display.ClearDisplayAction;
+import de.fhg.iais.roberta.syntax.action.display.ShowPictureAction;
+import de.fhg.iais.roberta.syntax.action.display.ShowTextAction;
+import de.fhg.iais.roberta.syntax.action.light.LightAction;
+import de.fhg.iais.roberta.syntax.action.light.LightStatusAction;
+import de.fhg.iais.roberta.syntax.action.motor.CurveAction;
+import de.fhg.iais.roberta.syntax.action.motor.DriveAction;
+import de.fhg.iais.roberta.syntax.action.motor.MotorDriveStopAction;
+import de.fhg.iais.roberta.syntax.action.motor.MotorGetPowerAction;
+import de.fhg.iais.roberta.syntax.action.motor.MotorOnAction;
+import de.fhg.iais.roberta.syntax.action.motor.MotorSetPowerAction;
+import de.fhg.iais.roberta.syntax.action.motor.MotorStopAction;
+import de.fhg.iais.roberta.syntax.action.motor.TurnAction;
+import de.fhg.iais.roberta.syntax.action.sound.PlayFileAction;
+import de.fhg.iais.roberta.syntax.action.sound.PlayNoteAction;
+import de.fhg.iais.roberta.syntax.action.sound.SayTextAction;
+import de.fhg.iais.roberta.syntax.action.sound.SetLanguageAction;
+import de.fhg.iais.roberta.syntax.action.sound.ToneAction;
+import de.fhg.iais.roberta.syntax.action.sound.VolumeAction;
+import de.fhg.iais.roberta.syntax.check.CheckVisitor;
+import de.fhg.iais.roberta.syntax.lang.expr.Binary;
+import de.fhg.iais.roberta.syntax.lang.expr.EmptyExpr;
+import de.fhg.iais.roberta.syntax.lang.expr.Expr;
+import de.fhg.iais.roberta.syntax.lang.expr.NumConst;
+import de.fhg.iais.roberta.syntax.lang.expr.Unary;
+import de.fhg.iais.roberta.syntax.lang.expr.Var;
+import de.fhg.iais.roberta.syntax.lang.functions.GetSubFunct;
+import de.fhg.iais.roberta.syntax.lang.functions.IndexOfFunct;
+import de.fhg.iais.roberta.syntax.lang.functions.LengthOfIsEmptyFunct;
+import de.fhg.iais.roberta.syntax.lang.functions.ListGetIndex;
+import de.fhg.iais.roberta.syntax.lang.functions.ListRepeat;
+import de.fhg.iais.roberta.syntax.lang.functions.ListSetIndex;
+import de.fhg.iais.roberta.syntax.lang.functions.MathOnListFunct;
+import de.fhg.iais.roberta.syntax.lang.methods.MethodCall;
+import de.fhg.iais.roberta.syntax.lang.methods.MethodReturn;
+import de.fhg.iais.roberta.syntax.lang.stmt.RepeatStmt;
+import de.fhg.iais.roberta.syntax.lang.stmt.Stmt;
+import de.fhg.iais.roberta.syntax.lang.stmt.WaitStmt;
+import de.fhg.iais.roberta.syntax.sensor.ExternalSensor;
+import de.fhg.iais.roberta.syntax.sensor.generic.AccelerometerSensor;
+import de.fhg.iais.roberta.syntax.sensor.generic.BrickSensor;
+import de.fhg.iais.roberta.syntax.sensor.generic.ColorSensor;
+import de.fhg.iais.roberta.syntax.sensor.generic.CompassSensor;
+import de.fhg.iais.roberta.syntax.sensor.generic.EncoderSensor;
+import de.fhg.iais.roberta.syntax.sensor.generic.GyroSensor;
+import de.fhg.iais.roberta.syntax.sensor.generic.IRSeekerSensor;
+import de.fhg.iais.roberta.syntax.sensor.generic.InfraredSensor;
+import de.fhg.iais.roberta.syntax.sensor.generic.LightSensor;
+import de.fhg.iais.roberta.syntax.sensor.generic.PinTouchSensor;
+import de.fhg.iais.roberta.syntax.sensor.generic.SoundSensor;
+import de.fhg.iais.roberta.syntax.sensor.generic.TimerSensor;
+import de.fhg.iais.roberta.syntax.sensor.generic.TouchSensor;
+import de.fhg.iais.roberta.syntax.sensor.generic.UltrasonicSensor;
+import de.fhg.iais.roberta.typecheck.NepoInfo;
+import de.fhg.iais.roberta.util.dbc.Assert;
+import de.fhg.iais.roberta.visitor.actor.AstActorCommunicationVisitor;
+import de.fhg.iais.roberta.visitor.actor.AstActorDisplayVisitor;
+import de.fhg.iais.roberta.visitor.actor.AstActorLightVisitor;
+import de.fhg.iais.roberta.visitor.actor.AstActorMotorVisitor;
+import de.fhg.iais.roberta.visitor.actor.AstActorSoundVisitor;
+import de.fhg.iais.roberta.visitor.sensor.AstSensorsVisitor;
+
+public abstract class RobotCommonCheckVisitor extends CheckVisitor implements AstActorMotorVisitor&lt;Void&gt;, AstSensorsVisitor&lt;Void&gt;, AstActorDisplayVisitor&lt;Void&gt;,
+    AstActorLightVisitor&lt;Void&gt;, AstActorSoundVisitor&lt;Void&gt;, AstActorCommunicationVisitor&lt;Void&gt; {
+
+    protected ArrayList&lt;ArrayList&lt;Phrase&lt;Void&gt;&gt;&gt; checkedProgram;
+<span class="fc" id="L83">    protected int errorCount = 0;</span>
+<span class="fc" id="L84">    protected int warningCount = 0;</span>
+    protected Configuration brickConfiguration;
+
+<span class="fc" id="L87">    public RobotCommonCheckVisitor(Configuration brickConfiguration) {</span>
+<span class="fc" id="L88">        this.brickConfiguration = brickConfiguration;</span>
+<span class="fc" id="L89">    }</span>
+
+    @Override
+    public void check(ArrayList&lt;ArrayList&lt;Phrase&lt;Void&gt;&gt;&gt; phrasesSet) {
+<span class="pc bpc" id="L93" title="1 of 2 branches missed.">        Assert.isTrue(!phrasesSet.isEmpty());</span>
+<span class="fc" id="L94">        collectGlobalVariables(phrasesSet);</span>
+<span class="fc bfc" id="L95" title="All 2 branches covered.">        for ( ArrayList&lt;Phrase&lt;Void&gt;&gt; phrases : phrasesSet ) {</span>
+<span class="fc bfc" id="L96" title="All 2 branches covered.">            for ( Phrase&lt;Void&gt; phrase : phrases ) {</span>
+<span class="fc" id="L97">                phrase.visit(this);</span>
+<span class="fc" id="L98">            }</span>
+<span class="fc" id="L99">        }</span>
+<span class="fc" id="L100">        this.checkedProgram = phrasesSet;</span>
+<span class="fc" id="L101">    }</span>
+
+    /**
+     * @return the checkedProgram
+     */
+    public ArrayList&lt;ArrayList&lt;Phrase&lt;Void&gt;&gt;&gt; getCheckedProgram() {
+<span class="nc" id="L107">        return this.checkedProgram;</span>
+    }
+
+    /**
+     * @return the countErrors
+     */
+    public int getErrorCount() {
+<span class="fc" id="L114">        return this.errorCount;</span>
+    }
+
+    /**
+     * @return the warningCount
+     */
+    public int getWarningCount() {
+<span class="nc" id="L121">        return this.warningCount;</span>
+    }
+
+    protected abstract void checkSensorPort(ExternalSensor&lt;Void&gt; sensor);
+
+    @Override
+    public Void visitVar(Var&lt;Void&gt; var) {
+<span class="fc" id="L128">        String name = var.getValue();</span>
+<span class="fc bfc" id="L129" title="All 2 branches covered.">        if ( !this.declaredVariables.contains(name) ) {</span>
+<span class="fc" id="L130">            var.addInfo(NepoInfo.error(&quot;VARIABLE_USED_BEFORE_DECLARATION&quot;));</span>
+<span class="fc" id="L131">            this.errorCount++;</span>
+        }
+<span class="fc" id="L133">        return null;</span>
+    }
+
+    @Override
+    public Void visitDriveAction(DriveAction&lt;Void&gt; driveAction) {
+<span class="nc" id="L138">        checkDiffDrive(driveAction);</span>
+<span class="nc" id="L139">        Expr&lt;Void&gt; speed = driveAction.getParam().getSpeed();</span>
+<span class="nc" id="L140">        speed.visit(this);</span>
+<span class="nc" id="L141">        MotorDuration&lt;Void&gt; duration = driveAction.getParam().getDuration();</span>
+<span class="nc bnc" id="L142" title="All 2 branches missed.">        if ( duration != null ) {</span>
+<span class="nc" id="L143">            checkForZeroSpeed(speed, driveAction);</span>
+        }
+<span class="nc" id="L145">        visitMotorDuration(duration);</span>
+<span class="nc" id="L146">        return null;</span>
+    }
+
+    @Override
+    public Void visitTurnAction(TurnAction&lt;Void&gt; turnAction) {
+<span class="nc" id="L151">        checkDiffDrive(turnAction);</span>
+<span class="nc" id="L152">        Expr&lt;Void&gt; speed = turnAction.getParam().getSpeed();</span>
+<span class="nc" id="L153">        speed.visit(this);</span>
+<span class="nc" id="L154">        MotorDuration&lt;Void&gt; duration = turnAction.getParam().getDuration();</span>
+<span class="nc bnc" id="L155" title="All 2 branches missed.">        if ( duration != null ) {</span>
+<span class="nc" id="L156">            checkForZeroSpeed(speed, turnAction);</span>
+        }
+<span class="nc" id="L158">        visitMotorDuration(duration);</span>
+<span class="nc" id="L159">        return null;</span>
+    }
+
+    @Override
+    public Void visitMotorGetPowerAction(MotorGetPowerAction&lt;Void&gt; motorGetPowerAction) {
+<span class="nc" id="L164">        checkMotorPort(motorGetPowerAction);</span>
+<span class="nc" id="L165">        return null;</span>
+    }
+
+    @Override
+    public Void visitMotorOnAction(MotorOnAction&lt;Void&gt; motorOnAction) {
+<span class="nc" id="L170">        motorOnAction.getParam().getSpeed().visit(this);</span>
+<span class="nc" id="L171">        checkMotorPort(motorOnAction);</span>
+<span class="nc" id="L172">        MotorDuration&lt;Void&gt; duration = motorOnAction.getParam().getDuration();</span>
+<span class="nc bnc" id="L173" title="All 2 branches missed.">        if ( duration != null ) {</span>
+<span class="nc" id="L174">            checkForZeroSpeed(motorOnAction.getParam().getSpeed(), motorOnAction);</span>
+        }
+<span class="nc" id="L176">        visitMotorDuration(duration);</span>
+<span class="nc" id="L177">        return null;</span>
+    }
+
+    @Override
+    public Void visitMotorSetPowerAction(MotorSetPowerAction&lt;Void&gt; motorSetPowerAction) {
+<span class="nc" id="L182">        checkMotorPort(motorSetPowerAction);</span>
+<span class="nc" id="L183">        motorSetPowerAction.getPower().visit(this);</span>
+<span class="nc" id="L184">        return null;</span>
+    }
+
+    @Override
+    public Void visitMotorStopAction(MotorStopAction&lt;Void&gt; motorStopAction) {
+<span class="nc" id="L189">        checkMotorPort(motorStopAction);</span>
+<span class="nc" id="L190">        return null;</span>
+    }
+
+    @Override
+    public Void visitMotorDriveStopAction(MotorDriveStopAction&lt;Void&gt; stopAction) {
+<span class="nc" id="L195">        checkDiffDrive(stopAction);</span>
+<span class="nc" id="L196">        return null;</span>
+    }
+
+    @Override
+    public Void visitColorSensor(ColorSensor&lt;Void&gt; colorSensor) {
+<span class="nc" id="L201">        checkSensorPort(colorSensor);</span>
+<span class="nc" id="L202">        return null;</span>
+    }
+
+    @Override
+    public Void visitEncoderSensor(EncoderSensor&lt;Void&gt; encoderSensor) {
+<span class="nc bnc" id="L207" title="All 2 branches missed.">        if ( this.brickConfiguration.getActorOnPort((IActorPort) encoderSensor.getPort()) == null ) {</span>
+<span class="nc" id="L208">            encoderSensor.addInfo(NepoInfo.error(&quot;CONFIGURATION_ERROR_MOTOR_MISSING&quot;));</span>
+<span class="nc" id="L209">            this.errorCount++;</span>
+        }
+<span class="nc" id="L211">        return null;</span>
+    }
+
+    @Override
+    public Void visitCurveAction(CurveAction&lt;Void&gt; driveAction) {
+<span class="nc" id="L216">        visitMotorDuration(driveAction.getParamLeft().getDuration());</span>
+<span class="nc" id="L217">        visitMotorDuration(driveAction.getParamRight().getDuration());</span>
+<span class="nc" id="L218">        driveAction.getParamLeft().getSpeed().visit(this);</span>
+<span class="nc" id="L219">        driveAction.getParamRight().getSpeed().visit(this);</span>
+<span class="nc" id="L220">        checkDiffDrive(driveAction);</span>
+<span class="nc" id="L221">        checkForZeroSpeedInCurve(driveAction.getParamLeft().getSpeed(), driveAction.getParamRight().getSpeed(), driveAction);</span>
+
+<span class="nc" id="L223">        return null;</span>
+    }
+
+    @Override
+    public Void visitGyroSensor(GyroSensor&lt;Void&gt; gyroSensor) {
+<span class="nc" id="L228">        checkSensorPort(gyroSensor);</span>
+<span class="nc" id="L229">        return null;</span>
+    }
+
+    @Override
+    public Void visitInfraredSensor(InfraredSensor&lt;Void&gt; infraredSensor) {
+<span class="nc" id="L234">        checkSensorPort(infraredSensor);</span>
+<span class="nc" id="L235">        return null;</span>
+    }
+
+    @Override
+    public Void visitIRSeekerSensor(IRSeekerSensor&lt;Void&gt; irSeekerSensor) {
+<span class="nc" id="L240">        checkSensorPort(irSeekerSensor);</span>
+<span class="nc" id="L241">        return null;</span>
+    }
+
+    @Override
+    public Void visitTouchSensor(TouchSensor&lt;Void&gt; touchSensor) {
+<span class="nc" id="L246">        checkSensorPort(touchSensor);</span>
+<span class="nc" id="L247">        return null;</span>
+    }
+
+    @Override
+    public Void visitUltrasonicSensor(UltrasonicSensor&lt;Void&gt; ultrasonicSensor) {
+<span class="nc" id="L252">        checkSensorPort(ultrasonicSensor);</span>
+<span class="nc" id="L253">        return null;</span>
+    }
+
+    @Override
+    public Void visitAccelerometer(AccelerometerSensor&lt;Void&gt; accelerometerSensor) {
+<span class="nc" id="L258">        checkSensorPort(accelerometerSensor);</span>
+<span class="nc" id="L259">        return null;</span>
+    }
+
+    @Override
+    public Void visitLightSensor(LightSensor&lt;Void&gt; lightSensor) {
+<span class="nc" id="L264">        checkSensorPort(lightSensor);</span>
+<span class="nc" id="L265">        return null;</span>
+    }
+
+    @Override
+    public Void visitSoundSensor(SoundSensor&lt;Void&gt; soundSensor) {
+<span class="nc" id="L270">        checkSensorPort(soundSensor);</span>
+<span class="nc" id="L271">        return null;</span>
+    }
+
+    @Override
+    public Void visitCompassSensor(CompassSensor&lt;Void&gt; compassSensor) {
+<span class="nc" id="L276">        checkSensorPort(compassSensor);</span>
+<span class="nc" id="L277">        return null;</span>
+    }
+
+    @Override
+    public Void visitBrickSensor(BrickSensor&lt;Void&gt; brickSensor) {
+<span class="nc" id="L282">        return null;</span>
+    }
+
+    @Override
+    public Void visitTimerSensor(TimerSensor&lt;Void&gt; timerSensor) {
+<span class="nc" id="L287">        return null;</span>
+    }
+
+    @Override
+    public Void visitPinTouchSensor(PinTouchSensor&lt;Void&gt; pinTouchSensor) {
+<span class="nc" id="L292">        return null;</span>
+    }
+
+    @Override
+    public Void visitToneAction(ToneAction&lt;Void&gt; toneAction) {
+<span class="nc" id="L297">        toneAction.getDuration().visit(this);</span>
+<span class="nc" id="L298">        toneAction.getFrequency().visit(this);</span>
+<span class="nc" id="L299">        return null;</span>
+    }
+
+    @Override
+    public Void visitPlayNoteAction(PlayNoteAction&lt;Void&gt; playNoteAction) {
+<span class="nc" id="L304">        return null;</span>
+    }
+
+    @Override
+    public Void visitVolumeAction(VolumeAction&lt;Void&gt; volumeAction) {
+<span class="nc" id="L309">        volumeAction.getVolume().visit(this);</span>
+<span class="nc" id="L310">        return null;</span>
+    }
+
+    @Override
+    public Void visitSetLanguageAction(SetLanguageAction&lt;Void&gt; setLanguageAction) {
+<span class="nc" id="L315">        return null;</span>
+    }
+
+    @Override
+    public Void visitSayTextAction(SayTextAction&lt;Void&gt; sayTextAction) {
+<span class="nc" id="L320">        sayTextAction.getMsg().visit(this);</span>
+<span class="nc" id="L321">        sayTextAction.getSpeed().visit(this);</span>
+<span class="nc" id="L322">        sayTextAction.getPitch().visit(this);</span>
+<span class="nc" id="L323">        return null;</span>
+    }
+
+    @Override
+    public Void visitPlayFileAction(PlayFileAction&lt;Void&gt; playFileAction) {
+<span class="nc" id="L328">        return null;</span>
+    }
+
+    @Override
+    public Void visitLightAction(LightAction&lt;Void&gt; lightAction) {
+<span class="nc" id="L333">        return null;</span>
+    }
+
+    @Override
+    public Void visitLightStatusAction(LightStatusAction&lt;Void&gt; lightStatusAction) {
+<span class="nc" id="L338">        return null;</span>
+    }
+
+    @Override
+    public Void visitClearDisplayAction(ClearDisplayAction&lt;Void&gt; clearDisplayAction) {
+<span class="nc" id="L343">        return null;</span>
+    }
+
+    @Override
+    public Void visitShowPictureAction(ShowPictureAction&lt;Void&gt; showPictureAction) {
+<span class="nc" id="L348">        showPictureAction.getX().visit(this);</span>
+<span class="nc" id="L349">        showPictureAction.getY().visit(this);</span>
+<span class="nc" id="L350">        return null;</span>
+    }
+
+    @Override
+    public Void visitShowTextAction(ShowTextAction&lt;Void&gt; showTextAction) {
+<span class="nc" id="L355">        showTextAction.getMsg().visit(this);</span>
+<span class="nc" id="L356">        showTextAction.getX().visit(this);</span>
+<span class="nc" id="L357">        showTextAction.getY().visit(this);</span>
+<span class="nc" id="L358">        return null;</span>
+    }
+
+    @Override
+    public Void visitBluetoothReceiveAction(BluetoothReceiveAction&lt;Void&gt; bluetoothReceiveAction) {
+<span class="nc bnc" id="L363" title="All 2 branches missed.">        if ( bluetoothReceiveAction.getConnection() instanceof EmptyExpr ) {</span>
+<span class="nc" id="L364">            bluetoothReceiveAction.addInfo(NepoInfo.error(&quot;CONFIGURATION_ERROR_SENSOR_WRONG&quot;));</span>
+<span class="nc" id="L365">            this.errorCount++;</span>
+        }
+<span class="nc" id="L367">        bluetoothReceiveAction.getConnection().visit(this);</span>
+<span class="nc" id="L368">        return null;</span>
+    }
+
+    @Override
+    public Void visitBluetoothConnectAction(BluetoothConnectAction&lt;Void&gt; bluetoothConnectAction) {
+<span class="nc" id="L373">        bluetoothConnectAction.getAddress().visit(this);</span>
+<span class="nc" id="L374">        return null;</span>
+    }
+
+    @Override
+    public Void visitBluetoothSendAction(BluetoothSendAction&lt;Void&gt; bluetoothSendAction) {
+<span class="nc bnc" id="L379" title="All 2 branches missed.">        if ( bluetoothSendAction.getConnection() instanceof EmptyExpr ) {</span>
+<span class="nc" id="L380">            bluetoothSendAction.addInfo(NepoInfo.error(&quot;CONFIGURATION_ERROR_SENSOR_WRONG&quot;));</span>
+<span class="nc" id="L381">            this.errorCount++;</span>
+        }
+<span class="nc" id="L383">        bluetoothSendAction.getConnection().visit(this);</span>
+<span class="nc" id="L384">        bluetoothSendAction.getMsg().visit(this);</span>
+<span class="nc" id="L385">        return null;</span>
+    }
+
+    @Override
+    public Void visitBluetoothWaitForConnectionAction(BluetoothWaitForConnectionAction&lt;Void&gt; bluetoothWaitForConnection) {
+<span class="nc" id="L390">        return null;</span>
+    }
+
+    @Override
+    public Void visitBluetoothCheckConnectAction(BluetoothCheckConnectAction&lt;Void&gt; bluetoothCheckConnectAction) {
+<span class="nc" id="L395">        bluetoothCheckConnectAction.getConnection().visit(this);</span>
+<span class="nc" id="L396">        return null;</span>
+    }
+
+    private void checkDiffDrive(Phrase&lt;Void&gt; driveAction) {
+<span class="nc" id="L400">        checkLeftRightMotorPort(driveAction);</span>
+<span class="nc" id="L401">    }</span>
+
+    protected void checkMotorPort(MoveAction&lt;Void&gt; action) {
+<span class="nc bnc" id="L404" title="All 2 branches missed.">        if ( this.brickConfiguration.getActorOnPort(action.getPort()) == null ) {</span>
+<span class="nc" id="L405">            action.addInfo(NepoInfo.error(&quot;CONFIGURATION_ERROR_MOTOR_MISSING&quot;));</span>
+<span class="nc" id="L406">            this.errorCount++;</span>
+        }
+<span class="nc" id="L408">    }</span>
+
+    private void checkLeftRightMotorPort(Phrase&lt;Void&gt; driveAction) {
+<span class="nc" id="L411">        Actor leftMotor = this.brickConfiguration.getLeftMotor();</span>
+<span class="nc" id="L412">        Actor rightMotor = this.brickConfiguration.getRightMotor();</span>
+<span class="nc" id="L413">        checkLeftMotorPresenceAndRegulation(driveAction, leftMotor);</span>
+<span class="nc" id="L414">        checkRightMotorPresenceAndRegulation(driveAction, rightMotor);</span>
+<span class="nc" id="L415">        checkLeftAndRightMotorRotationDirection(driveAction, leftMotor, rightMotor);</span>
+<span class="nc" id="L416">        checkNumberOfMotors(driveAction);</span>
+<span class="nc" id="L417">    }</span>
+
+    private void checkRightMotorPresenceAndRegulation(Phrase&lt;Void&gt; driveAction, Actor rightMotor) {
+<span class="nc bnc" id="L420" title="All 2 branches missed.">        if ( rightMotor == null ) {</span>
+<span class="nc" id="L421">            driveAction.addInfo(NepoInfo.error(&quot;CONFIGURATION_ERROR_MOTOR_RIGHT_MISSING&quot;));</span>
+<span class="nc" id="L422">            this.errorCount++;</span>
+        } else {
+<span class="nc" id="L424">            checkIfMotorRegulated(driveAction, rightMotor, &quot;CONFIGURATION_ERROR_MOTOR_RIGHT_UNREGULATED&quot;);</span>
+        }
+<span class="nc" id="L426">    }</span>
+
+    private void checkLeftMotorPresenceAndRegulation(Phrase&lt;Void&gt; driveAction, Actor leftMotor) {
+<span class="nc bnc" id="L429" title="All 2 branches missed.">        if ( leftMotor == null ) {</span>
+<span class="nc" id="L430">            driveAction.addInfo(NepoInfo.error(&quot;CONFIGURATION_ERROR_MOTOR_LEFT_MISSING&quot;));</span>
+<span class="nc" id="L431">            this.errorCount++;</span>
+        } else {
+<span class="nc" id="L433">            checkIfMotorRegulated(driveAction, leftMotor, &quot;CONFIGURATION_ERROR_MOTOR_LEFT_UNREGULATED&quot;);</span>
+        }
+<span class="nc" id="L435">    }</span>
+
+    private void checkLeftAndRightMotorRotationDirection(Phrase&lt;Void&gt; driveAction, Actor leftMotor, Actor rightMotor) {
+<span class="nc bnc" id="L438" title="All 6 branches missed.">        if ( (leftMotor != null) &amp;&amp; (rightMotor != null) &amp;&amp; (leftMotor.getRotationDirection() != rightMotor.getRotationDirection()) ) {</span>
+<span class="nc" id="L439">            driveAction.addInfo(NepoInfo.error(&quot;CONFIGURATION_ERROR_MOTORS_ROTATION_DIRECTION&quot;));</span>
+<span class="nc" id="L440">            this.errorCount++;</span>
+        }
+<span class="nc" id="L442">    }</span>
+
+    private void checkNumberOfMotors(Phrase&lt;Void&gt; driveAction) {
+<span class="nc bnc" id="L445" title="All 2 branches missed.">        if ( this.brickConfiguration.getNumberOfRightMotors() &gt; 1 ) {</span>
+<span class="nc" id="L446">            driveAction.addInfo(NepoInfo.error(&quot;CONFIGURATION_ERROR_MULTIPLE_RIGHT_MOTORS&quot;));</span>
+<span class="nc" id="L447">            this.errorCount++;</span>
+        }
+<span class="nc bnc" id="L449" title="All 2 branches missed.">        if ( this.brickConfiguration.getNumberOfLeftMotors() &gt; 1 ) {</span>
+<span class="nc" id="L450">            driveAction.addInfo(NepoInfo.error(&quot;CONFIGURATION_ERROR_MULTIPLE_LEFT_MOTORS&quot;));</span>
+<span class="nc" id="L451">            this.errorCount++;</span>
+        }
+<span class="nc" id="L453">    }</span>
+
+    private void checkIfMotorRegulated(Phrase&lt;Void&gt; driveAction, Actor motor, String errorMsg) {
+<span class="nc bnc" id="L456" title="All 2 branches missed.">        if ( !motor.isRegulated() ) {</span>
+<span class="nc" id="L457">            driveAction.addInfo(NepoInfo.error(errorMsg));</span>
+<span class="nc" id="L458">            this.errorCount++;</span>
+        }
+<span class="nc" id="L460">    }</span>
+
+    private void checkForZeroSpeed(Expr&lt;Void&gt; speed, Action&lt;Void&gt; action) {
+<span class="nc bnc" id="L463" title="All 2 branches missed.">        if ( speed.getKind().hasName(&quot;NUM_CONST&quot;) ) {</span>
+<span class="nc" id="L464">            NumConst&lt;Void&gt; speedNumConst = (NumConst&lt;Void&gt;) speed;</span>
+<span class="nc bnc" id="L465" title="All 2 branches missed.">            if ( Integer.valueOf(speedNumConst.getValue()) == 0 ) {</span>
+<span class="nc" id="L466">                action.addInfo(NepoInfo.warning(&quot;MOTOR_SPEED_0&quot;));</span>
+<span class="nc" id="L467">                this.warningCount++;</span>
+            }
+        }
+<span class="nc" id="L470">    }</span>
+
+    private void checkForZeroSpeedInCurve(Expr&lt;Void&gt; speedLeft, Expr&lt;Void&gt; speedRight, Action&lt;Void&gt; action) {
+<span class="nc bnc" id="L473" title="All 4 branches missed.">        if ( speedLeft.getKind().hasName(&quot;NUM_CONST&quot;) &amp;&amp; speedRight.getKind().hasName(&quot;NUM_CONST&quot;) ) {</span>
+<span class="nc" id="L474">            Double speedLeftNumConst = Double.valueOf(((NumConst&lt;Void&gt;) speedLeft).getValue());</span>
+<span class="nc" id="L475">            Double speedRightNumConst = Double.valueOf(((NumConst&lt;Void&gt;) speedRight).getValue());</span>
+<span class="nc" id="L476">            int signLeft = (int) Math.signum(speedLeftNumConst);</span>
+<span class="nc" id="L477">            int signRight = (int) Math.signum(speedRightNumConst);</span>
+<span class="nc bnc" id="L478" title="All 2 branches missed.">            boolean sameSpeed = Math.abs(speedLeftNumConst) == Math.abs(speedRightNumConst); //NOSONAR : TODO: supply an delta of 0.1 (speed is in [0,100] ?</span>
+<span class="nc bnc" id="L479" title="All 8 branches missed.">            if ( sameSpeed &amp;&amp; (signLeft != signRight) &amp;&amp; (signLeft != 0) &amp;&amp; (signRight != 0) ) {</span>
+<span class="nc" id="L480">                action.addInfo(NepoInfo.warning(&quot;BLOCK_NOT_EXECUTED&quot;));</span>
+<span class="nc" id="L481">                this.warningCount++;</span>
+            }
+        }
+<span class="nc" id="L484">    }</span>
+
+    private void visitMotorDuration(MotorDuration&lt;Void&gt; duration) {
+<span class="nc bnc" id="L487" title="All 2 branches missed.">        if ( duration != null ) {</span>
+<span class="nc" id="L488">            duration.getValue().visit(this);</span>
+        }
+<span class="nc" id="L490">    }</span>
+
+    @Override
+    public Void visitMethodReturn(MethodReturn&lt;Void&gt; methodReturn) {
+<span class="nc" id="L494">        super.visitMethodReturn(methodReturn);</span>
+<span class="nc bnc" id="L495" title="All 2 branches missed.">        if ( methodReturn.getReturnValue() instanceof EmptyExpr ) {</span>
+<span class="nc" id="L496">            methodReturn.addInfo(NepoInfo.error(&quot;ERROR_MISSING_RETURN&quot;));</span>
+<span class="nc" id="L497">            this.errorCount++;</span>
+        }
+<span class="nc" id="L499">        return null;</span>
+    }
+
+    @Override
+    public Void visitMethodCall(MethodCall&lt;Void&gt; methodCall) {
+<span class="nc" id="L504">        super.visitMethodCall(methodCall);</span>
+<span class="nc" id="L505">        boolean oneParamEmpty = false;</span>
+<span class="nc bnc" id="L506" title="All 2 branches missed.">        for ( Expr&lt;Void&gt; expr : methodCall.getParametersValues().get() ) {</span>
+<span class="nc bnc" id="L507" title="All 2 branches missed.">            oneParamEmpty = oneParamEmpty ? true : expr instanceof EmptyExpr;</span>
+<span class="nc" id="L508">        }</span>
+<span class="nc bnc" id="L509" title="All 2 branches missed.">        if ( oneParamEmpty ) {</span>
+<span class="nc" id="L510">            methodCall.addInfo(NepoInfo.error(&quot;ERROR_MISSING_PARAMETER&quot;));</span>
+<span class="nc" id="L511">            this.errorCount++;</span>
+        }
+<span class="nc" id="L513">        return null;</span>
+    }
+
+    @Override
+    public Void visitRepeatStmt(RepeatStmt&lt;Void&gt; repeatStmt) {
+<span class="nc" id="L518">        super.visitRepeatStmt(repeatStmt);</span>
+<span class="nc bnc" id="L519" title="All 2 branches missed.">        if ( repeatStmt.getExpr() instanceof EmptyExpr ) {</span>
+<span class="nc" id="L520">            repeatStmt.addInfo(NepoInfo.error(&quot;ERROR_MISSING_PARAMETER&quot;));</span>
+<span class="nc" id="L521">            this.errorCount++;</span>
+<span class="nc bnc" id="L522" title="All 2 branches missed.">        } else if ( repeatStmt.getExpr() instanceof Unary ) {</span>
+<span class="nc bnc" id="L523" title="All 2 branches missed.">            if ( ((Unary&lt;Void&gt;) repeatStmt.getExpr()).getExpr() instanceof EmptyExpr ) {</span>
+<span class="nc" id="L524">                repeatStmt.addInfo(NepoInfo.error(&quot;ERROR_MISSING_PARAMETER&quot;));</span>
+<span class="nc" id="L525">                this.errorCount++;</span>
+            }
+<span class="nc bnc" id="L527" title="All 2 branches missed.">        } else if ( repeatStmt.getExpr() instanceof Binary ) {</span>
+<span class="nc bnc" id="L528" title="All 2 branches missed.">            if ( ((Binary&lt;Void&gt;) repeatStmt.getExpr()).getRight() instanceof EmptyExpr ) {</span>
+<span class="nc" id="L529">                repeatStmt.addInfo(NepoInfo.error(&quot;ERROR_MISSING_PARAMETER&quot;));</span>
+<span class="nc" id="L530">                this.errorCount++;</span>
+            }
+        }
+<span class="nc" id="L533">        return null;</span>
+    }
+
+    @Override
+    public Void visitWaitStmt(WaitStmt&lt;Void&gt; waitStmt) {
+<span class="nc" id="L538">        super.visitWaitStmt(waitStmt);</span>
+<span class="nc bnc" id="L539" title="All 2 branches missed.">        for ( Stmt&lt;Void&gt; stmt : waitStmt.getStatements().get() ) {</span>
+<span class="nc bnc" id="L540" title="All 2 branches missed.">            for ( NepoInfo info : stmt.getInfos().getInfos() ) {</span>
+<span class="nc" id="L541">                waitStmt.addInfo(info);</span>
+<span class="nc" id="L542">            }</span>
+<span class="nc" id="L543">        }</span>
+<span class="nc" id="L544">        return null;</span>
+    }
+
+    @Override
+    public Void visitIndexOfFunct(IndexOfFunct&lt;Void&gt; indexOfFunct) {
+<span class="nc" id="L549">        super.visitIndexOfFunct(indexOfFunct);</span>
+<span class="nc" id="L550">        boolean oneParamEmpty = false;</span>
+<span class="nc bnc" id="L551" title="All 2 branches missed.">        for ( Expr&lt;Void&gt; expr : indexOfFunct.getParam() ) {</span>
+<span class="nc bnc" id="L552" title="All 2 branches missed.">            oneParamEmpty = oneParamEmpty ? true : expr instanceof EmptyExpr;</span>
+<span class="nc" id="L553">        }</span>
+<span class="nc bnc" id="L554" title="All 2 branches missed.">        if ( oneParamEmpty ) {</span>
+<span class="nc" id="L555">            indexOfFunct.addInfo(NepoInfo.error(&quot;ERROR_MISSING_PARAMETER&quot;));</span>
+<span class="nc" id="L556">            this.errorCount++;</span>
+        }
+<span class="nc" id="L558">        return null;</span>
+    }
+
+    @Override
+    public Void visitMathOnListFunct(MathOnListFunct&lt;Void&gt; mathOnListFunct) {
+<span class="nc" id="L563">        super.visitMathOnListFunct(mathOnListFunct);</span>
+<span class="nc bnc" id="L564" title="All 2 branches missed.">        if ( mathOnListFunct.getParam().get(0) instanceof EmptyExpr ) {</span>
+<span class="nc" id="L565">            mathOnListFunct.addInfo(NepoInfo.error(&quot;ERROR_MISSING_PARAMETER&quot;));</span>
+<span class="nc" id="L566">            this.errorCount++;</span>
+        }
+<span class="nc" id="L568">        return null;</span>
+    }
+
+    @Override
+    public Void visitLengthOfIsEmptyFunct(LengthOfIsEmptyFunct&lt;Void&gt; lengthOfIsEmptyFunct) {
+<span class="nc" id="L573">        super.visitLengthOfIsEmptyFunct(lengthOfIsEmptyFunct);</span>
+<span class="nc bnc" id="L574" title="All 2 branches missed.">        if ( lengthOfIsEmptyFunct.getParam().get(0) instanceof EmptyExpr ) {</span>
+<span class="nc" id="L575">            lengthOfIsEmptyFunct.addInfo(NepoInfo.error(&quot;ERROR_MISSING_PARAMETER&quot;));</span>
+<span class="nc" id="L576">            this.errorCount++;</span>
+        }
+<span class="nc" id="L578">        return null;</span>
+    }
+
+    @Override
+    public Void visitListRepeat(ListRepeat&lt;Void&gt; listRepeat) {
+<span class="nc" id="L583">        super.visitListRepeat(listRepeat);</span>
+<span class="nc" id="L584">        boolean oneParamEmpty = false;</span>
+<span class="nc bnc" id="L585" title="All 2 branches missed.">        for ( Expr&lt;Void&gt; expr : listRepeat.getParam() ) {</span>
+<span class="nc bnc" id="L586" title="All 2 branches missed.">            oneParamEmpty = oneParamEmpty ? true : expr instanceof EmptyExpr;</span>
+<span class="nc" id="L587">        }</span>
+<span class="nc bnc" id="L588" title="All 2 branches missed.">        if ( oneParamEmpty ) {</span>
+<span class="nc" id="L589">            listRepeat.addInfo(NepoInfo.error(&quot;ERROR_MISSING_PARAMETER&quot;));</span>
+<span class="nc" id="L590">            this.errorCount++;</span>
+        }
+<span class="nc" id="L592">        return null;</span>
+    }
+
+    @Override
+    public Void visitListGetIndex(ListGetIndex&lt;Void&gt; listGetIndex) {
+<span class="nc" id="L597">        super.visitListGetIndex(listGetIndex);</span>
+<span class="nc bnc" id="L598" title="All 2 branches missed.">        if ( listGetIndex.getParam().get(0) instanceof EmptyExpr ) {</span>
+<span class="nc" id="L599">            listGetIndex.addInfo(NepoInfo.error(&quot;ERROR_MISSING_PARAMETER&quot;));</span>
+<span class="nc" id="L600">            this.errorCount++;</span>
+        }
+<span class="nc" id="L602">        return null;</span>
+    }
+
+    @Override
+    public Void visitGetSubFunct(GetSubFunct&lt;Void&gt; getSubFunct) {
+<span class="nc" id="L607">        super.visitGetSubFunct(getSubFunct);</span>
+<span class="nc bnc" id="L608" title="All 2 branches missed.">        if ( getSubFunct.getParam().get(0) instanceof EmptyExpr ) {</span>
+<span class="nc" id="L609">            getSubFunct.addInfo(NepoInfo.error(&quot;ERROR_MISSING_PARAMETER&quot;));</span>
+<span class="nc" id="L610">            this.errorCount++;</span>
+        }
+<span class="nc" id="L612">        return null;</span>
+    }
+
+    @Override
+    public Void visitListSetIndex(ListSetIndex&lt;Void&gt; listSetIndex) {
+<span class="nc" id="L617">        super.visitListSetIndex(listSetIndex);</span>
+<span class="nc" id="L618">        boolean oneParamEmpty = false;</span>
+<span class="nc bnc" id="L619" title="All 2 branches missed.">        for ( Expr&lt;Void&gt; expr : listSetIndex.getParam() ) {</span>
+<span class="nc bnc" id="L620" title="All 2 branches missed.">            oneParamEmpty = oneParamEmpty ? true : expr instanceof EmptyExpr;</span>
+<span class="nc" id="L621">        }</span>
+<span class="nc bnc" id="L622" title="All 2 branches missed.">        if ( oneParamEmpty ) {</span>
+<span class="nc" id="L623">            listSetIndex.addInfo(NepoInfo.error(&quot;ERROR_MISSING_PARAMETER&quot;));</span>
+<span class="nc" id="L624">            this.errorCount++;</span>
+        }
+<span class="nc" id="L626">        return null;</span>
+    }
+
+    @Override
+    public Void visitBinary(Binary&lt;Void&gt; binary) {
+<span class="nc" id="L631">        super.visitBinary(binary);</span>
+<span class="nc bnc" id="L632" title="All 6 branches missed.">        if ( ((binary.getOp() == Binary.Op.MATH_CHANGE) || (binary.getOp() == Binary.Op.TEXT_APPEND)) &amp;&amp; (binary.getLeft() instanceof EmptyExpr) ) {</span>
+<span class="nc" id="L633">            binary.addInfo(NepoInfo.error(&quot;ERROR_MISSING_PARAMETER&quot;));</span>
+<span class="nc" id="L634">            this.errorCount++;</span>
+        }
+
+<span class="nc bnc" id="L637" title="All 4 branches missed.">        if ( ((binary.getOp() == Binary.Op.AND) || (binary.getOp() == Binary.Op.OR))</span>
+<span class="nc bnc" id="L638" title="All 4 branches missed.">            &amp;&amp; ((binary.getLeft() instanceof EmptyExpr) || (binary.getRight() instanceof EmptyExpr)) ) {</span>
+<span class="nc" id="L639">            binary.addInfo(NepoInfo.error(&quot;ERROR_MISSING_PARAMETER&quot;));</span>
+<span class="nc" id="L640">            this.errorCount++;</span>
+        }
+<span class="nc" id="L642">        return null;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

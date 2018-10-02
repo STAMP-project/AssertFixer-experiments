@@ -1,0 +1,143 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>ExternalSensor.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">OpenRobertaRobot</a> &gt; <a href="index.source.html" class="el_package">de.fhg.iais.roberta.syntax.sensor</a> &gt; <span class="el_source">ExternalSensor.java</span></div><h1>ExternalSensor.java</h1><pre class="source lang-java linenums">package de.fhg.iais.roberta.syntax.sensor;
+
+import java.util.List;
+import java.util.function.Function;
+
+import de.fhg.iais.roberta.blockly.generated.Block;
+import de.fhg.iais.roberta.blockly.generated.Field;
+import de.fhg.iais.roberta.blockly.generated.Mutation;
+import de.fhg.iais.roberta.factory.IRobotFactory;
+import de.fhg.iais.roberta.inter.mode.general.IMode;
+import de.fhg.iais.roberta.inter.mode.sensor.IPort;
+import de.fhg.iais.roberta.inter.mode.sensor.ISlot;
+import de.fhg.iais.roberta.mode.sensor.SensorPort;
+import de.fhg.iais.roberta.syntax.BlockTypeContainer.BlockType;
+import de.fhg.iais.roberta.syntax.BlocklyBlockProperties;
+import de.fhg.iais.roberta.syntax.BlocklyComment;
+import de.fhg.iais.roberta.syntax.BlocklyConstants;
+import de.fhg.iais.roberta.transformer.Jaxb2AstTransformer;
+import de.fhg.iais.roberta.transformer.JaxbTransformerHelper;
+import de.fhg.iais.roberta.util.dbc.Assert;
+
+public abstract class ExternalSensor&lt;V&gt; extends Sensor&lt;V&gt; {
+    private final IPort port;
+    private final IMode mode;
+    private final ISlot slot;
+    private final boolean isPortInMutation;
+
+    /**
+     * This constructor set the kind of the sensor object used in the AST (abstract syntax tree). All possible kinds can be found in {@link BlockType}.
+     *
+     * @param kind of the the sensor object used in AST,
+     * @param properties of the block (see {@link BlocklyBlockProperties}),
+     * @param comment of the user for the specific block
+     */
+    public ExternalSensor(SensorMetaDataBean metaDataBean, BlockType kind, BlocklyBlockProperties properties, BlocklyComment comment) {
+<span class="fc" id="L36">        super(kind, properties, comment);</span>
+<span class="fc" id="L37">        Assert.notNull(metaDataBean.getMode());</span>
+<span class="fc" id="L38">        Assert.notNull(metaDataBean.getPort());</span>
+<span class="fc" id="L39">        Assert.notNull(metaDataBean.getSlot());</span>
+<span class="fc" id="L40">        this.port = metaDataBean.getPort();</span>
+<span class="fc" id="L41">        this.mode = metaDataBean.getMode();</span>
+<span class="fc" id="L42">        this.slot = metaDataBean.getSlot();</span>
+<span class="fc" id="L43">        this.isPortInMutation = metaDataBean.isPortInMutation();</span>
+<span class="fc" id="L44">    }</span>
+
+    /**
+     * @return get the port on which the sensor is connected. See enum {@link SensorPort} for all possible sensor ports
+     */
+    public IPort getPort() {
+<span class="fc" id="L50">        return this.port;</span>
+    }
+
+    /**
+     * @return get the mode of sensor. See enum {@link IMode} for all possible modes that the sensor have
+     */
+    public IMode getMode() {
+<span class="nc" id="L57">        return this.mode;</span>
+    }
+
+    public ISlot getSlot() {
+<span class="nc" id="L61">        return this.slot;</span>
+    }
+
+    @Override
+    public String toString() {
+<span class="nc" id="L66">        return this.getClass().getSimpleName() + &quot; [&quot; + getPort() + &quot;, &quot; + getMode() + &quot;, &quot; + getSlot() + &quot;]&quot;;</span>
+    }
+
+    /**
+     * Transformation from JAXB object to corresponding AST object.
+     *
+     * @param block for transformation
+     * @param helper class for making the transformation
+     * @return corresponding AST object
+     */
+    public static &lt;V&gt; SensorMetaDataBean extractPortAndMode(
+        Block block,
+        Jaxb2AstTransformer&lt;V&gt; helper,
+        Function&lt;String, IPort&gt; getPort,
+        Function&lt;String, IMode&gt; getMode) {
+<span class="nc" id="L81">        return extractPortAndModeAndSlot(block, helper, getPort, getMode, helper.getModeFactory()::getSlot);</span>
+    }
+
+    /**
+     * Transformation from JAXB object to corresponding AST object.
+     *
+     * @param block for transformation
+     * @param helper class for making the transformation
+     * @return corresponding AST object
+     */
+    public static &lt;V&gt; SensorMetaDataBean extractPortAndModeAndSlot(
+        Block block,
+        Jaxb2AstTransformer&lt;V&gt; helper,
+        Function&lt;String, IPort&gt; getPort,
+        Function&lt;String, IMode&gt; getMode,
+        Function&lt;String, ISlot&gt; getSlot) {
+<span class="nc" id="L97">        List&lt;Field&gt; fields = helper.extractFields(block, (short) 3);</span>
+<span class="nc" id="L98">        IRobotFactory factory = helper.getModeFactory();</span>
+<span class="nc" id="L99">        String portName = helper.extractField(fields, BlocklyConstants.SENSORPORT, BlocklyConstants.NO_PORT);</span>
+<span class="nc" id="L100">        String modeName = helper.extractField(fields, BlocklyConstants.MODE, BlocklyConstants.DEFAULT);</span>
+<span class="nc" id="L101">        String slotName = helper.extractField(fields, BlocklyConstants.SLOT, BlocklyConstants.NO_SLOT);</span>
+<span class="nc bnc" id="L102" title="All 4 branches missed.">        boolean isPortInMutation = (block.getMutation() != null) &amp;&amp; (block.getMutation().getPort() != null);</span>
+
+<span class="nc" id="L104">        return new SensorMetaDataBean(getPort.apply(portName), getMode.apply(modeName), factory.getSlot(slotName), isPortInMutation);</span>
+    }
+
+    public static &lt;V&gt; SensorMetaDataBean extractSensorPortAndMode(Block block, Jaxb2AstTransformer&lt;V&gt; helper, Function&lt;String, IMode&gt; getMode) {
+<span class="nc" id="L108">        return extractPortAndMode(block, helper, helper.getModeFactory()::getSensorPort, getMode);</span>
+    }
+
+    public static &lt;V&gt; SensorMetaDataBean extractActorPortAndMode(Block block, Jaxb2AstTransformer&lt;V&gt; helper, Function&lt;String, IMode&gt; getMode) {
+<span class="nc" id="L112">        return extractPortAndMode(block, helper, helper.getModeFactory()::getActorPort, getMode);</span>
+    }
+
+    @Override
+    public Block astToBlock() {
+<span class="nc" id="L117">        Block jaxbDestination = new Block();</span>
+<span class="nc" id="L118">        JaxbTransformerHelper.setBasicProperties(this, jaxbDestination);</span>
+<span class="nc" id="L119">        boolean addMutation = false;</span>
+<span class="nc" id="L120">        Mutation mutation = new Mutation();</span>
+<span class="nc bnc" id="L121" title="All 2 branches missed.">        if ( !this.mode.toString().equals(BlocklyConstants.DEFAULT) ) {</span>
+<span class="nc" id="L122">            mutation.setMode(getMode().toString());</span>
+<span class="nc" id="L123">            addMutation = true;</span>
+<span class="nc" id="L124">            JaxbTransformerHelper.addField(jaxbDestination, BlocklyConstants.MODE, getMode().toString());</span>
+<span class="nc bnc" id="L125" title="All 2 branches missed.">            if ( this.isPortInMutation ) {</span>
+<span class="nc" id="L126">                mutation.setPort(getPort().toString());</span>
+            }
+        }
+<span class="nc bnc" id="L129" title="All 2 branches missed.">        if ( !this.getPort().toString().equals(BlocklyConstants.NO_PORT) ) {</span>
+<span class="nc" id="L130">            String fieldValue = getPort().getOraName();</span>
+<span class="nc" id="L131">            JaxbTransformerHelper.addField(jaxbDestination, BlocklyConstants.SENSORPORT, fieldValue);</span>
+        }
+<span class="nc bnc" id="L133" title="All 2 branches missed.">        if ( !this.getSlot().toString().equals(BlocklyConstants.NO_SLOT) ) {</span>
+<span class="nc" id="L134">            String fieldValue = getSlot().getValues()[0];</span>
+<span class="nc" id="L135">            JaxbTransformerHelper.addField(jaxbDestination, BlocklyConstants.SLOT, fieldValue);</span>
+        }
+<span class="nc bnc" id="L137" title="All 2 branches missed.">        if ( addMutation ) {</span>
+<span class="nc" id="L138">            jaxbDestination.setMutation(mutation);</span>
+        }
+<span class="nc" id="L140">        return jaxbDestination;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

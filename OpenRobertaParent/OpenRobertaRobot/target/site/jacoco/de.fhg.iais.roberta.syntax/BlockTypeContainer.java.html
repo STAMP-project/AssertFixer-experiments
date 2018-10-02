@@ -1,0 +1,163 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>BlockTypeContainer.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">OpenRobertaRobot</a> &gt; <a href="index.source.html" class="el_package">de.fhg.iais.roberta.syntax</a> &gt; <span class="el_source">BlockTypeContainer.java</span></div><h1>BlockTypeContainer.java</h1><pre class="source lang-java linenums">package de.fhg.iais.roberta.syntax;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import de.fhg.iais.roberta.components.Category;
+import de.fhg.iais.roberta.util.dbc.Assert;
+
+/**
+ * This container holds all possible kind of objects that we can have to represent the AST (abstract syntax tree). The objects are separated in four main
+ * {@link Category}. They have a unique (String) name to refer to them (in a code generator visitor, for instance). They can be retrieved&lt;br&gt;
+ * - either by their (globally) unique name or&lt;br&gt;
+ * - a list of (globally) unique names, each of which is used as element name in blockly XML.&lt;br&gt;
+ * A concrete root can add dynamically new elements to this container, when the robot is registered during robot startup (this is why this container is
+ * &lt;i&gt;not&lt;/i&gt; implemented as a enum type. Duriong registraion of new block types the uniqueness of names is guaranteed by this container.
+ */
+<span class="nc" id="L19">public class BlockTypeContainer {</span>
+<span class="fc" id="L20">    private static final String[] NO_BLOCKLY_NAMES = new String[0];</span>
+
+<span class="fc" id="L22">    private static final List&lt;String&gt; loadedPropertyFiles = new ArrayList&lt;&gt;();</span>
+
+<span class="fc" id="L24">    private static final Map&lt;String, BlockType&gt; blockTypesByName = new HashMap&lt;&gt;();</span>
+<span class="fc" id="L25">    private static final Map&lt;String, BlockType&gt; blockTypesByBlocklyName = new HashMap&lt;&gt;();</span>
+
+    static {
+<span class="fc" id="L28">        add(&quot;EXPR_LIST&quot;, Category.EXPR);</span>
+<span class="fc" id="L29">        add(&quot;SENSOR_EXPR&quot;, Category.EXPR);</span>
+<span class="fc" id="L30">        add(&quot;ACTION_EXPR&quot;, Category.EXPR);</span>
+<span class="fc" id="L31">        add(&quot;EMPTY_EXPR&quot;, Category.EXPR);</span>
+<span class="fc" id="L32">        add(&quot;SHADOW_EXPR&quot;, Category.EXPR);</span>
+<span class="fc" id="L33">        add(&quot;FUNCTION_EXPR&quot;, Category.EXPR);</span>
+<span class="fc" id="L34">        add(&quot;METHOD_EXPR&quot;, Category.EXPR);</span>
+<span class="fc" id="L35">        add(&quot;FUNCTIONS&quot;, Category.EXPR);</span>
+<span class="fc" id="L36">        add(&quot;EXPR_STMT&quot;, Category.STMT);</span>
+<span class="fc" id="L37">        add(&quot;STMT_LIST&quot;, Category.STMT);</span>
+<span class="fc" id="L38">        add(&quot;AKTION_STMT&quot;, Category.STMT);</span>
+<span class="fc" id="L39">        add(&quot;SENSOR_STMT&quot;, Category.STMT);</span>
+<span class="fc" id="L40">        add(&quot;FUNCTION_STMT&quot;, Category.STMT);</span>
+<span class="fc" id="L41">        add(&quot;METHOD_STMT&quot;, Category.STMT);</span>
+<span class="fc" id="L42">        add(&quot;LOCATION&quot;, Category.HELPER);</span>
+<span class="fc" id="L43">        add(&quot;TEXT_CHAR_AT_FUNCT&quot;, Category.FUNCTION);</span>
+<span class="fc" id="L44">        add(&quot;TEXT_TRIM_FUNCT&quot;, Category.FUNCTION);</span>
+<span class="fc" id="L45">        add(&quot;TEXT_PROMPT_FUNCT&quot;, Category.FUNCTION);</span>
+<span class="fc" id="L46">        add(&quot;TEXT_CHANGE_CASE_FUNCT&quot;, Category.FUNCTION);</span>
+<span class="fc" id="L47">    }</span>
+
+    public static void add(String name, Category category, Class&lt;?&gt; astClass, String... blocklyNames) {
+<span class="fc" id="L50">        BlockType blockType = new BlockType(name, category, astClass, blocklyNames);</span>
+<span class="fc" id="L51">        BlockType oldValue = blockTypesByName.put(name.toLowerCase(), blockType);</span>
+<span class="fc" id="L52">        Assert.isNull(oldValue, &quot;Block name %s is mapped twice. Initialization aborted&quot;, name);</span>
+<span class="fc bfc" id="L53" title="All 2 branches covered.">        for ( String blocklyName : blocklyNames ) {</span>
+<span class="fc" id="L54">            oldValue = blockTypesByBlocklyName.put(blocklyName.toLowerCase(), blockType);</span>
+<span class="fc" id="L55">            Assert.isNull(oldValue, &quot;Blockly name %s is mapped twice. Initialization aborted&quot;, blocklyName);</span>
+        }
+<span class="fc" id="L57">    }</span>
+
+    private static void add(String name, Category category) {
+<span class="fc" id="L60">        add(name, category, null, NO_BLOCKLY_NAMES);</span>
+<span class="fc" id="L61">    }</span>
+
+    /**
+     * access block type values by its unique name
+     *
+     * @param name the unique name of the block type, never null
+     * @return the block type value, never null
+     */
+    public static BlockType getByName(String name) {
+<span class="fc" id="L70">        Assert.notNull(name);</span>
+<span class="fc" id="L71">        BlockType blockType = blockTypesByName.get(name.toLowerCase());</span>
+<span class="fc" id="L72">        Assert.notNull(blockType);</span>
+<span class="fc" id="L73">        return blockType;</span>
+    }
+
+    /**
+     * access block type values by its unique blockly name
+     *
+     * @param blocklyName the unique blockly name of the block type, never null
+     * @return the block type value, never null
+     */
+    public static BlockType getByBlocklyName(String blocklyName) {
+<span class="fc" id="L83">        BlockType blockType = blockTypesByBlocklyName.get(blocklyName.toLowerCase());</span>
+<span class="fc" id="L84">        Assert.notNull(blockType, &quot;blockly name is not found: &quot; + blocklyName);</span>
+<span class="fc" id="L85">        return blockType;</span>
+    }
+
+    /**
+     * Registers a property file to avoid loading property files more than once. Properties are not loaded by calling this method use the
+     * {@link #add(String, Category, Class, String...)}
+     *
+     * @param propertyFileName
+     * @return true if the property file was already loaded or false otherwise
+     */
+    public static boolean register(String propertyFileName) {
+<span class="fc bfc" id="L96" title="All 2 branches covered.">        if ( loadedPropertyFiles.contains(propertyFileName) ) {</span>
+<span class="fc" id="L97">            return true;</span>
+        } else {
+<span class="fc" id="L99">            loadedPropertyFiles.add(propertyFileName);</span>
+<span class="fc" id="L100">            return false;</span>
+        }
+    }
+
+    public static class BlockType {
+        private final String name;
+        private final Category category;
+        private final Class&lt;?&gt; astClass;
+        private final String[] blocklyNames;
+
+<span class="fc" id="L110">        private BlockType(String name, Category category, Class&lt;?&gt; astClass, String... blocklyNames) {</span>
+<span class="fc" id="L111">            this.name = name;</span>
+<span class="fc" id="L112">            this.category = category;</span>
+<span class="fc" id="L113">            this.astClass = astClass;</span>
+<span class="fc" id="L114">            this.blocklyNames = blocklyNames;</span>
+<span class="fc" id="L115">        }</span>
+
+        /**
+         * @return the unique name in which {@link BlockType} belongs.
+         */
+        public String getName() {
+<span class="fc" id="L121">            return this.name;</span>
+        }
+
+        /**
+         * @return category in which {@link BlockType} belongs.
+         */
+        public Category getCategory() {
+<span class="fc" id="L128">            return this.category;</span>
+        }
+
+        /**
+         * @return the astClass
+         */
+        public Class&lt;?&gt; getAstClass() {
+<span class="fc" id="L135">            return this.astClass;</span>
+        }
+
+        /**
+         * @return the blocklyNames
+         */
+        public String[] getBlocklyNames() {
+<span class="nc" id="L142">            return this.blocklyNames;</span>
+        }
+
+        /**
+         * check whether this block type has the name as expected
+         *
+         * @param nameToCheck
+         * @return true, if the block type has the name expected; false otherwise
+         */
+        public boolean hasName(String... namesToCheck) {
+<span class="fc bfc" id="L152" title="All 2 branches covered.">            for ( String nameToCheck : namesToCheck ) {</span>
+<span class="fc" id="L153">                boolean found = this.name.equals(nameToCheck);</span>
+<span class="fc bfc" id="L154" title="All 2 branches covered.">                if ( found ) {</span>
+<span class="fc" id="L155">                    return true;</span>
+                }
+            }
+<span class="fc" id="L158">            return false;</span>
+        }
+
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

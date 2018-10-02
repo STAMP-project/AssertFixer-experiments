@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>StmtFlowCon.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">OpenRobertaRobot</a> &gt; <a href="index.source.html" class="el_package">de.fhg.iais.roberta.syntax.lang.stmt</a> &gt; <span class="el_source">StmtFlowCon.java</span></div><h1>StmtFlowCon.java</h1><pre class="source lang-java linenums">package de.fhg.iais.roberta.syntax.lang.stmt;
+
+import java.util.List;
+import java.util.Locale;
+
+import de.fhg.iais.roberta.blockly.generated.Block;
+import de.fhg.iais.roberta.blockly.generated.Field;
+import de.fhg.iais.roberta.syntax.BlockTypeContainer;
+import de.fhg.iais.roberta.syntax.BlocklyBlockProperties;
+import de.fhg.iais.roberta.syntax.BlocklyComment;
+import de.fhg.iais.roberta.syntax.BlocklyConstants;
+import de.fhg.iais.roberta.syntax.Phrase;
+import de.fhg.iais.roberta.transformer.Jaxb2AstTransformer;
+import de.fhg.iais.roberta.transformer.JaxbTransformerHelper;
+import de.fhg.iais.roberta.util.dbc.Assert;
+import de.fhg.iais.roberta.util.dbc.DbcException;
+import de.fhg.iais.roberta.visitor.AstVisitor;
+import de.fhg.iais.roberta.visitor.lang.AstLanguageVisitor;
+
+/**
+ * This class represents the &lt;b&gt;controls_flow_statements&lt;/b&gt; blocks from Blockly into the AST (abstract syntax tree). Object from this class will generate code
+ * for flow control of a statement. &lt;br&gt;
+ * See enum {@link Flow} for all possible flows.
+ */
+public class StmtFlowCon&lt;V&gt; extends Stmt&lt;V&gt; {
+    private final Flow flow;
+
+    private StmtFlowCon(Flow flow, BlocklyBlockProperties properties, BlocklyComment comment) {
+<span class="fc" id="L29">        super(BlockTypeContainer.getByName(&quot;STMT_FLOW_CONTROL&quot;), properties, comment);</span>
+<span class="pc bpc" id="L30" title="1 of 2 branches missed.">        Assert.isTrue(flow != null);</span>
+<span class="fc" id="L31">        this.flow = flow;</span>
+<span class="fc" id="L32">        setReadOnly();</span>
+<span class="fc" id="L33">    }</span>
+
+    /**
+     * Create read only object of {@link StmtFlowCon}.
+     *
+     * @param flow; must be &lt;b&gt;not&lt;/b&gt; null; see enum {@link Flow} for all the possible kind of flow controls,
+     * @param properties of the block (see {@link BlocklyBlockProperties}),
+     * @param comment added from the user,
+     * @return read only object of class {@link StmtFlowCon}
+     */
+    public static &lt;V&gt; StmtFlowCon&lt;V&gt; make(Flow flow, BlocklyBlockProperties properties, BlocklyComment comment) {
+<span class="fc" id="L44">        return new StmtFlowCon&lt;V&gt;(flow, properties, comment);</span>
+    }
+
+    /**
+     * @return the kind of control. See enum {@link Flow} for all the possible kind of flow controls
+     */
+    public Flow getFlow() {
+<span class="fc" id="L51">        return this.flow;</span>
+    }
+
+    @Override
+    public String toString() {
+<span class="fc" id="L56">        StringBuilder sb = new StringBuilder();</span>
+<span class="fc" id="L57">        appendNewLine(sb, 0, &quot;StmtFlowCon [&quot; + this.flow + &quot;]&quot;);</span>
+<span class="fc" id="L58">        return sb.toString();</span>
+    }
+
+    /**
+     * Flow controls that statement can have.
+     */
+<span class="pc" id="L64">    public static enum Flow {</span>
+<span class="fc" id="L65">        CONTINUE(), BREAK();</span>
+
+        private final String[] values;
+
+<span class="fc" id="L69">        private Flow(String... values) {</span>
+<span class="fc" id="L70">            this.values = values;</span>
+<span class="fc" id="L71">        }</span>
+
+        /**
+         * get flow from {@link Flow} from string parameter. It is possible for one kind of flow to have multiple string mappings. Throws exception if the kind
+         * of flow does not exists.
+         *
+         * @param name of the flow
+         * @return operator from the enum {@link Flow}
+         */
+        public static Flow get(String s) {
+<span class="fc bfc" id="L81" title="All 4 branches covered.">            if ( s == null || s.isEmpty() ) {</span>
+<span class="fc" id="L82">                throw new DbcException(&quot;Invalid flow kind: &quot; + s);</span>
+            }
+<span class="fc" id="L84">            String sUpper = s.trim().toUpperCase(Locale.GERMAN);</span>
+<span class="fc bfc" id="L85" title="All 2 branches covered.">            for ( Flow fl : Flow.values() ) {</span>
+<span class="fc bfc" id="L86" title="All 2 branches covered.">                if ( fl.toString().equals(sUpper) ) {</span>
+<span class="fc" id="L87">                    return fl;</span>
+                }
+<span class="pc bpc" id="L89" title="1 of 2 branches missed.">                for ( String value : fl.values ) {</span>
+<span class="nc bnc" id="L90" title="All 2 branches missed.">                    if ( sUpper.equals(value) ) {</span>
+<span class="nc" id="L91">                        return fl;</span>
+                    }
+                }
+            }
+<span class="fc" id="L95">            throw new DbcException(&quot;Invalid flow kind: &quot; + s);</span>
+        }
+    }
+
+    @Override
+    protected V accept(AstVisitor&lt;V&gt; visitor) {
+<span class="fc" id="L101">        return ((AstLanguageVisitor&lt;V&gt;) visitor).visitStmtFlowCon(this);</span>
+    }
+
+    /**
+     * Transformation from JAXB object to corresponding AST object.
+     *
+     * @param block for transformation
+     * @param helper class for making the transformation
+     * @return corresponding AST object
+     */
+    public static &lt;V&gt; Phrase&lt;V&gt; jaxbToAst(Block block, Jaxb2AstTransformer&lt;V&gt; helper) {
+<span class="fc" id="L112">        List&lt;Field&gt; fields = helper.extractFields(block, (short) 1);</span>
+<span class="fc" id="L113">        String mode = helper.extractField(fields, BlocklyConstants.FLOW);</span>
+<span class="fc" id="L114">        return StmtFlowCon.make(Flow.get(mode), helper.extractBlockProperties(block), helper.extractComment(block));</span>
+    }
+
+    @Override
+    public Block astToBlock() {
+<span class="fc" id="L119">        Block jaxbDestination = new Block();</span>
+<span class="fc" id="L120">        JaxbTransformerHelper.setBasicProperties(this, jaxbDestination);</span>
+<span class="fc" id="L121">        JaxbTransformerHelper.addField(jaxbDestination, BlocklyConstants.FLOW, getFlow().name());</span>
+<span class="fc" id="L122">        return jaxbDestination;</span>
+
+    }
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

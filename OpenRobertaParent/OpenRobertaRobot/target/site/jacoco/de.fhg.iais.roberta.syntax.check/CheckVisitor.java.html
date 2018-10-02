@@ -1,0 +1,457 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>CheckVisitor.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">OpenRobertaRobot</a> &gt; <a href="index.source.html" class="el_package">de.fhg.iais.roberta.syntax.check</a> &gt; <span class="el_source">CheckVisitor.java</span></div><h1>CheckVisitor.java</h1><pre class="source lang-java linenums">package de.fhg.iais.roberta.syntax.check;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+import de.fhg.iais.roberta.syntax.Phrase;
+import de.fhg.iais.roberta.syntax.lang.blocksequence.MainTask;
+import de.fhg.iais.roberta.syntax.lang.expr.Binary;
+import de.fhg.iais.roberta.syntax.lang.expr.BoolConst;
+import de.fhg.iais.roberta.syntax.lang.expr.ColorConst;
+import de.fhg.iais.roberta.syntax.lang.expr.ConnectConst;
+import de.fhg.iais.roberta.syntax.lang.expr.EmptyExpr;
+import de.fhg.iais.roberta.syntax.lang.expr.EmptyList;
+import de.fhg.iais.roberta.syntax.lang.expr.Expr;
+import de.fhg.iais.roberta.syntax.lang.expr.ExprList;
+import de.fhg.iais.roberta.syntax.lang.expr.ListCreate;
+import de.fhg.iais.roberta.syntax.lang.expr.MathConst;
+import de.fhg.iais.roberta.syntax.lang.expr.NullConst;
+import de.fhg.iais.roberta.syntax.lang.expr.NumConst;
+import de.fhg.iais.roberta.syntax.lang.expr.RgbColor;
+import de.fhg.iais.roberta.syntax.lang.expr.StringConst;
+import de.fhg.iais.roberta.syntax.lang.expr.Unary;
+import de.fhg.iais.roberta.syntax.lang.expr.Var;
+import de.fhg.iais.roberta.syntax.lang.expr.VarDeclaration;
+import de.fhg.iais.roberta.syntax.lang.functions.GetSubFunct;
+import de.fhg.iais.roberta.syntax.lang.functions.IndexOfFunct;
+import de.fhg.iais.roberta.syntax.lang.functions.LengthOfIsEmptyFunct;
+import de.fhg.iais.roberta.syntax.lang.functions.ListGetIndex;
+import de.fhg.iais.roberta.syntax.lang.functions.ListRepeat;
+import de.fhg.iais.roberta.syntax.lang.functions.ListSetIndex;
+import de.fhg.iais.roberta.syntax.lang.functions.MathConstrainFunct;
+import de.fhg.iais.roberta.syntax.lang.functions.MathNumPropFunct;
+import de.fhg.iais.roberta.syntax.lang.functions.MathOnListFunct;
+import de.fhg.iais.roberta.syntax.lang.functions.MathPowerFunct;
+import de.fhg.iais.roberta.syntax.lang.functions.MathRandomFloatFunct;
+import de.fhg.iais.roberta.syntax.lang.functions.MathRandomIntFunct;
+import de.fhg.iais.roberta.syntax.lang.functions.MathSingleFunct;
+import de.fhg.iais.roberta.syntax.lang.functions.TextJoinFunct;
+import de.fhg.iais.roberta.syntax.lang.functions.TextPrintFunct;
+import de.fhg.iais.roberta.syntax.lang.methods.Method;
+import de.fhg.iais.roberta.syntax.lang.methods.MethodCall;
+import de.fhg.iais.roberta.syntax.lang.methods.MethodIfReturn;
+import de.fhg.iais.roberta.syntax.lang.methods.MethodReturn;
+import de.fhg.iais.roberta.syntax.lang.methods.MethodVoid;
+import de.fhg.iais.roberta.syntax.lang.stmt.AssignStmt;
+import de.fhg.iais.roberta.syntax.lang.stmt.IfStmt;
+import de.fhg.iais.roberta.syntax.lang.stmt.MethodStmt;
+import de.fhg.iais.roberta.syntax.lang.stmt.RepeatStmt;
+import de.fhg.iais.roberta.syntax.lang.stmt.StmtFlowCon;
+import de.fhg.iais.roberta.syntax.lang.stmt.StmtList;
+import de.fhg.iais.roberta.syntax.lang.stmt.StmtTextComment;
+import de.fhg.iais.roberta.syntax.lang.stmt.WaitStmt;
+import de.fhg.iais.roberta.syntax.lang.stmt.WaitTimeStmt;
+import de.fhg.iais.roberta.util.dbc.Assert;
+import de.fhg.iais.roberta.visitor.lang.AstLanguageVisitor;
+
+<span class="fc" id="L61">public abstract class CheckVisitor implements AstLanguageVisitor&lt;Void&gt; {</span>
+
+<span class="fc" id="L63">    protected final List&lt;String&gt; globalVariables = new ArrayList&lt;String&gt;();</span>
+<span class="fc" id="L64">    protected final List&lt;String&gt; declaredVariables = new ArrayList&lt;String&gt;();</span>
+<span class="fc" id="L65">    protected ArrayList&lt;VarDeclaration&lt;Void&gt;&gt; visitedVars = new ArrayList&lt;VarDeclaration&lt;Void&gt;&gt;();</span>
+<span class="fc" id="L66">    private final List&lt;Method&lt;Void&gt;&gt; userDefinedMethods = new ArrayList&lt;Method&lt;Void&gt;&gt;();</span>
+<span class="fc" id="L67">    private final Set&lt;String&gt; markedVariablesAsGlobal = new HashSet&lt;String&gt;();</span>
+
+<span class="fc" id="L69">    private boolean isProgramEmpty = false;</span>
+
+<span class="fc" id="L71">    private int loopCounter = 0;</span>
+<span class="fc" id="L72">    private int currenLoop = 0;</span>
+<span class="fc" id="L73">    private final HashMap&lt;Integer, Boolean&gt; loopsLabelContainer = new HashMap&lt;Integer, Boolean&gt;();</span>
+<span class="fc" id="L74">    private final HashMap&lt;Integer, Integer&gt; waitsInLoops = new HashMap&lt;&gt;();</span>
+
+    /**
+     * Returns map of loop number and boolean value that indicates if the loop is labeled in Blockly program.
+     *
+     * @return map of loops and boolean value
+     */
+    public Map&lt;Integer, Boolean&gt; getloopsLabelContainer() {
+<span class="fc" id="L82">        return this.loopsLabelContainer;</span>
+    }
+
+    public Set&lt;String&gt; getMarkedVariablesAsGlobal() {
+<span class="nc" id="L86">        return this.markedVariablesAsGlobal;</span>
+    }
+
+    public List&lt;Method&lt;Void&gt;&gt; getUserDefinedMethods() {
+<span class="nc" id="L90">        return this.userDefinedMethods;</span>
+    }
+
+    public boolean isProgramEmpty() {
+<span class="nc" id="L94">        return this.isProgramEmpty;</span>
+    }
+
+    protected void check(ArrayList&lt;ArrayList&lt;Phrase&lt;Void&gt;&gt;&gt; phrasesSet) {
+<span class="pc bpc" id="L98" title="1 of 2 branches missed.">        Assert.isTrue(!phrasesSet.isEmpty());</span>
+<span class="fc" id="L99">        collectGlobalVariables(phrasesSet);</span>
+<span class="fc bfc" id="L100" title="All 2 branches covered.">        for ( ArrayList&lt;Phrase&lt;Void&gt;&gt; phrases : phrasesSet ) {</span>
+<span class="fc bfc" id="L101" title="All 2 branches covered.">            for ( Phrase&lt;Void&gt; phrase : phrases ) {</span>
+<span class="fc bfc" id="L102" title="All 2 branches covered.">                if ( isMainBlock(phrase) ) {</span>
+<span class="pc bpc" id="L103" title="1 of 2 branches missed.">                    this.isProgramEmpty = phrases.size() == 2;</span>
+                } else {
+<span class="fc" id="L105">                    phrase.visit(this);</span>
+                }
+<span class="fc" id="L107">            }</span>
+<span class="fc" id="L108">        }</span>
+<span class="fc" id="L109">    }</span>
+
+    protected void collectGlobalVariables(ArrayList&lt;ArrayList&lt;Phrase&lt;Void&gt;&gt;&gt; phrasesSet) {
+<span class="fc bfc" id="L112" title="All 2 branches covered.">        for ( ArrayList&lt;Phrase&lt;Void&gt;&gt; phrases : phrasesSet ) {</span>
+<span class="fc" id="L113">            Phrase&lt;Void&gt; phrase = phrases.get(1);</span>
+<span class="fc" id="L114">            visitIfMain(phrase);</span>
+<span class="fc" id="L115">        }</span>
+<span class="fc" id="L116">    }</span>
+
+    private void visitIfMain(Phrase&lt;Void&gt; phrase) {
+<span class="pc bpc" id="L119" title="1 of 2 branches missed.">        if ( isMainBlock(phrase) ) {</span>
+<span class="fc" id="L120">            phrase.visit(this);</span>
+        }
+<span class="fc" id="L122">    }</span>
+
+    protected boolean isMainBlock(Phrase&lt;Void&gt; phrase) {
+<span class="fc" id="L125">        return phrase.getKind().getName().equals(&quot;MAIN_TASK&quot;);</span>
+    }
+
+    @Override
+    public Void visitNumConst(NumConst&lt;Void&gt; numConst) {
+<span class="fc" id="L130">        return null;</span>
+    }
+
+    @Override
+    public Void visitMathConst(MathConst&lt;Void&gt; mathConst) {
+<span class="nc" id="L135">        return null;</span>
+    }
+
+    @Override
+    public Void visitBoolConst(BoolConst&lt;Void&gt; boolConst) {
+<span class="fc" id="L140">        return null;</span>
+    }
+
+    @Override
+    public Void visitStringConst(StringConst&lt;Void&gt; stringConst) {
+<span class="fc" id="L145">        return null;</span>
+    }
+
+    @Override
+    public Void visitConnectConst(ConnectConst&lt;Void&gt; connectConst) {
+<span class="nc" id="L150">        return null;</span>
+    }
+
+    @Override
+    public Void visitNullConst(NullConst&lt;Void&gt; nullConst) {
+<span class="nc" id="L155">        return null;</span>
+    }
+
+    @Override
+    public Void visitColorConst(ColorConst&lt;Void&gt; colorConst) {
+<span class="nc" id="L160">        return null;</span>
+    }
+
+    @Override
+    public Void visitRgbColor(RgbColor&lt;Void&gt; rgbColor) {
+<span class="nc" id="L165">        rgbColor.getR().visit(this);</span>
+<span class="nc" id="L166">        rgbColor.getG().visit(this);</span>
+<span class="nc" id="L167">        rgbColor.getB().visit(this);</span>
+<span class="nc" id="L168">        rgbColor.getA().visit(this);</span>
+<span class="nc" id="L169">        return null;</span>
+    }
+
+    @Override
+    public Void visitVar(Var&lt;Void&gt; var) {
+<span class="fc" id="L174">        return null;</span>
+    }
+
+    @Override
+    public Void visitVarDeclaration(VarDeclaration&lt;Void&gt; var) {
+<span class="fc bfc" id="L179" title="All 2 branches covered.">        if ( !var.toString().contains(&quot;false, false&quot;) ) {</span>
+<span class="fc" id="L180">            this.visitedVars.add(var);</span>
+        }
+<span class="fc" id="L182">        var.getValue().visit(this);</span>
+<span class="fc" id="L183">        this.globalVariables.add(var.getName());</span>
+<span class="fc" id="L184">        this.declaredVariables.add(var.getName());</span>
+<span class="fc" id="L185">        return null;</span>
+    }
+
+    public ArrayList&lt;VarDeclaration&lt;Void&gt;&gt; getVisitedVars() {
+<span class="nc" id="L189">        return this.visitedVars;</span>
+    }
+
+    @Override
+    public Void visitUnary(Unary&lt;Void&gt; unary) {
+<span class="nc" id="L194">        unary.getExpr().visit(this);</span>
+<span class="nc" id="L195">        return null;</span>
+    }
+
+    @Override
+    public Void visitBinary(Binary&lt;Void&gt; binary) {
+<span class="fc" id="L200">        binary.getLeft().visit(this);</span>
+<span class="fc" id="L201">        binary.getRight().visit(this);</span>
+<span class="fc" id="L202">        return null;</span>
+    }
+
+    @Override
+    public Void visitMathPowerFunct(MathPowerFunct&lt;Void&gt; mathPowerFunct) {
+<span class="nc" id="L207">        mathPowerFunct.getParam().stream().forEach(expr -&gt; expr.visit(this));</span>
+<span class="nc" id="L208">        return null;</span>
+    }
+
+    @Override
+    public Void visitEmptyList(EmptyList&lt;Void&gt; emptyList) {
+<span class="nc" id="L213">        return null;</span>
+    }
+
+    @Override
+    public Void visitEmptyExpr(EmptyExpr&lt;Void&gt; emptyExpr) {
+<span class="fc" id="L218">        return null;</span>
+    }
+
+    @Override
+    public Void visitExprList(ExprList&lt;Void&gt; exprList) {
+<span class="fc" id="L223">        exprList.get().stream().forEach(expr -&gt; expr.visit(this));</span>
+<span class="fc" id="L224">        return null;</span>
+    }
+
+    @Override
+    public Void visitAssignStmt(AssignStmt&lt;Void&gt; assignStmt) {
+<span class="nc" id="L229">        assignStmt.getExpr().visit(this);</span>
+<span class="nc" id="L230">        String variableName = assignStmt.getName().getValue();</span>
+<span class="nc bnc" id="L231" title="All 2 branches missed.">        if ( this.globalVariables.contains(variableName) ) {</span>
+<span class="nc" id="L232">            this.markedVariablesAsGlobal.add(variableName);</span>
+        }
+<span class="nc" id="L234">        return null;</span>
+    }
+
+    @Override
+    public Void visitIfStmt(IfStmt&lt;Void&gt; ifStmt) {
+<span class="fc bfc" id="L239" title="All 2 branches covered.">        for ( int i = 0; i &lt; ifStmt.getExpr().size(); i++ ) {</span>
+<span class="fc" id="L240">            ifStmt.getExpr().get(i).visit(this);</span>
+<span class="fc" id="L241">            ifStmt.getThenList().get(i).visit(this);</span>
+        }
+<span class="fc" id="L243">        ifStmt.getElseList().visit(this);</span>
+<span class="fc" id="L244">        return null;</span>
+    }
+
+    @Override
+    public Void visitRepeatStmt(RepeatStmt&lt;Void&gt; repeatStmt) {
+<span class="fc bfc" id="L249" title="All 2 branches covered.">        if ( repeatStmt.getExpr().getKind().hasName(&quot;EXPR_LIST&quot;) ) {</span>
+<span class="fc" id="L250">            ExprList&lt;Void&gt; exprList = (ExprList&lt;Void&gt;) repeatStmt.getExpr();</span>
+<span class="fc" id="L251">            String varName = ((Var&lt;Void&gt;) exprList.get().get(0)).getValue();</span>
+<span class="fc" id="L252">            this.declaredVariables.add(varName);</span>
+<span class="fc" id="L253">            exprList.visit(this);</span>
+<span class="fc" id="L254">        } else {</span>
+<span class="fc" id="L255">            repeatStmt.getExpr().visit(this);</span>
+        }
+
+<span class="fc bfc" id="L258" title="All 2 branches covered.">        if ( repeatStmt.getMode() != RepeatStmt.Mode.WAIT ) {</span>
+<span class="fc" id="L259">            increaseLoopCounter();</span>
+<span class="fc" id="L260">            repeatStmt.getList().visit(this);</span>
+<span class="fc" id="L261">            this.currenLoop--;</span>
+        } else {
+<span class="fc" id="L263">            repeatStmt.getList().visit(this);</span>
+        }
+<span class="fc" id="L265">        return null;</span>
+    }
+
+    @Override
+    public Void visitStmtFlowCon(StmtFlowCon&lt;Void&gt; stmtFlowCon) {
+<span class="fc bfc" id="L270" title="All 2 branches covered.">        boolean isInWaitStmt = this.waitsInLoops.get(this.currenLoop) != 0;</span>
+<span class="fc" id="L271">        this.loopsLabelContainer.put(this.currenLoop, isInWaitStmt);</span>
+<span class="fc" id="L272">        return null;</span>
+    }
+
+    @Override
+    public Void visitStmtList(StmtList&lt;Void&gt; stmtList) {
+<span class="fc" id="L277">        stmtList.get().stream().forEach(expr -&gt; expr.visit(this));</span>
+<span class="fc" id="L278">        return null;</span>
+    }
+
+    @Override
+    public Void visitMainTask(MainTask&lt;Void&gt; mainTask) {
+<span class="fc" id="L283">        mainTask.getVariables().visit(this);</span>
+<span class="fc" id="L284">        return null;</span>
+    }
+
+    @Override
+    public Void visitWaitStmt(WaitStmt&lt;Void&gt; waitStmt) {
+<span class="fc bfc" id="L289" title="All 2 branches covered.">        if ( this.waitsInLoops.get(this.loopCounter) != null ) {</span>
+<span class="fc" id="L290">            increseWaitStmsInLoop();</span>
+<span class="fc" id="L291">            waitStmt.getStatements().visit(this);</span>
+<span class="fc" id="L292">            decreaseWaitStmtInLoop();</span>
+        } else {
+<span class="fc" id="L294">            waitStmt.getStatements().visit(this);</span>
+        }
+<span class="fc" id="L296">        return null;</span>
+    }
+
+    @Override
+    public Void visitWaitTimeStmt(WaitTimeStmt&lt;Void&gt; waitTimeStmt) {
+<span class="nc" id="L301">        waitTimeStmt.getTime().visit(this);</span>
+<span class="nc" id="L302">        return null;</span>
+    }
+
+    @Override
+    public Void visitTextPrintFunct(TextPrintFunct&lt;Void&gt; textPrintFunct) {
+<span class="nc" id="L307">        textPrintFunct.getParam().stream().forEach(expr -&gt; expr.visit(this));</span>
+<span class="nc" id="L308">        return null;</span>
+    }
+
+    @Override
+    public Void visitStmtTextComment(StmtTextComment&lt;Void&gt; textComment) {
+<span class="nc" id="L313">        return null;</span>
+    }
+
+    @Override
+    public Void visitGetSubFunct(GetSubFunct&lt;Void&gt; getSubFunct) {
+<span class="nc" id="L318">        getSubFunct.getParam().stream().forEach(expr -&gt; expr.visit(this));</span>
+<span class="nc" id="L319">        return null;</span>
+    }
+
+    @Override
+    public Void visitIndexOfFunct(IndexOfFunct&lt;Void&gt; indexOfFunct) {
+<span class="nc bnc" id="L324" title="All 2 branches missed.">        for ( Expr&lt;Void&gt; expr : indexOfFunct.getParam() ) {</span>
+<span class="nc" id="L325">            expr.visit(this);</span>
+<span class="nc" id="L326">        }</span>
+<span class="nc" id="L327">        return null;</span>
+    }
+
+    @Override
+    public Void visitLengthOfIsEmptyFunct(LengthOfIsEmptyFunct&lt;Void&gt; lengthOfIsEmptyFunct) {
+<span class="nc" id="L332">        lengthOfIsEmptyFunct.getParam().stream().forEach(expr -&gt; expr.visit(this));</span>
+<span class="nc" id="L333">        return null;</span>
+    }
+
+    @Override
+    public Void visitListCreate(ListCreate&lt;Void&gt; listCreate) {
+<span class="fc" id="L338">        listCreate.getValue().visit(this);</span>
+<span class="fc" id="L339">        return null;</span>
+    }
+
+    @Override
+    public Void visitListGetIndex(ListGetIndex&lt;Void&gt; listGetIndex) {
+<span class="nc" id="L344">        listGetIndex.getParam().stream().forEach(expr -&gt; expr.visit(this));</span>
+<span class="nc" id="L345">        return null;</span>
+    }
+
+    @Override
+    public Void visitListRepeat(ListRepeat&lt;Void&gt; listRepeat) {
+<span class="nc" id="L350">        listRepeat.getParam().stream().forEach(expr -&gt; expr.visit(this));</span>
+<span class="nc" id="L351">        return null;</span>
+    }
+
+    @Override
+    public Void visitListSetIndex(ListSetIndex&lt;Void&gt; listSetIndex) {
+<span class="nc" id="L356">        listSetIndex.getParam().stream().forEach(expr -&gt; expr.visit(this));</span>
+<span class="nc" id="L357">        return null;</span>
+    }
+
+    @Override
+    public Void visitMathConstrainFunct(MathConstrainFunct&lt;Void&gt; mathConstrainFunct) {
+<span class="nc" id="L362">        mathConstrainFunct.getParam().stream().forEach(expr -&gt; expr.visit(this));</span>
+<span class="nc" id="L363">        return null;</span>
+    }
+
+    @Override
+    public Void visitMathNumPropFunct(MathNumPropFunct&lt;Void&gt; mathNumPropFunct) {
+<span class="nc" id="L368">        mathNumPropFunct.getParam().stream().forEach(expr -&gt; expr.visit(this));</span>
+<span class="nc" id="L369">        return null;</span>
+    }
+
+    @Override
+    public Void visitMathOnListFunct(MathOnListFunct&lt;Void&gt; mathOnListFunct) {
+<span class="nc" id="L374">        mathOnListFunct.getParam().stream().forEach(expr -&gt; expr.visit(this));</span>
+<span class="nc" id="L375">        return null;</span>
+    }
+
+    @Override
+    public Void visitMathRandomFloatFunct(MathRandomFloatFunct&lt;Void&gt; mathRandomFloatFunct) {
+<span class="nc" id="L380">        return null;</span>
+    }
+
+    @Override
+    public Void visitMathRandomIntFunct(MathRandomIntFunct&lt;Void&gt; mathRandomIntFunct) {
+<span class="nc" id="L385">        mathRandomIntFunct.getParam().stream().forEach(expr -&gt; expr.visit(this));</span>
+<span class="nc" id="L386">        return null;</span>
+    }
+
+    @Override
+    public Void visitMathSingleFunct(MathSingleFunct&lt;Void&gt; mathSingleFunct) {
+<span class="nc" id="L391">        mathSingleFunct.getParam().stream().forEach(expr -&gt; expr.visit(this));</span>
+<span class="nc" id="L392">        return null;</span>
+    }
+
+    @Override
+    public Void visitTextJoinFunct(TextJoinFunct&lt;Void&gt; textJoinFunct) {
+<span class="nc" id="L397">        textJoinFunct.getParam().visit(this);</span>
+<span class="nc" id="L398">        return null;</span>
+    }
+
+    @Override
+    public Void visitMethodVoid(MethodVoid&lt;Void&gt; methodVoid) {
+<span class="nc" id="L403">        this.userDefinedMethods.add(methodVoid);</span>
+<span class="nc" id="L404">        methodVoid.getParameters().visit(this);</span>
+<span class="nc" id="L405">        methodVoid.getBody().visit(this);</span>
+<span class="nc" id="L406">        return null;</span>
+    }
+
+    @Override
+    public Void visitMethodReturn(MethodReturn&lt;Void&gt; methodReturn) {
+<span class="nc" id="L411">        this.userDefinedMethods.add(methodReturn);</span>
+<span class="nc" id="L412">        methodReturn.getParameters().visit(this);</span>
+<span class="nc" id="L413">        methodReturn.getBody().visit(this);</span>
+<span class="nc" id="L414">        methodReturn.getReturnValue().visit(this);</span>
+<span class="nc" id="L415">        return null;</span>
+    }
+
+    @Override
+    public Void visitMethodIfReturn(MethodIfReturn&lt;Void&gt; methodIfReturn) {
+<span class="nc" id="L420">        methodIfReturn.getCondition().visit(this);</span>
+<span class="nc" id="L421">        methodIfReturn.getReturnValue().visit(this);</span>
+<span class="nc" id="L422">        return null;</span>
+    }
+
+    @Override
+    public Void visitMethodStmt(MethodStmt&lt;Void&gt; methodStmt) {
+<span class="nc" id="L427">        methodStmt.getMethod().visit(this);</span>
+<span class="nc" id="L428">        return null;</span>
+    }
+
+    @Override
+    public Void visitMethodCall(MethodCall&lt;Void&gt; methodCall) {
+<span class="nc" id="L433">        methodCall.getParametersValues().visit(this);</span>
+<span class="nc" id="L434">        return null;</span>
+    }
+
+    private void increaseLoopCounter() {
+<span class="fc" id="L438">        this.loopCounter++;</span>
+<span class="fc" id="L439">        this.currenLoop = this.loopCounter;</span>
+<span class="fc" id="L440">        this.loopsLabelContainer.put(this.loopCounter, false);</span>
+<span class="fc" id="L441">        this.waitsInLoops.put(this.loopCounter, 0);</span>
+<span class="fc" id="L442">    }</span>
+
+    private void decreaseWaitStmtInLoop() {
+        int count;
+<span class="fc" id="L446">        count = this.waitsInLoops.get(this.loopCounter);</span>
+<span class="fc" id="L447">        this.waitsInLoops.put(this.loopCounter, --count);</span>
+<span class="fc" id="L448">    }</span>
+
+    private void increseWaitStmsInLoop() {
+        int count;
+<span class="fc" id="L452">        count = this.waitsInLoops.get(this.loopCounter);</span>
+<span class="fc" id="L453">        this.waitsInLoops.put(this.loopCounter, ++count);</span>
+<span class="fc" id="L454">    }</span>
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

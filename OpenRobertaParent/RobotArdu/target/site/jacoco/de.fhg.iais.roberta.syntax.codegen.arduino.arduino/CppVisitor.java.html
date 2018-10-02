@@ -1,0 +1,951 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>CppVisitor.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">RobotArdu</a> &gt; <a href="index.source.html" class="el_package">de.fhg.iais.roberta.syntax.codegen.arduino.arduino</a> &gt; <span class="el_source">CppVisitor.java</span></div><h1>CppVisitor.java</h1><pre class="source lang-java linenums">package de.fhg.iais.roberta.syntax.codegen.arduino.arduino;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
+
+import de.fhg.iais.roberta.components.Category;
+import de.fhg.iais.roberta.components.ConfigurationBlockType;
+import de.fhg.iais.roberta.components.SensorType;
+import de.fhg.iais.roberta.components.UsedConfigurationBlock;
+import de.fhg.iais.roberta.components.UsedSensor;
+import de.fhg.iais.roberta.components.arduino.ArduinoConfiguration;
+import de.fhg.iais.roberta.mode.action.MotorMoveMode;
+import de.fhg.iais.roberta.mode.sensor.HumiditySensorMode;
+import de.fhg.iais.roberta.mode.sensor.InfraredSensorMode;
+import de.fhg.iais.roberta.mode.sensor.PinValue;
+import de.fhg.iais.roberta.mode.sensor.RfidSensorMode;
+import de.fhg.iais.roberta.syntax.BlocklyConstants;
+import de.fhg.iais.roberta.syntax.Phrase;
+import de.fhg.iais.roberta.syntax.action.control.RelayAction;
+import de.fhg.iais.roberta.syntax.action.display.ClearDisplayAction;
+import de.fhg.iais.roberta.syntax.action.display.ShowPictureAction;
+import de.fhg.iais.roberta.syntax.action.display.ShowTextAction;
+import de.fhg.iais.roberta.syntax.action.light.LightAction;
+import de.fhg.iais.roberta.syntax.action.light.LightStatusAction;
+import de.fhg.iais.roberta.syntax.action.motor.CurveAction;
+import de.fhg.iais.roberta.syntax.action.motor.DriveAction;
+import de.fhg.iais.roberta.syntax.action.motor.MotorDriveStopAction;
+import de.fhg.iais.roberta.syntax.action.motor.MotorGetPowerAction;
+import de.fhg.iais.roberta.syntax.action.motor.MotorOnAction;
+import de.fhg.iais.roberta.syntax.action.motor.MotorSetPowerAction;
+import de.fhg.iais.roberta.syntax.action.motor.MotorStopAction;
+import de.fhg.iais.roberta.syntax.action.motor.TurnAction;
+import de.fhg.iais.roberta.syntax.action.sound.PlayFileAction;
+import de.fhg.iais.roberta.syntax.action.sound.PlayNoteAction;
+import de.fhg.iais.roberta.syntax.action.sound.SayTextAction;
+import de.fhg.iais.roberta.syntax.action.sound.SetLanguageAction;
+import de.fhg.iais.roberta.syntax.action.sound.ToneAction;
+import de.fhg.iais.roberta.syntax.action.sound.VolumeAction;
+import de.fhg.iais.roberta.syntax.actors.arduino.PinWriteValueAction;
+import de.fhg.iais.roberta.syntax.actors.arduino.SerialWriteAction;
+import de.fhg.iais.roberta.syntax.actors.arduino.mbot.ExternalLedOffAction;
+import de.fhg.iais.roberta.syntax.actors.arduino.mbot.ExternalLedOnAction;
+import de.fhg.iais.roberta.syntax.actors.arduino.mbot.LedOffAction;
+import de.fhg.iais.roberta.syntax.actors.arduino.mbot.LedOnAction;
+import de.fhg.iais.roberta.syntax.check.hardware.arduino.arduino.UsedHardwareCollectorVisitor;
+import de.fhg.iais.roberta.syntax.codegen.arduino.ArduinoVisitor;
+import de.fhg.iais.roberta.syntax.lang.blocksequence.MainTask;
+import de.fhg.iais.roberta.syntax.lang.expr.Expr;
+import de.fhg.iais.roberta.syntax.lang.expr.RgbColor;
+import de.fhg.iais.roberta.syntax.sensor.generic.BrickSensor;
+import de.fhg.iais.roberta.syntax.sensor.generic.DropSensor;
+import de.fhg.iais.roberta.syntax.sensor.generic.EncoderSensor;
+import de.fhg.iais.roberta.syntax.sensor.generic.HumiditySensor;
+import de.fhg.iais.roberta.syntax.sensor.generic.InfraredSensor;
+import de.fhg.iais.roberta.syntax.sensor.generic.LightSensor;
+import de.fhg.iais.roberta.syntax.sensor.generic.MoistureSensor;
+import de.fhg.iais.roberta.syntax.sensor.generic.MotionSensor;
+import de.fhg.iais.roberta.syntax.sensor.generic.PinGetValueSensor;
+import de.fhg.iais.roberta.syntax.sensor.generic.PulseSensor;
+import de.fhg.iais.roberta.syntax.sensor.generic.RfidSensor;
+import de.fhg.iais.roberta.syntax.sensor.generic.TemperatureSensor;
+import de.fhg.iais.roberta.syntax.sensor.generic.UltrasonicSensor;
+import de.fhg.iais.roberta.syntax.sensor.generic.VoltageSensor;
+import de.fhg.iais.roberta.util.dbc.DbcException;
+import de.fhg.iais.roberta.visitor.AstVisitor;
+import de.fhg.iais.roberta.visitors.arduino.ArduinoAstVisitor;
+
+/**
+ * This class is implementing {@link AstVisitor}. All methods are implemented and they append a human-readable C representation of a phrase to a
+ * StringBuilder. &lt;b&gt;This representation is correct C code for Arduino.&lt;/b&gt; &lt;br&gt;
+ */
+public class CppVisitor extends ArduinoVisitor implements ArduinoAstVisitor&lt;Void&gt; {
+    private final boolean isTimerSensorUsed;
+
+    /**
+     * Initialize the C++ code generator visitor.
+     *
+     * @param programPhrases to generate the code from
+     * @param indentation to start with. Will be incr/decr depending on block structure
+     */
+    private CppVisitor(ArduinoConfiguration brickConfiguration, ArrayList&lt;ArrayList&lt;Phrase&lt;Void&gt;&gt;&gt; phrases, int indentation) {
+<span class="fc" id="L83">        super(phrases, indentation);</span>
+<span class="fc" id="L84">        UsedHardwareCollectorVisitor codePreprocessVisitor = new UsedHardwareCollectorVisitor(phrases, brickConfiguration);</span>
+<span class="fc" id="L85">        this.usedSensors = codePreprocessVisitor.getUsedSensors();</span>
+<span class="fc" id="L86">        this.usedVars = codePreprocessVisitor.getVisitedVars();</span>
+<span class="fc" id="L87">        this.usedConfigurationBlocks = codePreprocessVisitor.getUsedConfigurationBlocks();</span>
+        //TODO: fix how the timer is detected for all robots
+<span class="fc" id="L89">        this.isTimerSensorUsed = codePreprocessVisitor.isTimerSensorUsed();</span>
+<span class="fc" id="L90">        this.loopsLabels = codePreprocessVisitor.getloopsLabelContainer();</span>
+<span class="fc" id="L91">    }</span>
+
+    /**
+     * factory method to generate C++ code from an AST.&lt;br&gt;
+     *
+     * @param brickConfiguration
+     * @param programPhrases to generate the code from
+     * @param withWrapping if false the generated code will be without the surrounding configuration code
+     */
+    public static String generate(ArduinoConfiguration brickConfiguration, ArrayList&lt;ArrayList&lt;Phrase&lt;Void&gt;&gt;&gt; programPhrases, boolean withWrapping) {
+<span class="pc bpc" id="L101" title="1 of 2 branches missed.">        CppVisitor astVisitor = new CppVisitor(brickConfiguration, programPhrases, withWrapping ? 1 : 0);</span>
+<span class="fc" id="L102">        astVisitor.generateCode(withWrapping);</span>
+<span class="fc" id="L103">        return astVisitor.sb.toString();</span>
+    }
+
+    @Override
+    public Void visitShowPictureAction(ShowPictureAction&lt;Void&gt; showPictureAction) {
+<span class="nc" id="L108">        return null;</span>
+    }
+
+    @Override
+    public Void visitShowTextAction(ShowTextAction&lt;Void&gt; showTextAction) {
+<span class="fc" id="L113">        this.sb.append(&quot;_lcd_&quot; + showTextAction.getPort().getOraName() + &quot;.setCursor(&quot;);</span>
+<span class="fc" id="L114">        showTextAction.getX().visit(this);</span>
+<span class="fc" id="L115">        this.sb.append(&quot;,&quot;);</span>
+<span class="fc" id="L116">        showTextAction.getY().visit(this);</span>
+<span class="fc" id="L117">        this.sb.append(&quot;);&quot;);</span>
+<span class="fc" id="L118">        nlIndent();</span>
+<span class="fc" id="L119">        this.sb.append(&quot;_lcd_&quot; + showTextAction.getPort().getOraName() + &quot;.print(&quot;);</span>
+<span class="fc" id="L120">        showTextAction.getMsg().visit(this);</span>
+<span class="fc" id="L121">        this.sb.append(&quot;);&quot;);</span>
+<span class="fc" id="L122">        return null;</span>
+    }
+
+    @Override
+    public Void visitClearDisplayAction(ClearDisplayAction&lt;Void&gt; clearDisplayAction) {
+<span class="fc" id="L127">        this.sb.append(&quot;_lcd_&quot; + clearDisplayAction.getPort().getOraName() + &quot;.clear();&quot;);</span>
+<span class="fc" id="L128">        return null;</span>
+    }
+
+    @Override
+    public Void visitLedOffAction(LedOffAction&lt;Void&gt; ledOffAction) {
+<span class="nc" id="L133">        return null;</span>
+    }
+
+    @Override
+    public Void visitVolumeAction(VolumeAction&lt;Void&gt; volumeAction) {
+<span class="nc" id="L138">        return null;</span>
+    }
+
+    @Override
+    public Void visitSetLanguageAction(SetLanguageAction&lt;Void&gt; setLanguageAction) {
+<span class="nc" id="L143">        return null;</span>
+    }
+
+    @Override
+    public Void visitSayTextAction(SayTextAction&lt;Void&gt; sayTextAction) {
+<span class="nc" id="L148">        return null;</span>
+    }
+
+    @Override
+    public Void visitLightAction(LightAction&lt;Void&gt; lightAction) {
+<span class="fc bfc" id="L153" title="All 2 branches covered.">        if ( !lightAction.getMode().toString().equals(BlocklyConstants.DEFAULT) ) {</span>
+<span class="fc" id="L154">            this.sb.append(&quot;digitalWrite(_led_&quot; + lightAction.getPort().getOraName() + &quot;, &quot; + lightAction.getMode().getValues()[0] + &quot;);&quot;);</span>
+        } else {
+<span class="fc" id="L156">            Map&lt;String, Expr&lt;Void&gt;&gt; Channels = new HashMap&lt;&gt;();</span>
+<span class="fc" id="L157">            Channels.put(&quot;red&quot;, ((RgbColor&lt;Void&gt;) lightAction.getRgbLedColor()).getR());</span>
+<span class="fc" id="L158">            Channels.put(&quot;green&quot;, ((RgbColor&lt;Void&gt;) lightAction.getRgbLedColor()).getG());</span>
+<span class="fc" id="L159">            Channels.put(&quot;blue&quot;, ((RgbColor&lt;Void&gt;) lightAction.getRgbLedColor()).getB());</span>
+<span class="fc" id="L160">            Channels.forEach((k, v) -&gt; {</span>
+<span class="fc" id="L161">                this.sb.append(&quot;analogWrite(_led_&quot; + k + &quot;_&quot; + lightAction.getPort().getOraName() + &quot;, &quot;);</span>
+<span class="fc" id="L162">                v.visit(this);</span>
+<span class="fc" id="L163">                this.sb.append(&quot;);&quot;);</span>
+<span class="fc" id="L164">                nlIndent();</span>
+<span class="fc" id="L165">            });</span>
+            //&quot;)
+        }
+<span class="fc" id="L168">        return null;</span>
+    }
+
+    @Override
+    public Void visitLightStatusAction(LightStatusAction&lt;Void&gt; lightStatusAction) {
+<span class="fc" id="L173">        String[] colors = {</span>
+            &quot;red&quot;,
+            &quot;green&quot;,
+            &quot;blue&quot;
+        };
+<span class="fc bfc" id="L178" title="All 2 branches covered.">        for ( int i = 0; i &lt; 3; i++ ) {</span>
+<span class="fc" id="L179">            this.sb.append(&quot;analogWrite(_led_&quot; + colors[i] + &quot;_&quot; + lightStatusAction.getPort().getOraName() + &quot;, 0);&quot;);</span>
+<span class="fc" id="L180">            nlIndent();</span>
+        }
+<span class="fc" id="L182">        return null;</span>
+    }
+
+    @Override
+    public Void visitPlayFileAction(PlayFileAction&lt;Void&gt; playFileAction) {
+<span class="nc" id="L187">        return null;</span>
+    }
+
+    @Override
+    public Void visitToneAction(ToneAction&lt;Void&gt; toneAction) {
+        //9 - sound port
+<span class="fc" id="L193">        this.sb.append(&quot;tone(_spiele_&quot; + toneAction.getPort().getOraName() + &quot;,&quot;);</span>
+<span class="fc" id="L194">        toneAction.getFrequency().visit(this);</span>
+<span class="fc" id="L195">        this.sb.append(&quot;, &quot;);</span>
+<span class="fc" id="L196">        toneAction.getDuration().visit(this);</span>
+<span class="fc" id="L197">        this.sb.append(&quot;);&quot;);</span>
+<span class="fc" id="L198">        return null;</span>
+    }
+
+    @Override
+    public Void visitPlayNoteAction(PlayNoteAction&lt;Void&gt; playNoteAction) {
+<span class="nc" id="L203">        return null;</span>
+    }
+
+    @Override
+    public Void visitMotorOnAction(MotorOnAction&lt;Void&gt; motorOnAction) {
+<span class="fc bfc" id="L208" title="All 2 branches covered.">        boolean step = motorOnAction.getParam().getDuration() != null;</span>
+<span class="fc bfc" id="L209" title="All 2 branches covered.">        if ( step ) {//step motor</span>
+<span class="fc" id="L210">            this.sb.append(&quot;Motor_&quot; + motorOnAction.getPort().getOraName() + &quot;.setSpeed(&quot;);</span>
+<span class="fc" id="L211">            motorOnAction.getParam().getSpeed().visit(this);</span>
+<span class="fc" id="L212">            this.sb.append(&quot;);&quot;);</span>
+<span class="fc" id="L213">            nlIndent();</span>
+<span class="fc" id="L214">            this.sb.append(&quot;Motor_&quot; + motorOnAction.getPort().getOraName() + &quot;.step(_SPU_&quot; + motorOnAction.getPort().getOraName() + &quot;*&quot;);</span>
+<span class="fc" id="L215">            motorOnAction.getDurationValue().visit(this);</span>
+<span class="pc bpc" id="L216" title="1 of 2 branches missed.">            if ( motorOnAction.getDurationMode().equals(MotorMoveMode.DEGREE) ) {</span>
+<span class="nc" id="L217">                this.sb.append(&quot;/360&quot;);</span>
+            }
+<span class="fc" id="L219">            this.sb.append(&quot;);&quot;);</span>
+        } else {//servo motor
+<span class="fc" id="L221">            this.sb.append(&quot;_servo_&quot; + motorOnAction.getPort().getOraName() + &quot;.write(&quot;);</span>
+<span class="fc" id="L222">            motorOnAction.getParam().getSpeed().visit(this);</span>
+<span class="fc" id="L223">            this.sb.append(&quot;);&quot;);</span>
+        }
+<span class="fc" id="L225">        return null;</span>
+    }
+
+    @Override
+    public Void visitRelayAction(RelayAction&lt;Void&gt; relayAction) {
+<span class="fc" id="L230">        this.sb</span>
+<span class="fc" id="L231">            .append(&quot;digitalWrite(_relay_&quot;)</span>
+<span class="fc" id="L232">            .append(relayAction.getPort().getOraName())</span>
+<span class="fc" id="L233">            .append(&quot;, &quot;)</span>
+<span class="fc" id="L234">            .append(relayAction.getMode().getValues()[0])</span>
+<span class="fc" id="L235">            .append(&quot;);&quot;);</span>
+<span class="fc" id="L236">        return null;</span>
+    }
+
+    @Override
+    public Void visitMotorSetPowerAction(MotorSetPowerAction&lt;Void&gt; motorSetPowerAction) {
+<span class="nc" id="L241">        return null;</span>
+    }
+
+    @Override
+    public Void visitMotorGetPowerAction(MotorGetPowerAction&lt;Void&gt; motorGetPowerAction) {
+<span class="nc" id="L246">        return null;</span>
+    }
+
+    @Override
+    public Void visitMotorStopAction(MotorStopAction&lt;Void&gt; motorStopAction) {
+<span class="nc" id="L251">        return null;</span>
+    }
+
+    @Override
+    public Void visitDriveAction(DriveAction&lt;Void&gt; driveAction) {
+<span class="nc" id="L256">        return null;</span>
+    }
+
+    @Override
+    public Void visitCurveAction(CurveAction&lt;Void&gt; curveAction) {
+<span class="nc" id="L261">        return null;</span>
+    }
+
+    @Override
+    public Void visitTurnAction(TurnAction&lt;Void&gt; turnAction) {
+<span class="nc" id="L266">        return null;</span>
+    }
+
+    @Override
+    public Void visitMotorDriveStopAction(MotorDriveStopAction&lt;Void&gt; stopAction) {
+<span class="nc" id="L271">        return null;</span>
+    }
+
+    @Override
+    public Void visitLightSensor(LightSensor&lt;Void&gt; lightSensor) {
+<span class="fc" id="L276">        this.sb.append(&quot;analogRead(_output_&quot; + lightSensor.getPort().getOraName() + &quot;)/10.24&quot;);</span>
+<span class="fc" id="L277">        return null;</span>
+    }
+
+    @Override
+    public Void visitBrickSensor(BrickSensor&lt;Void&gt; button) {
+<span class="fc" id="L282">        this.sb.append(&quot;digitalRead(_taster_&quot; + button.getPort().getOraName() + &quot;)&quot;);</span>
+<span class="fc" id="L283">        return null;</span>
+    }
+
+    public void measureDistanceUltrasonicSensor(String sensorName) {
+<span class="fc" id="L287">        this.sb.append(&quot;double _getUltrasonicDistance()&quot;);</span>
+<span class="fc" id="L288">        this.nlIndent();</span>
+<span class="fc" id="L289">        this.sb.append(&quot;{&quot;);</span>
+<span class="fc" id="L290">        this.incrIndentation();</span>
+<span class="fc" id="L291">        this.nlIndent();</span>
+<span class="fc" id="L292">        this.sb.append(&quot;digitalWrite(_trigger_&quot; + sensorName + &quot;, LOW);&quot;);</span>
+<span class="fc" id="L293">        nlIndent();</span>
+<span class="fc" id="L294">        this.sb.append(&quot;delay(5);&quot;);</span>
+<span class="fc" id="L295">        nlIndent();</span>
+<span class="fc" id="L296">        this.sb.append(&quot;digitalWrite(_trigger_&quot; + sensorName + &quot;, HIGH);&quot;);</span>
+<span class="fc" id="L297">        nlIndent();</span>
+<span class="fc" id="L298">        this.sb.append(&quot;delay(10);&quot;);</span>
+<span class="fc" id="L299">        nlIndent();</span>
+<span class="fc" id="L300">        this.sb.append(&quot;digitalWrite(_trigger_&quot; + sensorName + &quot;, LOW);&quot;);</span>
+<span class="fc" id="L301">        nlIndent();</span>
+<span class="fc" id="L302">        this.sb.append(&quot;return pulseIn(_echo_&quot; + sensorName + &quot;, HIGH)*_signalToDistance;&quot;);</span>
+<span class="fc" id="L303">        this.decrIndentation();</span>
+<span class="fc" id="L304">        this.nlIndent();</span>
+<span class="fc" id="L305">        this.sb.append(&quot;}&quot;);</span>
+<span class="fc" id="L306">        this.nlIndent();</span>
+<span class="fc" id="L307">    }</span>
+
+    @Override
+    public Void visitUltrasonicSensor(UltrasonicSensor&lt;Void&gt; ultrasonicSensor) {
+<span class="fc" id="L311">        this.sb.append(&quot;_getUltrasonicDistance()&quot;);</span>
+<span class="fc" id="L312">        return null;</span>
+    }
+
+    @Override
+    public Void visitMoistureSensor(MoistureSensor&lt;Void&gt; moistureSensor) {
+<span class="fc" id="L317">        this.sb.append(&quot;analogRead(_moisturePin_&quot; + moistureSensor.getPort().getOraName() + &quot;)/10.24&quot;);</span>
+<span class="fc" id="L318">        return null;</span>
+    }
+
+    @Override
+    public Void visitTemperatureSensor(TemperatureSensor&lt;Void&gt; temperatureSensor) {
+<span class="fc" id="L323">        this.sb.append(&quot;map(analogRead(_TMP36_&quot; + temperatureSensor.getPort().getOraName() + &quot;), 0, 410, -50, 150)&quot;);</span>
+<span class="fc" id="L324">        return null;</span>
+    }
+
+    @Override
+    public Void visitEncoderSensor(EncoderSensor&lt;Void&gt; encoderSensor) {
+<span class="nc" id="L329">        this.sb.append(&quot;meinEncoder.read()&quot;);</span>
+<span class="nc" id="L330">        return null;</span>
+    }
+
+    @Override
+    public Void visitVoltageSensor(VoltageSensor&lt;Void&gt; potentiometer) {
+<span class="fc" id="L335">        this.sb.append(&quot;((double)analogRead(_output_&quot; + potentiometer.getPort().getOraName() + &quot;))*5/1024&quot;);</span>
+<span class="fc" id="L336">        return null;</span>
+    }
+
+    @Override
+    public Void visitHumiditySensor(HumiditySensor&lt;Void&gt; humiditySensor) {
+<span class="pc bpc" id="L341" title="1 of 3 branches missed.">        switch ( (HumiditySensorMode) humiditySensor.getMode() ) {</span>
+            case HUMIDITY:
+<span class="fc" id="L343">                this.sb.append(&quot;_dht_&quot; + humiditySensor.getPort().getOraName() + &quot;.readHumidity()&quot;);</span>
+<span class="fc" id="L344">                break;</span>
+            case TEMPERATURE:
+<span class="fc" id="L346">                this.sb.append(&quot;_dht_&quot; + humiditySensor.getPort().getOraName() + &quot;.readTemperature()&quot;);</span>
+<span class="fc" id="L347">                break;</span>
+            default:
+<span class="nc" id="L349">                throw new DbcException(&quot;Invalide mode for Humidity Sensor!&quot;);</span>
+        }
+<span class="fc" id="L351">        return null;</span>
+    }
+
+    @Override
+    public Void visitDropSensor(DropSensor&lt;Void&gt; dropSensor) {
+<span class="fc" id="L356">        this.sb.append(&quot;analogRead(_S_&quot; + dropSensor.getPort().getOraName() + &quot;)/10.24&quot;);</span>
+<span class="fc" id="L357">        return null;</span>
+    }
+
+    private void generatePinGetValue(UsedSensor usedSensor) {
+<span class="fc" id="L361">        this.sb.append(&quot;double _pinGetValue(int pinName, int mode) {&quot;);</span>
+<span class="fc" id="L362">        incrIndentation();</span>
+<span class="fc" id="L363">        nlIndent();</span>
+<span class="fc" id="L364">        this.sb.append(&quot;pinMode(pinName, INPUT);&quot;);</span>
+<span class="fc" id="L365">        nlIndent();</span>
+<span class="fc" id="L366">        this.sb.append(&quot;switch ( mode ) {&quot;);</span>
+<span class="fc" id="L367">        nlIndent();</span>
+<span class="fc" id="L368">        incrIndentation();</span>
+<span class="fc" id="L369">        this.sb.append(&quot;case _ANALOG:&quot;);</span>
+<span class="fc" id="L370">        nlIndent();</span>
+<span class="fc" id="L371">        this.sb.append(&quot;return (double) analogRead(pinName);&quot;);</span>
+<span class="fc" id="L372">        decrIndentation();</span>
+<span class="fc" id="L373">        nlIndent();</span>
+<span class="fc" id="L374">        incrIndentation();</span>
+<span class="fc" id="L375">        this.sb.append(&quot;case _DIGITAL:&quot;);</span>
+<span class="fc" id="L376">        nlIndent();</span>
+<span class="fc" id="L377">        this.sb.append(&quot;return (double) digitalRead(pinName);&quot;);</span>
+<span class="fc" id="L378">        decrIndentation();</span>
+<span class="fc" id="L379">        nlIndent();</span>
+<span class="fc" id="L380">        this.sb.append(&quot;default:&quot;);</span>
+<span class="fc" id="L381">        incrIndentation();</span>
+<span class="fc" id="L382">        nlIndent();</span>
+<span class="fc" id="L383">        this.sb.append(&quot;return -1.0;&quot;);</span>
+<span class="fc" id="L384">        decrIndentation();</span>
+<span class="fc" id="L385">        nlIndent();</span>
+<span class="fc" id="L386">        decrIndentation();</span>
+<span class="fc" id="L387">        this.sb.append(&quot;}&quot;);</span>
+<span class="fc" id="L388">        nlIndent();</span>
+<span class="fc" id="L389">        this.sb.append(&quot;}&quot;);</span>
+<span class="fc" id="L390">        nlIndent();</span>
+<span class="fc" id="L391">    }</span>
+
+    @Override
+    public Void visitPinGetValueSensor(PinGetValueSensor&lt;Void&gt; pinGetValueSensor) {
+<span class="fc" id="L395">        this.sb.append(&quot;_pinGetValue(&quot; + pinGetValueSensor.getPort() + &quot;, _&quot; + pinGetValueSensor.getMode() + &quot;)&quot;);</span>
+<span class="fc" id="L396">        return null;</span>
+    }
+
+    @Override
+    public Void visitPulseSensor(PulseSensor&lt;Void&gt; pulseSensor) {
+<span class="fc" id="L401">        this.sb.append(&quot;analogRead(_SensorPin_&quot; + pulseSensor.getPort().getOraName() + &quot;)&quot;);</span>
+<span class="fc" id="L402">        return null;</span>
+    }
+
+    public Void readRFIDData(String sensorName) {
+<span class="fc" id="L406">        this.sb.append(&quot;String _readRFIDData()&quot;);</span>
+<span class="fc" id="L407">        this.nlIndent();</span>
+<span class="fc" id="L408">        this.sb.append(&quot;{&quot;);</span>
+<span class="fc" id="L409">        incrIndentation();</span>
+<span class="fc" id="L410">        nlIndent();</span>
+<span class="fc" id="L411">        this.sb.append(&quot;if(!_mfrc522_&quot; + sensorName + &quot;.PICC_IsNewCardPresent()) &quot;);</span>
+<span class="fc" id="L412">        nlIndent();</span>
+<span class="fc" id="L413">        this.sb.append(&quot;{&quot;);</span>
+<span class="fc" id="L414">        incrIndentation();</span>
+<span class="fc" id="L415">        nlIndent();</span>
+<span class="fc" id="L416">        this.sb.append(&quot;return \&quot;N/A\&quot;;&quot;);</span>
+<span class="fc" id="L417">        decrIndentation();</span>
+<span class="fc" id="L418">        nlIndent();</span>
+<span class="fc" id="L419">        this.sb.append(&quot;}&quot;);</span>
+<span class="fc" id="L420">        nlIndent();</span>
+<span class="fc" id="L421">        this.sb.append(&quot;if(!_mfrc522_R.PICC_ReadCardSerial())&quot;);</span>
+<span class="fc" id="L422">        nlIndent();</span>
+<span class="fc" id="L423">        this.sb.append(&quot;{&quot;);</span>
+<span class="fc" id="L424">        incrIndentation();</span>
+<span class="fc" id="L425">        nlIndent();</span>
+<span class="fc" id="L426">        this.sb.append(&quot;return \&quot;N/D\&quot;;&quot;);</span>
+<span class="fc" id="L427">        decrIndentation();</span>
+<span class="fc" id="L428">        nlIndent();</span>
+<span class="fc" id="L429">        this.sb.append(&quot;}&quot;);</span>
+<span class="fc" id="L430">        nlIndent();</span>
+<span class="fc" id="L431">        this.sb.append(</span>
+            &quot;return String(((long)(_mfrc522_&quot;
+                + sensorName
+                + &quot;.uid.uidByte[0])&lt;&lt;24)\n    |((long)(_mfrc522_&quot;
+                + sensorName
+                + &quot;.uid.uidByte[1])&lt;&lt;16)\n    | ((long)(_mfrc522_&quot;
+                + sensorName
+                + &quot;.uid.uidByte[2])&lt;&lt;8)\n    | ((long)_mfrc522_&quot;
+                + sensorName
+                + &quot;.uid.uidByte[3]), HEX);&quot;);
+
+<span class="fc" id="L442">        decrIndentation();</span>
+<span class="fc" id="L443">        this.nlIndent();</span>
+<span class="fc" id="L444">        this.sb.append(&quot;}&quot;);</span>
+<span class="fc" id="L445">        this.nlIndent();</span>
+<span class="fc" id="L446">        return null;</span>
+
+    }
+
+    @Override
+    public Void visitRfidSensor(RfidSensor&lt;Void&gt; rfidSensor) {
+<span class="pc bpc" id="L452" title="2 of 3 branches missed.">        switch ( (RfidSensorMode) rfidSensor.getMode() ) {</span>
+            case PRESENCE:
+<span class="nc" id="L454">                this.sb.append(&quot;_mfrc522_&quot; + rfidSensor.getPort().getCodeName() + &quot;.PICC_IsNewCardPresent()&quot;);</span>
+<span class="nc" id="L455">                break;</span>
+            case SERIAL:
+<span class="fc" id="L457">                this.sb.append(&quot;_readRFIDData()&quot;);</span>
+<span class="fc" id="L458">                break;</span>
+            default:
+<span class="nc" id="L460">                throw new DbcException(&quot;Invalide mode for RFID Sensor!&quot;);</span>
+        }
+<span class="fc" id="L462">        return null;</span>
+    }
+
+    public void measureIRValue(UsedSensor infraredSensor) {
+<span class="pc bpc" id="L466" title="2 of 3 branches missed.">        switch ( (InfraredSensorMode) infraredSensor.getMode() ) {</span>
+            case PRESENCE:
+<span class="nc" id="L468">                this.sb.append(&quot;bool _getIRResults()\n{&quot;);</span>
+<span class="nc" id="L469">                incrIndentation();</span>
+<span class="nc" id="L470">                nlIndent();</span>
+<span class="nc" id="L471">                this.sb.append(&quot;bool results = false;&quot;);</span>
+<span class="nc" id="L472">                nlIndent();</span>
+<span class="nc" id="L473">                this.sb.append(&quot;if (_irrecv_&quot; + infraredSensor.getPort().getOraName() + &quot;.decode(&amp;_results_&quot; + infraredSensor.getPort().getOraName() + &quot;)) {&quot;);</span>
+<span class="nc" id="L474">                incrIndentation();</span>
+<span class="nc" id="L475">                nlIndent();</span>
+<span class="nc" id="L476">                this.sb.append(&quot;results = true;&quot;);</span>
+<span class="nc" id="L477">                nlIndent();</span>
+<span class="nc" id="L478">                this.sb.append(&quot;_irrecv_&quot; + infraredSensor.getPort().getOraName() + &quot;.resume();&quot;);</span>
+<span class="nc" id="L479">                decrIndentation();</span>
+<span class="nc" id="L480">                nlIndent();</span>
+<span class="nc" id="L481">                this.sb.append(&quot;}&quot;);</span>
+<span class="nc" id="L482">                break;</span>
+            case VALUE:
+<span class="fc" id="L484">                this.sb.append(&quot;long int _getIRResults()\n{&quot;);</span>
+<span class="fc" id="L485">                incrIndentation();</span>
+<span class="fc" id="L486">                nlIndent();</span>
+<span class="fc" id="L487">                this.sb.append(&quot;long int results = 0;&quot;);</span>
+<span class="fc" id="L488">                nlIndent();</span>
+<span class="fc" id="L489">                this.sb.append(&quot;if (_irrecv_&quot; + infraredSensor.getPort().getOraName() + &quot;.decode(&amp;_results_&quot; + infraredSensor.getPort().getOraName() + &quot;)) {&quot;);</span>
+<span class="fc" id="L490">                incrIndentation();</span>
+<span class="fc" id="L491">                nlIndent();</span>
+<span class="fc" id="L492">                this.sb.append(&quot;results = _results_&quot; + infraredSensor.getPort().getOraName() + &quot;.value;&quot;);</span>
+<span class="fc" id="L493">                nlIndent();</span>
+<span class="fc" id="L494">                this.sb.append(&quot;_irrecv_&quot; + infraredSensor.getPort().getOraName() + &quot;.resume();&quot;);</span>
+<span class="fc" id="L495">                decrIndentation();</span>
+<span class="fc" id="L496">                nlIndent();</span>
+<span class="fc" id="L497">                this.sb.append(&quot;}&quot;);</span>
+<span class="fc" id="L498">                break;</span>
+            default:
+<span class="nc" id="L500">                throw new DbcException(&quot;Invalide mode for IR Sensor!&quot;);</span>
+        }
+<span class="fc" id="L502">        nlIndent();</span>
+<span class="fc" id="L503">        this.sb.append(&quot;return results;&quot;);</span>
+<span class="fc" id="L504">        decrIndentation();</span>
+<span class="fc" id="L505">        nlIndent();</span>
+<span class="fc" id="L506">        this.sb.append(&quot;}&quot;);</span>
+<span class="fc" id="L507">        nlIndent();</span>
+<span class="fc" id="L508">    }</span>
+
+    @Override
+    public Void visitInfraredSensor(InfraredSensor&lt;Void&gt; infraredSensor) {
+<span class="fc" id="L512">        this.sb.append(&quot;_getIRResults()&quot;);</span>
+<span class="fc" id="L513">        return null;</span>
+    }
+
+    @Override
+    public Void visitMotionSensor(MotionSensor&lt;Void&gt; motionSensor) {
+<span class="fc" id="L518">        this.sb.append(&quot;digitalRead(_output_&quot; + motionSensor.getPort().getOraName() + &quot;)&quot;);</span>
+<span class="fc" id="L519">        return null;</span>
+    }
+
+    @Override
+    public Void visitMainTask(MainTask&lt;Void&gt; mainTask) {
+
+<span class="fc" id="L525">        mainTask.getVariables().visit(this);</span>
+<span class="fc" id="L526">        nlIndent();</span>
+<span class="fc" id="L527">        generateConfigurationVariables();</span>
+<span class="fc bfc" id="L528" title="All 2 branches covered.">        if ( this.isTimerSensorUsed ) {</span>
+<span class="fc" id="L529">            this.sb.append(&quot;unsigned long __time = millis();&quot;);</span>
+<span class="fc" id="L530">            this.nlIndent();</span>
+        }
+<span class="fc" id="L532">        long numberConf =</span>
+            this.programPhrases
+<span class="fc" id="L534">                .stream()</span>
+<span class="pc bpc" id="L535" title="3 of 4 branches missed.">                .filter(phrase -&gt; (phrase.getKind().getCategory() == Category.METHOD) &amp;&amp; !phrase.getKind().hasName(&quot;METHOD_CALL&quot;))</span>
+<span class="fc" id="L536">                .count();</span>
+<span class="pc bpc" id="L537" title="4 of 6 branches missed.">        if ( ((this.usedConfigurationBlocks.size() != 0) || this.isTimerSensorUsed) &amp;&amp; (numberConf == 0) ) {</span>
+<span class="fc" id="L538">            this.nlIndent();</span>
+        }
+<span class="fc" id="L540">        generateUserDefinedMethods();</span>
+<span class="pc bpc" id="L541" title="1 of 2 branches missed.">        if ( numberConf != 0 ) {</span>
+<span class="nc" id="L542">            nlIndent();</span>
+        }
+<span class="fc bfc" id="L544" title="All 2 branches covered.">        for ( UsedSensor usedSensor : this.usedSensors ) {</span>
+<span class="fc bfc" id="L545" title="All 2 branches covered.">            if ( usedSensor.getType().equals(SensorType.INFRARED) ) {</span>
+<span class="fc" id="L546">                this.measureIRValue(usedSensor);</span>
+<span class="fc" id="L547">                this.nlIndent();</span>
+<span class="fc" id="L548">                break;</span>
+            }
+<span class="fc" id="L550">        }</span>
+<span class="fc bfc" id="L551" title="All 2 branches covered.">        for ( UsedSensor usedSensor : this.usedSensors ) {</span>
+<span class="fc bfc" id="L552" title="All 2 branches covered.">            if ( usedSensor.getType().equals(SensorType.PIN_VALUE) ) {</span>
+<span class="fc" id="L553">                this.generatePinGetValue(usedSensor);</span>
+<span class="fc" id="L554">                this.nlIndent();</span>
+<span class="fc" id="L555">                break;</span>
+            }
+<span class="fc" id="L557">        }</span>
+<span class="pc bpc" id="L558" title="1 of 2 branches missed.">        for ( UsedConfigurationBlock usedConfigurationBlock : this.usedConfigurationBlocks ) {</span>
+<span class="fc bfc" id="L559" title="All 2 branches covered.">            if ( usedConfigurationBlock.getType().equals(ConfigurationBlockType.ULTRASONIC) ) {</span>
+<span class="fc" id="L560">                this.measureDistanceUltrasonicSensor(usedConfigurationBlock.getBlockName());</span>
+<span class="fc" id="L561">                this.nlIndent();</span>
+<span class="fc" id="L562">                break;</span>
+            }
+<span class="fc" id="L564">        }</span>
+<span class="pc bpc" id="L565" title="1 of 2 branches missed.">        for ( UsedConfigurationBlock usedConfigurationBlock : this.usedConfigurationBlocks ) {</span>
+<span class="fc bfc" id="L566" title="All 2 branches covered.">            if ( usedConfigurationBlock.getType().equals(ConfigurationBlockType.RFID) ) {</span>
+<span class="fc" id="L567">                this.readRFIDData(usedConfigurationBlock.getBlockName());</span>
+<span class="fc" id="L568">                this.nlIndent();</span>
+<span class="fc" id="L569">                break;</span>
+            }
+<span class="fc" id="L571">        }</span>
+<span class="fc" id="L572">        this.sb.append(&quot;void setup()&quot;);</span>
+<span class="fc" id="L573">        this.nlIndent();</span>
+<span class="fc" id="L574">        this.sb.append(&quot;{&quot;);</span>
+<span class="fc" id="L575">        incrIndentation();</span>
+<span class="fc" id="L576">        nlIndent();</span>
+<span class="fc" id="L577">        this.sb.append(&quot;Serial.begin(9600); &quot;);</span>
+<span class="fc" id="L578">        nlIndent();</span>
+<span class="fc" id="L579">        this.generateConfigurationSetup();</span>
+<span class="fc" id="L580">        this.generateUsedVars();</span>
+<span class="fc" id="L581">        this.sb.delete(this.sb.lastIndexOf(&quot;\n&quot;), this.sb.length());</span>
+<span class="fc" id="L582">        this.decrIndentation();</span>
+<span class="fc" id="L583">        this.nlIndent();</span>
+<span class="fc" id="L584">        this.sb.append(&quot;}&quot;);</span>
+<span class="fc" id="L585">        this.nlIndent();</span>
+<span class="fc" id="L586">        return null;</span>
+    }
+
+    @Override
+    protected void generateProgramPrefix(boolean withWrapping) {
+<span class="pc bpc" id="L591" title="1 of 2 branches missed.">        if ( !withWrapping ) {</span>
+<span class="nc" id="L592">            return;</span>
+        } else {
+<span class="fc" id="L594">            this.decrIndentation();</span>
+        }
+<span class="fc" id="L596">        this.sb.append(&quot;// This file is automatically generated by the Open Roberta Lab.&quot;);</span>
+<span class="fc" id="L597">        this.nlIndent();</span>
+<span class="fc" id="L598">        this.nlIndent();</span>
+<span class="fc" id="L599">        this.sb.append(&quot;#include &lt;math.h&gt;&quot;);</span>
+<span class="fc" id="L600">        this.nlIndent();</span>
+<span class="fc bfc" id="L601" title="All 2 branches covered.">        for ( UsedConfigurationBlock usedConfigurationBlock : this.usedConfigurationBlocks ) {</span>
+<span class="pc bpc" id="L602" title="1 of 10 branches missed.">            switch ( (ConfigurationBlockType) usedConfigurationBlock.getType() ) {</span>
+                case HUMIDITY:
+<span class="fc" id="L604">                    this.sb.append(&quot;#include &lt;DHT.h&gt;&quot;);</span>
+<span class="fc" id="L605">                    this.nlIndent();</span>
+<span class="fc" id="L606">                    break;</span>
+                case INFRARED:
+<span class="fc" id="L608">                    this.sb.append(&quot;#include &lt;IRremote.h&gt;&quot;);</span>
+<span class="fc" id="L609">                    this.nlIndent();</span>
+<span class="fc" id="L610">                    break;</span>
+                case ENCODER:
+<span class="fc" id="L612">                    this.sb.append(&quot;#include &lt;Encoder.h&gt;&quot;);</span>
+<span class="fc" id="L613">                    this.nlIndent();</span>
+<span class="fc" id="L614">                    break;</span>
+                case RFID:
+<span class="fc" id="L616">                    this.sb.append(&quot;#include &lt;SPI.h&gt;&quot;);</span>
+<span class="fc" id="L617">                    this.nlIndent();</span>
+<span class="fc" id="L618">                    this.sb.append(&quot;#include &lt;MFRC522.h&gt;&quot;);</span>
+<span class="fc" id="L619">                    this.nlIndent();</span>
+<span class="fc" id="L620">                    break;</span>
+                case LCD:
+<span class="fc" id="L622">                    this.sb.append(&quot;#include &lt;LiquidCrystal.h&gt;&quot;);</span>
+<span class="fc" id="L623">                    this.nlIndent();</span>
+<span class="fc" id="L624">                    break;</span>
+                case LCDI2C:
+<span class="fc" id="L626">                    this.sb.append(&quot;#include &lt;LiquidCrystal_I2C.h&gt;&quot;);</span>
+<span class="fc" id="L627">                    this.nlIndent();</span>
+<span class="fc" id="L628">                    break;</span>
+                case STEPMOTOR:
+<span class="fc" id="L630">                    this.sb.append(&quot;#include &lt;Stepper.h&gt;&quot;);</span>
+<span class="fc" id="L631">                    this.nlIndent();</span>
+<span class="fc" id="L632">                    break;</span>
+                case SERVOMOTOR:
+<span class="fc" id="L634">                    this.sb.append(&quot;#include &lt;Servo.h&gt;&quot;);</span>
+<span class="fc" id="L635">                    this.nlIndent();</span>
+<span class="fc" id="L636">                    break;</span>
+                case ULTRASONIC:
+                case MOTION:
+                case MOISTURE:
+                case KEY:
+                case LIGHT:
+                case POTENTIOMETER:
+                case TEMPERATURE:
+                case DROP:
+                case PULSE:
+                case LED:
+                case RGBLED:
+                case BUZZER:
+                case RELAY:
+<span class="fc" id="L650">                    break;</span>
+                default:
+<span class="nc" id="L652">                    throw new DbcException(&quot;Sensor is not supported: &quot; + usedConfigurationBlock.getType());</span>
+            }
+<span class="fc" id="L654">        }</span>
+<span class="fc bfc" id="L655" title="All 2 branches covered.">        for ( UsedSensor usedSensor : this.usedSensors ) {</span>
+<span class="pc bfc" id="L656" title="All 2 branches covered.">            switch ( (SensorType) usedSensor.getType() ) {</span>
+                case PIN_VALUE:
+<span class="fc" id="L658">                    this.sb.append(&quot;#define _ANALOG 0\n#define _DIGITAL 1\n&quot;);</span>
+<span class="fc" id="L659">                    break;</span>
+                default:
+                    break;
+            }
+<span class="fc" id="L663">        }</span>
+<span class="fc" id="L664">        this.sb.append(&quot;#include &lt;RobertaFunctions.h&gt;   // Open Roberta library&quot;);</span>
+<span class="fc" id="L665">        this.nlIndent();</span>
+<span class="fc" id="L666">        this.nlIndent();</span>
+<span class="fc" id="L667">        this.sb.append(&quot;RobertaFunctions rob;&quot;);</span>
+<span class="fc" id="L668">    }</span>
+
+    @Override
+    protected void generateProgramSuffix(boolean withWrapping) {
+        // nothing to do because the arduino loop closes the program
+<span class="fc" id="L673">    }</span>
+
+    private void generateConfigurationSetup() {
+<span class="fc bfc" id="L676" title="All 2 branches covered.">        for ( UsedConfigurationBlock usedConfigurationBlock : this.usedConfigurationBlocks ) {</span>
+<span class="pc bpc" id="L677" title="1 of 22 branches missed.">            switch ( (ConfigurationBlockType) usedConfigurationBlock.getType() ) {</span>
+                case HUMIDITY:
+<span class="fc" id="L679">                    this.sb.append(&quot;_dht_&quot; + usedConfigurationBlock.getBlockName() + &quot;.begin();&quot;);</span>
+<span class="fc" id="L680">                    nlIndent();</span>
+<span class="fc" id="L681">                    break;</span>
+                case ULTRASONIC:
+<span class="fc" id="L683">                    this.sb.append(&quot;pinMode(_trigger_&quot; + usedConfigurationBlock.getBlockName() + &quot;, OUTPUT);&quot;);</span>
+<span class="fc" id="L684">                    nlIndent();</span>
+<span class="fc" id="L685">                    this.sb.append(&quot;pinMode(_echo_&quot; + usedConfigurationBlock.getBlockName() + &quot;, INPUT);&quot;);</span>
+<span class="fc" id="L686">                    nlIndent();</span>
+<span class="fc" id="L687">                    break;</span>
+                case MOTION:
+<span class="fc" id="L689">                    this.sb.append(&quot;pinMode(_output_&quot; + usedConfigurationBlock.getBlockName() + &quot;, INPUT);&quot;);</span>
+<span class="fc" id="L690">                    nlIndent();</span>
+<span class="fc" id="L691">                    break;</span>
+                case MOISTURE:
+<span class="fc" id="L693">                    break;</span>
+                case INFRARED:
+<span class="fc" id="L695">                    this.sb.append(&quot;pinMode(13, OUTPUT);&quot;);</span>
+<span class="fc" id="L696">                    nlIndent();</span>
+<span class="fc" id="L697">                    this.sb.append(&quot;_irrecv_&quot; + usedConfigurationBlock.getBlockName() + &quot;.enableIRIn();&quot;);</span>
+<span class="fc" id="L698">                    nlIndent();</span>
+<span class="fc" id="L699">                    break;</span>
+                case KEY:
+<span class="fc" id="L701">                    this.sb.append(&quot;pinMode(_taster_&quot; + usedConfigurationBlock.getBlockName() + &quot;, INPUT);&quot;);</span>
+<span class="fc" id="L702">                    nlIndent();</span>
+                case LIGHT:
+<span class="fc" id="L704">                    break;</span>
+                case POTENTIOMETER:
+<span class="fc" id="L706">                    break;</span>
+                case TEMPERATURE:
+<span class="fc" id="L708">                    break;</span>
+                case ENCODER:
+<span class="fc" id="L710">                    this.sb.append(&quot;pinMode(_SW_&quot; + usedConfigurationBlock.getBlockName() + &quot;, INPUT);&quot;);</span>
+<span class="fc" id="L711">                    nlIndent();</span>
+<span class="fc" id="L712">                    this.sb.append(&quot;attachInterrupt(digitalPinToInterrupt(_SW_&quot; + usedConfigurationBlock.getBlockName() + &quot;), Interrupt, CHANGE);&quot;);</span>
+<span class="fc" id="L713">                    nlIndent();</span>
+<span class="fc" id="L714">                    break;</span>
+                case DROP:
+<span class="fc" id="L716">                    break;</span>
+                case PULSE:
+<span class="fc" id="L718">                    break;</span>
+                case RFID:
+<span class="fc" id="L720">                    this.sb.append(&quot;SPI.begin();&quot;);</span>
+<span class="fc" id="L721">                    nlIndent();</span>
+<span class="fc" id="L722">                    this.sb.append(&quot;_mfrc522_&quot; + usedConfigurationBlock.getBlockName() + &quot;.PCD_Init();&quot;);</span>
+<span class="fc" id="L723">                    nlIndent();</span>
+<span class="fc" id="L724">                    break;</span>
+                case LCD:
+<span class="fc" id="L726">                    this.sb.append(&quot;_lcd_&quot; + usedConfigurationBlock.getBlockName() + &quot;.begin(16, 2);&quot;);</span>
+<span class="fc" id="L727">                    nlIndent();</span>
+<span class="fc" id="L728">                    break;</span>
+                case LCDI2C:
+<span class="fc" id="L730">                    this.sb.append(&quot;_lcd_&quot; + usedConfigurationBlock.getBlockName() + &quot;.begin();&quot;);</span>
+<span class="fc" id="L731">                    nlIndent();</span>
+<span class="fc" id="L732">                    break;</span>
+                case LED:
+<span class="fc" id="L734">                    this.sb.append(&quot;pinMode(_led_&quot; + usedConfigurationBlock.getBlockName() + &quot;, OUTPUT);&quot;);</span>
+<span class="fc" id="L735">                    nlIndent();</span>
+<span class="fc" id="L736">                    break;</span>
+                case RGBLED:
+<span class="fc" id="L738">                    this.sb.append(&quot;pinMode(_led_red_&quot; + usedConfigurationBlock.getBlockName() + &quot;, OUTPUT);&quot;);</span>
+<span class="fc" id="L739">                    nlIndent();</span>
+<span class="fc" id="L740">                    this.sb.append(&quot;pinMode(_led_green_&quot; + usedConfigurationBlock.getBlockName() + &quot;, OUTPUT);&quot;);</span>
+<span class="fc" id="L741">                    nlIndent();</span>
+<span class="fc" id="L742">                    this.sb.append(&quot;pinMode(_led_blue_&quot; + usedConfigurationBlock.getBlockName() + &quot;, OUTPUT);&quot;);</span>
+<span class="fc" id="L743">                    nlIndent();</span>
+<span class="fc" id="L744">                    break;</span>
+                case BUZZER:
+<span class="fc" id="L746">                    break;</span>
+                case RELAY:
+<span class="fc" id="L748">                    this.sb.append(&quot;pinMode(_relay_&quot; + usedConfigurationBlock.getBlockName() + &quot;, OUTPUT);&quot;);</span>
+<span class="fc" id="L749">                    nlIndent();</span>
+<span class="fc" id="L750">                    break;</span>
+                case STEPMOTOR:
+<span class="fc" id="L752">                    break;</span>
+                case SERVOMOTOR:
+<span class="fc" id="L754">                    this.sb.append(&quot;_servo_&quot; + usedConfigurationBlock.getBlockName() + &quot;.attach(&quot; + usedConfigurationBlock.getPins().get(0) + &quot;);&quot;);</span>
+<span class="fc" id="L755">                    nlIndent();</span>
+<span class="fc" id="L756">                    break;</span>
+                default:
+<span class="nc" id="L758">                    throw new DbcException(&quot;Sensor is not supported: &quot; + usedConfigurationBlock.getType());</span>
+            }
+<span class="fc" id="L760">        }</span>
+<span class="fc" id="L761">    }</span>
+
+    private void generateConfigurationVariables() {
+<span class="fc bfc" id="L764" title="All 2 branches covered.">        for ( UsedConfigurationBlock usedConfigurationBlock : this.usedConfigurationBlocks ) {</span>
+<span class="fc" id="L765">            String blockName = usedConfigurationBlock.getBlockName();</span>
+<span class="pc bpc" id="L766" title="1 of 22 branches missed.">            switch ( (ConfigurationBlockType) usedConfigurationBlock.getType() ) {</span>
+                case HUMIDITY:
+<span class="fc" id="L768">                    this.sb.append(&quot;#define DHTPIN&quot; + blockName + &quot; &quot;).append(usedConfigurationBlock.getPins().get(0));</span>
+<span class="fc" id="L769">                    nlIndent();</span>
+<span class="fc" id="L770">                    this.sb.append(&quot;#define DHTTYPE DHT11&quot;);</span>
+<span class="fc" id="L771">                    nlIndent();</span>
+<span class="fc" id="L772">                    this.sb.append(&quot;DHT _dht_&quot; + blockName + &quot;(DHTPIN&quot; + blockName + &quot;, DHTTYPE);&quot;);</span>
+<span class="fc" id="L773">                    nlIndent();</span>
+<span class="fc" id="L774">                    break;</span>
+                case ULTRASONIC:
+<span class="fc" id="L776">                    this.sb.append(&quot;int _trigger_&quot; + blockName + &quot; = &quot;).append(usedConfigurationBlock.getPins().get(0)).append(&quot;;&quot;);</span>
+<span class="fc" id="L777">                    nlIndent();</span>
+<span class="fc" id="L778">                    this.sb.append(&quot;int _echo_&quot; + blockName + &quot; = &quot;).append(usedConfigurationBlock.getPins().get(1)).append(&quot;;&quot;);</span>
+<span class="fc" id="L779">                    nlIndent();</span>
+<span class="fc" id="L780">                    this.sb.append(&quot;double _signalToDistance = 0.03432/2;&quot;);</span>
+<span class="fc" id="L781">                    nlIndent();</span>
+<span class="fc" id="L782">                    break;</span>
+                case MOISTURE:
+<span class="fc" id="L784">                    this.sb.append(&quot;int _moisturePin_&quot; + blockName + &quot; = &quot;).append(usedConfigurationBlock.getPins().get(0)).append(&quot;;&quot;);</span>
+<span class="fc" id="L785">                    nlIndent();</span>
+<span class="fc" id="L786">                    break;</span>
+                case INFRARED:
+<span class="fc" id="L788">                    this.sb.append(&quot;int _RECV_PIN_&quot; + blockName + &quot; = &quot;).append(usedConfigurationBlock.getPins().get(0)).append(&quot;;&quot;);</span>
+<span class="fc" id="L789">                    nlIndent();</span>
+<span class="fc" id="L790">                    this.sb.append(&quot;IRrecv _irrecv_&quot; + blockName + &quot;(_RECV_PIN_&quot; + blockName + &quot;);&quot;);</span>
+<span class="fc" id="L791">                    nlIndent();</span>
+<span class="fc" id="L792">                    this.sb.append(&quot;decode_results _results_&quot; + blockName + &quot;;&quot;);</span>
+<span class="fc" id="L793">                    nlIndent();</span>
+<span class="fc" id="L794">                    break;</span>
+                case LIGHT:
+<span class="fc" id="L796">                    this.sb.append(&quot;int _output_&quot; + blockName + &quot; = &quot;).append(usedConfigurationBlock.getPins().get(0)).append(&quot;;&quot;);</span>
+<span class="fc" id="L797">                    nlIndent();</span>
+<span class="fc" id="L798">                    break;</span>
+                case MOTION:
+<span class="fc" id="L800">                    this.sb.append(&quot;int _output_&quot; + blockName + &quot; = &quot;).append(usedConfigurationBlock.getPins().get(0)).append(&quot;;&quot;);</span>
+<span class="fc" id="L801">                    nlIndent();</span>
+<span class="fc" id="L802">                    break;</span>
+                case POTENTIOMETER:
+<span class="fc" id="L804">                    this.sb.append(&quot;int _output_&quot; + blockName + &quot; = &quot;).append(usedConfigurationBlock.getPins().get(0)).append(&quot;;&quot;);</span>
+<span class="fc" id="L805">                    nlIndent();</span>
+<span class="fc" id="L806">                    break;</span>
+                case TEMPERATURE:
+<span class="fc" id="L808">                    this.sb.append(&quot;int _TMP36_&quot; + blockName + &quot; = &quot;).append(usedConfigurationBlock.getPins().get(0)).append(&quot;;&quot;);</span>
+<span class="fc" id="L809">                    nlIndent();</span>
+<span class="fc" id="L810">                    break;</span>
+                case ENCODER:
+<span class="fc" id="L812">                    this.sb.append(&quot;int _CLK_&quot; + blockName + &quot; = 6;&quot;);</span>
+<span class="fc" id="L813">                    nlIndent();</span>
+<span class="fc" id="L814">                    this.sb.append(&quot;int _DT_&quot; + blockName + &quot; = 5;&quot;);</span>
+<span class="fc" id="L815">                    nlIndent();</span>
+<span class="fc" id="L816">                    this.sb.append(&quot;int _SW_&quot; + blockName + &quot; = &quot;).append(usedConfigurationBlock.getPins().get(0)).append(&quot;;&quot;);</span>
+<span class="fc" id="L817">                    nlIndent();</span>
+<span class="fc" id="L818">                    this.sb.append(&quot;Encoder _myEncoder_&quot; + blockName + &quot;(_DT_&quot; + blockName + &quot;, _CLK_&quot; + blockName + &quot;);&quot;);</span>
+<span class="fc" id="L819">                    nlIndent();</span>
+<span class="fc" id="L820">                    break;</span>
+                case DROP:
+<span class="fc" id="L822">                    this.sb.append(&quot;int _S_&quot; + blockName + &quot; = &quot;).append(usedConfigurationBlock.getPins().get(0)).append(&quot;;&quot;);</span>
+<span class="fc" id="L823">                    nlIndent();</span>
+<span class="fc" id="L824">                    break;</span>
+                case PULSE:
+<span class="fc" id="L826">                    this.sb.append(&quot;int _SensorPin_&quot; + blockName + &quot; = &quot;).append(usedConfigurationBlock.getPins().get(0)).append(&quot;;&quot;);</span>
+<span class="fc" id="L827">                    nlIndent();</span>
+<span class="fc" id="L828">                    break;</span>
+                case RFID:
+<span class="fc" id="L830">                    this.sb.append(&quot;#define SS_PIN_&quot; + blockName + &quot; &quot; + usedConfigurationBlock.getPins().get(0));</span>
+<span class="fc" id="L831">                    nlIndent();</span>
+<span class="fc" id="L832">                    this.sb.append(&quot;#define RST_PIN_&quot; + blockName + &quot; &quot; + usedConfigurationBlock.getPins().get(1));</span>
+<span class="fc" id="L833">                    nlIndent();</span>
+<span class="fc" id="L834">                    this.sb.append(&quot;MFRC522 _mfrc522_&quot; + blockName + &quot;(SS_PIN_&quot; + blockName + &quot;, RST_PIN_&quot; + blockName + &quot;);&quot;);</span>
+<span class="fc" id="L835">                    nlIndent();</span>
+<span class="fc" id="L836">                    break;</span>
+                case KEY:
+<span class="fc" id="L838">                    this.sb.append(&quot;int _taster_&quot; + blockName + &quot; = &quot;).append(usedConfigurationBlock.getPins().get(0)).append(&quot;;&quot;);</span>
+<span class="fc" id="L839">                    nlIndent();</span>
+<span class="fc" id="L840">                    break;</span>
+                case LCD:
+<span class="fc" id="L842">                    this.sb</span>
+<span class="fc" id="L843">                        .append(&quot;LiquidCrystal _lcd_&quot; + blockName + &quot;(&quot;)</span>
+<span class="fc" id="L844">                        .append(usedConfigurationBlock.getPins().get(0))</span>
+<span class="fc" id="L845">                        .append(&quot;, &quot;)</span>
+<span class="fc" id="L846">                        .append(usedConfigurationBlock.getPins().get(1))</span>
+<span class="fc" id="L847">                        .append(&quot;, &quot;)</span>
+<span class="fc" id="L848">                        .append(usedConfigurationBlock.getPins().get(2))</span>
+<span class="fc" id="L849">                        .append(&quot;, &quot;)</span>
+<span class="fc" id="L850">                        .append(usedConfigurationBlock.getPins().get(3))</span>
+<span class="fc" id="L851">                        .append(&quot;, &quot;)</span>
+<span class="fc" id="L852">                        .append(usedConfigurationBlock.getPins().get(4))</span>
+<span class="fc" id="L853">                        .append(&quot;, &quot;)</span>
+<span class="fc" id="L854">                        .append(usedConfigurationBlock.getPins().get(5))</span>
+<span class="fc" id="L855">                        .append(&quot;);&quot;);</span>
+<span class="fc" id="L856">                    nlIndent();</span>
+<span class="fc" id="L857">                    break;</span>
+                case LCDI2C:
+<span class="fc" id="L859">                    this.sb.append(&quot;LiquidCrystal_I2C _lcd_&quot; + blockName + &quot;(0x27, 16, 2);&quot;);</span>
+<span class="fc" id="L860">                    nlIndent();</span>
+<span class="fc" id="L861">                    break;</span>
+                case LED:
+<span class="fc" id="L863">                    this.sb.append(&quot;int _led_&quot; + blockName + &quot; = &quot;).append(usedConfigurationBlock.getPins().get(0)).append(&quot;;&quot;);</span>
+<span class="fc" id="L864">                    nlIndent();</span>
+<span class="fc" id="L865">                    break;</span>
+                case RGBLED:
+<span class="fc" id="L867">                    this.sb.append(&quot;int _led_red_&quot; + blockName + &quot; = &quot;).append(usedConfigurationBlock.getPins().get(0)).append(&quot;;&quot;);</span>
+<span class="fc" id="L868">                    nlIndent();</span>
+<span class="fc" id="L869">                    this.sb.append(&quot;int _led_green_&quot; + blockName + &quot; = &quot;).append(usedConfigurationBlock.getPins().get(1)).append(&quot;;&quot;);</span>
+<span class="fc" id="L870">                    nlIndent();</span>
+<span class="fc" id="L871">                    this.sb.append(&quot;int _led_blue_&quot; + blockName + &quot; = &quot;).append(usedConfigurationBlock.getPins().get(2)).append(&quot;;&quot;);</span>
+<span class="fc" id="L872">                    nlIndent();</span>
+<span class="fc" id="L873">                    break;</span>
+                case BUZZER:
+<span class="fc" id="L875">                    this.sb.append(&quot;int _spiele_&quot; + blockName + &quot; = &quot;).append(usedConfigurationBlock.getPins().get(0)).append(&quot;;&quot;);</span>
+<span class="fc" id="L876">                    nlIndent();</span>
+<span class="fc" id="L877">                    break;</span>
+                case RELAY:
+<span class="fc" id="L879">                    this.sb.append(&quot;int _relay_&quot; + blockName + &quot; = &quot;).append(usedConfigurationBlock.getPins().get(0)).append(&quot;;&quot;);</span>
+<span class="fc" id="L880">                    nlIndent();</span>
+<span class="fc" id="L881">                    break;</span>
+                case STEPMOTOR:
+<span class="fc" id="L883">                    this.sb.append(&quot;int _SPU_&quot; + blockName + &quot; = &quot;).append(&quot;2048;&quot;); //TODO: change 2048 to customized</span>
+<span class="fc" id="L884">                    nlIndent();</span>
+<span class="fc" id="L885">                    this.sb</span>
+<span class="fc" id="L886">                        .append(&quot;Stepper Motor_&quot; + blockName + &quot;(_SPU_&quot; + blockName + &quot;, &quot;)</span>
+<span class="fc" id="L887">                        .append(usedConfigurationBlock.getPins().get(0))</span>
+<span class="fc" id="L888">                        .append(&quot;, &quot;)</span>
+<span class="fc" id="L889">                        .append(usedConfigurationBlock.getPins().get(1))</span>
+<span class="fc" id="L890">                        .append(&quot;, &quot;)</span>
+<span class="fc" id="L891">                        .append(usedConfigurationBlock.getPins().get(2))</span>
+<span class="fc" id="L892">                        .append(&quot;, &quot;)</span>
+<span class="fc" id="L893">                        .append(usedConfigurationBlock.getPins().get(3))</span>
+<span class="fc" id="L894">                        .append(&quot;);&quot;);</span>
+<span class="fc" id="L895">                    nlIndent();</span>
+<span class="fc" id="L896">                    break;</span>
+                case SERVOMOTOR:
+<span class="fc" id="L898">                    this.sb.append(&quot;Servo _servo_&quot; + blockName + &quot;;&quot;);</span>
+<span class="fc" id="L899">                    nlIndent();</span>
+<span class="fc" id="L900">                    break;</span>
+                default:
+<span class="nc" id="L902">                    throw new DbcException(&quot;Configuration block is not supported: &quot; + usedConfigurationBlock.getType());</span>
+            }
+<span class="fc" id="L904">        }</span>
+<span class="fc" id="L905">    }</span>
+
+    @Override
+    public Void visitExternalLedOnAction(ExternalLedOnAction&lt;Void&gt; externalLedOnAction) {
+<span class="nc" id="L909">        return null;</span>
+    }
+
+    @Override
+    public Void visitExternalLedOffAction(ExternalLedOffAction&lt;Void&gt; externalLedOffAction) {
+<span class="nc" id="L914">        return null;</span>
+    }
+
+    @Override
+    public Void visitLedOnAction(LedOnAction&lt;Void&gt; ledOnAction) {
+<span class="nc" id="L919">        return null;</span>
+    }
+
+    @Override
+    public Void visitPinWriteValueAction(PinWriteValueAction&lt;Void&gt; pinWriteValueSensor) {
+<span class="fc" id="L924">        this.sb.append(&quot;pinMode(&quot; + pinWriteValueSensor.getPort() + &quot;, OUTPUT);&quot;);</span>
+<span class="fc" id="L925">        nlIndent();</span>
+<span class="pc bpc" id="L926" title="2 of 3 branches missed.">        switch ( (PinValue) pinWriteValueSensor.getMode() ) {</span>
+            case ANALOG:
+<span class="fc" id="L928">                this.sb.append(&quot;analogWrite(&quot; + pinWriteValueSensor.getPort() + &quot;, &quot;);</span>
+<span class="fc" id="L929">                pinWriteValueSensor.getValue().visit(this);</span>
+<span class="fc" id="L930">                this.sb.append(&quot;);&quot;);</span>
+<span class="fc" id="L931">                break;</span>
+            case DIGITAL:
+<span class="nc" id="L933">                this.sb.append(&quot;digitalWrite(&quot; + pinWriteValueSensor.getPort() + &quot;, &quot;);</span>
+<span class="nc" id="L934">                pinWriteValueSensor.getValue().visit(this);</span>
+<span class="nc" id="L935">                this.sb.append(&quot;);&quot;);</span>
+<span class="nc" id="L936">                break;</span>
+            default:
+                break;
+        }
+<span class="fc" id="L940">        return null;</span>
+    }
+
+    @Override
+    public Void visitSerialWriteAction(SerialWriteAction&lt;Void&gt; serialWriteAction) {
+<span class="fc" id="L945">        this.sb.append(&quot;Serial.println(&quot;);</span>
+<span class="fc" id="L946">        serialWriteAction.getValue().visit(this);</span>
+<span class="fc" id="L947">        this.sb.append(&quot;);&quot;);</span>
+<span class="fc" id="L948">        return null;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

@@ -1,0 +1,278 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>IfStmt.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">OpenRobertaRobot</a> &gt; <a href="index.source.html" class="el_package">de.fhg.iais.roberta.syntax.lang.stmt</a> &gt; <span class="el_source">IfStmt.java</span></div><h1>IfStmt.java</h1><pre class="source lang-java linenums">package de.fhg.iais.roberta.syntax.lang.stmt;
+
+import java.math.BigInteger;
+import java.util.ArrayList;
+import java.util.List;
+
+import de.fhg.iais.roberta.blockly.generated.Block;
+import de.fhg.iais.roberta.blockly.generated.Mutation;
+import de.fhg.iais.roberta.blockly.generated.Repetitions;
+import de.fhg.iais.roberta.blockly.generated.Value;
+import de.fhg.iais.roberta.syntax.BlockTypeContainer;
+import de.fhg.iais.roberta.syntax.BlocklyBlockProperties;
+import de.fhg.iais.roberta.syntax.BlocklyComment;
+import de.fhg.iais.roberta.syntax.BlocklyConstants;
+import de.fhg.iais.roberta.syntax.Phrase;
+import de.fhg.iais.roberta.syntax.lang.expr.Expr;
+import de.fhg.iais.roberta.transformer.ExprParam;
+import de.fhg.iais.roberta.transformer.Jaxb2AstTransformer;
+import de.fhg.iais.roberta.transformer.JaxbTransformerHelper;
+import de.fhg.iais.roberta.typecheck.BlocklyType;
+import de.fhg.iais.roberta.util.dbc.Assert;
+import de.fhg.iais.roberta.visitor.AstVisitor;
+import de.fhg.iais.roberta.visitor.lang.AstLanguageVisitor;
+
+/**
+ * This class represents the &lt;b&gt;if-else-elseif&lt;/b&gt; blocks from Blockly into the AST (abstract syntax tree). Object from this class will generate if
+ * statement.&lt;br/&gt;
+ */
+public class IfStmt&lt;V&gt; extends Stmt&lt;V&gt; {
+    private final List&lt;Expr&lt;V&gt;&gt; expr;
+    private final List&lt;StmtList&lt;V&gt;&gt; thenList;
+    private final StmtList&lt;V&gt; elseList;
+    private final boolean ternary;
+    private final int _else;
+    private final int _elseIf;
+
+    private IfStmt(
+        List&lt;Expr&lt;V&gt;&gt; expr,
+        List&lt;StmtList&lt;V&gt;&gt; thenList,
+        StmtList&lt;V&gt; elseList,
+        boolean ternary,
+        BlocklyBlockProperties properties,
+        BlocklyComment comment,
+        int _else,
+        int _elseIf) {
+<span class="fc" id="L46">        super(BlockTypeContainer.getByName(&quot;IF_STMT&quot;), properties, comment);</span>
+<span class="pc bpc" id="L47" title="2 of 4 branches missed.">        Assert.isTrue(expr.size() == thenList.size() &amp;&amp; elseList.isReadOnly());</span>
+<span class="fc" id="L48">        this.expr = expr;</span>
+<span class="fc" id="L49">        this.thenList = thenList;</span>
+<span class="fc" id="L50">        this.elseList = elseList;</span>
+<span class="fc" id="L51">        this.ternary = ternary;</span>
+<span class="fc" id="L52">        this._else = _else;</span>
+<span class="fc" id="L53">        this._elseIf = _elseIf;</span>
+<span class="fc" id="L54">        setReadOnly();</span>
+<span class="fc" id="L55">    }</span>
+
+    /**
+     * create &lt;b&gt;if-then-else&lt;/b&gt; statement where we have one or more the one &lt;b&gt;if&lt;/b&gt; and &lt;b&gt;then&lt;/b&gt;.
+     *
+     * @param expr list of all expressions that should be evaluated in the &lt;b&gt;if&lt;/b&gt; parts,
+     * @param thenList all statements that are in the &lt;b&gt;then&lt;/b&gt; parts,
+     * @param elseList all statements that are in the &lt;b&gt;else&lt;/b&gt; parts,
+     * @param properties of the block (see {@link BlocklyBlockProperties}),
+     * @param comment added from the user,
+     * @param _else statement,
+     * @param _elseIf number of if statements
+     * @return read only object of class {@link IfStmt}
+     */
+    public static &lt;V&gt; IfStmt&lt;V&gt; make(
+        List&lt;Expr&lt;V&gt;&gt; expr,
+        List&lt;StmtList&lt;V&gt;&gt; thenList,
+        StmtList&lt;V&gt; elseList,
+        BlocklyBlockProperties properties,
+        BlocklyComment comment,
+        int _else,
+        int _elseIf) {
+<span class="nc" id="L77">        return new IfStmt&lt;V&gt;(expr, thenList, elseList, false, properties, comment, _else, _elseIf);</span>
+    }
+
+    /**
+     * create ternary operator
+     *
+     * @param expr expression that should be evaluated in the &lt;b&gt;if&lt;/b&gt; part,
+     * @param thenList statement that is in the &lt;b&gt;then&lt;/b&gt; part,
+     * @param elseList all statement that is in the &lt;b&gt;else&lt;/b&gt; part,
+     * @param properties of the block (see {@link BlocklyBlockProperties}),
+     * @param comment added from the user,
+     * @param _else statement,
+     * @param _elseIf number of if statements
+     * @return read only object of class {@link IfStmt}
+     */
+    public static &lt;V&gt; IfStmt&lt;V&gt; make(
+        Expr&lt;V&gt; expr,
+        StmtList&lt;V&gt; thenList,
+        StmtList&lt;V&gt; elseList,
+        BlocklyBlockProperties properties,
+        BlocklyComment comment,
+        int _else,
+        int _elseIf) {
+<span class="fc" id="L100">        List&lt;Expr&lt;V&gt;&gt; exprsList = new ArrayList&lt;Expr&lt;V&gt;&gt;();</span>
+<span class="fc" id="L101">        List&lt;StmtList&lt;V&gt;&gt; thensList = new ArrayList&lt;StmtList&lt;V&gt;&gt;();</span>
+<span class="fc" id="L102">        exprsList.add(expr);</span>
+<span class="fc" id="L103">        thensList.add(thenList);</span>
+<span class="fc" id="L104">        return new IfStmt&lt;V&gt;(exprsList, thensList, elseList, true, properties, comment, _else, _elseIf);</span>
+    }
+
+    /**
+     * create &lt;b&gt;if-then&lt;/b&gt; statement where we have one or more the one &lt;b&gt;if&lt;/b&gt; and &lt;b&gt;then&lt;/b&gt;.
+     *
+     * @param expr list of all expressions that should be evaluated in the &lt;b&gt;if&lt;/b&gt; parts,
+     * @param thenList all statements that are in the &lt;b&gt;then&lt;/b&gt; parts,
+     * @param properties of the block (see {@link BlocklyBlockProperties}),
+     * @param comment added from the user,
+     * @param _else statement,
+     * @param _elseIf number of if statements
+     * @return read only object of class {@link IfStmt}
+     */
+    public static &lt;V&gt; IfStmt&lt;V&gt; make(
+        List&lt;Expr&lt;V&gt;&gt; expr,
+        List&lt;StmtList&lt;V&gt;&gt; thenList,
+        BlocklyBlockProperties properties,
+        BlocklyComment comment,
+        int _else,
+        int _elseIf) {
+<span class="fc" id="L125">        StmtList&lt;V&gt; elseList = StmtList.make();</span>
+<span class="fc" id="L126">        elseList.setReadOnly();</span>
+<span class="fc" id="L127">        return new IfStmt&lt;V&gt;(expr, thenList, elseList, false, properties, comment, _else, _elseIf);</span>
+    }
+
+    /**
+     * @return &lt;b&gt;true&lt;/b&gt; if the statement is ternary.
+     */
+    public boolean isTernary() {
+<span class="nc" id="L134">        return this.ternary;</span>
+    }
+
+    /**
+     * @return list with all expressions that should be evaluated in the &lt;b&gt;if&lt;/b&gt; part.
+     */
+    public final List&lt;Expr&lt;V&gt;&gt; getExpr() {
+<span class="fc" id="L141">        return this.expr;</span>
+    }
+
+    /**
+     * @return list with all statements that are in &lt;b&gt;then&lt;/b&gt; part.
+     */
+    public final List&lt;StmtList&lt;V&gt;&gt; getThenList() {
+<span class="fc" id="L148">        return this.thenList;</span>
+    }
+
+    /**
+     * @return list with all statements that are in &lt;b&gt;else&lt;/b&gt; part.
+     */
+    public final StmtList&lt;V&gt; getElseList() {
+<span class="fc" id="L155">        return this.elseList;</span>
+    }
+
+    /**
+     * @return 1 if there is else statement
+     */
+    public int get_else() {
+<span class="nc" id="L162">        return this._else;</span>
+    }
+
+    /**
+     * @return number of if statements
+     */
+    public int get_elseIf() {
+<span class="nc" id="L169">        return this._elseIf;</span>
+    }
+
+    @Override
+    public String toString() {
+<span class="fc" id="L174">        StringBuilder sb = new StringBuilder();</span>
+<span class="fc" id="L175">        appendNewLine(sb, 0, null);</span>
+<span class="fc" id="L176">        int exprListSize = this.expr.size();</span>
+<span class="fc bfc" id="L177" title="All 2 branches covered.">        for ( int i = 0; i &lt; exprListSize; i++ ) {</span>
+<span class="fc" id="L178">            sb.append(&quot;if &quot;).append(this.expr.get(i));</span>
+<span class="fc" id="L179">            appendNewLine(sb, 0, &quot;,then&quot;);</span>
+<span class="fc" id="L180">            sb.append(this.thenList.get(i).toString());</span>
+<span class="pc bpc" id="L181" title="1 of 2 branches missed.">            if ( i + 1 &lt; exprListSize ) {</span>
+<span class="nc" id="L182">                appendNewLine(sb, 0, &quot;,else &quot;);</span>
+            }
+        }
+<span class="pc bpc" id="L185" title="1 of 2 branches missed.">        if ( !this.elseList.get().isEmpty() ) {</span>
+<span class="fc" id="L186">            appendNewLine(sb, 0, &quot;,else&quot;);</span>
+<span class="fc" id="L187">            sb.append(this.elseList.toString());</span>
+        }
+<span class="fc" id="L189">        appendNewLine(sb, 0, &quot;&quot;);</span>
+<span class="fc" id="L190">        return sb.toString();</span>
+    }
+
+    @Override
+    protected V accept(AstVisitor&lt;V&gt; visitor) {
+<span class="fc" id="L195">        return ((AstLanguageVisitor&lt;V&gt;) visitor).visitIfStmt(this);</span>
+    }
+
+    /**
+     * Transformation from JAXB object to corresponding AST object.
+     *
+     * @param block for transformation
+     * @param helper class for making the transformation
+     * @return corresponding AST object
+     */
+    public static &lt;V&gt; Phrase&lt;V&gt; jaxbToAst(Block block, Jaxb2AstTransformer&lt;V&gt; helper) {
+<span class="fc bfc" id="L206" title="All 2 branches covered.">        if ( block.getType().equals(BlocklyConstants.LOGIC_TERNARY) ) {</span>
+<span class="fc" id="L207">            List&lt;Value&gt; values = block.getValue();</span>
+<span class="pc bpc" id="L208" title="1 of 2 branches missed.">            Assert.isTrue(values.size() &lt;= 3, &quot;Number of values is not less or equal to 3!&quot;);</span>
+<span class="fc" id="L209">            Phrase&lt;V&gt; ifExpr = helper.extractValue(values, new ExprParam(BlocklyConstants.IF, BlocklyType.BOOLEAN));</span>
+<span class="fc" id="L210">            Phrase&lt;V&gt; thenStmt = helper.extractValue(values, new ExprParam(BlocklyConstants.THEN, BlocklyType.ANY));</span>
+<span class="fc" id="L211">            Phrase&lt;V&gt; elseStmt = helper.extractValue(values, new ExprParam(BlocklyConstants.ELSE, BlocklyType.ANY));</span>
+<span class="fc" id="L212">            StmtList&lt;V&gt; thenList = StmtList.make();</span>
+<span class="fc" id="L213">            thenList.addStmt(ExprStmt.make(helper.convertPhraseToExpr(thenStmt)));</span>
+<span class="fc" id="L214">            thenList.setReadOnly();</span>
+<span class="fc" id="L215">            StmtList&lt;V&gt; elseList = StmtList.make();</span>
+<span class="fc" id="L216">            elseList.addStmt(ExprStmt.make(helper.convertPhraseToExpr(elseStmt)));</span>
+<span class="fc" id="L217">            elseList.setReadOnly();</span>
+<span class="fc" id="L218">            return IfStmt</span>
+<span class="fc" id="L219">                .make(helper.convertPhraseToExpr(ifExpr), thenList, elseList, helper.extractBlockProperties(block), helper.extractComment(block), 0, 0);</span>
+        }
+<span class="fc" id="L221">        Mutation mutation = block.getMutation();</span>
+<span class="fc" id="L222">        int _else = helper.getElse(mutation);</span>
+<span class="fc" id="L223">        int _elseIf = helper.getElseIf(mutation);</span>
+
+<span class="fc" id="L225">        return helper.blocksToIfStmt(block, _else, _elseIf);</span>
+    }
+
+    @Override
+    public Block astToBlock() {
+        Mutation mutation;
+<span class="fc" id="L231">        Block jaxbDestination = new Block();</span>
+<span class="fc" id="L232">        JaxbTransformerHelper.setBasicProperties(this, jaxbDestination);</span>
+
+<span class="pc bpc" id="L234" title="1 of 2 branches missed.">        if ( getProperty().getBlockType().equals(BlocklyConstants.LOGIC_TERNARY) ) {</span>
+<span class="fc" id="L235">            JaxbTransformerHelper.addValue(jaxbDestination, BlocklyConstants.IF, getExpr().get(0));</span>
+<span class="fc" id="L236">            JaxbTransformerHelper.addValue(jaxbDestination, BlocklyConstants.THEN, getThenList().get(0).get().get(0));</span>
+<span class="fc" id="L237">            JaxbTransformerHelper.addValue(jaxbDestination, BlocklyConstants.ELSE, getElseList().get().get(0));</span>
+<span class="fc" id="L238">            return jaxbDestination;</span>
+        }
+<span class="nc" id="L240">        int _else = get_else();</span>
+<span class="nc" id="L241">        int _elseIf = get_elseIf();</span>
+
+<span class="nc" id="L243">        StmtList&lt;?&gt; elseList = getElseList();</span>
+<span class="nc" id="L244">        int expr = 0;</span>
+<span class="nc" id="L245">        expr = getExpr().size();</span>
+
+<span class="nc bnc" id="L247" title="All 4 branches missed.">        if ( _else != 0 || _elseIf != 0 ) {</span>
+<span class="nc" id="L248">            mutation = new Mutation();</span>
+<span class="nc bnc" id="L249" title="All 2 branches missed.">            if ( _else != 0 ) {</span>
+<span class="nc" id="L250">                mutation.setElse(BigInteger.ONE);</span>
+            }
+<span class="nc bnc" id="L252" title="All 2 branches missed.">            if ( _elseIf &gt; 0 ) {</span>
+<span class="nc" id="L253">                mutation.setElseif(BigInteger.valueOf(_elseIf));</span>
+            }
+<span class="nc" id="L255">            jaxbDestination.setMutation(mutation);</span>
+<span class="nc" id="L256">            Repetitions repetitions = new Repetitions();</span>
+<span class="nc bnc" id="L257" title="All 2 branches missed.">            for ( int i = 0; i &lt; expr; i++ ) {</span>
+<span class="nc" id="L258">                JaxbTransformerHelper.addValue(repetitions, BlocklyConstants.IF + i, getExpr().get(i));</span>
+<span class="nc" id="L259">                JaxbTransformerHelper.addStatement(repetitions, BlocklyConstants.DO + i, getThenList().get(i));</span>
+            }
+<span class="nc bnc" id="L261" title="All 2 branches missed.">            if ( !elseList.get().isEmpty() ) {</span>
+<span class="nc" id="L262">                JaxbTransformerHelper.addStatement(repetitions, BlocklyConstants.ELSE, getElseList());</span>
+            }
+<span class="nc" id="L264">            jaxbDestination.setRepetitions(repetitions);</span>
+<span class="nc" id="L265">            return jaxbDestination;</span>
+        }
+
+<span class="nc" id="L268">        JaxbTransformerHelper.addValue(jaxbDestination, BlocklyConstants.IF + &quot;0&quot;, getExpr().get(0));</span>
+<span class="nc" id="L269">        JaxbTransformerHelper.addStatement(jaxbDestination, BlocklyConstants.DO + &quot;0&quot;, getThenList().get(0));</span>
+<span class="nc bnc" id="L270" title="All 2 branches missed.">        if ( !elseList.get().isEmpty() ) {</span>
+<span class="nc" id="L271">            JaxbTransformerHelper.addStatement(jaxbDestination, BlocklyConstants.ELSE, getElseList());</span>
+        }
+
+<span class="nc" id="L274">        return jaxbDestination;</span>
+    }
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

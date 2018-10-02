@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>UsedHardwareCollectorVisitor.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">RobotArdu</a> &gt; <a href="index.source.html" class="el_package">de.fhg.iais.roberta.syntax.check.hardware.arduino.arduino</a> &gt; <span class="el_source">UsedHardwareCollectorVisitor.java</span></div><h1>UsedHardwareCollectorVisitor.java</h1><pre class="source lang-java linenums">package de.fhg.iais.roberta.syntax.check.hardware.arduino.arduino;
+
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Set;
+
+import de.fhg.iais.roberta.components.ActorType;
+import de.fhg.iais.roberta.components.ConfigurationBlock;
+import de.fhg.iais.roberta.components.SensorType;
+import de.fhg.iais.roberta.components.UsedActor;
+import de.fhg.iais.roberta.components.UsedConfigurationBlock;
+import de.fhg.iais.roberta.components.UsedSensor;
+import de.fhg.iais.roberta.components.arduino.ArduinoConfiguration;
+import de.fhg.iais.roberta.inter.mode.sensor.ISensorPort;
+import de.fhg.iais.roberta.syntax.Phrase;
+import de.fhg.iais.roberta.syntax.action.control.RelayAction;
+import de.fhg.iais.roberta.syntax.action.motor.MotorOnAction;
+import de.fhg.iais.roberta.syntax.actors.arduino.PinWriteValueAction;
+import de.fhg.iais.roberta.syntax.actors.arduino.SerialWriteAction;
+import de.fhg.iais.roberta.syntax.actors.arduino.mbot.ExternalLedOffAction;
+import de.fhg.iais.roberta.syntax.actors.arduino.mbot.ExternalLedOnAction;
+import de.fhg.iais.roberta.syntax.actors.arduino.mbot.LedOffAction;
+import de.fhg.iais.roberta.syntax.actors.arduino.mbot.LedOnAction;
+import de.fhg.iais.roberta.syntax.check.hardware.RobotUsedHardwareCollectorVisitor;
+import de.fhg.iais.roberta.syntax.sensor.generic.EncoderSensor;
+import de.fhg.iais.roberta.syntax.sensor.generic.PinGetValueSensor;
+import de.fhg.iais.roberta.util.Quadruplet;
+import de.fhg.iais.roberta.visitors.arduino.ArduinoAstVisitor;
+
+/**
+ * This visitor collects information for used actors and sensors in blockly program.
+ *
+ * @author eovchinnikova
+ */
+public class UsedHardwareCollectorVisitor extends RobotUsedHardwareCollectorVisitor implements ArduinoAstVisitor&lt;Void&gt; {
+
+<span class="fc" id="L38">    protected final Set&lt;UsedConfigurationBlock&gt; usedConfigurationBlocks = new LinkedHashSet&lt;&gt;();</span>
+
+    ArduinoConfiguration configuration;
+
+    public UsedHardwareCollectorVisitor(ArrayList&lt;ArrayList&lt;Phrase&lt;Void&gt;&gt;&gt; phrasesSet, ArduinoConfiguration configuration) {
+<span class="fc" id="L43">        super(configuration);</span>
+<span class="fc" id="L44">        this.configuration = configuration;</span>
+<span class="fc" id="L45">        check(phrasesSet);</span>
+<span class="fc" id="L46">    }</span>
+
+    public Set&lt;UsedSensor&gt; getTimer() {
+<span class="nc" id="L49">        return this.usedSensors;</span>
+    }
+
+    public Set&lt;UsedConfigurationBlock&gt; getUsedConfigurationBlocks() {
+<span class="fc bfc" id="L53" title="All 2 branches covered.">        for ( Quadruplet&lt;ConfigurationBlock, String, List&lt;String&gt;, List&lt;String&gt;&gt; configurationBlock : this.configuration.getConfigurationBlocks() ) {</span>
+<span class="fc" id="L54">            this.usedConfigurationBlocks.add(</span>
+                new UsedConfigurationBlock(
+<span class="fc" id="L56">                    this.configuration.getConfigurationBlockType(configurationBlock),</span>
+<span class="fc" id="L57">                    this.configuration.getBlockName(configurationBlock),</span>
+<span class="fc" id="L58">                    this.configuration.getPorts(configurationBlock),</span>
+<span class="fc" id="L59">                    this.configuration.getPins(configurationBlock)));</span>
+<span class="fc" id="L60">        }</span>
+<span class="fc" id="L61">        return this.usedConfigurationBlocks;</span>
+    }
+
+    @Override
+    public Void visitMotorOnAction(MotorOnAction&lt;Void&gt; motorOnAction) {
+<span class="fc" id="L66">        motorOnAction.getParam().getSpeed().visit(this);</span>
+<span class="fc bfc" id="L67" title="All 2 branches covered.">        if ( motorOnAction.getParam().getDuration() != null ) {</span>
+<span class="fc" id="L68">            motorOnAction.getDurationValue().visit(this);</span>
+        }
+<span class="pc bpc" id="L70" title="1 of 2 branches missed.">        if ( this.brickConfiguration != null ) {</span>
+            //Actor actor = this.brickConfiguration.getActors().get(motorOnAction.getPort());
+            //if ( actor != null ) {
+            //    this.usedActors.add(new UsedActor(motorOnAction.getPort(), actor.getName()));
+            //}
+        }
+<span class="fc" id="L76">        return null;</span>
+    }
+
+    @Override
+    public Void visitLedOnAction(LedOnAction&lt;Void&gt; ledOnAction) {
+<span class="nc" id="L81">        return null;</span>
+    }
+
+    @Override
+    public Void visitLedOffAction(LedOffAction&lt;Void&gt; ledOffAction) {
+<span class="nc" id="L86">        return null;</span>
+    }
+
+    @Override
+    public Void visitExternalLedOnAction(ExternalLedOnAction&lt;Void&gt; externalLedOnAction) {
+<span class="nc" id="L91">        return null;</span>
+    }
+
+    @Override
+    public Void visitExternalLedOffAction(ExternalLedOffAction&lt;Void&gt; externalLedOffAction) {
+<span class="nc" id="L96">        return null;</span>
+    }
+
+    @Override
+    public Void visitEncoderSensor(EncoderSensor&lt;Void&gt; encoderSensor) {
+<span class="nc" id="L101">        return null;</span>
+    }
+
+    @Override
+    public Void visitRelayAction(RelayAction&lt;Void&gt; relayAction) {
+<span class="fc" id="L106">        return null;</span>
+    }
+
+    @Override
+    public Void visitPinGetValueSensor(PinGetValueSensor&lt;Void&gt; pinGetValueSensor) {
+<span class="fc" id="L111">        this.usedSensors.add(new UsedSensor((ISensorPort) pinGetValueSensor.getPort(), SensorType.PIN_VALUE, pinGetValueSensor.getMode()));</span>
+<span class="fc" id="L112">        return null;</span>
+    }
+
+    @Override
+    public Void visitPinWriteValueAction(PinWriteValueAction&lt;Void&gt; pinWriteValueSensor) {
+<span class="fc" id="L117">        pinWriteValueSensor.getValue().visit(this);</span>
+<span class="fc" id="L118">        this.usedActors.add(new UsedActor(pinWriteValueSensor.getPort(), ActorType.ANALOG_PIN));</span>
+<span class="fc" id="L119">        return null;</span>
+    }
+
+    @Override
+    public Void visitSerialWriteAction(SerialWriteAction&lt;Void&gt; serialWriteAction) {
+<span class="fc" id="L124">        serialWriteAction.getValue().visit(this);</span>
+<span class="fc" id="L125">        return null;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

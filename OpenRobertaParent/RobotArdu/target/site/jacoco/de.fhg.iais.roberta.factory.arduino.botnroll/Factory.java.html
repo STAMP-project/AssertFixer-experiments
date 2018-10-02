@@ -1,0 +1,173 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>Factory.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">RobotArdu</a> &gt; <a href="index.source.html" class="el_package">de.fhg.iais.roberta.factory.arduino.botnroll</a> &gt; <span class="el_source">Factory.java</span></div><h1>Factory.java</h1><pre class="source lang-java linenums">package de.fhg.iais.roberta.factory.arduino.botnroll;
+
+import java.util.ArrayList;
+import java.util.Map;
+import java.util.Properties;
+
+import org.apache.commons.lang3.SystemUtils;
+
+import de.fhg.iais.roberta.components.Configuration;
+import de.fhg.iais.roberta.components.arduino.BotNrollConfiguration;
+import de.fhg.iais.roberta.factory.AbstractRobotFactory;
+import de.fhg.iais.roberta.factory.ICompilerWorkflow;
+import de.fhg.iais.roberta.factory.IRobotFactory;
+import de.fhg.iais.roberta.inter.mode.action.IActorPort;
+import de.fhg.iais.roberta.inter.mode.action.IShowPicture;
+import de.fhg.iais.roberta.inter.mode.sensor.ISensorPort;
+import de.fhg.iais.roberta.mode.action.ActorPort;
+import de.fhg.iais.roberta.mode.sensor.SensorPort;
+import de.fhg.iais.roberta.syntax.Phrase;
+import de.fhg.iais.roberta.syntax.check.program.RobotCommonCheckVisitor;
+import de.fhg.iais.roberta.syntax.check.program.RobotSimulationCheckVisitor;
+import de.fhg.iais.roberta.syntax.codegen.arduino.botnroll.CppVisitor;
+import de.fhg.iais.roberta.util.RobertaProperties;
+import de.fhg.iais.roberta.util.Util1;
+
+public class Factory extends AbstractRobotFactory {
+    private final CompilerWorkflow compilerWorkflow;
+    private final Properties botnrollProperties;
+    private final String name;
+    private final int robotPropertyNumber;
+<span class="fc" id="L31">    Map&lt;String, SensorPort&gt; sensorToPorts = IRobotFactory.getSensorPortsFromProperties(Util1.loadProperties(&quot;classpath:botnrollports.properties&quot;));</span>
+<span class="fc" id="L32">    Map&lt;String, ActorPort&gt; actorToPorts = IRobotFactory.getActorPortsFromProperties(Util1.loadProperties(&quot;classpath:botnrollports.properties&quot;));</span>
+
+    public Factory(RobertaProperties robertaProperties) {
+<span class="fc" id="L35">        super(robertaProperties);</span>
+<span class="fc" id="L36">        String os = &quot;linux&quot;;</span>
+<span class="pc bpc" id="L37" title="1 of 2 branches missed.">        if ( SystemUtils.IS_OS_WINDOWS ) {</span>
+<span class="nc" id="L38">            os = &quot;windows&quot;;</span>
+        }
+<span class="fc" id="L40">        this.botnrollProperties = Util1.loadProperties(&quot;classpath:botnroll.properties&quot;);</span>
+<span class="fc" id="L41">        this.name = this.botnrollProperties.getProperty(&quot;robot.name&quot;);</span>
+<span class="fc" id="L42">        this.robotPropertyNumber = robertaProperties.getRobotNumberFromProperty(this.name);</span>
+<span class="fc" id="L43">        this.compilerWorkflow =</span>
+            new CompilerWorkflow(
+<span class="fc" id="L45">                robertaProperties.getTempDirForUserProjects(),</span>
+<span class="fc" id="L46">                robertaProperties.getStringProperty(&quot;robot.plugin.&quot; + this.robotPropertyNumber + &quot;.compiler.resources.dir&quot;),</span>
+<span class="fc" id="L47">                robertaProperties.getStringProperty(&quot;robot.plugin.&quot; + this.robotPropertyNumber + &quot;.compiler.&quot; + os + &quot;.dir&quot;));</span>
+<span class="fc" id="L48">        addBlockTypesFromProperties(&quot;botnroll.properties&quot;, this.botnrollProperties);</span>
+<span class="fc" id="L49">    }</span>
+
+    @Override
+    public IActorPort getActorPort(String port) {
+<span class="fc" id="L53">        return getActorPortValue(port, this.actorToPorts);</span>
+    }
+
+    @Override
+    public IShowPicture getShowPicture(String picture) {
+<span class="nc" id="L58">        return null;</span>
+    }
+
+    @Override
+    public ICompilerWorkflow getRobotCompilerWorkflow() {
+<span class="nc" id="L63">        return this.compilerWorkflow;</span>
+    }
+
+    @Override
+    public ICompilerWorkflow getSimCompilerWorkflow() {
+<span class="nc" id="L68">        return null;</span>
+    }
+
+    @Override
+    public String getFileExtension() {
+<span class="nc" id="L73">        return &quot;ino&quot;;</span>
+    }
+
+    @Override
+    public String getProgramToolboxBeginner() {
+<span class="nc" id="L78">        return this.botnrollProperties.getProperty(&quot;robot.program.toolbox.beginner&quot;);</span>
+    }
+
+    @Override
+    public String getProgramToolboxExpert() {
+<span class="nc" id="L83">        return this.botnrollProperties.getProperty(&quot;robot.program.toolbox.expert&quot;);</span>
+    }
+
+    @Override
+    public String getProgramDefault() {
+<span class="nc" id="L88">        return this.botnrollProperties.getProperty(&quot;robot.program.default&quot;);</span>
+    }
+
+    @Override
+    public String getConfigurationToolbox() {
+<span class="nc" id="L93">        return this.botnrollProperties.getProperty(&quot;robot.configuration.toolbox&quot;);</span>
+    }
+
+    @Override
+    public String getConfigurationDefault() {
+<span class="nc" id="L98">        return this.botnrollProperties.getProperty(&quot;robot.configuration.default&quot;);</span>
+    }
+
+    @Override
+    public String getRealName() {
+<span class="nc" id="L103">        return this.botnrollProperties.getProperty(&quot;robot.real.name&quot;);</span>
+    }
+
+    @Override
+    public Boolean hasSim() {
+<span class="nc bnc" id="L108" title="All 2 branches missed.">        return this.botnrollProperties.getProperty(&quot;robot.sim&quot;).equals(&quot;true&quot;) ? true : false;</span>
+    }
+
+    @Override
+    public String getInfo() {
+<span class="nc bnc" id="L113" title="All 2 branches missed.">        return this.botnrollProperties.getProperty(&quot;robot.info&quot;) != null ? this.botnrollProperties.getProperty(&quot;robot.info&quot;) : &quot;#&quot;;</span>
+    }
+
+    @Override
+    public Boolean isBeta() {
+<span class="nc bnc" id="L118" title="All 2 branches missed.">        return this.botnrollProperties.getProperty(&quot;robot.beta&quot;) != null ? true : false;</span>
+    }
+
+    @Override
+    public String getConnectionType() {
+<span class="nc" id="L123">        return this.botnrollProperties.getProperty(&quot;robot.connection&quot;);</span>
+    }
+
+    @Override
+    public String getVendorId() {
+<span class="nc" id="L128">        return this.botnrollProperties.getProperty(&quot;robot.vendor&quot;);</span>
+    }
+
+    @Override
+    public RobotSimulationCheckVisitor getSimProgramCheckVisitor(Configuration brickConfiguration) {
+<span class="nc" id="L133">        return null;</span>
+    }
+
+    @Override
+    public RobotCommonCheckVisitor getRobotProgramCheckVisitor(Configuration brickConfiguration) {
+<span class="nc" id="L138">        return null;</span>
+    }
+
+    @Override
+    public Boolean hasConfiguration() {
+<span class="nc" id="L143">        return Boolean.parseBoolean(this.botnrollProperties.getProperty(&quot;robot.configuration&quot;));</span>
+    }
+
+    @Override
+    public String getGroup() {
+<span class="nc bnc" id="L148" title="All 2 branches missed.">        return this.robertaProperties.getStringProperty(&quot;robot.plugin.&quot; + this.robotPropertyNumber + &quot;.group&quot;) != null</span>
+<span class="nc" id="L149">            ? this.robertaProperties.getStringProperty(&quot;robot.plugin.&quot; + this.robotPropertyNumber + &quot;.group&quot;)</span>
+            : this.name;
+    }
+
+    @Override
+    public String generateCode(Configuration brickConfiguration, ArrayList&lt;ArrayList&lt;Phrase&lt;Void&gt;&gt;&gt; phrasesSet, boolean withWrapping) {
+<span class="fc" id="L155">        return CppVisitor.generate((BotNrollConfiguration) brickConfiguration, phrasesSet, withWrapping);</span>
+    }
+
+    @Override
+    public String getCommandline() {
+<span class="nc" id="L160">        return this.botnrollProperties.getProperty(&quot;robot.connection.commandLine&quot;);</span>
+    }
+
+    @Override
+    public String getSignature() {
+<span class="nc" id="L165">        return this.botnrollProperties.getProperty(&quot;robot.connection.signature&quot;);</span>
+    }
+
+    @Override
+    public ISensorPort getSensorPort(String port) {
+<span class="fc" id="L170">        return getSensorPortValue(port, this.sensorToPorts);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>
