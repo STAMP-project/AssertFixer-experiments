@@ -1,0 +1,325 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>JaxbTransformerHelper.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">OpenRobertaRobot</a> &gt; <a href="index.source.html" class="el_package">de.fhg.iais.roberta.transformer</a> &gt; <span class="el_source">JaxbTransformerHelper.java</span></div><h1>JaxbTransformerHelper.java</h1><pre class="source lang-java linenums">package de.fhg.iais.roberta.transformer;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import de.fhg.iais.roberta.blockly.generated.Block;
+import de.fhg.iais.roberta.blockly.generated.Comment;
+import de.fhg.iais.roberta.blockly.generated.Field;
+import de.fhg.iais.roberta.blockly.generated.Repetitions;
+import de.fhg.iais.roberta.blockly.generated.Shadow;
+import de.fhg.iais.roberta.blockly.generated.Statement;
+import de.fhg.iais.roberta.blockly.generated.Value;
+import de.fhg.iais.roberta.blockly.generated.Warning;
+import de.fhg.iais.roberta.syntax.BlockTypeContainer.BlockType;
+import de.fhg.iais.roberta.syntax.Phrase;
+import de.fhg.iais.roberta.syntax.lang.expr.Expr;
+import de.fhg.iais.roberta.syntax.lang.expr.ExprList;
+import de.fhg.iais.roberta.syntax.lang.expr.ShadowExpr;
+import de.fhg.iais.roberta.syntax.lang.stmt.Stmt;
+import de.fhg.iais.roberta.syntax.lang.stmt.StmtList;
+import de.fhg.iais.roberta.typecheck.NepoInfo;
+import de.fhg.iais.roberta.typecheck.NepoInfo.Severity;
+import de.fhg.iais.roberta.util.dbc.Assert;
+
+/**
+ * This class is a helper class containing helper methods for AST =&gt; JAXB transformation.
+ *
+ * @author kcvejoski
+ */
+<span class="nc" id="L30">public final class JaxbTransformerHelper {</span>
+
+    /**
+     * Sets the basic properties(&lt;i&gt;comments and visual state&lt;/i&gt;) of a Blockly block. &lt;br&gt;
+     * &lt;br&gt;
+     * &lt;b&gt;astSource&lt;/b&gt; is representation of the block in the AST,&lt;br&gt;
+     * &lt;b&gt;jaxbDestination&lt;/b&gt; is representation of the block with JAXB classes
+     *
+     * @param astSource block from which properties are extracted; must be &lt;b&gt;not&lt;/b&gt; null,
+     * @param jaxbDestination to which properties are applied; must be &lt;b&gt;not&lt;/b&gt; null,
+     */
+    public static void setBasicProperties(Phrase&lt;?&gt; astSource, Block jaxbDestination) {
+<span class="fc" id="L42">        Assert.notNull(astSource);</span>
+<span class="fc" id="L43">        Assert.notNull(jaxbDestination);</span>
+<span class="pc bpc" id="L44" title="1 of 2 branches missed.">        if ( astSource.getProperty() == null ) {</span>
+<span class="nc" id="L45">            return;</span>
+        }
+        String blockType;
+<span class="fc" id="L48">        blockType = astSource.getProperty().getBlockType();</span>
+<span class="fc" id="L49">        setProperties(astSource, jaxbDestination, blockType);</span>
+<span class="fc" id="L50">        addComment(astSource, jaxbDestination);</span>
+<span class="fc" id="L51">        addError(astSource, jaxbDestination);</span>
+<span class="fc" id="L52">        addWarning(astSource, jaxbDestination);</span>
+<span class="fc" id="L53">    }</span>
+
+    /**
+     * Add's a statement {@link Statement} object to JAXB block representation {@link Block}.
+     * &lt;p&gt;
+     * This method does &lt;b&gt;not&lt;/b&gt; add the statement object into {@link Repetitions} object.
+     *
+     * @param block to which the statement will be added; must be &lt;b&gt;not&lt;/b&gt; null,
+     * @param name of the statement; must be &lt;b&gt;non-empty&lt;/b&gt; string
+     * @param value is the AST representation of the Blockly block where the statement is stored; must be &lt;b&gt;not&lt;/b&gt; null and {@link Phrase#getKind()} must be
+     *        {@link BlockType#STMT_LIST}
+     */
+    public static void addStatement(Block block, String name, Phrase&lt;?&gt; value) {
+<span class="pc bpc" id="L66" title="1 of 2 branches missed.">        Assert.isTrue(!name.equals(&quot;&quot;));</span>
+<span class="fc" id="L67">        Assert.notNull(block);</span>
+<span class="fc" id="L68">        Assert.notNull(value);</span>
+<span class="fc" id="L69">        Assert.isTrue(value.getKind().hasName(&quot;STMT_LIST&quot;), &quot;Phrase is not STMT_LIST&quot;);</span>
+<span class="fc bfc" id="L70" title="All 2 branches covered.">        if ( !((StmtList&lt;?&gt;) value).get().isEmpty() ) {</span>
+<span class="fc" id="L71">            Statement statement = new Statement();</span>
+<span class="fc" id="L72">            statement.setName(name);</span>
+<span class="fc" id="L73">            statement.getBlock().addAll(extractStmtList(value));</span>
+<span class="fc" id="L74">            block.getStatement().add(statement);</span>
+        }
+<span class="fc" id="L76">    }</span>
+
+    /**
+     * Add's a statement {@link Statement} object to JAXB block representation {@link Block}.
+     * &lt;p&gt;
+     * This method does &lt;b&gt;not&lt;/b&gt; add the statement object into {@link Repetitions} object.
+     *
+     * @param block to which the statement will be added; must be &lt;b&gt;not&lt;/b&gt; null,
+     * @param name of the statement; must be &lt;b&gt;non-empty&lt;/b&gt; string
+     * @param value is the AST representation of the Blockly block where the statement is stored; must be &lt;b&gt;not&lt;/b&gt; null and {@link Phrase#getKind()} must be
+     *        {@link BlockType#EXPR_LIST}
+     */
+    public static void addStatement(Block block, String name, ExprList&lt;?&gt; exprList) {
+<span class="nc bnc" id="L89" title="All 2 branches missed.">        Assert.isTrue(!name.equals(&quot;&quot;));</span>
+<span class="nc" id="L90">        Assert.notNull(block);</span>
+<span class="nc" id="L91">        Assert.notNull(exprList);</span>
+<span class="nc" id="L92">        Assert.isTrue(exprList.getKind().hasName(&quot;EXPR_LIST&quot;), &quot;Phrase is not EXPR_LIST&quot;);</span>
+<span class="nc bnc" id="L93" title="All 2 branches missed.">        if ( !exprList.get().isEmpty() ) {</span>
+<span class="nc" id="L94">            Statement statement = new Statement();</span>
+<span class="nc" id="L95">            statement.setName(name);</span>
+<span class="nc" id="L96">            statement.getBlock().addAll(extractExprList(exprList));</span>
+<span class="nc" id="L97">            block.getStatement().add(statement);</span>
+        }
+<span class="nc" id="L99">    }</span>
+
+    /**
+     * Add's a statement {@link Statement} object to JAXB {@link Repetitions} object.
+     *
+     * @param repetitions object to which the statement will be added; must be &lt;b&gt;not&lt;/b&gt; null
+     * @param name of the statement; must be &lt;b&gt;non-empty&lt;/b&gt; string
+     * @param value is the AST representation of the Blockly block where the statement is stored; must be &lt;b&gt;not&lt;/b&gt; null and {@link Phrase#getKind()} must be
+     *        {@link BlockType#STMT_LIST}
+     */
+    public static void addStatement(Repetitions repetitions, String name, Phrase&lt;?&gt; value) {
+<span class="nc bnc" id="L110" title="All 2 branches missed.">        Assert.isTrue(!name.equals(&quot;&quot;));</span>
+<span class="nc" id="L111">        Assert.notNull(repetitions);</span>
+<span class="nc" id="L112">        Assert.notNull(value);</span>
+<span class="nc" id="L113">        Assert.isTrue(value.getKind().hasName(&quot;STMT_LIST&quot;), &quot;Phrase is not STMT_LIST&quot;);</span>
+<span class="nc bnc" id="L114" title="All 2 branches missed.">        if ( !((StmtList&lt;?&gt;) value).get().isEmpty() ) {</span>
+<span class="nc" id="L115">            Statement statement = new Statement();</span>
+<span class="nc" id="L116">            statement.setName(name);</span>
+<span class="nc" id="L117">            statement.getBlock().addAll(extractStmtList(value));</span>
+<span class="nc" id="L118">            repetitions.getValueAndStatement().add(statement);</span>
+        }
+<span class="nc" id="L120">    }</span>
+
+    /**
+     * Add's a statement {@link Statement} object to JAXB block representation {@link Block}.
+     * &lt;p&gt;
+     * This method does &lt;b&gt;not&lt;/b&gt; add the statement object into {@link Repetitions} object.
+     *
+     * @param repetitions object to which the statement will be added; must be &lt;b&gt;not&lt;/b&gt; null,
+     * @param name of the statement; must be &lt;b&gt;non-empty&lt;/b&gt; string
+     * @param value is the AST representation of the Blockly block where the statement is stored; must be &lt;b&gt;not&lt;/b&gt; null and {@link Phrase#getKind()} must be
+     *        {@link BlockType#EXPR_LIST}
+     */
+    public static void addStatement(Repetitions repetitions, String name, ExprList&lt;?&gt; exprList) {
+<span class="nc bnc" id="L133" title="All 2 branches missed.">        Assert.isTrue(!name.equals(&quot;&quot;));</span>
+<span class="nc" id="L134">        Assert.notNull(repetitions);</span>
+<span class="nc" id="L135">        Assert.notNull(exprList);</span>
+<span class="nc" id="L136">        Assert.isTrue(exprList.getKind().hasName(&quot;EXPR_LIST&quot;), &quot;Phrase is not EXPR_LIST&quot;);</span>
+<span class="nc bnc" id="L137" title="All 2 branches missed.">        if ( !exprList.get().isEmpty() ) {</span>
+<span class="nc" id="L138">            Statement statement = new Statement();</span>
+<span class="nc" id="L139">            statement.setName(name);</span>
+<span class="nc" id="L140">            statement.getBlock().addAll(extractExprList(exprList));</span>
+<span class="nc" id="L141">            repetitions.getValueAndStatement().add(statement);</span>
+        }
+<span class="nc" id="L143">    }</span>
+
+    /**
+     * Add's a value {@link Value} object to JAXB block representation {@link Block}.
+     * &lt;p&gt;
+     * This method does &lt;b&gt;not&lt;/b&gt; add the value object into {@link Repetitions} object.
+     *
+     * @param block to which the value will be added; must be &lt;b&gt;not&lt;/b&gt; null,
+     * @param name of the value; must be &lt;b&gt;non-empty&lt;/b&gt; string
+     * @param value is the AST representation of the Blockly block where the value is stored; must be &lt;b&gt;not&lt;/b&gt; null
+     */
+    public static void addValue(Block block, String name, Phrase&lt;?&gt; value) {
+<span class="pc bpc" id="L155" title="1 of 2 branches missed.">        Assert.isTrue(!name.equals(&quot;&quot;));</span>
+<span class="fc" id="L156">        Assert.notNull(block);</span>
+<span class="fc" id="L157">        Assert.notNull(value);</span>
+<span class="fc bfc" id="L158" title="All 2 branches covered.">        if ( !value.getKind().hasName(&quot;EMPTY_EXPR&quot;) ) {</span>
+<span class="fc" id="L159">            Value blockValue = new Value();</span>
+<span class="fc" id="L160">            blockValue.setName(name);</span>
+<span class="fc bfc" id="L161" title="All 2 branches covered.">            if ( value.getKind().hasName(&quot;SHADOW_EXPR&quot;) ) {</span>
+<span class="fc" id="L162">                ShadowExpr&lt;?&gt; shadowExpr = (ShadowExpr&lt;?&gt;) value;</span>
+<span class="fc" id="L163">                blockValue.setShadow(block2shadow(shadowExpr.getShadow().astToBlock()));</span>
+<span class="fc bfc" id="L164" title="All 2 branches covered.">                if ( shadowExpr.getBlock() != null ) {</span>
+<span class="fc" id="L165">                    blockValue.setBlock(shadowExpr.getBlock().astToBlock());</span>
+                }
+<span class="fc" id="L167">            } else {</span>
+<span class="fc" id="L168">                blockValue.setBlock(value.astToBlock());</span>
+            }
+
+<span class="fc" id="L171">            block.getValue().add(blockValue);</span>
+        }
+<span class="fc" id="L173">    }</span>
+
+    /**
+     * Add's a value {@link Value} object to JAXB block representation {@link Block}.
+     *
+     * @param repetitions to which the value will be added; must be &lt;b&gt;not&lt;/b&gt; null,
+     * @param name of the value; must be &lt;b&gt;non-empty&lt;/b&gt; string
+     * @param value is the AST representation of the Blockly block where the value is stored; must be &lt;b&gt;not&lt;/b&gt; null
+     */
+    public static void addValue(Repetitions repetitions, String name, Phrase&lt;?&gt; value) {
+<span class="nc bnc" id="L183" title="All 2 branches missed.">        Assert.isTrue(!name.equals(&quot;&quot;));</span>
+<span class="nc" id="L184">        Assert.notNull(repetitions);</span>
+<span class="nc" id="L185">        Assert.notNull(value);</span>
+<span class="nc bnc" id="L186" title="All 2 branches missed.">        if ( !value.getKind().hasName(&quot;EMPTY_EXPR&quot;) ) {</span>
+<span class="nc" id="L187">            Value blockValue = new Value();</span>
+<span class="nc" id="L188">            blockValue.setName(name);</span>
+<span class="nc" id="L189">            blockValue.setBlock(value.astToBlock());</span>
+<span class="nc" id="L190">            repetitions.getValueAndStatement().add(blockValue);</span>
+        }
+<span class="nc" id="L192">    }</span>
+
+    /**
+     * Add's a value {@link Field} object to JAXB block representation {@link Block}.
+     * &lt;p&gt;
+     * This method does &lt;b&gt;not&lt;/b&gt; add the {@link Field} object into {@link Repetitions} object.
+     *
+     * @param block to which the field will be added; must be &lt;b&gt;not&lt;/b&gt; null,
+     * @param name of the field; must be &lt;b&gt;non-empty&lt;/b&gt; string
+     * @param value is the AST representation of the Blockly block where the value is stored
+     */
+    public static void addField(Block block, String name, String value) {
+<span class="pc bpc" id="L204" title="1 of 2 branches missed.">        Assert.isTrue(!name.equals(&quot;&quot;));</span>
+<span class="fc" id="L205">        Assert.notNull(block);</span>
+<span class="fc" id="L206">        Field field = new Field();</span>
+<span class="fc" id="L207">        field.setName(name);</span>
+<span class="fc" id="L208">        field.setValue(value);</span>
+<span class="fc" id="L209">        block.getField().add(field);</span>
+<span class="fc" id="L210">    }</span>
+
+    private static Shadow block2shadow(Block block) {
+<span class="fc" id="L213">        Shadow shadow = new Shadow();</span>
+<span class="fc" id="L214">        shadow.setId(block.getId());</span>
+<span class="fc" id="L215">        shadow.setType(block.getType());</span>
+<span class="fc" id="L216">        shadow.setIntask(block.isIntask());</span>
+<span class="fc" id="L217">        shadow.setField(block.getField().get(0));</span>
+<span class="fc" id="L218">        return shadow;</span>
+    }
+
+    private static List&lt;Block&gt; extractStmtList(Phrase&lt;?&gt; phrase) {
+<span class="fc" id="L222">        List&lt;Block&gt; result = new ArrayList&lt;Block&gt;();</span>
+<span class="fc" id="L223">        Assert.isTrue(phrase.getKind().hasName(&quot;STMT_LIST&quot;), &quot;Phrase is not StmtList!&quot;);</span>
+<span class="fc" id="L224">        StmtList&lt;?&gt; stmtList = (StmtList&lt;?&gt;) phrase;</span>
+<span class="fc bfc" id="L225" title="All 2 branches covered.">        for ( Stmt&lt;?&gt; stmt : stmtList.get() ) {</span>
+<span class="fc" id="L226">            result.add(stmt.astToBlock());</span>
+<span class="fc" id="L227">        }</span>
+<span class="fc" id="L228">        return result;</span>
+    }
+
+    private static List&lt;Block&gt; extractExprList(Phrase&lt;?&gt; phrase) {
+<span class="nc" id="L232">        List&lt;Block&gt; result = new ArrayList&lt;Block&gt;();</span>
+<span class="nc" id="L233">        Assert.isTrue(phrase.getKind().hasName(&quot;EXPR_LIST&quot;), &quot;Phrase is not ExprList!&quot;);</span>
+<span class="nc" id="L234">        ExprList&lt;?&gt; exprList = (ExprList&lt;?&gt;) phrase;</span>
+<span class="nc bnc" id="L235" title="All 2 branches missed.">        for ( Expr&lt;?&gt; expr : exprList.get() ) {</span>
+<span class="nc" id="L236">            result.add(expr.astToBlock());</span>
+<span class="nc" id="L237">        }</span>
+<span class="nc" id="L238">        return result;</span>
+    }
+
+    private static void setProperties(Phrase&lt;?&gt; astSource, Block block, String type) {
+<span class="fc" id="L242">        block.setType(type);</span>
+<span class="fc" id="L243">        block.setId(astSource.getProperty().getBlocklyId());</span>
+<span class="fc" id="L244">        setDisabled(astSource, block);</span>
+<span class="fc" id="L245">        setCollapsed(astSource, block);</span>
+<span class="fc" id="L246">        setInline(astSource, block);</span>
+<span class="fc" id="L247">        setDeletable(astSource, block);</span>
+<span class="fc" id="L248">        setMovable(astSource, block);</span>
+<span class="fc" id="L249">        setInTask(astSource, block);</span>
+<span class="fc" id="L250">    }</span>
+
+    private static void setInline(Phrase&lt;?&gt; astObject, Block block) {
+<span class="fc bfc" id="L253" title="All 2 branches covered.">        if ( astObject.getProperty().isInline() != null ) {</span>
+<span class="fc" id="L254">            block.setInline(astObject.getProperty().isInline());</span>
+        }
+<span class="fc" id="L256">    }</span>
+
+    private static void setCollapsed(Phrase&lt;?&gt; astObject, Block block) {
+<span class="fc bfc" id="L259" title="All 2 branches covered.">        if ( astObject.getProperty().isCollapsed() ) {</span>
+<span class="fc" id="L260">            block.setCollapsed(astObject.getProperty().isCollapsed());</span>
+        }
+<span class="fc" id="L262">    }</span>
+
+    private static void setDisabled(Phrase&lt;?&gt; astObject, Block block) {
+<span class="fc bfc" id="L265" title="All 2 branches covered.">        if ( astObject.getProperty().isDisabled() ) {</span>
+<span class="fc" id="L266">            block.setDisabled(astObject.getProperty().isDisabled());</span>
+        }
+<span class="fc" id="L268">    }</span>
+
+    private static void setInTask(Phrase&lt;?&gt; astObject, Block block) {
+<span class="fc bfc" id="L271" title="All 2 branches covered.">        if ( astObject.getProperty().isInTask() != null ) {</span>
+<span class="fc" id="L272">            block.setIntask(astObject.getProperty().isInTask());</span>
+        }
+<span class="fc" id="L274">    }</span>
+
+    private static void setDeletable(Phrase&lt;?&gt; astObject, Block block) {
+<span class="fc bfc" id="L277" title="All 2 branches covered.">        if ( astObject.getProperty().isDeletable() != null ) {</span>
+<span class="fc" id="L278">            block.setDeletable(astObject.getProperty().isDeletable());</span>
+        }
+<span class="fc" id="L280">    }</span>
+
+    private static void setMovable(Phrase&lt;?&gt; astObject, Block block) {
+<span class="fc bfc" id="L283" title="All 2 branches covered.">        if ( astObject.getProperty().isMovable() != null ) {</span>
+<span class="fc" id="L284">            block.setMovable(astObject.getProperty().isMovable());</span>
+        }
+<span class="fc" id="L286">    }</span>
+
+    private static void addComment(Phrase&lt;?&gt; astSource, Block block) {
+<span class="fc bfc" id="L289" title="All 2 branches covered.">        if ( astSource.getComment() != null ) {</span>
+<span class="fc" id="L290">            Comment comment = new Comment();</span>
+<span class="fc" id="L291">            comment.setValue(astSource.getComment().getComment());</span>
+<span class="fc" id="L292">            comment.setPinned(astSource.getComment().isPinned());</span>
+<span class="fc" id="L293">            comment.setH(astSource.getComment().getHeight());</span>
+<span class="fc" id="L294">            comment.setW(astSource.getComment().getWidth());</span>
+<span class="fc" id="L295">            block.setComment(comment);</span>
+        }
+<span class="fc" id="L297">    }</span>
+
+    private static void addWarning(Phrase&lt;?&gt; astSource, Block block) {
+<span class="fc" id="L300">        Warning warning = new Warning();</span>
+<span class="pc bpc" id="L301" title="1 of 2 branches missed.">        for ( NepoInfo info : astSource.getInfos().getInfos() ) {</span>
+<span class="nc bnc" id="L302" title="All 2 branches missed.">            if ( info.getSeverity() == Severity.WARNING ) {</span>
+<span class="nc" id="L303">                warning.setValue(info.getMessage());</span>
+<span class="nc" id="L304">                warning.setPinned(false);</span>
+<span class="nc" id="L305">                warning.setH(&quot;undefined&quot;);</span>
+<span class="nc" id="L306">                warning.setW(&quot;undefined&quot;);</span>
+<span class="nc" id="L307">                block.setWarning(warning);</span>
+            }
+<span class="nc" id="L309">        }</span>
+<span class="fc" id="L310">    }</span>
+
+    private static void addError(Phrase&lt;?&gt; astSource, Block block) {
+<span class="fc" id="L313">        de.fhg.iais.roberta.blockly.generated.Error error = new de.fhg.iais.roberta.blockly.generated.Error();</span>
+<span class="pc bpc" id="L314" title="1 of 2 branches missed.">        for ( NepoInfo info : astSource.getInfos().getInfos() ) {</span>
+<span class="nc bnc" id="L315" title="All 2 branches missed.">            if ( info.getSeverity() == Severity.ERROR ) {</span>
+<span class="nc" id="L316">                error.setValue(info.getMessage());</span>
+<span class="nc" id="L317">                error.setPinned(false);</span>
+<span class="nc" id="L318">                error.setH(&quot;undefined&quot;);</span>
+<span class="nc" id="L319">                error.setW(&quot;undefined&quot;);</span>
+<span class="nc" id="L320">                block.setError(error);</span>
+            }
+<span class="nc" id="L322">        }</span>
+<span class="fc" id="L323">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

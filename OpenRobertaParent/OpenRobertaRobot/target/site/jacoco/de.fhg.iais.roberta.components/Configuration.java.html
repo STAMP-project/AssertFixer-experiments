@@ -1,0 +1,371 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>Configuration.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">OpenRobertaRobot</a> &gt; <a href="index.source.html" class="el_package">de.fhg.iais.roberta.components</a> &gt; <span class="el_source">Configuration.java</span></div><h1>Configuration.java</h1><pre class="source lang-java linenums">package de.fhg.iais.roberta.components;
+
+import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
+
+import de.fhg.iais.roberta.inter.mode.action.IActorPort;
+import de.fhg.iais.roberta.inter.mode.action.IMotorSide;
+import de.fhg.iais.roberta.inter.mode.sensor.ISensorPort;
+import de.fhg.iais.roberta.mode.action.ActorPort;
+import de.fhg.iais.roberta.mode.sensor.SensorPort;
+import de.fhg.iais.roberta.util.Pair;
+import de.fhg.iais.roberta.util.dbc.Assert;
+import de.fhg.iais.roberta.util.dbc.DbcException;
+
+/**
+ * This class represents model of the hardware configuration of a robot (assume we have &quot;left&quot; and &quot;right&quot; motor). It is used in the code generation. &lt;br&gt;
+ * &lt;br&gt;
+ * The {@link Configuration} contains four sensor ports and four actor ports. Client cannot connect more than that.
+ */
+public abstract class Configuration {
+    protected String robotName;
+    protected String subtype;
+
+    protected final Map&lt;IActorPort, Actor&gt; actors;
+    protected final Map&lt;ISensorPort, Sensor&gt; sensors;
+
+    protected final double wheelDiameterCM;
+    protected final double trackWidthCM;
+
+    /**
+     * This constructor sets the each actor connected to given port, each sensor to given port, wheel diameter and track width. &lt;br&gt;
+     * Client must provide &lt;b&gt;{@code Map&lt;ActorPort, EV3Actor&gt;}&lt;/b&gt; where each {@link Actor} is connected to {@link ActorPort} and
+     * {@code Map&lt;SensorPort, EV3Sensor&gt;} where each {@link Sensor} is connected to {@link SensorPort}.
+     *
+     * @param actors connected to the brick
+     * @param sensors connected to the brick
+     * @param wheelDiameterCM of the brick wheels
+     * @param trackWidthCM of the brick
+     */
+    public Configuration(Map&lt;IActorPort, Actor&gt; actors, Map&lt;ISensorPort, Sensor&gt; sensors, double wheelDiameterCM, double trackWidthCM) {
+<span class="nc" id="L42">        super();</span>
+<span class="nc" id="L43">        this.robotName = &quot;&quot;;</span>
+<span class="nc" id="L44">        this.subtype = &quot;&quot;;</span>
+<span class="nc" id="L45">        this.actors = actors;</span>
+<span class="nc" id="L46">        this.sensors = sensors;</span>
+<span class="nc" id="L47">        this.wheelDiameterCM = wheelDiameterCM;</span>
+<span class="nc" id="L48">        this.trackWidthCM = trackWidthCM;</span>
+<span class="nc" id="L49">    }</span>
+
+    public void setRobotName(String robotName) {
+<span class="nc" id="L52">        this.robotName = robotName;</span>
+<span class="nc" id="L53">    }</span>
+
+    public String getRobotName() {
+<span class="nc" id="L56">        return this.robotName;</span>
+    }
+
+<span class="nc" id="L59">    public void setSubtype(String subtype) { this.subtype = subtype; }</span>
+
+    public String getSubtype() {
+<span class="nc" id="L62">        return this.subtype;</span>
+    }
+
+    /**
+     * Returns the sensor connected on given port.
+     *
+     * @param sensorPort
+     * @return connected sensor on given port
+     */
+    public Sensor getSensorOnPort(ISensorPort sensorPort) {
+<span class="nc" id="L72">        Sensor sensor = this.sensors.get(sensorPort);</span>
+<span class="nc" id="L73">        return sensor;</span>
+    }
+
+    /**
+     * Returns the actor connected on given port.&lt;br&gt;
+     * &lt;b&gt;Null&lt;/b&gt; if there is no actor connected to the port
+     *
+     * @param actorPort
+     * @return connected actor on given port
+     */
+    public Actor getActorOnPort(IActorPort actorPort) {
+<span class="nc" id="L84">        final Actor actor = this.actors.get(actorPort);</span>
+<span class="nc" id="L85">        return actor;</span>
+    }
+
+    /**
+     * Get all the actors connected to the brick
+     *
+     * @return the actors
+     */
+    public Map&lt;IActorPort, Actor&gt; getActors() {
+<span class="nc" id="L94">        return this.actors;</span>
+    }
+
+    /**
+     * All the sensors connected to the brick
+     *
+     * @return the sensors
+     */
+    public Map&lt;ISensorPort, Sensor&gt; getSensors() {
+<span class="nc" id="L103">        return this.sensors;</span>
+    }
+
+    /**
+     * @return the wheelDiameterCM
+     */
+    public double getWheelDiameterCM() {
+<span class="nc" id="L110">        return this.wheelDiameterCM;</span>
+    }
+
+    /**
+     * @return the trackWidthCM
+     */
+    public double getTrackWidthCM() {
+<span class="nc" id="L117">        return this.trackWidthCM;</span>
+    }
+
+    /**
+     * Check if the motor is regulated. Client must provide valid {@link ActorPort}.
+     *
+     * @param port on which the motor is connected
+     * @return if the motor is regulated
+     */
+    public boolean isMotorRegulated(IActorPort port) {
+<span class="nc" id="L127">        final Actor actor = this.actors.get(port);</span>
+<span class="nc bnc" id="L128" title="All 2 branches missed.">        Assert.isTrue(actor != null, &quot;No actor connected to the port &quot; + port);</span>
+<span class="nc" id="L129">        return actor.isRegulated();</span>
+    }
+
+    /**
+     * This method returns the port on which the left motor is connected. If there is no left motor connected throws and {@link DbcException} exception.
+     *
+     * @return port on which the left motor is connected
+     */
+    public IActorPort getLeftMotorPort() {
+<span class="nc" id="L138">        throw new DbcException(&quot;Implement the method in the robot specific configuration class!&quot;);</span>
+    }
+
+    /**
+     * This method returns the left motor. If there is no left motor returns *null*
+     *
+     * @return left motor
+     */
+    public Actor getLeftMotor() {
+<span class="nc" id="L147">        throw new DbcException(&quot;Implement the method in the robot specific configuration class!&quot;);</span>
+    }
+
+    /**
+     * This method returns the number of right motors connected.
+     *
+     * @return port on which the left motor is connected
+     */
+    public int getNumberOfLeftMotors() {
+<span class="nc" id="L156">        throw new DbcException(&quot;Implement the method in the robot specific configuration class!&quot;);</span>
+    }
+
+    /**
+     * This method returns the right motor. If there is no right motor returns *null*
+     *
+     * @return right motor
+     */
+    public Actor getRightMotor() {
+<span class="nc" id="L165">        throw new DbcException(&quot;Implement the method in the robot specific configuration class!&quot;);</span>
+    }
+
+    /**
+     * This method returns the port on which the right motor is connected. If there is no right motor connected throws and {@link DbcException} exception.
+     *
+     * @return port on which the left motor is connected
+     */
+    public IActorPort getRightMotorPort() {
+<span class="nc" id="L174">        throw new DbcException(&quot;Implement the method in the robot specific configuration class!&quot;);</span>
+    }
+
+    /**
+     * This method returns the number of right motors connected.
+     *
+     * @return port on which the left motor is connected
+     */
+    public int getNumberOfRightMotors() {
+<span class="nc" id="L183">        throw new DbcException(&quot;Implement the method in the robot specific configuration class!&quot;);</span>
+    }
+
+    /**
+     * @return text which defines the brick configuration
+     */
+    public String generateText(String name) {
+<span class="nc" id="L190">        throw new DbcException(&quot;Implement the method in the robot specific configuration class!&quot;);</span>
+    }
+
+    @Override
+    public int hashCode() {
+        // trackWidthCM and wheelDiameterCM restricted to 1 fraction digit
+<span class="nc" id="L196">        final int prime = 31;</span>
+<span class="nc" id="L197">        int result = 1;</span>
+<span class="nc bnc" id="L198" title="All 2 branches missed.">        result = prime * result + (this.actors == null ? 0 : this.actors.hashCode());</span>
+<span class="nc bnc" id="L199" title="All 2 branches missed.">        result = prime * result + (this.sensors == null ? 0 : this.sensors.hashCode());</span>
+        long temp;
+<span class="nc" id="L201">        temp = (long) (this.trackWidthCM * 10);</span>
+<span class="nc" id="L202">        result = prime * result + (int) (temp ^ temp &gt;&gt;&gt; 32);</span>
+<span class="nc" id="L203">        temp = (long) this.wheelDiameterCM;</span>
+<span class="nc" id="L204">        result = prime * result + (int) (temp ^ temp &gt;&gt;&gt; 32);</span>
+<span class="nc" id="L205">        return result;</span>
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        // trackWidthCM and wheelDiameterCM restricted to 1 fraction digit
+<span class="nc bnc" id="L211" title="All 2 branches missed.">        if ( this == obj ) {</span>
+<span class="nc" id="L212">            return true;</span>
+        }
+<span class="nc bnc" id="L214" title="All 2 branches missed.">        if ( obj == null ) {</span>
+<span class="nc" id="L215">            return false;</span>
+        }
+<span class="nc bnc" id="L217" title="All 2 branches missed.">        if ( getClass() != obj.getClass() ) {</span>
+<span class="nc" id="L218">            return false;</span>
+        }
+<span class="nc" id="L220">        final Configuration other = (Configuration) obj;</span>
+<span class="nc bnc" id="L221" title="All 2 branches missed.">        if ( this.actors == null ) {</span>
+<span class="nc bnc" id="L222" title="All 2 branches missed.">            if ( other.actors != null ) {</span>
+<span class="nc" id="L223">                return false;</span>
+            }
+<span class="nc bnc" id="L225" title="All 2 branches missed.">        } else if ( !this.actors.equals(other.actors) ) {</span>
+<span class="nc" id="L226">            return false;</span>
+        }
+<span class="nc bnc" id="L228" title="All 2 branches missed.">        if ( this.sensors == null ) {</span>
+<span class="nc bnc" id="L229" title="All 2 branches missed.">            if ( other.sensors != null ) {</span>
+<span class="nc" id="L230">                return false;</span>
+            }
+<span class="nc bnc" id="L232" title="All 2 branches missed.">        } else if ( !this.sensors.equals(other.sensors) ) {</span>
+<span class="nc" id="L233">            return false;</span>
+        }
+<span class="nc bnc" id="L235" title="All 2 branches missed.">        if ( (long) (this.trackWidthCM * 10) != (long) (other.trackWidthCM * 10) ) {</span>
+<span class="nc" id="L236">            return false;</span>
+        }
+<span class="nc bnc" id="L238" title="All 2 branches missed.">        if ( (long) (this.wheelDiameterCM * 10) != (long) (other.wheelDiameterCM * 10) ) {</span>
+<span class="nc" id="L239">            return false;</span>
+        }
+<span class="nc" id="L241">        return true;</span>
+    }
+
+    @Override
+    public String toString() {
+<span class="nc" id="L246">        return &quot;BrickConfiguration [actors=&quot;</span>
+            + this.actors
+            + &quot;, sensors=&quot;
+            + this.sensors
+            + &quot;, wheelDiameterCM=&quot;
+            + this.wheelDiameterCM
+            + &quot;, trackWidthCM=&quot;
+            + this.trackWidthCM
+            + &quot;]&quot;;
+    }
+
+    protected IActorPort getMotorPortOnSide(IMotorSide side) {
+<span class="nc bnc" id="L258" title="All 2 branches missed.">        Assert.isTrue(this.actors != null, &quot;There is no actors set to the configuration!&quot;);</span>
+<span class="nc bnc" id="L259" title="All 2 branches missed.">        for ( final Map.Entry&lt;IActorPort, Actor&gt; entry : this.actors.entrySet() ) {</span>
+<span class="nc bnc" id="L260" title="All 2 branches missed.">            if ( entry.getValue().getMotorSide() == side ) {</span>
+<span class="nc" id="L261">                return entry.getKey();</span>
+            }
+<span class="nc" id="L263">        }</span>
+<span class="nc" id="L264">        return null;</span>
+    }
+
+    /**
+     * This class is a builder of {@link Configuration}
+     */
+<span class="nc" id="L270">    public abstract static class Builder&lt;T extends Builder&lt;T&gt;&gt; {</span>
+<span class="nc" id="L271">        private final Map&lt;IActorPort, Actor&gt; actorMapping = new TreeMap&lt;&gt;();</span>
+<span class="nc" id="L272">        private final Map&lt;ISensorPort, Sensor&gt; sensorMapping = new TreeMap&lt;&gt;();</span>
+
+        private double wheelDiameter;
+        private double trackWidth;
+
+        /**
+         * Add actor to the {@link Configuration}
+         *
+         * @param port on which the component is connected
+         * @param actor we want to connect
+         * @return
+         */
+        @SuppressWarnings(&quot;unchecked&quot;)
+        public T addActor(IActorPort port, Actor actor) {
+<span class="nc" id="L286">            this.actorMapping.put(port, actor);</span>
+<span class="nc" id="L287">            return (T) this;</span>
+        }
+
+        /**
+         * Client must provide list of {@link Pair} ({@link ActorPort} and {@link Actor})
+         *
+         * @param actors we want to connect to the brick configuration
+         * @return
+         */
+        @SuppressWarnings(&quot;unchecked&quot;)
+        public T addActors(List&lt;Pair&lt;IActorPort, Actor&gt;&gt; actors) {
+<span class="nc bnc" id="L298" title="All 2 branches missed.">            for ( final Pair&lt;IActorPort, Actor&gt; pair : actors ) {</span>
+<span class="nc" id="L299">                this.actorMapping.put(pair.getFirst(), pair.getSecond());</span>
+<span class="nc" id="L300">            }</span>
+<span class="nc" id="L301">            return (T) this;</span>
+        }
+
+        /**
+         * Add sensor to the {@link Configuration}
+         *
+         * @param port on which the component is connected
+         * @param component we want to connect
+         * @return
+         */
+        @SuppressWarnings(&quot;unchecked&quot;)
+        public T addSensor(ISensorPort port, Sensor sensor) {
+<span class="nc" id="L313">            this.sensorMapping.put(port, sensor);</span>
+<span class="nc" id="L314">            return (T) this;</span>
+        }
+
+        /**
+         * Client must provide list of {@link Pair} ({@link SensorPort} and {@link Sensor})
+         *
+         * @param sensors we want to connect to the brick configuration
+         * @return
+         */
+        @SuppressWarnings(&quot;unchecked&quot;)
+        public T addSensors(List&lt;Pair&lt;ISensorPort, Sensor&gt;&gt; sensors) {
+<span class="nc bnc" id="L325" title="All 2 branches missed.">            for ( final Pair&lt;ISensorPort, Sensor&gt; pair : sensors ) {</span>
+<span class="nc" id="L326">                this.sensorMapping.put(pair.getFirst(), pair.getSecond());</span>
+<span class="nc" id="L327">            }</span>
+<span class="nc" id="L328">            return (T) this;</span>
+        }
+
+        /**
+         * Set the wheel diameter
+         *
+         * @param wheelDiameter in cm
+         * @return
+         */
+        @SuppressWarnings(&quot;unchecked&quot;)
+        public T setWheelDiameter(double wheelDiameter) {
+<span class="nc" id="L339">            this.wheelDiameter = wheelDiameter;</span>
+<span class="nc" id="L340">            return (T) this;</span>
+        }
+
+        /**
+         * Set the track width
+         *
+         * @param trackWidth in cm
+         * @return
+         */
+        @SuppressWarnings(&quot;unchecked&quot;)
+        public T setTrackWidth(double trackWidth) {
+<span class="nc" id="L351">            this.trackWidth = trackWidth;</span>
+<span class="nc" id="L352">            return (T) this;</span>
+        }
+
+        public abstract Configuration build();
+
+        @Override
+        public String toString() {
+<span class="nc" id="L359">            return &quot;Builder [actorMapping=&quot;</span>
+                + this.actorMapping
+                + &quot;, sensorMapping=&quot;
+                + this.sensorMapping
+                + &quot;, wheelDiameter=&quot;
+                + this.wheelDiameter
+                + &quot;, trackWidth=&quot;
+                + this.trackWidth
+                + &quot;]&quot;;
+        }
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>BlocklyProgramAndConfigTransformer.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">OpenRobertaRobot</a> &gt; <a href="index.source.html" class="el_package">de.fhg.iais.roberta.transformer</a> &gt; <span class="el_source">BlocklyProgramAndConfigTransformer.java</span></div><h1>BlocklyProgramAndConfigTransformer.java</h1><pre class="source lang-java linenums">package de.fhg.iais.roberta.transformer;
+
+import java.util.ArrayList;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import de.fhg.iais.roberta.components.Configuration;
+import de.fhg.iais.roberta.factory.IRobotFactory;
+import de.fhg.iais.roberta.syntax.Phrase;
+import de.fhg.iais.roberta.util.Key;
+import de.fhg.iais.roberta.util.jaxb.JaxbHelper;
+
+/**
+ * This class stores the AST representation of the program and the brick configuration if transformation is successful, otherwise we have error message
+ *
+ * @author kcvejoski
+ */
+public class BlocklyProgramAndConfigTransformer {
+<span class="nc" id="L20">    private static final Logger LOG = LoggerFactory.getLogger(BlocklyProgramAndConfigTransformer.class);</span>
+    private Key errorMessage;
+    private Jaxb2BlocklyProgramTransformer&lt;Void&gt; programTransformer;
+    private Configuration brickConfiguration;
+
+    private BlocklyProgramAndConfigTransformer(Key errorMessage, Jaxb2BlocklyProgramTransformer&lt;Void&gt; programTransformer, Configuration brickConfiguration) {
+<span class="nc" id="L26">        super();</span>
+<span class="nc" id="L27">        this.errorMessage = errorMessage;</span>
+<span class="nc" id="L28">        this.programTransformer = programTransformer;</span>
+<span class="nc" id="L29">        this.brickConfiguration = brickConfiguration;</span>
+<span class="nc" id="L30">    }</span>
+
+    /**
+     * @return the errorMessage
+     */
+    public Key getErrorMessage() {
+<span class="nc" id="L36">        return this.errorMessage;</span>
+    }
+
+    /**
+     * @return the programTransformer
+     */
+    public Jaxb2BlocklyProgramTransformer&lt;Void&gt; getProgramTransformer() {
+<span class="nc" id="L43">        return this.programTransformer;</span>
+    }
+
+    /**
+     * @return the brickConfiguration
+     */
+    public Configuration getBrickConfiguration() {
+<span class="nc" id="L50">        return this.brickConfiguration;</span>
+    }
+
+    /**
+     * @return the AST of the user program
+     */
+    public ArrayList&lt;ArrayList&lt;Phrase&lt;Void&gt;&gt;&gt; getTransformedProgram() {
+<span class="nc" id="L57">        return this.programTransformer.getTree();</span>
+    }
+
+    /**
+     * Transforms blockly xml program and brick configuration into AST.
+     *
+     * @param programText as XML
+     * @param configurationText as XML
+     * @return
+     */
+    public static BlocklyProgramAndConfigTransformer transform(IRobotFactory factory, String programText, String configurationText) {
+<span class="nc" id="L68">        Key errorMessage = null;</span>
+<span class="nc bnc" id="L69" title="All 4 branches missed.">        if ( programText == null || programText.trim().equals(&quot;&quot;) ) {</span>
+<span class="nc" id="L70">            errorMessage = Key.COMPILERWORKFLOW_ERROR_PROGRAM_NOT_FOUND;</span>
+<span class="nc bnc" id="L71" title="All 4 branches missed.">        } else if ( configurationText == null || configurationText.trim().equals(&quot;&quot;) ) {</span>
+<span class="nc" id="L72">            errorMessage = Key.COMPILERWORKFLOW_ERROR_CONFIGURATION_NOT_FOUND;</span>
+        }
+
+<span class="nc" id="L75">        Jaxb2BlocklyProgramTransformer&lt;Void&gt; programTransformer = null;</span>
+        try {
+<span class="nc" id="L77">            programTransformer = JaxbHelper.generateProgramTransformer(factory, programText);</span>
+<span class="nc" id="L78">        } catch ( Exception e ) {</span>
+<span class="nc" id="L79">            LOG.error(&quot;Transformer failed&quot;, e);</span>
+<span class="nc" id="L80">            errorMessage = Key.COMPILERWORKFLOW_ERROR_PROGRAM_TRANSFORM_FAILED;</span>
+<span class="nc" id="L81">        }</span>
+<span class="nc" id="L82">        Configuration brickConfiguration = null;</span>
+        try {
+<span class="nc" id="L84">            brickConfiguration = factory.getRobotCompilerWorkflow().generateConfiguration(factory, configurationText);</span>
+<span class="nc" id="L85">        } catch ( Exception e ) {</span>
+<span class="nc" id="L86">            LOG.error(&quot;Generation of the configuration failed&quot;, e);</span>
+<span class="nc" id="L87">            errorMessage = Key.COMPILERWORKFLOW_ERROR_CONFIGURATION_TRANSFORM_FAILED;</span>
+<span class="nc" id="L88">        }</span>
+<span class="nc" id="L89">        return new BlocklyProgramAndConfigTransformer(errorMessage, programTransformer, brickConfiguration);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

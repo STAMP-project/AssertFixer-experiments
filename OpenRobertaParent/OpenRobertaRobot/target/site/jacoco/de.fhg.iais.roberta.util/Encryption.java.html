@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>Encryption.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">OpenRobertaRobot</a> &gt; <a href="index.source.html" class="el_package">de.fhg.iais.roberta.util</a> &gt; <span class="el_source">Encryption.java</span></div><h1>Encryption.java</h1><pre class="source lang-java linenums">package de.fhg.iais.roberta.util;
+
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
+import java.util.Arrays;
+
+import org.apache.commons.codec.binary.Hex;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+<span class="nc" id="L12">public class Encryption {</span>
+<span class="fc" id="L13">    private static final Logger LOG = LoggerFactory.getLogger(Encryption.class);</span>
+    private static final SecureRandom secureRandom;
+
+    static {
+        SecureRandom secureTemp;
+        try {
+<span class="fc" id="L19">            secureTemp = SecureRandom.getInstance(&quot;SHA1PRNG&quot;);</span>
+<span class="nc" id="L20">        } catch ( NoSuchAlgorithmException e ) {</span>
+<span class="nc" id="L21">            LOG.error(&quot;creating a secure random failed. It will be IMPOSSIBLE to create new users!&quot;);</span>
+<span class="nc" id="L22">            secureTemp = null;</span>
+<span class="fc" id="L23">        }</span>
+<span class="fc" id="L24">        secureRandom = secureTemp;</span>
+<span class="fc" id="L25">    }</span>
+
+    /**
+     * create a secure hash from a String.
+     *
+     * @return a string consisting of 8 bytes (16 chars) of salt, and 8 bytes (16 chars) of the generated hash
+     * @throws Exception
+     */
+    public static String createHash(String password) throws Exception {
+<span class="fc" id="L34">        MessageDigest digest = MessageDigest.getInstance(&quot;SHA-1&quot;);</span>
+<span class="fc" id="L35">        digest.reset();</span>
+<span class="fc" id="L36">        byte[] salt = createNextSalt();</span>
+<span class="fc" id="L37">        digest.update(salt);</span>
+<span class="fc" id="L38">        String saltHex = Hex.encodeHexString(salt);</span>
+<span class="fc" id="L39">        String passwordHex = Hex.encodeHexString(digest.digest(password.getBytes(&quot;UTF-8&quot;)));</span>
+<span class="fc" id="L40">        return saltHex + &quot;:&quot; + passwordHex;</span>
+    }
+
+    /**
+     * check a password against a secure hash.
+     *
+     * @return true, if the password matches the hash; false, otherwise
+     * @throws Exception
+     */
+    public static boolean isPasswordCorrect(String saltedHashString, String password) throws Exception {
+<span class="fc" id="L50">        String[] splitted = saltedHashString.split(&quot;:&quot;);</span>
+<span class="fc" id="L51">        byte[] salt = Hex.decodeHex(splitted[0].toCharArray());</span>
+<span class="fc" id="L52">        byte[] hash = Hex.decodeHex(splitted[1].toCharArray());</span>
+<span class="fc" id="L53">        MessageDigest digest = MessageDigest.getInstance(&quot;SHA-1&quot;);</span>
+<span class="fc" id="L54">        digest.reset();</span>
+<span class="fc" id="L55">        digest.update(salt);</span>
+<span class="fc" id="L56">        byte[] passwordHash = digest.digest(password.getBytes(&quot;UTF-8&quot;));</span>
+<span class="fc" id="L57">        return Arrays.equals(hash, passwordHash);</span>
+    }
+
+    /**
+     * create a secure salt (for encryption of passwords, e.g.) and return it as a 16 byte base64 encoded string
+     *
+     * @return
+     */
+    public static synchronized byte[] createNextSalt() {
+<span class="fc" id="L66">        byte[] nextSalt = new byte[8];</span>
+<span class="fc" id="L67">        secureRandom.nextBytes(nextSalt);</span>
+<span class="fc" id="L68">        return nextSalt;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

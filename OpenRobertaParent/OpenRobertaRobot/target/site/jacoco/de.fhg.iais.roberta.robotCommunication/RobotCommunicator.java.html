@@ -1,0 +1,184 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>RobotCommunicator.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">OpenRobertaRobot</a> &gt; <a href="index.source.html" class="el_package">de.fhg.iais.roberta.robotCommunication</a> &gt; <span class="el_source">RobotCommunicator.java</span></div><h1>RobotCommunicator.java</h1><pre class="source lang-java linenums">package de.fhg.iais.roberta.robotCommunication;
+
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import de.fhg.iais.roberta.robotCommunication.RobotCommunicationData.State;
+import de.fhg.iais.roberta.util.Key;
+import de.fhg.iais.roberta.util.dbc.Assert;
+
+/**
+ * class, that synchronizes the communication between the bricks and the web-app. Thread-safe. See class {@link RobotCommunicationData} for further
+ * explanations.&lt;br&gt;
+ * &lt;br&gt;
+ * The class &lt;b&gt;must&lt;/b&gt; be used as a singleton. Use &lt;b&gt;GUICE&lt;/b&gt; to enforce that.
+ *
+ * @author rbudde
+ */
+public class RobotCommunicator {
+<span class="fc" id="L22">    private static final Logger LOG = LoggerFactory.getLogger(RobotCommunicator.class);</span>
+    private static final long PUSH_TIMER_INTERVALL = 2000;
+    private static final long PUSH_TIMEOUT_INTERVALL = 10000;
+
+<span class="fc" id="L26">    private final Map&lt;String, RobotCommunicationData&gt; allStates = new ConcurrentHashMap&lt;&gt;();</span>
+
+<span class="fc" id="L28">    private String subtype = &quot;&quot;; // The robot subtype, currently used for Arduino type differentiation</span>
+
+<span class="fc" id="L30">    public RobotCommunicator() {</span>
+<span class="pc" id="L31">        Runnable pushTimerThread = () -&gt; pushTimerRunner();</span>
+<span class="fc" id="L32">        new Thread(null, pushTimerThread, &quot;PushTimer&quot;).start();</span>
+<span class="fc" id="L33">        LOG.info(&quot;timer thread created&quot;);</span>
+<span class="fc" id="L34">    }</span>
+
+    /**
+     * check the new registration ticket. only used by brickWantsTokenToBeApproved(), extracted for testing
+     *
+     * @throws assertions for various types of issues
+     * @return true if the ticket has been accepted
+     */
+    public boolean addNewRegistration(RobotCommunicationData newRobotCommunicationData) {
+<span class="fc" id="L43">        String token = newRobotCommunicationData.getToken();</span>
+<span class="fc" id="L44">        String newIdentificator = newRobotCommunicationData.getRobotIdentificator();</span>
+<span class="pc bpc" id="L45" title="1 of 4 branches missed.">        Assert.isTrue((token != null) &amp;&amp; (newIdentificator != null));</span>
+<span class="fc" id="L46">        RobotCommunicationData existingRobotCommunicationData = this.allStates.get(token);</span>
+<span class="fc bfc" id="L47" title="All 2 branches covered.">        if ( existingRobotCommunicationData != null ) {</span>
+<span class="fc" id="L48">            String existingIdentificator = existingRobotCommunicationData.getRobotIdentificator();</span>
+<span class="pc bpc" id="L49" title="1 of 2 branches missed.">            if ( (existingIdentificator == null)</span>
+<span class="fc bfc" id="L50" title="All 2 branches covered.">                || !existingIdentificator.equals(newIdentificator)</span>
+<span class="pc bpc" id="L51" title="1 of 2 branches missed.">                || existingIdentificator.equals(&quot;usb&quot;)</span>
+<span class="pc bpc" id="L52" title="1 of 2 branches missed.">                || existingIdentificator.equals(&quot;unknown&quot;) ) {</span>
+<span class="fc" id="L53">                LOG.info(&quot;token already used. New token required&quot;);</span>
+<span class="fc" id="L54">                return false;</span>
+            }
+        }
+<span class="fc bfc" id="L57" title="All 2 branches covered.">        for ( String storedToken : this.allStates.keySet() ) {</span>
+<span class="fc" id="L58">            RobotCommunicationData storedState = this.allStates.get(storedToken);</span>
+<span class="pc bpc" id="L59" title="3 of 6 branches missed.">            if ( newIdentificator.equals(storedState.getRobotIdentificator()) &amp;&amp; !newIdentificator.equals(&quot;usb&quot;) &amp;&amp; !newIdentificator.equals(&quot;unknown&quot;) ) {</span>
+<span class="fc" id="L60">                LOG.error(&quot;Token approval request for robot [&quot; + newIdentificator + &quot;], but an old request is pending. Old request aborted.&quot;);</span>
+<span class="fc" id="L61">                storedState.abortPush(); // notifyAll() executed</span>
+<span class="fc" id="L62">                this.allStates.remove(storedToken);</span>
+            }
+<span class="fc" id="L64">        }</span>
+<span class="fc" id="L65">        this.allStates.put(token, newRobotCommunicationData);</span>
+<span class="fc" id="L66">        return true;</span>
+    }
+
+    public boolean brickWantsTokenToBeApproved(RobotCommunicationData registration) {
+<span class="nc bnc" id="L70" title="All 2 branches missed.">        if ( !addNewRegistration(registration) ) {</span>
+<span class="nc" id="L71">            return false;</span>
+        }
+<span class="nc" id="L73">        return registration.robotTokenAgreementRequest(); // this will freeze the request until another issues a notifyAll()</span>
+    }
+
+    /**
+     * called by the robot to inform the server about the fact, that the robot is still connected and ready to get a command pushed to it
+     *
+     * @param token identifying the robot
+     * @param batteryvoltage changes over time
+     * @param nepoExitValue the return value of the last user program, that was executed. Is 0 if no exitvalue is provided by the robot system.
+     * @return a legal command for the robot (in 99% a &quot;repeat&quot; :)
+     */
+    public String brickWaitsForAServerPush(String token, String batteryvoltage, int nepoExitValue) {
+<span class="nc" id="L85">        RobotCommunicationData state = getState(token);</span>
+<span class="nc bnc" id="L86" title="All 2 branches missed.">        if ( state != null ) {</span>
+<span class="nc" id="L87">            state.setBattery(batteryvoltage);</span>
+<span class="nc" id="L88">            state.setNepoExitValue(nepoExitValue);</span>
+<span class="nc" id="L89">            state.robotHasSentAPushRequest();</span>
+<span class="nc" id="L90">            return state.getCommand();</span>
+        } else {
+<span class="nc" id="L92">            LOG.error(&quot;a push request from a robot arrived, but no matching state was found in the server - we provoke a server error&quot;);</span>
+<span class="nc" id="L93">            return null;</span>
+        }
+    }
+
+    // TODO: when can this fail?
+    private boolean checkRobotMatchesClient(String robot, RobotCommunicationData state) {
+        //TODO: it is a hot fix for the release on 6.7.17, later we need to change the state robot name from ardu to botnroll
+<span class="nc bnc" id="L100" title="All 4 branches missed.">        if ( robot.equals(&quot;botnroll&quot;) || robot.equals(&quot;arduino&quot;) ) {</span>
+<span class="nc" id="L101">            robot = &quot;ardu&quot;;</span>
+        }
+
+<span class="nc" id="L104">        LOG.info(&quot;client:&quot; + robot + &quot;, robot: &quot; + state.getRobot() + &quot;, firmware: &quot; + state.getFirmwareName());</span>
+
+<span class="nc bnc" id="L106" title="All 2 branches missed.">        if ( state.getRobot().equals(robot) ) {</span>
+<span class="nc" id="L107">            return true;</span>
+        }
+<span class="nc bnc" id="L109" title="All 2 branches missed.">        if ( state.getFirmwareName().equals(robot) ) {</span>
+<span class="nc" id="L110">            return true;</span>
+        }
+        // TODO: workarounds for sloppy protocol definition, check for which robots they trigger and fix
+<span class="nc bnc" id="L113" title="All 2 branches missed.">        if ( (state.getRobot() + state.getFirmwareName()).equals(robot) ) {</span>
+<span class="nc" id="L114">            LOG.warn(&quot;checking robot+firmware&quot;);</span>
+<span class="nc" id="L115">            return true;</span>
+        }
+<span class="nc" id="L117">        return false;</span>
+    }
+
+    public Key aTokenAgreementWasSent(String token, String robot) {
+<span class="nc" id="L121">        RobotCommunicationData state = this.allStates.get(token);</span>
+
+<span class="nc bnc" id="L123" title="All 2 branches missed.">        if ( state == null ) {</span>
+<span class="nc" id="L124">            LOG.info(&quot;token &quot; + token + &quot; is not waiting for. Typing error of the user?&quot;);</span>
+<span class="nc" id="L125">            return Key.TOKEN_SET_ERROR_NO_ROBOT_WAITING;</span>
+<span class="nc bnc" id="L126" title="All 2 branches missed.">        } else if ( !checkRobotMatchesClient(robot, state) ) {</span>
+<span class="nc" id="L127">            LOG.info(&quot;token &quot; + token + &quot; belongs to a robot of type &quot; + state.getRobot() + &quot;/&quot; + state.getFirmwareName() + &quot;, client is set to &quot; + robot);</span>
+<span class="nc" id="L128">            return Key.TOKEN_SET_ERROR_WRONG_ROBOTTYPE;</span>
+        } else {
+            // todo: version check!
+<span class="nc" id="L131">            state.userApprovedTheRobotToken();</span>
+<span class="nc" id="L132">            LOG.info(&quot;token &quot; + token + &quot; is approved by a user.&quot;);</span>
+<span class="nc" id="L133">            return Key.TOKEN_SET_SUCCESS;</span>
+        }
+    }
+
+    public void disconnect(String token) {
+<span class="nc" id="L138">        RobotCommunicationData state = this.allStates.get(token);</span>
+<span class="nc bnc" id="L139" title="All 2 branches missed.">        if ( state == null ) {</span>
+<span class="nc" id="L140">            LOG.info(&quot;token &quot; + token + &quot; is not waited for. Ok.&quot;);</span>
+        } else {
+<span class="nc" id="L142">            state.abortPush(); // notifyAll() executed</span>
+<span class="nc" id="L143">            this.allStates.remove(token);</span>
+<span class="nc" id="L144">            LOG.info(&quot;Robot [&quot; + state.getRobotIdentificator() + &quot;] token &quot; + token + &quot; disconnected.&quot;);</span>
+        }
+<span class="nc" id="L146">    }</span>
+
+    public boolean theRunButtonWasPressed(String token, String programName) {
+<span class="nc" id="L149">        RobotCommunicationData state = getState(token);</span>
+<span class="nc" id="L150">        return state.runButtonPressed(programName);</span>
+    }
+
+    public boolean firmwareUpdateRequested(String token) {
+<span class="nc" id="L154">        RobotCommunicationData state = getState(token);</span>
+<span class="nc" id="L155">        return state.firmwareUpdate();</span>
+    }
+
+    public RobotCommunicationData getState(String token) {
+<span class="nc" id="L159">        return this.allStates.get(token);</span>
+    }
+
+    private void pushTimerRunner() {
+        while ( true ) {
+            try {
+<span class="nc" id="L165">                Thread.sleep(PUSH_TIMER_INTERVALL);</span>
+<span class="nc" id="L166">            } catch ( InterruptedException e ) { //NOSONAR : repeat the loop forever</span>
+<span class="nc" id="L167">            }</span>
+<span class="nc bnc" id="L168" title="All 2 branches missed.">            for ( RobotCommunicationData state : this.allStates.values() ) {</span>
+<span class="nc bnc" id="L169" title="All 4 branches missed.">                if ( (state.getState() == State.ROBOT_WAITING_FOR_PUSH_FROM_SERVER) &amp;&amp; (state.getElapsedMsecOfStartOfLastRequest() &gt; PUSH_TIMEOUT_INTERVALL) ) {</span>
+<span class="nc" id="L170">                    state.terminatePushAndRequestNextPush();</span>
+                }
+<span class="nc" id="L172">            }</span>
+        }
+    }
+
+    public String getSubtype() {
+<span class="nc" id="L177">        return this.subtype;</span>
+    }
+
+    public void setSubtype(String subtype) {
+<span class="nc" id="L181">        this.subtype = subtype;</span>
+<span class="nc" id="L182">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

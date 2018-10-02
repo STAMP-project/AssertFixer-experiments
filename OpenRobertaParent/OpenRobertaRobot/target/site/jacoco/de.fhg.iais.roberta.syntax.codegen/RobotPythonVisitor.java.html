@@ -1,0 +1,565 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>RobotPythonVisitor.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">OpenRobertaRobot</a> &gt; <a href="index.source.html" class="el_package">de.fhg.iais.roberta.syntax.codegen</a> &gt; <span class="el_source">RobotPythonVisitor.java</span></div><h1>RobotPythonVisitor.java</h1><pre class="source lang-java linenums">package de.fhg.iais.roberta.syntax.codegen;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Stream;
+
+import org.slf4j.LoggerFactory;
+
+import de.fhg.iais.roberta.factory.AbstractCompilerWorkflow;
+import de.fhg.iais.roberta.inter.mode.general.IMode;
+import de.fhg.iais.roberta.syntax.Phrase;
+import de.fhg.iais.roberta.syntax.lang.expr.Binary;
+import de.fhg.iais.roberta.syntax.lang.expr.BoolConst;
+import de.fhg.iais.roberta.syntax.lang.expr.EmptyExpr;
+import de.fhg.iais.roberta.syntax.lang.expr.EmptyList;
+import de.fhg.iais.roberta.syntax.lang.expr.Expr;
+import de.fhg.iais.roberta.syntax.lang.expr.ExprList;
+import de.fhg.iais.roberta.syntax.lang.expr.MathConst;
+import de.fhg.iais.roberta.syntax.lang.expr.NullConst;
+import de.fhg.iais.roberta.syntax.lang.expr.NumConst;
+import de.fhg.iais.roberta.syntax.lang.expr.Unary;
+import de.fhg.iais.roberta.syntax.lang.expr.VarDeclaration;
+import de.fhg.iais.roberta.syntax.lang.functions.MathPowerFunct;
+import de.fhg.iais.roberta.syntax.lang.functions.MathSingleFunct;
+import de.fhg.iais.roberta.syntax.lang.methods.MethodIfReturn;
+import de.fhg.iais.roberta.syntax.lang.methods.MethodReturn;
+import de.fhg.iais.roberta.syntax.lang.methods.MethodVoid;
+import de.fhg.iais.roberta.syntax.lang.stmt.ExprStmt;
+import de.fhg.iais.roberta.syntax.lang.stmt.IfStmt;
+import de.fhg.iais.roberta.syntax.lang.stmt.RepeatStmt;
+import de.fhg.iais.roberta.syntax.lang.stmt.StmtFlowCon;
+import de.fhg.iais.roberta.syntax.lang.stmt.StmtFlowCon.Flow;
+import de.fhg.iais.roberta.syntax.lang.stmt.StmtList;
+import de.fhg.iais.roberta.syntax.lang.stmt.StmtTextComment;
+import de.fhg.iais.roberta.typecheck.BlocklyType;
+import de.fhg.iais.roberta.util.dbc.DbcException;
+import de.fhg.iais.roberta.visitor.AstVisitor;
+
+/**
+ * This class is implementing {@link AstVisitor}. All methods are implemented and they append a human-readable Python code representation of a phrase to a
+ * StringBuilder. &lt;b&gt;This representation is correct Python code.&lt;/b&gt; &lt;br&gt;
+ */
+public abstract class RobotPythonVisitor extends CommonLanguageVisitor {
+    protected Set&lt;String&gt; usedGlobalVarInFunctions;
+<span class="nc" id="L48">    protected boolean isProgramEmpty = false;</span>
+<span class="nc" id="L49">    private static final ch.qos.logback.classic.Logger LOG = (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(AbstractCompilerWorkflow.class);</span>
+
+    /**
+     * initialize the Python code generator visitor.
+     *
+     * @param programPhrases to generate the code from
+     * @param indentation to start with. Will be ince/decr depending on block structure
+     */
+    protected RobotPythonVisitor(ArrayList&lt;ArrayList&lt;Phrase&lt;Void&gt;&gt;&gt; programPhrases, int indentation) {
+<span class="nc" id="L58">        super(programPhrases, indentation);</span>
+<span class="nc" id="L59">        LOG.setLevel(ch.qos.logback.classic.Level.TRACE);</span>
+<span class="nc" id="L60">    }</span>
+
+    @Override
+    public Void visitNumConst(NumConst&lt;Void&gt; numConst) {
+        // TODO Do we have always to cast to float
+<span class="nc bnc" id="L65" title="All 2 branches missed.">        if ( isInteger(numConst.getValue()) ) {</span>
+<span class="nc" id="L66">            super.visitNumConst(numConst);</span>
+        } else {
+<span class="nc" id="L68">            this.sb.append(&quot;float(&quot;);</span>
+<span class="nc" id="L69">            super.visitNumConst(numConst);</span>
+<span class="nc" id="L70">            this.sb.append(&quot;)&quot;);</span>
+        }
+<span class="nc" id="L72">        return null;</span>
+    }
+
+    @Override
+    public Void visitBoolConst(BoolConst&lt;Void&gt; boolConst) {
+<span class="nc bnc" id="L77" title="All 2 branches missed.">        this.sb.append(boolConst.isValue() ? &quot;True&quot; : &quot;False&quot;);</span>
+<span class="nc" id="L78">        return null;</span>
+    }
+
+    @Override
+    public Void visitNullConst(NullConst&lt;Void&gt; nullConst) {
+<span class="nc" id="L83">        this.sb.append(&quot;None&quot;);</span>
+<span class="nc" id="L84">        return null;</span>
+    }
+
+    @Override
+    public Void visitMathConst(MathConst&lt;Void&gt; mathConst) {
+<span class="nc bnc" id="L89" title="All 7 branches missed.">        switch ( mathConst.getMathConst() ) {</span>
+            case PI:
+<span class="nc" id="L91">                this.sb.append(&quot;math.pi&quot;);</span>
+<span class="nc" id="L92">                break;</span>
+            case E:
+<span class="nc" id="L94">                this.sb.append(&quot;math.e&quot;);</span>
+<span class="nc" id="L95">                break;</span>
+            case GOLDEN_RATIO:
+<span class="nc" id="L97">                this.sb.append(&quot;BlocklyMethods.GOLDEN_RATIO&quot;);</span>
+<span class="nc" id="L98">                break;</span>
+            case SQRT2:
+<span class="nc" id="L100">                this.sb.append(&quot;math.sqrt(2)&quot;);</span>
+<span class="nc" id="L101">                break;</span>
+            case SQRT1_2:
+<span class="nc" id="L103">                this.sb.append(&quot;math.sqrt(1.0/2.0)&quot;);</span>
+<span class="nc" id="L104">                break;</span>
+            case INFINITY:
+<span class="nc" id="L106">                this.sb.append(&quot;float('inf')&quot;);</span>
+<span class="nc" id="L107">                break;</span>
+            default:
+                break;
+        }
+<span class="nc" id="L111">        return null;</span>
+    }
+
+    @Override
+    public Void visitVarDeclaration(VarDeclaration&lt;Void&gt; var) {
+<span class="nc" id="L116">        this.usedGlobalVarInFunctions.add(var.getName());</span>
+<span class="nc" id="L117">        this.sb.append(var.getName());</span>
+<span class="nc" id="L118">        this.sb.append(&quot; = &quot;);</span>
+<span class="nc bnc" id="L119" title="All 2 branches missed.">        if ( !var.getValue().getKind().hasName(&quot;EMPTY_EXPR&quot;) ) {</span>
+<span class="nc bnc" id="L120" title="All 2 branches missed.">            if ( var.getValue().getKind().hasName(&quot;EXPR_LIST&quot;) ) {</span>
+<span class="nc" id="L121">                ExprList&lt;Void&gt; list = (ExprList&lt;Void&gt;) var.getValue();</span>
+<span class="nc bnc" id="L122" title="All 2 branches missed.">                if ( list.get().size() == 2 ) {</span>
+<span class="nc" id="L123">                    list.get().get(1).visit(this);</span>
+                } else {
+<span class="nc" id="L125">                    list.get().get(0).visit(this);</span>
+                }
+<span class="nc" id="L127">            } else {</span>
+<span class="nc" id="L128">                var.getValue().visit(this);</span>
+            }
+        } else {
+<span class="nc" id="L131">            this.sb.append(&quot;None&quot;);</span>
+        }
+<span class="nc" id="L133">        return null;</span>
+    }
+
+    @Override
+    public Void visitBinary(Binary&lt;Void&gt; binary) {
+        try {
+<span class="nc" id="L139">            VarDeclaration&lt;Void&gt; variablePart = (VarDeclaration&lt;Void&gt;) binary.getLeft();</span>
+<span class="nc" id="L140">            this.sb.append(variablePart.getName());</span>
+<span class="nc" id="L141">        } catch ( ClassCastException e ) {</span>
+<span class="nc" id="L142">            generateSubExpr(this.sb, false, binary.getLeft(), binary);</span>
+<span class="nc" id="L143">        }</span>
+        //if ( variablePart.getValue().getClass().equals(EmptyExpr.class) ) {
+<span class="nc" id="L145">        Binary.Op op = binary.getOp();</span>
+<span class="nc" id="L146">        String sym = getBinaryOperatorSymbol(op);</span>
+<span class="nc" id="L147">        this.sb.append(' ').append(sym).append(' ');</span>
+<span class="nc" id="L148">        generateCodeRightExpression(binary, op);</span>
+<span class="nc" id="L149">        return null;</span>
+    }
+
+    @Override
+    public Void visitEmptyExpr(EmptyExpr&lt;Void&gt; emptyExpr) {
+<span class="nc bnc" id="L154" title="All 8 branches missed.">        switch ( emptyExpr.getDefVal() ) {</span>
+            case STRING:
+<span class="nc" id="L156">                this.sb.append(&quot;\&quot;\&quot;&quot;);</span>
+<span class="nc" id="L157">                break;</span>
+            case BOOLEAN:
+<span class="nc" id="L159">                this.sb.append(&quot;True&quot;);</span>
+<span class="nc" id="L160">                break;</span>
+            case NUMBER_INT:
+<span class="nc" id="L162">                this.sb.append(&quot;0&quot;);</span>
+<span class="nc" id="L163">                break;</span>
+            case NUMBER:
+<span class="nc" id="L165">                this.sb.append(&quot;0.0&quot;);</span>
+<span class="nc" id="L166">                break;</span>
+            case CAPTURED_TYPE:
+<span class="nc" id="L168">                this.sb.append(&quot;None&quot;);</span>
+<span class="nc" id="L169">                break;</span>
+            case ARRAY:
+<span class="nc" id="L171">                this.sb.append(&quot;None&quot;);</span>
+<span class="nc" id="L172">                break;</span>
+            case NULL:
+<span class="nc" id="L174">                break;</span>
+            default:
+<span class="nc" id="L176">                this.sb.append(&quot;[[EmptyExpr [defVal=&quot; + emptyExpr.getDefVal() + &quot;]]]&quot;);</span>
+                break;
+        }
+<span class="nc" id="L179">        return null;</span>
+    }
+
+    @Override
+    public Void visitRepeatStmt(RepeatStmt&lt;Void&gt; repeatStmt) {
+<span class="nc bnc" id="L184" title="All 2 branches missed.">        boolean isWaitStmt = repeatStmt.getMode() == RepeatStmt.Mode.WAIT;</span>
+<span class="nc bnc" id="L185" title="All 5 branches missed.">        switch ( repeatStmt.getMode() ) {</span>
+            case UNTIL:
+            case WHILE:
+            case FOREVER:
+<span class="nc" id="L189">                generateCodeFromStmtCondition(&quot;while&quot;, repeatStmt.getExpr());</span>
+<span class="nc" id="L190">                appendTry();</span>
+<span class="nc" id="L191">                break;</span>
+            case TIMES:
+            case FOR:
+<span class="nc" id="L194">                generateCodeFromStmtConditionFor(&quot;for&quot;, repeatStmt.getExpr());</span>
+<span class="nc" id="L195">                appendTry();</span>
+<span class="nc" id="L196">                break;</span>
+            case WAIT:
+<span class="nc" id="L198">                generateCodeFromStmtCondition(&quot;if&quot;, repeatStmt.getExpr());</span>
+<span class="nc" id="L199">                break;</span>
+            case FOR_EACH:
+<span class="nc" id="L201">                generateCodeFromStmtCondition(&quot;for&quot;, repeatStmt.getExpr());</span>
+<span class="nc" id="L202">                appendTry();</span>
+<span class="nc" id="L203">                break;</span>
+            default:
+<span class="nc" id="L205">                throw new DbcException(&quot;Invalide Repeat Statement!&quot;);</span>
+        }
+<span class="nc" id="L207">        incrIndentation();</span>
+<span class="nc" id="L208">        appendPassIfEmptyBody(repeatStmt);</span>
+<span class="nc" id="L209">        repeatStmt.getList().visit(this);</span>
+<span class="nc bnc" id="L210" title="All 2 branches missed.">        if ( !isWaitStmt ) {</span>
+<span class="nc" id="L211">            appendExceptionHandling();</span>
+        } else {
+<span class="nc" id="L213">            appendBreakStmt(repeatStmt);</span>
+        }
+<span class="nc" id="L215">        decrIndentation();</span>
+<span class="nc" id="L216">        return null;</span>
+    }
+
+    @Override
+    public Void visitStmtFlowCon(StmtFlowCon&lt;Void&gt; stmtFlowCon) {
+<span class="nc bnc" id="L221" title="All 2 branches missed.">        if ( this.loopsLabels.get(this.currenLoop.getLast()) != null ) {</span>
+<span class="nc bnc" id="L222" title="All 2 branches missed.">            if ( this.loopsLabels.get(this.currenLoop.getLast()) ) {</span>
+<span class="nc bnc" id="L223" title="All 2 branches missed.">                this.sb.append(&quot;raise &quot; + (stmtFlowCon.getFlow() == Flow.BREAK ? &quot;BreakOutOfALoop&quot; : &quot;ContinueLoop&quot;));</span>
+<span class="nc" id="L224">                return null;</span>
+            }
+        }
+<span class="nc" id="L227">        this.sb.append(stmtFlowCon.getFlow().toString().toLowerCase());</span>
+<span class="nc" id="L228">        return null;</span>
+    }
+
+    @Override
+    public Void visitEmptyList(EmptyList&lt;Void&gt; emptyList) {
+<span class="nc" id="L233">        this.sb.append(&quot;[]&quot;);</span>
+<span class="nc" id="L234">        return null;</span>
+    }
+
+    @Override
+    public Void visitMathPowerFunct(MathPowerFunct&lt;Void&gt; mathPowerFunct) {
+<span class="nc" id="L239">        this.sb.append(&quot;math.pow(&quot;);</span>
+<span class="nc" id="L240">        super.visitMathPowerFunct(mathPowerFunct);</span>
+<span class="nc" id="L241">        return null;</span>
+    }
+
+    @Override
+    public Void visitMathSingleFunct(MathSingleFunct&lt;Void&gt; mathSingleFunct) {
+<span class="nc bnc" id="L246" title="All 16 branches missed.">        switch ( mathSingleFunct.getFunctName() ) {</span>
+            case ROOT:
+<span class="nc" id="L248">                this.sb.append(&quot;math.sqrt(&quot;);</span>
+<span class="nc" id="L249">                break;</span>
+            case ABS:
+<span class="nc" id="L251">                this.sb.append(&quot;math.fabs(&quot;);</span>
+<span class="nc" id="L252">                break;</span>
+            case LN:
+<span class="nc" id="L254">                this.sb.append(&quot;math.log(&quot;);</span>
+<span class="nc" id="L255">                break;</span>
+            case LOG10:
+<span class="nc" id="L257">                this.sb.append(&quot;math.log10(&quot;);</span>
+<span class="nc" id="L258">                break;</span>
+            case EXP:
+<span class="nc" id="L260">                this.sb.append(&quot;math.exp(&quot;);</span>
+<span class="nc" id="L261">                break;</span>
+            case POW10:
+<span class="nc" id="L263">                this.sb.append(&quot;math.pow(10, &quot;);</span>
+<span class="nc" id="L264">                break;</span>
+            case SIN:
+<span class="nc" id="L266">                this.sb.append(&quot;math.sin(&quot;);</span>
+<span class="nc" id="L267">                break;</span>
+            case COS:
+<span class="nc" id="L269">                this.sb.append(&quot;math.cos(&quot;);</span>
+<span class="nc" id="L270">                break;</span>
+            case TAN:
+<span class="nc" id="L272">                this.sb.append(&quot;math.tan(&quot;);</span>
+<span class="nc" id="L273">                break;</span>
+            case ASIN:
+<span class="nc" id="L275">                this.sb.append(&quot;math.asin(&quot;);</span>
+<span class="nc" id="L276">                break;</span>
+            case ATAN:
+<span class="nc" id="L278">                this.sb.append(&quot;math.atan(&quot;);</span>
+<span class="nc" id="L279">                break;</span>
+            case ACOS:
+<span class="nc" id="L281">                this.sb.append(&quot;math.acos(&quot;);</span>
+<span class="nc" id="L282">                break;</span>
+            case ROUND:
+<span class="nc" id="L284">                this.sb.append(&quot;round(&quot;);</span>
+<span class="nc" id="L285">                break;</span>
+            case ROUNDUP:
+<span class="nc" id="L287">                this.sb.append(&quot;math.ceil(&quot;);</span>
+<span class="nc" id="L288">                break;</span>
+            case ROUNDDOWN:
+<span class="nc" id="L290">                this.sb.append(&quot;math.floor(&quot;);</span>
+<span class="nc" id="L291">                break;</span>
+            default:
+                break;
+        }
+<span class="nc" id="L295">        mathSingleFunct.getParam().get(0).visit(this);</span>
+<span class="nc" id="L296">        this.sb.append(&quot;)&quot;);</span>
+
+<span class="nc" id="L298">        return null;</span>
+    }
+
+    @Override
+    public Void visitMethodVoid(MethodVoid&lt;Void&gt; methodVoid) {
+<span class="nc" id="L303">        this.sb.append(&quot;\ndef &quot;).append(methodVoid.getMethodName()).append('(');</span>
+<span class="nc" id="L304">        List&lt;String&gt; paramList = new ArrayList&lt;&gt;();</span>
+<span class="nc bnc" id="L305" title="All 2 branches missed.">        for ( Expr&lt;Void&gt; l : methodVoid.getParameters().get() ) {</span>
+<span class="nc" id="L306">            paramList.add(((VarDeclaration&lt;Void&gt;) l).getName());</span>
+<span class="nc" id="L307">        }</span>
+<span class="nc" id="L308">        this.sb.append(String.join(&quot;, &quot;, paramList));</span>
+<span class="nc" id="L309">        this.sb.append(&quot;):&quot;);</span>
+<span class="nc" id="L310">        boolean isMethodBodyEmpty = methodVoid.getBody().get().isEmpty();</span>
+<span class="nc bnc" id="L311" title="All 2 branches missed.">        if ( isMethodBodyEmpty ) {</span>
+<span class="nc" id="L312">            nlIndent();</span>
+<span class="nc" id="L313">            this.sb.append(&quot;pass&quot;);</span>
+        } else {
+<span class="nc bnc" id="L315" title="All 2 branches missed.">            if ( !this.usedGlobalVarInFunctions.isEmpty() ) {</span>
+<span class="nc" id="L316">                nlIndent();</span>
+<span class="nc" id="L317">                this.sb.append(&quot;global &quot; + String.join(&quot;, &quot;, this.usedGlobalVarInFunctions));</span>
+            }
+<span class="nc" id="L319">            methodVoid.getBody().visit(this);</span>
+        }
+<span class="nc" id="L321">        return null;</span>
+    }
+
+    @Override
+    public Void visitMethodReturn(MethodReturn&lt;Void&gt; methodReturn) {
+<span class="nc" id="L326">        this.sb.append(&quot;\ndef &quot;).append(methodReturn.getMethodName()).append('(');</span>
+<span class="nc" id="L327">        List&lt;String&gt; paramList = new ArrayList&lt;&gt;();</span>
+<span class="nc bnc" id="L328" title="All 2 branches missed.">        for ( Expr&lt;Void&gt; l : methodReturn.getParameters().get() ) {</span>
+<span class="nc" id="L329">            paramList.add(((VarDeclaration&lt;Void&gt;) l).getName());</span>
+<span class="nc" id="L330">        }</span>
+<span class="nc" id="L331">        this.sb.append(String.join(&quot;, &quot;, paramList));</span>
+<span class="nc" id="L332">        this.sb.append(&quot;):&quot;);</span>
+<span class="nc" id="L333">        boolean isMethodBodyEmpty = methodReturn.getBody().get().isEmpty();</span>
+<span class="nc bnc" id="L334" title="All 2 branches missed.">        if ( isMethodBodyEmpty ) {</span>
+<span class="nc" id="L335">            nlIndent();</span>
+<span class="nc" id="L336">            this.sb.append(&quot;pass&quot;);</span>
+        } else {
+<span class="nc bnc" id="L338" title="All 2 branches missed.">            if ( !this.usedGlobalVarInFunctions.isEmpty() ) {</span>
+<span class="nc" id="L339">                nlIndent();</span>
+<span class="nc" id="L340">                this.sb.append(&quot;global &quot; + String.join(&quot;, &quot;, this.usedGlobalVarInFunctions));</span>
+            }
+<span class="nc" id="L342">            methodReturn.getBody().visit(this);</span>
+<span class="nc" id="L343">            nlIndent();</span>
+<span class="nc" id="L344">            this.sb.append(&quot;return &quot;);</span>
+<span class="nc" id="L345">            methodReturn.getReturnValue().visit(this);</span>
+        }
+<span class="nc" id="L347">        return null;</span>
+    }
+
+    @Override
+    public Void visitMethodIfReturn(MethodIfReturn&lt;Void&gt; methodIfReturn) {
+<span class="nc" id="L352">        this.sb.append(&quot;if &quot;);</span>
+<span class="nc" id="L353">        methodIfReturn.getCondition().visit(this);</span>
+<span class="nc bnc" id="L354" title="All 2 branches missed.">        if ( !methodIfReturn.getReturnValue().getKind().hasName(&quot;EMPTY_EXPR&quot;) ) {</span>
+<span class="nc" id="L355">            this.sb.append(&quot;: return &quot;);</span>
+<span class="nc" id="L356">            methodIfReturn.getReturnValue().visit(this);</span>
+        } else {
+<span class="nc" id="L358">            this.sb.append(&quot;: return None&quot;);</span>
+        }
+<span class="nc" id="L360">        return null;</span>
+    }
+
+    @Override
+    public String getEnumCode(IMode value) {
+<span class="nc" id="L365">        return &quot;'&quot; + value.toString().toLowerCase() + &quot;'&quot;;</span>
+    }
+
+    @Override
+    protected void generateCodeFromTernary(IfStmt&lt;Void&gt; ifStmt) {
+<span class="nc" id="L370">        ((ExprStmt&lt;Void&gt;) ifStmt.getThenList().get(0).get().get(0)).getExpr().visit(this);</span>
+<span class="nc" id="L371">        this.sb.append(whitespace() + &quot;if&quot; + whitespace() + &quot;(&quot; + whitespace());</span>
+<span class="nc" id="L372">        ifStmt.getExpr().get(0).visit(this);</span>
+<span class="nc" id="L373">        this.sb.append(whitespace() + &quot;)&quot; + whitespace() + &quot;else&quot; + whitespace());</span>
+<span class="nc" id="L374">        ((ExprStmt&lt;Void&gt;) ifStmt.getElseList().get().get(0)).getExpr().visit(this);</span>
+<span class="nc" id="L375">    }</span>
+
+    @Override
+    protected void generateCodeFromIfElse(IfStmt&lt;Void&gt; ifStmt) {
+<span class="nc" id="L379">        int stmtSize = ifStmt.getExpr().size();</span>
+<span class="nc bnc" id="L380" title="All 2 branches missed.">        for ( int i = 0; i &lt; stmtSize; i++ ) {</span>
+<span class="nc bnc" id="L381" title="All 2 branches missed.">            if ( i == 0 ) {</span>
+<span class="nc" id="L382">                generateCodeFromStmtCondition(&quot;if&quot;, ifStmt.getExpr().get(i));</span>
+            } else {
+<span class="nc" id="L384">                nlIndent();</span>
+<span class="nc" id="L385">                generateCodeFromStmtCondition(&quot;elif&quot;, ifStmt.getExpr().get(i));</span>
+            }
+<span class="nc" id="L387">            incrIndentation();</span>
+<span class="nc" id="L388">            StmtList&lt;Void&gt; then = ifStmt.getThenList().get(i);</span>
+<span class="nc bnc" id="L389" title="All 2 branches missed.">            if ( then.get().isEmpty() ) {</span>
+<span class="nc" id="L390">                nlIndent();</span>
+<span class="nc" id="L391">                this.sb.append(&quot;pass&quot;);</span>
+            } else {
+<span class="nc" id="L393">                then.visit(this);</span>
+            }
+<span class="nc" id="L395">            decrIndentation();</span>
+        }
+<span class="nc" id="L397">    }</span>
+
+    @Override
+    protected void generateCodeFromElse(IfStmt&lt;Void&gt; ifStmt) {
+<span class="nc bnc" id="L401" title="All 2 branches missed.">        if ( !ifStmt.getElseList().get().isEmpty() ) {</span>
+<span class="nc" id="L402">            nlIndent();</span>
+<span class="nc" id="L403">            this.sb.append(&quot;else:&quot;);</span>
+<span class="nc" id="L404">            incrIndentation();</span>
+<span class="nc" id="L405">            ifStmt.getElseList().visit(this);</span>
+<span class="nc" id="L406">            decrIndentation();</span>
+        }
+<span class="nc" id="L408">    }</span>
+
+    @Override
+    protected String getLanguageVarTypeFromBlocklyType(BlocklyType type) {
+<span class="nc" id="L412">        return &quot;&quot;;</span>
+    }
+
+    protected void addPassIfProgramIsEmpty() {
+<span class="nc bnc" id="L416" title="All 2 branches missed.">        if ( this.isProgramEmpty ) {</span>
+<span class="nc" id="L417">            nlIndent();</span>
+<span class="nc" id="L418">            this.sb.append(&quot;pass&quot;);</span>
+        }
+<span class="nc" id="L420">    }</span>
+
+    private void generateCodeRightExpression(Binary&lt;Void&gt; binary, Binary.Op op) {
+<span class="nc bnc" id="L423" title="All 3 branches missed.">        switch ( op ) {</span>
+            case TEXT_APPEND:
+<span class="nc" id="L425">                this.sb.append(&quot;str(&quot;);</span>
+<span class="nc" id="L426">                generateSubExpr(this.sb, false, binary.getRight(), binary);</span>
+<span class="nc" id="L427">                this.sb.append(&quot;)&quot;);</span>
+<span class="nc" id="L428">                break;</span>
+            case DIVIDE:
+<span class="nc" id="L430">                this.sb.append(&quot;float(&quot;);</span>
+<span class="nc" id="L431">                generateSubExpr(this.sb, parenthesesCheck(binary), binary.getRight(), binary);</span>
+<span class="nc" id="L432">                this.sb.append(&quot;)&quot;);</span>
+<span class="nc" id="L433">                break;</span>
+            default:
+<span class="nc" id="L435">                generateSubExpr(this.sb, parenthesesCheck(binary), binary.getRight(), binary);</span>
+                break;
+        }
+<span class="nc" id="L438">    }</span>
+
+    private void generateCodeFromStmtCondition(String stmtType, Expr&lt;Void&gt; expr) {
+<span class="nc" id="L441">        this.sb.append(stmtType).append(whitespace());</span>
+<span class="nc" id="L442">        expr.visit(this);</span>
+<span class="nc" id="L443">        this.sb.append(&quot;:&quot;);</span>
+<span class="nc" id="L444">    }</span>
+
+    private void generateCodeFromStmtConditionFor(String stmtType, Expr&lt;Void&gt; expr) {
+<span class="nc" id="L447">        this.sb.append(stmtType).append(whitespace());</span>
+<span class="nc" id="L448">        ExprList&lt;Void&gt; expressions = (ExprList&lt;Void&gt;) expr;</span>
+<span class="nc" id="L449">        expressions.get().get(0).visit(this);</span>
+<span class="nc" id="L450">        this.sb.append(whitespace() + &quot;in range(int(&quot;);</span>
+<span class="nc" id="L451">        expressions.get().get(1).visit(this);</span>
+<span class="nc" id="L452">        this.sb.append(&quot;),&quot; + whitespace() + &quot;int(&quot;);</span>
+<span class="nc" id="L453">        expressions.get().get(2).visit(this);</span>
+<span class="nc" id="L454">        this.sb.append(&quot;),&quot; + whitespace() + &quot;int(&quot;);</span>
+<span class="nc" id="L455">        expressions.get().get(3).visit(this);</span>
+<span class="nc" id="L456">        this.sb.append(&quot;)):&quot;);</span>
+<span class="nc" id="L457">    }</span>
+
+    private void appendBreakStmt(RepeatStmt&lt;Void&gt; repeatStmt) {
+<span class="nc" id="L460">        nlIndent();</span>
+<span class="nc" id="L461">        this.sb.append(&quot;break&quot;);</span>
+<span class="nc" id="L462">    }</span>
+
+    private void appendTry() {
+<span class="nc" id="L465">        increaseLoopCounter();</span>
+
+<span class="nc bnc" id="L467" title="All 2 branches missed.">        if ( this.loopsLabels.get(this.currenLoop.getLast()) ) {</span>
+<span class="nc" id="L468">            incrIndentation();</span>
+<span class="nc" id="L469">            nlIndent();</span>
+<span class="nc" id="L470">            this.sb.append(&quot;try:&quot;);</span>
+        }
+<span class="nc" id="L472">    }</span>
+
+    private void appendExceptionHandling() {
+<span class="nc bnc" id="L475" title="All 2 branches missed.">        if ( this.loopsLabels.get(this.currenLoop.getLast()) ) {</span>
+<span class="nc" id="L476">            decrIndentation();</span>
+<span class="nc" id="L477">            nlIndent();</span>
+<span class="nc" id="L478">            this.sb.append(&quot;except BreakOutOfALoop:&quot;);</span>
+<span class="nc" id="L479">            incrIndentation();</span>
+<span class="nc" id="L480">            nlIndent();</span>
+<span class="nc" id="L481">            this.sb.append(&quot;break&quot;);</span>
+<span class="nc" id="L482">            decrIndentation();</span>
+<span class="nc" id="L483">            nlIndent();</span>
+<span class="nc" id="L484">            this.sb.append(&quot;except ContinueLoop:&quot;);</span>
+<span class="nc" id="L485">            incrIndentation();</span>
+<span class="nc" id="L486">            nlIndent();</span>
+<span class="nc" id="L487">            this.sb.append(&quot;continue&quot;);</span>
+<span class="nc" id="L488">            decrIndentation();</span>
+        }
+<span class="nc" id="L490">        this.currenLoop.removeLast();</span>
+<span class="nc" id="L491">    }</span>
+
+    private void appendPassIfEmptyBody(RepeatStmt&lt;Void&gt; repeatStmt) {
+<span class="nc bnc" id="L494" title="All 2 branches missed.">        if ( repeatStmt.getList().get().isEmpty() ) {</span>
+<span class="nc bnc" id="L495" title="All 2 branches missed.">            if ( repeatStmt.getMode() != RepeatStmt.Mode.WAIT ) {</span>
+<span class="nc" id="L496">                nlIndent();</span>
+<span class="nc" id="L497">                this.sb.append(&quot;pass&quot;);</span>
+            }
+        }
+<span class="nc" id="L500">    }</span>
+
+    @Override
+    protected String getBinaryOperatorSymbol(Binary.Op op) {
+<span class="nc" id="L504">        return binaryOpSymbols().get(op);</span>
+    }
+
+    @Override
+    protected String getUnaryOperatorSymbol(Unary.Op op) {
+<span class="nc" id="L509">        return unaryOpSymbols().get(op);</span>
+    }
+
+    protected static Map&lt;Binary.Op, String&gt; binaryOpSymbols() {
+<span class="nc" id="L513">        return Collections.unmodifiableMap(</span>
+            Stream
+<span class="nc" id="L515">                .of(</span>
+
+<span class="nc" id="L517">                    entry(Binary.Op.ADD, &quot;+&quot;),</span>
+<span class="nc" id="L518">                    entry(Binary.Op.MINUS, &quot;-&quot;),</span>
+<span class="nc" id="L519">                    entry(Binary.Op.MULTIPLY, &quot;*&quot;),</span>
+<span class="nc" id="L520">                    entry(Binary.Op.DIVIDE, &quot;/&quot;),</span>
+<span class="nc" id="L521">                    entry(Binary.Op.MOD, &quot;%&quot;),</span>
+<span class="nc" id="L522">                    entry(Binary.Op.EQ, &quot;==&quot;),</span>
+<span class="nc" id="L523">                    entry(Binary.Op.NEQ, &quot;!=&quot;),</span>
+<span class="nc" id="L524">                    entry(Binary.Op.LT, &quot;&lt;&quot;),</span>
+<span class="nc" id="L525">                    entry(Binary.Op.LTE, &quot;&lt;=&quot;),</span>
+<span class="nc" id="L526">                    entry(Binary.Op.GT, &quot;&gt;&quot;),</span>
+<span class="nc" id="L527">                    entry(Binary.Op.GTE, &quot;&gt;=&quot;),</span>
+<span class="nc" id="L528">                    entry(Binary.Op.AND, &quot;and&quot;),</span>
+<span class="nc" id="L529">                    entry(Binary.Op.OR, &quot;or&quot;),</span>
+<span class="nc" id="L530">                    entry(Binary.Op.MATH_CHANGE, &quot;+=&quot;),</span>
+<span class="nc" id="L531">                    entry(Binary.Op.TEXT_APPEND, &quot;+=&quot;),</span>
+<span class="nc" id="L532">                    entry(Binary.Op.IN, &quot;in&quot;),</span>
+<span class="nc" id="L533">                    entry(Binary.Op.ASSIGNMENT, &quot;=&quot;),</span>
+<span class="nc" id="L534">                    entry(Binary.Op.ADD_ASSIGNMENT, &quot;+=&quot;),</span>
+<span class="nc" id="L535">                    entry(Binary.Op.MINUS_ASSIGNMENT, &quot;-=&quot;),</span>
+<span class="nc" id="L536">                    entry(Binary.Op.MULTIPLY_ASSIGNMENT, &quot;*=&quot;),</span>
+<span class="nc" id="L537">                    entry(Binary.Op.DIVIDE_ASSIGNMENT, &quot;/=&quot;),</span>
+<span class="nc" id="L538">                    entry(Binary.Op.MOD_ASSIGNMENT, &quot;%=&quot;)</span>
+
+                )
+<span class="nc" id="L541">                .collect(entriesToMap()));</span>
+    }
+
+    protected static Map&lt;Unary.Op, String&gt; unaryOpSymbols() {
+<span class="nc" id="L545">        return Collections.unmodifiableMap(</span>
+            Stream
+<span class="nc" id="L547">                .of(</span>
+
+<span class="nc" id="L549">                    entry(Unary.Op.PLUS, &quot;+&quot;),</span>
+<span class="nc" id="L550">                    entry(Unary.Op.NEG, &quot;-&quot;),</span>
+<span class="nc" id="L551">                    entry(Unary.Op.NOT, &quot;not&quot;),</span>
+<span class="nc" id="L552">                    entry(Unary.Op.POSTFIX_INCREMENTS, &quot;++&quot;),</span>
+<span class="nc" id="L553">                    entry(Unary.Op.PREFIX_INCREMENTS, &quot;++&quot;)</span>
+
+                )
+<span class="nc" id="L556">                .collect(entriesToMap()));</span>
+    }
+
+    @Override
+    public Void visitStmtTextComment(StmtTextComment&lt;Void&gt; stmtTextComment) {
+<span class="nc" id="L561">        this.sb.append(&quot;# &quot; + stmtTextComment.getTextComment());</span>
+<span class="nc" id="L562">        return null;</span>
+    };
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

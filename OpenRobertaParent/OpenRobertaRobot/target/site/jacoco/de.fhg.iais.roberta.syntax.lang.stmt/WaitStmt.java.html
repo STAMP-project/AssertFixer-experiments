@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>WaitStmt.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">OpenRobertaRobot</a> &gt; <a href="index.source.html" class="el_package">de.fhg.iais.roberta.syntax.lang.stmt</a> &gt; <span class="el_source">WaitStmt.java</span></div><h1>WaitStmt.java</h1><pre class="source lang-java linenums">package de.fhg.iais.roberta.syntax.lang.stmt;
+
+import java.math.BigInteger;
+import java.util.ArrayList;
+import java.util.List;
+
+import de.fhg.iais.roberta.blockly.generated.Block;
+import de.fhg.iais.roberta.blockly.generated.Mutation;
+import de.fhg.iais.roberta.blockly.generated.Repetitions;
+import de.fhg.iais.roberta.blockly.generated.Statement;
+import de.fhg.iais.roberta.blockly.generated.Value;
+import de.fhg.iais.roberta.syntax.BlockTypeContainer;
+import de.fhg.iais.roberta.syntax.BlocklyBlockProperties;
+import de.fhg.iais.roberta.syntax.BlocklyComment;
+import de.fhg.iais.roberta.syntax.BlocklyConstants;
+import de.fhg.iais.roberta.syntax.Phrase;
+import de.fhg.iais.roberta.syntax.lang.stmt.RepeatStmt.Mode;
+import de.fhg.iais.roberta.transformer.ExprParam;
+import de.fhg.iais.roberta.transformer.Jaxb2AstTransformer;
+import de.fhg.iais.roberta.transformer.JaxbTransformerHelper;
+import de.fhg.iais.roberta.typecheck.BlocklyType;
+import de.fhg.iais.roberta.util.dbc.Assert;
+import de.fhg.iais.roberta.visitor.AstVisitor;
+import de.fhg.iais.roberta.visitor.lang.AstLanguageVisitor;
+
+/**
+ * This class represents the &lt;b&gt;robControls_wait_for&lt;/b&gt; and &lt;b&gt;robControls_wait&lt;/b&gt; blocks from Blockly into the AST (abstract syntax tree). Object from this
+ * class will generate if statements nested into repeat statement.&lt;br/&gt;
+ * &lt;br&gt;
+ * See {@link #getMode()} for the kind of the repeat statements.
+ */
+public class WaitStmt&lt;V&gt; extends Stmt&lt;V&gt; {
+    private final StmtList&lt;V&gt; statements;
+
+    private WaitStmt(StmtList&lt;V&gt; statements, BlocklyBlockProperties properties, BlocklyComment comment) {
+<span class="fc" id="L36">        super(BlockTypeContainer.getByName(&quot;WAIT_STMT&quot;), properties, comment);</span>
+<span class="pc bpc" id="L37" title="2 of 4 branches missed.">        Assert.isTrue(statements != null &amp;&amp; statements.isReadOnly());</span>
+<span class="fc" id="L38">        this.statements = statements;</span>
+<span class="fc" id="L39">        setReadOnly();</span>
+<span class="fc" id="L40">    }</span>
+
+    /**
+     * Create read only object of type {@link WaitStmt}
+     *
+     * @param statements; must be &lt;b&gt;not&lt;/b&gt; null and &lt;b&gt;read only&lt;/b&gt;,
+     * @param properties of the block (see {@link BlocklyBlockProperties}),
+     * @param comment for the block,
+     * @return
+     */
+    public static &lt;V&gt; WaitStmt&lt;V&gt; make(StmtList&lt;V&gt; statements, BlocklyBlockProperties properties, BlocklyComment comment) {
+<span class="fc" id="L51">        return new WaitStmt&lt;&gt;(statements, properties, comment);</span>
+    }
+
+    /**
+     * @return statements in the blocks
+     */
+    public StmtList&lt;V&gt; getStatements() {
+<span class="fc" id="L58">        return this.statements;</span>
+    }
+
+    @Override
+    public String toString() {
+<span class="nc" id="L63">        return &quot;WaitStmt [&quot; + this.statements + &quot;]&quot;;</span>
+    }
+
+    @Override
+    protected V accept(AstVisitor&lt;V&gt; visitor) {
+<span class="fc" id="L68">        return ((AstLanguageVisitor&lt;V&gt;) visitor).visitWaitStmt(this);</span>
+    }
+
+    /**
+     * Transformation from JAXB object to corresponding AST object.
+     *
+     * @param block for transformation
+     * @param helper class for making the transformation
+     * @return corresponding AST object
+     */
+    public static &lt;V&gt; Phrase&lt;V&gt; jaxbToAst(Block block, Jaxb2AstTransformer&lt;V&gt; helper) {
+        List&lt;Value&gt; values;
+        StmtList&lt;V&gt; statement;
+<span class="fc" id="L81">        StmtList&lt;V&gt; list = StmtList.make();</span>
+<span class="fc bfc" id="L82" title="All 2 branches covered.">        int mutat = block.getMutation() == null ? 0 : block.getMutation().getWait().intValue();</span>
+        List&lt;Statement&gt; statementss;
+<span class="fc bfc" id="L84" title="All 2 branches covered.">        if ( mutat == 0 ) {</span>
+<span class="fc" id="L85">            values = helper.extractValues(block, (short) (mutat + 1));</span>
+<span class="fc" id="L86">            statementss = helper.extractStatements(block, (short) (mutat + 1));</span>
+        } else {
+<span class="fc" id="L88">            List&lt;Object&gt; valAndStmt = block.getRepetitions().getValueAndStatement();</span>
+<span class="fc" id="L89">            values = new ArrayList&lt;&gt;();</span>
+<span class="fc" id="L90">            statementss = new ArrayList&lt;&gt;();</span>
+<span class="fc" id="L91">            helper.convertStmtValList(values, statementss, valAndStmt);</span>
+        }
+<span class="fc bfc" id="L93" title="All 2 branches covered.">        for ( int i = 0; i &lt;= mutat; i++ ) {</span>
+<span class="fc" id="L94">            Phrase&lt;V&gt; expr = helper.extractValue(values, new ExprParam(BlocklyConstants.WAIT + i, BlocklyType.BOOLEAN));</span>
+<span class="fc" id="L95">            statement = helper.extractStatement(statementss, BlocklyConstants.DO + i);</span>
+<span class="fc" id="L96">            list.addStmt(</span>
+<span class="fc" id="L97">                RepeatStmt.make(Mode.WAIT, helper.convertPhraseToExpr(expr), statement, helper.extractBlockProperties(block), helper.extractComment(block)));</span>
+        }
+<span class="fc" id="L99">        list.setReadOnly();</span>
+<span class="fc" id="L100">        return WaitStmt.make(list, helper.extractBlockProperties(block), helper.extractComment(block));</span>
+    }
+
+    @Override
+    public Block astToBlock() {
+<span class="nc" id="L105">        Block jaxbDestination = new Block();</span>
+        Mutation mutation;
+<span class="nc" id="L107">        JaxbTransformerHelper.setBasicProperties(this, jaxbDestination);</span>
+
+<span class="nc" id="L109">        StmtList&lt;?&gt; waitStmtList = getStatements();</span>
+<span class="nc" id="L110">        int numOfWait = waitStmtList.get().size();</span>
+<span class="nc bnc" id="L111" title="All 2 branches missed.">        if ( numOfWait == 1 ) {</span>
+<span class="nc" id="L112">            JaxbTransformerHelper.addValue(jaxbDestination, BlocklyConstants.WAIT + &quot;0&quot;, ((RepeatStmt&lt;?&gt;) waitStmtList.get().get(0)).getExpr());</span>
+<span class="nc" id="L113">            JaxbTransformerHelper.addStatement(jaxbDestination, BlocklyConstants.DO + &quot;0&quot;, ((RepeatStmt&lt;?&gt;) waitStmtList.get().get(0)).getList());</span>
+<span class="nc" id="L114">            return jaxbDestination;</span>
+        }
+<span class="nc" id="L116">        mutation = new Mutation();</span>
+<span class="nc" id="L117">        mutation.setWait(BigInteger.valueOf(numOfWait - 1L));</span>
+<span class="nc" id="L118">        jaxbDestination.setMutation(mutation);</span>
+<span class="nc" id="L119">        Repetitions repetitions = new Repetitions();</span>
+<span class="nc bnc" id="L120" title="All 2 branches missed.">        for ( int i = 0; i &lt; numOfWait; i++ ) {</span>
+<span class="nc" id="L121">            JaxbTransformerHelper.addValue(repetitions, BlocklyConstants.WAIT + i, ((RepeatStmt&lt;?&gt;) waitStmtList.get().get(i)).getExpr());</span>
+<span class="nc" id="L122">            JaxbTransformerHelper.addStatement(repetitions, BlocklyConstants.DO + i, ((RepeatStmt&lt;?&gt;) waitStmtList.get().get(i)).getList());</span>
+        }
+<span class="nc" id="L124">        jaxbDestination.setRepetitions(repetitions);</span>
+<span class="nc" id="L125">        return jaxbDestination;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

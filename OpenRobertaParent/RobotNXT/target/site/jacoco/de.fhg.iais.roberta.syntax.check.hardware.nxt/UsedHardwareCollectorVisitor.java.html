@@ -1,0 +1,149 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>UsedHardwareCollectorVisitor.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">RobotNXT</a> &gt; <a href="index.source.html" class="el_package">de.fhg.iais.roberta.syntax.check.hardware.nxt</a> &gt; <span class="el_source">UsedHardwareCollectorVisitor.java</span></div><h1>UsedHardwareCollectorVisitor.java</h1><pre class="source lang-java linenums">package de.fhg.iais.roberta.syntax.check.hardware.nxt;
+
+import java.util.ArrayList;
+
+import de.fhg.iais.roberta.components.nxt.NxtConfiguration;
+import de.fhg.iais.roberta.syntax.Phrase;
+import de.fhg.iais.roberta.syntax.action.light.LightAction;
+import de.fhg.iais.roberta.syntax.action.sound.PlayNoteAction;
+import de.fhg.iais.roberta.syntax.action.sound.ToneAction;
+import de.fhg.iais.roberta.syntax.action.sound.VolumeAction;
+import de.fhg.iais.roberta.syntax.check.hardware.RobotUsedHardwareCollectorVisitor;
+import de.fhg.iais.roberta.visitor.AstVisitor;
+
+/**
+ * This class is implementing {@link AstVisitor}. All methods are implemented and they append a human-readable JAVA code representation of a phrase to a
+ * StringBuilder. &lt;b&gt;This representation is correct JAVA code.&lt;/b&gt; &lt;br&gt;
+ */
+public class UsedHardwareCollectorVisitor extends RobotUsedHardwareCollectorVisitor {
+
+<span class="fc" id="L20">    private boolean isVolumeVariableNeeded = false;</span>
+
+    public UsedHardwareCollectorVisitor(ArrayList&lt;ArrayList&lt;Phrase&lt;Void&gt;&gt;&gt; phrasesSet, NxtConfiguration configuration) {
+<span class="fc" id="L23">        super(configuration);</span>
+<span class="fc" id="L24">        check(phrasesSet);</span>
+<span class="fc" id="L25">    }</span>
+
+    /*public String getTmpArrVar() {
+        return this.tmpArrVar;
+    }*/
+
+    public boolean isVolumeVariableNeeded() {
+<span class="fc" id="L32">        return this.isVolumeVariableNeeded;</span>
+    }
+
+    @Override
+    public Void visitLightAction(LightAction&lt;Void&gt; lightAction) {
+<span class="fc" id="L37">        return null;</span>
+    }
+
+    @Override
+    public Void visitVolumeAction(VolumeAction&lt;Void&gt; volumeAction) {
+<span class="fc" id="L42">        super.visitVolumeAction(volumeAction);</span>
+<span class="fc" id="L43">        this.isVolumeVariableNeeded = true;</span>
+<span class="fc" id="L44">        return null;</span>
+    }
+
+    @Override
+    public Void visitToneAction(ToneAction&lt;Void&gt; toneAction) {
+<span class="fc" id="L49">        super.visitToneAction(toneAction);</span>
+<span class="fc" id="L50">        this.isVolumeVariableNeeded = true;</span>
+<span class="fc" id="L51">        return null;</span>
+    }
+
+    @Override
+    public Void visitPlayNoteAction(PlayNoteAction&lt;Void&gt; playNoteAction) {
+<span class="fc" id="L56">        super.visitPlayNoteAction(playNoteAction);</span>
+<span class="fc" id="L57">        this.isVolumeVariableNeeded = true;</span>
+<span class="fc" id="L58">        return null;</span>
+    }
+    /*TODO: rewrite it in a nicer way, check why it is not detecting inserted arrays, fix sensors
+    public Void generateArrTmpVar(Expr&lt;Void&gt; expr) {
+        String type;
+        String defVal;
+        if ( expr.toString().contains(&quot;NUMBER&quot;) ) {
+            type = &quot;float&quot;;
+            defVal = &quot;0&quot;;
+        } else if ( expr.toString().contains(&quot;STRING&quot;) ) {
+            type = &quot;string&quot;;
+            defVal = &quot;&quot;;
+        } else if ( expr.toString().contains(&quot;BOOLEAN&quot;) ) {
+            type = &quot;bool&quot;;
+            defVal = &quot;true&quot;;
+        } else {
+            type = &quot;int&quot;;
+            defVal = &quot;0&quot;;
+        }
+    
+        if ( !expr.getVarType().toString().contains(&quot;ARRAY&quot;) ) {
+            this.tmpArrVarCount += 1;
+            String str = expr.toString().replaceAll(&quot;defVal=ARRAY&quot;, defVal);
+            String[] val = StringUtils.substringsBetween(str.substring(str.indexOf(&quot;ListCreate&quot;) + 15, str.length() - 1), &quot;[&quot;, &quot;]&quot;);
+            String values = &quot;&quot;;
+            boolean first = true;
+            for ( String value : val ) {
+                if ( first ) {
+                    first = false;
+                } else {
+                    values += &quot;, &quot;;
+                }
+                if ( expr.toString().contains(&quot;STRING&quot;) ) {
+                    values += &quot;\&quot;&quot; + value + &quot;\&quot;&quot;;
+                } else {
+                    values += value;
+                }
+            }
+    
+            this.tmpArrVar += &quot;\n&quot; + type + &quot; __tmpArr&quot; + this.tmpArrVarCount + &quot;[] = {&quot; + values + &quot;};&quot;;
+        }
+        return null;
+    }
+    
+    @Override
+    public Void visitMathOnListFunct(MathOnListFunct&lt;Void&gt; mathOnListFunct) {
+        List&lt;Expr&lt;Void&gt;&gt; param = mathOnListFunct.getParam();
+        for ( Expr&lt;Void&gt; expr : param ) {
+            expr.visit(this);
+        }
+        generateArrTmpVar(mathOnListFunct.getParam().get(0));
+        return null;
+    
+    }
+    
+    @Override
+    public Void visitLengthOfIsEmptyFunct(LengthOfIsEmptyFunct&lt;Void&gt; lengthOfIsEmptyFunct) {
+        generateArrTmpVar(lengthOfIsEmptyFunct.getParam().get(0));
+        return null;
+    }
+    
+    @Override
+    public Void visitIndexOfFunct(IndexOfFunct&lt;Void&gt; indexOfFunct) {
+        int listsInLine = StringUtils.countMatches(indexOfFunct.getParam().get(1).toString(), &quot;ListCreate&quot;);
+        generateArrTmpVar(indexOfFunct.getParam().get(0));
+        for ( int i = 0; i &lt; listsInLine; i++ ) {
+            generateArrTmpVar(indexOfFunct.getParam().get(1));
+        }
+        return null;
+    }
+    
+    @Override
+    public Void visitListGetIndex(ListGetIndex&lt;Void&gt; listGetIndex) {
+        int listsInLine = StringUtils.countMatches(listGetIndex.getParam().get(1).toString(), &quot;ListCreate&quot;);
+        generateArrTmpVar(listGetIndex.getParam().get(0));
+        for ( int i = 0; i &lt; listsInLine; i++ ) {
+            generateArrTmpVar(listGetIndex.getParam().get(1));
+        }
+        return null;
+    }
+    
+    @Override
+    public Void visitListSetIndex(ListSetIndex&lt;Void&gt; listSetIndex) {
+        int listsInLine = StringUtils.countMatches(listSetIndex.getParam().get(0).toString(), &quot;ListCreate&quot;);
+        generateArrTmpVar(listSetIndex.getParam().get(1));
+        for ( int i = 0; i &lt; listsInLine; i++ ) {
+            generateArrTmpVar(listSetIndex.getParam().get(0));
+        }
+        return null;
+    }*/
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>
