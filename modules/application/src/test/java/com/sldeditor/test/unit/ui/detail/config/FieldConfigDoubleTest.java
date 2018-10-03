@@ -1,0 +1,393 @@
+/*
+ * SLD Editor - The Open Source Java SLD Editor
+ *
+ * Copyright (C) 2016, SCISYS UK Limited
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+package com.sldeditor.test.unit.ui.detail.config;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import com.sldeditor.common.undo.UndoEvent;
+import com.sldeditor.common.undo.UndoManager;
+import com.sldeditor.common.xml.ui.FieldIdEnum;
+import com.sldeditor.ui.detail.config.FieldConfigBase;
+import com.sldeditor.ui.detail.config.FieldConfigCommonData;
+import com.sldeditor.ui.detail.config.FieldConfigDouble;
+import com.sldeditor.ui.detail.config.FieldConfigPopulate;
+import com.sldeditor.ui.iface.UpdateSymbolInterface;
+import org.junit.jupiter.api.Test;
+
+/**
+ * The unit test for FieldConfigDouble.
+ *
+ * <p>{@link com.sldeditor.ui.detail.config.FieldConfigDouble}
+ *
+ * @author Robert Ward (SCISYS)
+ */
+public class FieldConfigDoubleTest {
+
+    /**
+     * Test method for {@link
+     * com.sldeditor.ui.detail.config.FieldConfigDouble#internal_setEnabled(boolean)}. Test method
+     * for {@link com.sldeditor.ui.detail.config.FieldConfigDouble#isEnabled()}. Test method for
+     * {@link com.sldeditor.ui.detail.config.FieldConfigDouble#createUI(javax.swing.Box)}.
+     */
+    @Test
+    public void testSetEnabled() {
+        // Value only, no attribute/expression dropdown
+        boolean valueOnly = true;
+        FieldConfigDouble field =
+                new FieldConfigDouble(
+                        new FieldConfigCommonData(
+                                Double.class, FieldIdEnum.NAME, "label", valueOnly, false));
+
+        // Text field will not have been created
+        boolean expectedValue = true;
+        field.internal_setEnabled(expectedValue);
+
+        assertFalse(field.isEnabled());
+
+        // Create text field
+        field.createUI();
+        assertEquals(expectedValue, field.isEnabled());
+
+        expectedValue = false;
+        field.internal_setEnabled(expectedValue);
+
+        assertEquals(expectedValue, field.isEnabled());
+
+        // Has attribute/expression dropdown
+        valueOnly = false;
+        FieldConfigDouble field2 =
+                new FieldConfigDouble(
+                        new FieldConfigCommonData(
+                                Double.class, FieldIdEnum.NAME, "label", valueOnly, false));
+
+        // Text field will not have been created
+        expectedValue = true;
+        field2.internal_setEnabled(expectedValue);
+        assertFalse(field2.isEnabled());
+
+        // Create text field
+        field2.createUI();
+
+        assertEquals(expectedValue, field2.isEnabled());
+
+        expectedValue = false;
+        field2.internal_setEnabled(expectedValue);
+
+        // Actual value is coming from the attribute panel, not the text field
+        assertEquals(!expectedValue, field2.isEnabled());
+    }
+
+    /**
+     * Test method for {@link com.sldeditor.ui.detail.config.FieldConfigDouble#setVisible(boolean)}.
+     */
+    @Test
+    public void testSetVisible() {
+        boolean valueOnly = true;
+        FieldConfigDouble field =
+                new FieldConfigDouble(
+                        new FieldConfigCommonData(
+                                Double.class, FieldIdEnum.NAME, "label", valueOnly, false));
+
+        boolean expectedValue = true;
+        field.setVisible(expectedValue);
+        field.createUI();
+        field.setVisible(expectedValue);
+
+        expectedValue = false;
+        field.setVisible(expectedValue);
+    }
+
+    /**
+     * Test method for {@link
+     * com.sldeditor.ui.detail.config.FieldConfigDouble#generateExpression()}. Test method for
+     * {@link com.sldeditor.ui.detail.config.FieldConfigDouble#populateExpression(java.lang.Object,
+     * org.opengis.filter.expression.Expression)}. Test method for {@link
+     * com.sldeditor.ui.detail.config.FieldConfigDouble#populateField(java.lang.Double)}. Test
+     * method for {@link
+     * com.sldeditor.ui.detail.config.FieldConfigDouble#setTestValue(com.sldeditor.ui.detail.config.FieldId,
+     * double)}. Test method for {@link
+     * com.sldeditor.ui.detail.config.FieldConfigDouble#getDoubleValue()}.
+     */
+    @Test
+    public void testGenerateExpression() {
+        boolean valueOnly = true;
+        FieldConfigDouble field =
+                new FieldConfigDouble(
+                        new FieldConfigCommonData(
+                                Double.class, FieldIdEnum.NAME, "label", valueOnly, false));
+
+        double expectedValue = 1.0;
+        field.populateField(expectedValue);
+        double actualValue = field.getDoubleValue();
+        assertTrue(Math.abs(actualValue - 0.0) < 0.001);
+
+        field.setTestValue(FieldIdEnum.UNKNOWN, expectedValue);
+        actualValue = field.getDoubleValue();
+        assertTrue(Math.abs(actualValue - 0.0) < 0.001);
+
+        field.populateExpression(null);
+        actualValue = field.getDoubleValue();
+        assertTrue(Math.abs(actualValue - 0.0) < 0.001);
+
+        field.createUI();
+        field.populateField(expectedValue);
+        actualValue = field.getDoubleValue();
+        assertTrue(Math.abs(actualValue - expectedValue) < 0.001);
+
+        double expectedValue2 = 0.134;
+        field.setTestValue(FieldIdEnum.UNKNOWN, expectedValue2);
+        actualValue = field.getDoubleValue();
+        assertTrue(Math.abs(actualValue - expectedValue2) < 0.001);
+
+        Integer expectedValue3a = Integer.valueOf(42);
+        field.populateExpression(expectedValue3a);
+        actualValue = field.getDoubleValue();
+        assertTrue(Math.abs(actualValue - expectedValue3a) < 0.001);
+
+        Long expectedValue3b = Long.valueOf(4567);
+        field.populateExpression(expectedValue3b);
+        actualValue = field.getDoubleValue();
+        assertTrue(Math.abs(actualValue - expectedValue3b) < 0.001);
+
+        Double expectedValue3c = Double.valueOf(42.12);
+        field.populateExpression(expectedValue3c);
+        actualValue = field.getDoubleValue();
+        assertTrue(Math.abs(actualValue - expectedValue3c) < 0.001);
+
+        double expectedValue3d = 698.7;
+        String expectedValue3dString = String.valueOf(expectedValue3d);
+        field.populateExpression(expectedValue3dString);
+        actualValue = field.getDoubleValue();
+        assertTrue(Math.abs(actualValue - expectedValue3d) < 0.001);
+
+        Float expectedValue3e = Float.valueOf(3.141f);
+        field.populateExpression(expectedValue3e);
+        actualValue = field.getDoubleValue();
+        assertTrue(Math.abs(actualValue - expectedValue3e) < 0.001);
+    }
+
+    /**
+     * Test method for {@link
+     * com.sldeditor.ui.detail.config.FieldConfigDouble#revertToDefaultValue()}. Test method for
+     * {@link com.sldeditor.ui.detail.config.FieldConfigDouble#setDefaultValue(double)}.
+     */
+    @Test
+    public void testRevertToDefaultValue() {
+        boolean valueOnly = true;
+        FieldConfigDouble field =
+                new FieldConfigDouble(
+                        new FieldConfigCommonData(
+                                Double.class, FieldIdEnum.NAME, "label", valueOnly, false));
+
+        field.revertToDefaultValue();
+        assertTrue(Math.abs(field.getDoubleValue() - 0.0) < 0.001);
+
+        field.createUI();
+        field.createUI();
+        Double expectedDefaultValue = 42.19;
+        field.setDefaultValue(expectedDefaultValue);
+        field.revertToDefaultValue();
+        assertTrue(Math.abs(field.getDoubleValue() - expectedDefaultValue) < 0.001);
+        assertTrue(String.valueOf(expectedDefaultValue).compareTo(field.getStringValue()) == 0);
+    }
+
+    /**
+     * Test method for {@link
+     * com.sldeditor.ui.detail.config.FieldConfigDouble#createCopy(com.sldeditor.ui.detail.config.FieldConfigBase)}.
+     */
+    @Test
+    public void testCreateCopy() {
+        boolean valueOnly = true;
+
+        class TestFieldConfigDouble extends FieldConfigDouble {
+            public TestFieldConfigDouble(FieldConfigCommonData commonData) {
+                super(commonData);
+            }
+
+            public FieldConfigPopulate callCreateCopy(FieldConfigBase fieldConfigBase) {
+                return createCopy(fieldConfigBase);
+            }
+        }
+
+        TestFieldConfigDouble field =
+                new TestFieldConfigDouble(
+                        new FieldConfigCommonData(
+                                Double.class, FieldIdEnum.NAME, "label", valueOnly, false));
+        FieldConfigDouble copy = (FieldConfigDouble) field.callCreateCopy(null);
+        assertNull(copy);
+
+        copy = (FieldConfigDouble) field.callCreateCopy(field);
+        assertEquals(field.getFieldId(), copy.getFieldId());
+        assertTrue(field.getLabel().compareTo(copy.getLabel()) == 0);
+        assertEquals(field.isValueOnly(), copy.isValueOnly());
+    }
+
+    /**
+     * Test method for {@link
+     * com.sldeditor.ui.detail.config.FieldConfigDouble#attributeSelection(java.lang.String)}.
+     */
+    @Test
+    public void testAttributeSelection() {
+        boolean valueOnly = true;
+        FieldConfigDouble field =
+                new FieldConfigDouble(
+                        new FieldConfigCommonData(
+                                Double.class, FieldIdEnum.NAME, "label", valueOnly, false));
+        field.attributeSelection(null);
+
+        field.createUI();
+        assertTrue(field.isEnabled());
+        field.attributeSelection("test");
+        assertFalse(field.isEnabled());
+        field.attributeSelection(null);
+        assertTrue(field.isEnabled());
+    }
+
+    /**
+     * Test method for {@link
+     * com.sldeditor.ui.detail.config.FieldConfigDouble#undoAction(com.sldeditor.common.undo.UndoInterface)}.
+     * Test method for {@link
+     * com.sldeditor.ui.detail.config.FieldConfigDouble#redoAction(com.sldeditor.common.undo.UndoInterface)}.
+     */
+    @Test
+    public void testUndoAction() {
+        boolean valueOnly = true;
+        FieldConfigDouble field =
+                new FieldConfigDouble(
+                        new FieldConfigCommonData(
+                                Double.class, FieldIdEnum.NAME, "label", valueOnly, false));
+
+        field.undoAction(null);
+        field.redoAction(null);
+
+        double expectedValue1 = 13.4;
+        field.createUI();
+        field.populateField(expectedValue1);
+        assertTrue(Math.abs(field.getDoubleValue() - expectedValue1) < 0.001);
+
+        double expectedValue2 = 987.6;
+        field.setTestValue(FieldIdEnum.UNKNOWN, expectedValue2);
+        assertTrue(Math.abs(field.getDoubleValue() - expectedValue2) < 0.001);
+
+        UndoManager.getInstance().undo();
+        assertTrue(Math.abs(field.getDoubleValue() - expectedValue1) < 0.001);
+        UndoManager.getInstance().redo();
+        assertTrue(Math.abs(field.getDoubleValue() - expectedValue2) < 0.001);
+
+        // Increase the code coverage
+        field.undoAction(null);
+        field.redoAction(null);
+        field.undoAction(new UndoEvent(null, FieldIdEnum.NAME, "", "new"));
+        field.redoAction(new UndoEvent(null, FieldIdEnum.NAME, "", "new"));
+    }
+
+    /**
+     * Test method for {@link com.sldeditor.ui.detail.config.FieldConfigDouble#testSetConfig(double,
+     * double, double, double)}.
+     */
+    @Test
+    public void testSetConfig() {
+        boolean valueOnly = true;
+        FieldConfigDouble field =
+                new FieldConfigDouble(
+                        new FieldConfigCommonData(
+                                Double.class, FieldIdEnum.NAME, "label", valueOnly, false));
+
+        field.createUI();
+        double minValue = 10.0;
+        double maxValue = 20.0;
+        double stepSize = 1.0;
+        int noOfDecimalPlaces = 2;
+
+        field.setConfig(minValue, maxValue, stepSize, noOfDecimalPlaces);
+
+        // Should be set to the minimum value
+        double expectedValue1 = 1.4;
+        field.populateField(expectedValue1);
+        assertTrue(Math.abs(field.getDoubleValue() - minValue) < 0.001);
+
+        // Should be set to the maximum value
+        double expectedValue2 = 41.4;
+        field.populateField(expectedValue2);
+        assertTrue(Math.abs(field.getDoubleValue() - maxValue) < 0.001);
+    }
+
+    @Test
+    public void testValueStored() {
+        boolean valueOnly = true;
+
+        class TestFieldConfigDouble extends FieldConfigDouble {
+            public TestFieldConfigDouble(FieldConfigCommonData commonData) {
+                super(commonData);
+            }
+
+            /* (non-Javadoc)
+             * @see com.sldeditor.ui.detail.config.FieldConfigDouble#valueStored(double, double)
+             */
+            @Override
+            protected void valueStored(double oldValue, double newValue) {
+                super.valueStored(oldValue, newValue);
+            }
+        }
+
+        TestFieldConfigDouble field =
+                new TestFieldConfigDouble(
+                        new FieldConfigCommonData(
+                                Double.class, FieldIdEnum.NAME, "label", valueOnly, false));
+
+        class TestUpdateSymbol implements UpdateSymbolInterface {
+            public boolean dataChanged = false;
+
+            @Override
+            public void dataChanged(FieldIdEnum changedField) {
+                dataChanged = true;
+            }
+        };
+        TestUpdateSymbol update = new TestUpdateSymbol();
+
+        int undoListSize = UndoManager.getInstance().getUndoListSize();
+        field.createUI();
+        field.addDataChangedListener(update);
+        assertFalse(update.dataChanged);
+        field.valueStored(1.0, 2.1);
+        assertTrue(update.dataChanged);
+
+        assertEquals(undoListSize + 1, UndoManager.getInstance().getUndoListSize());
+        update.dataChanged = false;
+
+        // now suppress undo events
+        field =
+                new TestFieldConfigDouble(
+                        new FieldConfigCommonData(
+                                Double.class, FieldIdEnum.NAME, "label", valueOnly, true));
+
+        undoListSize = UndoManager.getInstance().getUndoListSize();
+        field.createUI();
+        field.addDataChangedListener(update);
+        assertFalse(update.dataChanged);
+        field.valueStored(3.0, 2.1);
+        assertTrue(update.dataChanged);
+
+        assertEquals(undoListSize, UndoManager.getInstance().getUndoListSize());
+    }
+}

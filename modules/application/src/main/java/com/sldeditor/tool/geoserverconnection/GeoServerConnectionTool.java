@@ -1,0 +1,243 @@
+/*
+ * SLD Editor - The Open Source Java SLD Editor
+ *
+ * Copyright (C) 2016, SCISYS UK Limited
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+package com.sldeditor.tool.geoserverconnection;
+
+import com.sldeditor.common.NodeInterface;
+import com.sldeditor.common.SLDDataInterface;
+import com.sldeditor.common.data.GeoServerConnection;
+import com.sldeditor.common.localisation.Localisation;
+import com.sldeditor.datasource.extension.filesystem.node.geoserver.GeoServerNode;
+import com.sldeditor.tool.ToolButton;
+import com.sldeditor.tool.ToolInterface;
+import com.sldeditor.tool.ToolPanel;
+import java.awt.Dimension;
+import java.awt.FlowLayout;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.util.ArrayList;
+import java.util.List;
+import javax.swing.BorderFactory;
+import javax.swing.JButton;
+import javax.swing.JPanel;
+
+/**
+ * Tool that manages the GeoServer connections (connect/disconnect).
+ *
+ * @author Robert Ward (SCISYS)
+ */
+public class GeoServerConnectionTool implements ToolInterface {
+
+    /** The Constant PANEL_WIDTH. */
+    private static final int PANEL_WIDTH = 110;
+
+    /** The connect button. */
+    protected JButton connectButton;
+
+    /** The disconnect button. */
+    protected JButton disconnectButton;
+
+    /** The panel. */
+    private JPanel panel;
+
+    /** The geo server connect state. */
+    private GeoServerConnectStateInterface geoServerConnectState = null;
+
+    /** The connection list. */
+    private List<GeoServerConnection> connectionList = new ArrayList<GeoServerConnection>();
+
+    /**
+     * Instantiates a new geo server connection state tool.
+     *
+     * @param geoServerConnectState the geo server connect state
+     */
+    public GeoServerConnectionTool(GeoServerConnectStateInterface geoServerConnectState) {
+        super();
+
+        this.geoServerConnectState = geoServerConnectState;
+
+        createUI();
+    }
+
+    /** Creates the ui. */
+    private void createUI() {
+        panel = new JPanel();
+        FlowLayout flowLayout = (FlowLayout) panel.getLayout();
+        flowLayout.setVgap(0);
+        flowLayout.setHgap(0);
+        panel.setBorder(
+                BorderFactory.createTitledBorder(
+                        Localisation.getString(
+                                GeoServerConnectionTool.class, "GeoServerConnectionTool.title")));
+
+        //
+        // Connect button
+        //
+        connectButton =
+                new ToolButton(
+                        Localisation.getString(
+                                GeoServerConnectionTool.class, "GeoServerConnectionTool.connect"),
+                        "tool/connect.png");
+        connectButton.setEnabled(true);
+        connectButton.addActionListener(
+                new ActionListener() {
+                    @Override
+                    public void actionPerformed(ActionEvent e) {
+                        connectButtonPressed();
+                    }
+                });
+
+        panel.add(connectButton);
+
+        //
+        // Disconnect button
+        //
+        disconnectButton =
+                new ToolButton(
+                        Localisation.getString(
+                                GeoServerConnectionTool.class,
+                                "GeoServerConnectionTool.disconnect"),
+                        "tool/disconnect.png");
+        disconnectButton.setEnabled(false);
+        disconnectButton.addActionListener(
+                new ActionListener() {
+                    @Override
+                    public void actionPerformed(ActionEvent e) {
+                        disconnectButtonPressed();
+                    }
+                });
+
+        panel.add(disconnectButton);
+        panel.setPreferredSize(new Dimension(PANEL_WIDTH, ToolPanel.TOOL_PANEL_HEIGHT));
+    }
+
+    /*
+     * (non-Javadoc)
+     *
+     * @see com.sldeditor.tool.ToolInterface#getPanel()
+     */
+    @Override
+    public JPanel getPanel() {
+        return panel;
+    }
+
+    /*
+     * (non-Javadoc)
+     *
+     * @see com.sldeditor.tool.ToolInterface#setSelectedItems(java.util.List, java.util.List)
+     */
+    @Override
+    public void setSelectedItems(
+            List<NodeInterface> nodeTypeList, List<SLDDataInterface> sldDataList) {
+        connectionList.clear();
+
+        for (NodeInterface node : nodeTypeList) {
+            if (node instanceof GeoServerNode) {
+                GeoServerNode geoserverNode = (GeoServerNode) node;
+
+                connectionList.add(geoserverNode.getConnection());
+            }
+        }
+
+        updateButtonState();
+    }
+
+    /** Update button state. */
+    private void updateButtonState() {
+        int connected = 0;
+        int disconnected = 0;
+
+        if (geoServerConnectState != null) {
+            for (GeoServerConnection connection : connectionList) {
+                if (geoServerConnectState.isConnected(connection)) {
+                    connected++;
+                } else {
+                    disconnected++;
+                }
+            }
+        }
+
+        boolean connectedEnabled = (disconnected > 0);
+        boolean disconnectedEnabled = (connected > 0);
+
+        connectButton.setEnabled(connectedEnabled);
+        disconnectButton.setEnabled(disconnectedEnabled);
+    }
+
+    /*
+     * (non-Javadoc)
+     *
+     * @see com.sldeditor.tool.ToolInterface#getToolName()
+     */
+    @Override
+    public String getToolName() {
+        return getClass().getName();
+    }
+
+    /*
+     * (non-Javadoc)
+     *
+     * @see com.sldeditor.tool.ToolInterface#supports(java.util.List, java.util.List)
+     */
+    @Override
+    public boolean supports(
+            List<Class<?>> uniqueNodeTypeList,
+            List<NodeInterface> nodeTypeList,
+            List<SLDDataInterface> sldDataList) {
+        if (uniqueNodeTypeList != null) {
+            if (uniqueNodeTypeList.size() == 1) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Populate complete.
+     *
+     * @param connection the connection
+     */
+    public void populateComplete(GeoServerConnection connection) {
+        updateButtonState();
+    }
+
+    /** Connect button pressed. */
+    protected void connectButtonPressed() {
+        if (geoServerConnectState != null) {
+            connectButton.setEnabled(false);
+            disconnectButton.setEnabled(false);
+            geoServerConnectState.connect(connectionList);
+
+            for (GeoServerConnection connection : connectionList) {
+                if (!geoServerConnectState.isConnected(connection)) {
+                    connectButton.setEnabled(true);
+                }
+            }
+        }
+    }
+
+    /** Disconnect button pressed. */
+    protected void disconnectButtonPressed() {
+        if (geoServerConnectState != null) {
+            connectButton.setEnabled(false);
+            disconnectButton.setEnabled(false);
+            geoServerConnectState.disconnect(connectionList);
+        }
+    }
+}
