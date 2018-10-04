@@ -1,0 +1,1 @@
+This uses the ContentViewWalker to get elements marked as being content elements.
