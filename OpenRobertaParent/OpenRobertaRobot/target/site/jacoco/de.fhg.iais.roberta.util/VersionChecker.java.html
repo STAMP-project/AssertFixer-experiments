@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>VersionChecker.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">OpenRobertaRobot</a> &gt; <a href="index.source.html" class="el_package">de.fhg.iais.roberta.util</a> &gt; <span class="el_source">VersionChecker.java</span></div><h1>VersionChecker.java</h1><pre class="source lang-java linenums">package de.fhg.iais.roberta.util;
+
+import java.io.InputStream;
+import java.util.Arrays;
+import java.util.Properties;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+
+public class VersionChecker {
+<span class="nc" id="L13">    private static final Logger LOG = LoggerFactory.getLogger(VersionChecker.class);</span>
+
+    private static final String DOT_REGEX = &quot;\\.&quot;;
+
+    private final String[] versionFrom;
+    private final String[] versionTo;
+
+<span class="nc" id="L20">    public VersionChecker(String versionFrom, String versionTo) {</span>
+<span class="nc" id="L21">        this.versionFrom = versionFrom.split(DOT_REGEX);</span>
+<span class="nc" id="L22">        this.versionTo = versionTo.split(DOT_REGEX);</span>
+<span class="nc" id="L23">    }</span>
+
+    public static void checkRestVersion(String version) {
+        // TODO Auto-generated method stub
+
+<span class="nc" id="L28">    }</span>
+
+    @SuppressFBWarnings(value = &quot;REC_CATCH_EXCEPTION&quot;, justification = &quot;here any exception should generate a return value of FALSE&quot;)
+    private boolean check(String... propertyPrefixes) {
+<span class="nc bnc" id="L32" title="All 2 branches missed.">        for ( String propertyPrefix : propertyPrefixes ) {</span>
+            try {
+<span class="nc" id="L34">                Properties properties = new Properties();</span>
+<span class="nc" id="L35">                InputStream resourceAsStream = VersionChecker.class.getClassLoader().getResourceAsStream(propertyPrefix + &quot;.properties&quot;);</span>
+<span class="nc" id="L36">                properties.load(resourceAsStream);</span>
+<span class="nc" id="L37">                String version = properties.getProperty(&quot;version&quot;, &quot;?&quot;);</span>
+<span class="nc bnc" id="L38" title="All 4 branches missed.">                if ( version.equals(&quot;?&quot;) || !versionValid(version) ) {</span>
+<span class="nc" id="L39">                    System.out.println(&quot;version of &quot; + propertyPrefix + &quot; is &quot; + version + &quot; and considered NOT ACCEPTABLE&quot;);</span>
+<span class="nc" id="L40">                    return false;</span>
+                } else {
+<span class="nc" id="L42">                    System.out.println(&quot;version of &quot; + propertyPrefix + &quot; is &quot; + version + &quot; and considered ok&quot;);</span>
+                }
+<span class="nc" id="L44">            } catch ( Exception e ) {</span>
+<span class="nc" id="L45">                System.out.println(&quot;properties from /&quot; + propertyPrefix + &quot;.properties could not be loaded. Versioncheck fails&quot;);</span>
+<span class="nc" id="L46">                return false;</span>
+<span class="nc" id="L47">            }</span>
+        }
+<span class="nc" id="L49">        return true;</span>
+    }
+
+    boolean versionValid(String versionS) {
+<span class="nc" id="L53">        int length = versionS.length();</span>
+<span class="nc bnc" id="L54" title="All 2 branches missed.">        if ( length &lt;= 0 ) {</span>
+<span class="nc" id="L55">            return false;</span>
+        }
+<span class="nc" id="L57">        String[] version = versionS.split(DOT_REGEX);</span>
+<span class="nc bnc" id="L58" title="All 4 branches missed.">        return versionIsLessEqual(this.versionFrom, version) &amp;&amp; versionIsLessEqual(version, this.versionTo);</span>
+    }
+
+    private boolean versionIsLessEqual(String[] v1, String[] v2) {
+<span class="nc" id="L62">        int iterations = Math.min(v1.length, v2.length);</span>
+<span class="nc bnc" id="L63" title="All 2 branches missed.">        if ( iterations &lt;= 0 ) {</span>
+<span class="nc" id="L64">            return false;</span>
+        }
+<span class="nc bnc" id="L66" title="All 2 branches missed.">        for ( int i = 0; i &lt; iterations; i++ ) {</span>
+            int i1;
+            int i2;
+            try {
+<span class="nc" id="L70">                String s1 = v1[i];</span>
+<span class="nc" id="L71">                String s2 = v2[i];</span>
+<span class="nc" id="L72">                s1 = optionalRemoveSuffix(s1);</span>
+<span class="nc" id="L73">                s2 = optionalRemoveSuffix(s2);</span>
+<span class="nc" id="L74">                i1 = Integer.parseInt(s1);</span>
+<span class="nc" id="L75">                i2 = Integer.parseInt(s2);</span>
+<span class="nc bnc" id="L76" title="All 2 branches missed.">                if ( i1 &gt; i2 ) {</span>
+<span class="nc" id="L77">                    return false;</span>
+                }
+<span class="nc" id="L79">            } catch ( Exception e ) {</span>
+<span class="nc" id="L80">                System.out.println(&quot;invalid version string. Either &quot; + Arrays.toString(v1) + &quot; or &quot; + Arrays.toString(v2));</span>
+<span class="nc" id="L81">                LOG.error(e.getMessage());</span>
+<span class="nc" id="L82">                return false;</span>
+<span class="nc" id="L83">            }</span>
+        }
+<span class="nc" id="L85">        return true;</span>
+    }
+
+    private static String optionalRemoveSuffix(String s) {
+<span class="nc bnc" id="L89" title="All 2 branches missed.">        if ( s.endsWith(&quot;-SNAPSHOT&quot;) ) {</span>
+<span class="nc" id="L90">            s = s.substring(0, s.length() - 9);</span>
+        }
+<span class="nc bnc" id="L92" title="All 2 branches missed.">        if ( s.endsWith(&quot;-RELEASE&quot;) ) {</span>
+<span class="nc" id="L93">            s = s.substring(0, s.length() - 8);</span>
+        }
+<span class="nc" id="L95">        return s;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

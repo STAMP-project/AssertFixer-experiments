@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>AbstractRobotFactory.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">OpenRobertaRobot</a> &gt; <a href="index.source.html" class="el_package">de.fhg.iais.roberta.factory</a> &gt; <span class="el_source">AbstractRobotFactory.java</span></div><h1>AbstractRobotFactory.java</h1><pre class="source lang-java linenums">package de.fhg.iais.roberta.factory;
+
+import java.util.Arrays;
+import java.util.Map.Entry;
+import java.util.Properties;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import de.fhg.iais.roberta.components.Category;
+import de.fhg.iais.roberta.syntax.BlockTypeContainer;
+import de.fhg.iais.roberta.util.RobertaProperties;
+import de.fhg.iais.roberta.util.Util1;
+import de.fhg.iais.roberta.util.dbc.Assert;
+import de.fhg.iais.roberta.util.dbc.DbcException;
+
+public abstract class AbstractRobotFactory implements IRobotFactory {
+<span class="fc" id="L18">    private static final Logger LOG = LoggerFactory.getLogger(AbstractRobotFactory.class);</span>
+    protected final RobertaProperties robertaProperties;
+    private final Properties robotProperties;
+
+<span class="fc" id="L22">    public AbstractRobotFactory(RobertaProperties robertaProperties) {</span>
+<span class="fc" id="L23">        this.robertaProperties = robertaProperties;</span>
+<span class="fc" id="L24">        this.robotProperties = Util1.loadProperties(&quot;classpath:Robot.properties&quot;);</span>
+<span class="fc" id="L25">        addBlockTypesFromProperties(&quot;Robot.properties&quot;, this.robotProperties);</span>
+<span class="fc" id="L26">    }</span>
+
+    /**
+     * should be called only from subclasses. Made public and static for tests (see call hierarchy). Another example, that shows, that static variables
+     * (singletons) are bad. TODO: rewrite the BlockTypeContainer map singleton and inject
+     *
+     * @param propertyFileName
+     * @param properties
+     */
+    public static void addBlockTypesFromProperties(String propertyFileName, Properties properties) {
+<span class="fc" id="L36">        boolean alreadyLoaded = BlockTypeContainer.register(propertyFileName);</span>
+<span class="fc bfc" id="L37" title="All 2 branches covered.">        if ( alreadyLoaded ) {</span>
+<span class="fc" id="L38">            return;</span>
+        }
+<span class="fc bfc" id="L40" title="All 2 branches covered.">        for ( Entry&lt;Object, Object&gt; property : properties.entrySet() ) {</span>
+<span class="fc" id="L41">            String propertyKey = (String) property.getKey();</span>
+<span class="pc bpc" id="L42" title="1 of 2 branches missed.">            if ( propertyKey.startsWith(&quot;blockType.&quot;) ) {</span>
+<span class="fc" id="L43">                String name = propertyKey.substring(10);</span>
+<span class="fc" id="L44">                String propertyValue = (String) property.getValue();</span>
+<span class="fc" id="L45">                String[] attributes = propertyValue.split(&quot;,&quot;);</span>
+<span class="pc bpc" id="L46" title="1 of 2 branches missed.">                Assert.isTrue(attributes.length &gt;= 3, &quot;Invalid block type property with key: %s&quot;, propertyKey);</span>
+<span class="fc" id="L47">                String astClassName = attributes[1];</span>
+<span class="fc" id="L48">                Category category = Category.valueOf(attributes[0]); // does the category exist?</span>
+<span class="fc" id="L49">                Assert.notNull(category);</span>
+                Class&lt;?&gt; astClass;
+                try {
+<span class="fc" id="L52">                    astClass = AbstractRobotFactory.class.getClassLoader().loadClass(astClassName); // does the class exist?</span>
+<span class="nc" id="L53">                } catch ( Exception e ) {</span>
+<span class="nc" id="L54">                    LOG.error(&quot;AstClass \&quot;{}\&quot; of block type with key \&quot;{}\&quot; could not be loaded&quot;, astClassName, propertyKey);</span>
+<span class="nc" id="L55">                    throw new DbcException(&quot;Class not found&quot;, e);</span>
+<span class="fc" id="L56">                }</span>
+<span class="fc" id="L57">                String[] blocklyNames = Arrays.copyOfRange(attributes, 2, attributes.length);</span>
+<span class="fc" id="L58">                BlockTypeContainer.add(name, category, astClass, blocklyNames);</span>
+            }
+<span class="fc" id="L60">        }</span>
+<span class="fc" id="L61">    }</span>
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

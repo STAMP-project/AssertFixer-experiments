@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>BlocklyType.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">OpenRobertaRobot</a> &gt; <a href="index.source.html" class="el_package">de.fhg.iais.roberta.typecheck</a> &gt; <span class="el_source">BlocklyType.java</span></div><h1>BlocklyType.java</h1><pre class="source lang-java linenums">package de.fhg.iais.roberta.typecheck;
+
+import java.util.Locale;
+
+import de.fhg.iais.roberta.util.dbc.DbcException;
+
+/**
+ * needed to typecheck a blockly program. Defines the types usable in a signature of a function/method/operator&lt;br&gt;
+ * The basis structure of the types is:
+ *
+ * &lt;pre&gt;
+ *                    ANY
+ *                     I
+ *  +---------+--------+-------+
+ *  I         I        I       I
+ * STRING   COLOR   NUMERIC   BOOL
+ *  I         I        I       I
+ *  +---------+        I       I
+ *            I        I       I
+ *           NULL      +-------+
+ *            I                I
+ *           REF              PRIM
+ *            I                I
+ *            +--------+-------+
+ *                     I
+ *                   NOTHING
+ * &lt;/pre&gt;
+ *
+ * &lt;b&gt;Note:&lt;/b&gt;&lt;br&gt;
+ * &lt;ul&gt;
+ * &lt;li&gt;our simple type system cannot be extended by new types (e.g. classes) and is thus closed
+ * &lt;li&gt;ANY is supertype of all concrete types, NOTHING is subtype of all concrete types
+ * &lt;li&gt;VOID represents no type, e.g. methods that return no object (void in Java)
+ * &lt;li&gt;NULL is subtype of reference types (String and Color)
+ * &lt;li&gt;there is only one numeric type
+ * &lt;li&gt;R, S and T are used for type variables
+ * &lt;li&gt;a CAPTURED_TYPE is used to transfer type information in a signature and is not used explicitly. E.g. in &lt;code&gt;eq(TxT-&gt;Bool)&lt;/code&gt; the type variable is
+ * captured, expressing that T has to be substituted by the same concrete type at all places
+ * &lt;li&gt;COMPARABLE, ADDABLE are abstract types used for &lt;code&gt;&lt; &lt;= &gt; &gt;= == !=&lt;/code&gt; and &lt;code&gt;+&lt;/code&gt; (strings and numeric!)
+ * &lt;/ul&gt;
+ *
+ * @author rbudde
+ */
+<span class="pc" id="L44">public enum BlocklyType {</span>
+    // @formatter:off
+<span class="fc" id="L46">    ANY(&quot;&quot;, false),</span>
+<span class="fc" id="L47">    COMPARABLE(&quot;&quot;, false,ANY), ADDABLE(&quot;&quot;, false,ANY),</span>
+<span class="fc" id="L48">    ARRAY(&quot;Array&quot;, false,COMPARABLE),</span>
+<span class="fc" id="L49">    ARRAY_NUMBER(&quot;Array_Number&quot;,true, COMPARABLE),</span>
+<span class="fc" id="L50">    ARRAY_STRING(&quot;Array_String&quot;, true,COMPARABLE),</span>
+<span class="fc" id="L51">    ARRAY_COLOUR(&quot;Array_Colour&quot;, true,COMPARABLE),</span>
+<span class="fc" id="L52">    ARRAY_BOOLEAN(&quot;Array_Boolean&quot;, true,COMPARABLE),</span>
+<span class="fc" id="L53">    ARRAY_IMAGE(&quot;Array_Image&quot;, true, COMPARABLE),</span>
+<span class="fc" id="L54">    ARRAY_CONNECTION(&quot;Array_Connection&quot;, true, COMPARABLE),</span>
+<span class="fc" id="L55">    BOOLEAN(&quot;Boolean&quot;, false,COMPARABLE),</span>
+<span class="fc" id="L56">    NUMBER(&quot;Number&quot;, false,COMPARABLE, ADDABLE), NUMBER_INT(&quot;Number&quot;,false, COMPARABLE, ADDABLE),</span>
+<span class="fc" id="L57">    STRING(&quot;String&quot;, false,COMPARABLE, ADDABLE),</span>
+<span class="fc" id="L58">    COLOR(&quot;Colour&quot;, false,ANY), //</span>
+<span class="fc" id="L59">    IMAGE(&quot;Image&quot;, false, ANY),</span>
+<span class="fc" id="L60">    PREDEFINED_IMAGE(&quot;PredefinedImage&quot;, false, ANY),</span>
+<span class="fc" id="L61">    NULL(&quot;&quot;, false,STRING, COLOR),</span>
+<span class="fc" id="L62">    REF(&quot;&quot;, false,NULL), PRIM(&quot;&quot;,false, NUMBER, BOOLEAN),</span>
+<span class="fc" id="L63">    NOTHING(&quot;&quot;, false, REF, PRIM),</span>
+<span class="fc" id="L64">    VOID(&quot;&quot;,false),</span>
+<span class="fc" id="L65">    CONNECTION(&quot;Connection&quot;,false, ANY),</span>
+<span class="fc" id="L66">    CAPTURED_TYPE(&quot;&quot;,false), R(&quot;&quot;,false), S(&quot;&quot;,false), T(&quot;&quot;,false);</span>
+    // @formatter:on
+
+    private final String blocklyName;
+    private final BlocklyType[] superTypes;
+    private final boolean array;
+
+<span class="fc" id="L73">    private BlocklyType(String blocklyName, boolean array, BlocklyType... superTypes) {</span>
+<span class="fc" id="L74">        this.blocklyName = blocklyName;</span>
+<span class="fc" id="L75">        this.superTypes = superTypes;</span>
+<span class="fc" id="L76">        this.array = array;</span>
+<span class="fc" id="L77">    }</span>
+
+    /**
+     * @return the blocklyName
+     */
+    public String getBlocklyName() {
+<span class="fc" id="L83">        return this.blocklyName;</span>
+    }
+
+    public BlocklyType[] getSuperTypes() {
+<span class="nc" id="L87">        return this.superTypes;</span>
+    }
+
+    public boolean isArray() {
+<span class="nc" id="L91">        return this.array;</span>
+    }
+
+    /**
+     * get variable type from {@link BlocklyType} from string parameter. Throws exception if the actor variable type does not exists.
+     *
+     * @param name of the variable type
+     * @return variable type from the enum {@link BlocklyType}
+     */
+    public static BlocklyType get(String variableType) {
+<span class="pc bpc" id="L101" title="2 of 4 branches missed.">        if ( variableType == null || variableType.isEmpty() ) {</span>
+<span class="nc" id="L102">            throw new DbcException(&quot;Invalid variable type: &quot; + variableType);</span>
+        }
+<span class="fc" id="L104">        String sUpper = variableType.trim().toUpperCase(Locale.GERMAN);</span>
+<span class="pc bpc" id="L105" title="1 of 2 branches missed.">        for ( BlocklyType ap : BlocklyType.values() ) {</span>
+<span class="fc bfc" id="L106" title="All 2 branches covered.">            if ( ap.toString().equals(sUpper) ) {</span>
+<span class="fc" id="L107">                return ap;</span>
+            }
+<span class="fc bfc" id="L109" title="All 2 branches covered.">            if ( variableType.trim().equals(ap.getBlocklyName()) ) {</span>
+<span class="fc" id="L110">                return ap;</span>
+            }
+        }
+<span class="nc" id="L113">        throw new DbcException(&quot;Invalid variableType: &quot; + variableType);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

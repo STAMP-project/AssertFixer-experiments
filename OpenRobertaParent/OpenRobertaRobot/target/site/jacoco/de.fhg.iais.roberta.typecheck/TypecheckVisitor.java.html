@@ -1,0 +1,754 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>TypecheckVisitor.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">OpenRobertaRobot</a> &gt; <a href="index.source.html" class="el_package">de.fhg.iais.roberta.typecheck</a> &gt; <span class="el_source">TypecheckVisitor.java</span></div><h1>TypecheckVisitor.java</h1><pre class="source lang-java linenums">package de.fhg.iais.roberta.typecheck;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
+import de.fhg.iais.roberta.syntax.Phrase;
+import de.fhg.iais.roberta.syntax.action.communication.BluetoothCheckConnectAction;
+import de.fhg.iais.roberta.syntax.action.communication.BluetoothConnectAction;
+import de.fhg.iais.roberta.syntax.action.communication.BluetoothReceiveAction;
+import de.fhg.iais.roberta.syntax.action.communication.BluetoothSendAction;
+import de.fhg.iais.roberta.syntax.action.communication.BluetoothWaitForConnectionAction;
+import de.fhg.iais.roberta.syntax.action.display.ClearDisplayAction;
+import de.fhg.iais.roberta.syntax.action.display.ShowPictureAction;
+import de.fhg.iais.roberta.syntax.action.display.ShowTextAction;
+import de.fhg.iais.roberta.syntax.action.light.LightAction;
+import de.fhg.iais.roberta.syntax.action.light.LightStatusAction;
+import de.fhg.iais.roberta.syntax.action.motor.CurveAction;
+import de.fhg.iais.roberta.syntax.action.motor.DriveAction;
+import de.fhg.iais.roberta.syntax.action.motor.MotorDriveStopAction;
+import de.fhg.iais.roberta.syntax.action.motor.MotorGetPowerAction;
+import de.fhg.iais.roberta.syntax.action.motor.MotorOnAction;
+import de.fhg.iais.roberta.syntax.action.motor.MotorSetPowerAction;
+import de.fhg.iais.roberta.syntax.action.motor.MotorStopAction;
+import de.fhg.iais.roberta.syntax.action.motor.TurnAction;
+import de.fhg.iais.roberta.syntax.action.sound.PlayFileAction;
+import de.fhg.iais.roberta.syntax.action.sound.PlayNoteAction;
+import de.fhg.iais.roberta.syntax.action.sound.SayTextAction;
+import de.fhg.iais.roberta.syntax.action.sound.SetLanguageAction;
+import de.fhg.iais.roberta.syntax.action.sound.ToneAction;
+import de.fhg.iais.roberta.syntax.action.sound.VolumeAction;
+import de.fhg.iais.roberta.syntax.lang.blocksequence.ActivityTask;
+import de.fhg.iais.roberta.syntax.lang.blocksequence.Location;
+import de.fhg.iais.roberta.syntax.lang.blocksequence.MainTask;
+import de.fhg.iais.roberta.syntax.lang.blocksequence.StartActivityTask;
+import de.fhg.iais.roberta.syntax.lang.expr.ActionExpr;
+import de.fhg.iais.roberta.syntax.lang.expr.Binary;
+import de.fhg.iais.roberta.syntax.lang.expr.BoolConst;
+import de.fhg.iais.roberta.syntax.lang.expr.ColorConst;
+import de.fhg.iais.roberta.syntax.lang.expr.ConnectConst;
+import de.fhg.iais.roberta.syntax.lang.expr.EmptyExpr;
+import de.fhg.iais.roberta.syntax.lang.expr.EmptyList;
+import de.fhg.iais.roberta.syntax.lang.expr.Expr;
+import de.fhg.iais.roberta.syntax.lang.expr.ExprList;
+import de.fhg.iais.roberta.syntax.lang.expr.FunctionExpr;
+import de.fhg.iais.roberta.syntax.lang.expr.ListCreate;
+import de.fhg.iais.roberta.syntax.lang.expr.MathConst;
+import de.fhg.iais.roberta.syntax.lang.expr.MethodExpr;
+import de.fhg.iais.roberta.syntax.lang.expr.NullConst;
+import de.fhg.iais.roberta.syntax.lang.expr.NumConst;
+import de.fhg.iais.roberta.syntax.lang.expr.RgbColor;
+import de.fhg.iais.roberta.syntax.lang.expr.SensorExpr;
+import de.fhg.iais.roberta.syntax.lang.expr.ShadowExpr;
+import de.fhg.iais.roberta.syntax.lang.expr.StmtExpr;
+import de.fhg.iais.roberta.syntax.lang.expr.StringConst;
+import de.fhg.iais.roberta.syntax.lang.expr.Unary;
+import de.fhg.iais.roberta.syntax.lang.expr.Var;
+import de.fhg.iais.roberta.syntax.lang.expr.VarDeclaration;
+import de.fhg.iais.roberta.syntax.lang.functions.GetSubFunct;
+import de.fhg.iais.roberta.syntax.lang.functions.IndexOfFunct;
+import de.fhg.iais.roberta.syntax.lang.functions.LengthOfIsEmptyFunct;
+import de.fhg.iais.roberta.syntax.lang.functions.ListGetIndex;
+import de.fhg.iais.roberta.syntax.lang.functions.ListRepeat;
+import de.fhg.iais.roberta.syntax.lang.functions.ListSetIndex;
+import de.fhg.iais.roberta.syntax.lang.functions.MathConstrainFunct;
+import de.fhg.iais.roberta.syntax.lang.functions.MathNumPropFunct;
+import de.fhg.iais.roberta.syntax.lang.functions.MathOnListFunct;
+import de.fhg.iais.roberta.syntax.lang.functions.MathPowerFunct;
+import de.fhg.iais.roberta.syntax.lang.functions.MathRandomFloatFunct;
+import de.fhg.iais.roberta.syntax.lang.functions.MathRandomIntFunct;
+import de.fhg.iais.roberta.syntax.lang.functions.MathSingleFunct;
+import de.fhg.iais.roberta.syntax.lang.functions.TextJoinFunct;
+import de.fhg.iais.roberta.syntax.lang.functions.TextPrintFunct;
+import de.fhg.iais.roberta.syntax.lang.methods.MethodCall;
+import de.fhg.iais.roberta.syntax.lang.methods.MethodIfReturn;
+import de.fhg.iais.roberta.syntax.lang.methods.MethodReturn;
+import de.fhg.iais.roberta.syntax.lang.methods.MethodVoid;
+import de.fhg.iais.roberta.syntax.lang.stmt.ActionStmt;
+import de.fhg.iais.roberta.syntax.lang.stmt.AssignStmt;
+import de.fhg.iais.roberta.syntax.lang.stmt.ExprStmt;
+import de.fhg.iais.roberta.syntax.lang.stmt.FunctionStmt;
+import de.fhg.iais.roberta.syntax.lang.stmt.IfStmt;
+import de.fhg.iais.roberta.syntax.lang.stmt.MethodStmt;
+import de.fhg.iais.roberta.syntax.lang.stmt.RepeatStmt;
+import de.fhg.iais.roberta.syntax.lang.stmt.SensorStmt;
+import de.fhg.iais.roberta.syntax.lang.stmt.StmtFlowCon;
+import de.fhg.iais.roberta.syntax.lang.stmt.StmtList;
+import de.fhg.iais.roberta.syntax.lang.stmt.StmtTextComment;
+import de.fhg.iais.roberta.syntax.lang.stmt.WaitStmt;
+import de.fhg.iais.roberta.syntax.lang.stmt.WaitTimeStmt;
+import de.fhg.iais.roberta.syntax.sensor.generic.BrickSensor;
+import de.fhg.iais.roberta.syntax.sensor.generic.ColorSensor;
+import de.fhg.iais.roberta.syntax.sensor.generic.CompassSensor;
+import de.fhg.iais.roberta.syntax.sensor.generic.EncoderSensor;
+import de.fhg.iais.roberta.syntax.sensor.generic.GetSampleSensor;
+import de.fhg.iais.roberta.syntax.sensor.generic.GyroSensor;
+import de.fhg.iais.roberta.syntax.sensor.generic.InfraredSensor;
+import de.fhg.iais.roberta.syntax.sensor.generic.LightSensor;
+import de.fhg.iais.roberta.syntax.sensor.generic.SoundSensor;
+import de.fhg.iais.roberta.syntax.sensor.generic.TemperatureSensor;
+import de.fhg.iais.roberta.syntax.sensor.generic.TimerSensor;
+import de.fhg.iais.roberta.syntax.sensor.generic.TouchSensor;
+import de.fhg.iais.roberta.syntax.sensor.generic.UltrasonicSensor;
+import de.fhg.iais.roberta.typecheck.NepoInfo.Severity;
+import de.fhg.iais.roberta.util.dbc.Assert;
+import de.fhg.iais.roberta.visitor.AstVisitor;
+import de.fhg.iais.roberta.visitor.actor.AstActorCommunicationVisitor;
+import de.fhg.iais.roberta.visitor.actor.AstActorDisplayVisitor;
+import de.fhg.iais.roberta.visitor.actor.AstActorLightVisitor;
+import de.fhg.iais.roberta.visitor.actor.AstActorMotorVisitor;
+import de.fhg.iais.roberta.visitor.actor.AstActorSoundVisitor;
+import de.fhg.iais.roberta.visitor.lang.AstLanguageVisitor;
+import de.fhg.iais.roberta.visitor.sensor.AstSensorsVisitor;
+
+/**
+ * This class is implementing {@link AstVisitor}. All methods are implemented and they append a human-readable JAVA code representation of a phrase to a
+ * StringBuilder. &lt;b&gt;This representation is correct JAVA code.&lt;/b&gt; &lt;br&gt;
+ */
+public class TypecheckVisitor implements AstLanguageVisitor&lt;BlocklyType&gt;, AstSensorsVisitor&lt;BlocklyType&gt;, AstActorCommunicationVisitor&lt;BlocklyType&gt;,
+    AstActorDisplayVisitor&lt;BlocklyType&gt;, AstActorMotorVisitor&lt;BlocklyType&gt;, AstActorLightVisitor&lt;BlocklyType&gt;, AstActorSoundVisitor&lt;BlocklyType&gt; {
+<span class="nc" id="L121">    private final int ERROR_LIMIT_FOR_TYPECHECK = 10;</span>
+
+    private final Phrase&lt;BlocklyType&gt; phrase;
+
+<span class="nc" id="L125">    private List&lt;NepoInfo&gt; infos = null;</span>
+<span class="nc" id="L126">    private int errorCount = 0;</span>
+    private BlocklyType resultType;
+
+    /**
+     * initialize the typecheck visitor.
+     *
+     * @param programName name of the program
+     * @param brickConfiguration hardware configuration of the brick
+     * @param phrase
+     */
+<span class="nc" id="L136">    TypecheckVisitor(Phrase&lt;BlocklyType&gt; phrase) {</span>
+<span class="nc" id="L137">        this.phrase = phrase;</span>
+<span class="nc" id="L138">    }</span>
+
+    /**
+     * typecheck an AST. This is done ba an visitor, which is an instance of this class&lt;br&gt;
+     *
+     * @param programName name of the program
+     * @param brickConfiguration hardware configuration of the brick
+     * @param phrase to typecheck
+     * @return the typecheck visitor (to get information about errors and the derived type)
+     */
+    public static TypecheckVisitor makeVisitorAndTypecheck(Phrase&lt;BlocklyType&gt; phrase) //
+    {
+<span class="nc" id="L150">        Assert.notNull(phrase);</span>
+
+<span class="nc" id="L152">        TypecheckVisitor astVisitor = new TypecheckVisitor(phrase);</span>
+<span class="nc" id="L153">        astVisitor.resultType = phrase.visit(astVisitor);</span>
+<span class="nc" id="L154">        return astVisitor;</span>
+    }
+
+    /**
+     * get the number of &lt;b&gt;errors&lt;/b&gt;
+     *
+     * @return the number of &lt;b&gt;errors&lt;/b&gt; detected during this type check visit
+     */
+    public int getErrorCount() {
+<span class="nc bnc" id="L163" title="All 2 branches missed.">        if ( this.infos == null ) {</span>
+<span class="nc" id="L164">            this.infos = InfoCollector.collectInfos(this.phrase);</span>
+<span class="nc bnc" id="L165" title="All 2 branches missed.">            for ( NepoInfo info : this.infos ) {</span>
+<span class="nc bnc" id="L166" title="All 2 branches missed.">                if ( info.getSeverity() == Severity.ERROR ) {</span>
+<span class="nc" id="L167">                    this.errorCount++;</span>
+                }
+<span class="nc" id="L169">            }</span>
+        }
+<span class="nc" id="L171">        return this.errorCount;</span>
+    }
+
+    /**
+     * get the list of all infos (errors, warnings) generated during this typecheck visit
+     *
+     * @return the list of all infos
+     */
+    public List&lt;NepoInfo&gt; getInfos() {
+<span class="nc" id="L180">        getErrorCount(); // for the side effect</span>
+<span class="nc" id="L181">        return this.infos;</span>
+    }
+
+    /**
+     * return the type that was inferenced by the typechecker for the given phrase
+     *
+     * @return the resulting type.May be &lt;code&gt;null&lt;/code&gt; if type errors occurred
+     */
+    public BlocklyType getResultType() {
+<span class="nc" id="L190">        return this.resultType;</span>
+    }
+
+    @Override
+    public BlocklyType visitNumConst(NumConst&lt;BlocklyType&gt; numConst) {
+<span class="nc" id="L195">        Assert.isTrue(numConst.getKind().hasName(&quot;NUM_CONST&quot;));</span>
+<span class="nc" id="L196">        return BlocklyType.NUMBER;</span>
+    }
+
+    @Override
+    public BlocklyType visitMathConst(MathConst&lt;BlocklyType&gt; mathConst) {
+<span class="nc" id="L201">        Assert.isTrue(mathConst.getKind().hasName(&quot;MATH_CONST&quot;));</span>
+<span class="nc" id="L202">        String name = mathConst.getMathConst().name();</span>
+<span class="nc" id="L203">        BlocklyType type = TypeTransformations.getConstantSignature(name);</span>
+<span class="nc" id="L204">        checkLookupNotNull(mathConst, name, type, &quot;invalid mathematical constant&quot;);</span>
+<span class="nc" id="L205">        return type;</span>
+    }
+
+    @Override
+    public BlocklyType visitBoolConst(BoolConst&lt;BlocklyType&gt; boolConst) {
+<span class="nc" id="L210">        Assert.isTrue(boolConst.getKind().hasName(&quot;BOOL_CONST&quot;));</span>
+<span class="nc" id="L211">        return BlocklyType.BOOLEAN;</span>
+    }
+
+    @Override
+    public BlocklyType visitStringConst(StringConst&lt;BlocklyType&gt; stringConst) {
+<span class="nc" id="L216">        Assert.isTrue(stringConst.getKind().hasName(&quot;STRING_CONST&quot;));</span>
+<span class="nc" id="L217">        return BlocklyType.STRING;</span>
+    }
+
+    @Override
+    public BlocklyType visitNullConst(NullConst&lt;BlocklyType&gt; nullConst) {
+<span class="nc" id="L222">        Assert.isTrue(nullConst.getKind().hasName(&quot;NULL_CONST&quot;));</span>
+<span class="nc" id="L223">        return BlocklyType.NULL;</span>
+    }
+
+    @Override
+    public BlocklyType visitColorConst(ColorConst&lt;BlocklyType&gt; colorConst) {
+<span class="nc" id="L228">        Assert.isTrue(colorConst.getKind().hasName(&quot;COLOR_CONST&quot;));</span>
+<span class="nc" id="L229">        return BlocklyType.COLOR;</span>
+    }
+
+    @Override
+    public BlocklyType visitRgbColor(RgbColor&lt;BlocklyType&gt; rgbColor) {
+<span class="nc" id="L234">        Assert.isTrue(rgbColor.getKind().hasName(&quot;RGB_COLOR&quot;));</span>
+<span class="nc" id="L235">        return rgbColor.getVarType();</span>
+    }
+
+    @Override
+    public BlocklyType visitVar(Var&lt;BlocklyType&gt; var) {
+<span class="nc" id="L240">        return null;</span>
+    }
+
+    @Override
+    public BlocklyType visitUnary(Unary&lt;BlocklyType&gt; unary) {
+<span class="nc" id="L245">        return null;</span>
+    }
+
+    @Override
+    public BlocklyType visitBinary(Binary&lt;BlocklyType&gt; binary) {
+<span class="nc" id="L250">        BlocklyType left = binary.getLeft().visit(this);</span>
+<span class="nc" id="L251">        BlocklyType right = binary.getRight().visit(this);</span>
+        //        Sig signature = TypeTransformations.getBinarySignature(binary.getOp().getOpSymbol());
+<span class="nc" id="L253">        Sig signature = binary.getOp().getSignature();</span>
+<span class="nc" id="L254">        return signature.typeCheck(binary, Arrays.asList(left, right));</span>
+    }
+
+    @Override
+    public BlocklyType visitMathPowerFunct(MathPowerFunct&lt;BlocklyType&gt; func) {
+<span class="nc" id="L259">        List&lt;BlocklyType&gt; paramTypes = typecheckList(func.getParam());</span>
+<span class="nc" id="L260">        Sig signature = TypeTransformations.getFunctionSignature(func.getFunctName().name());</span>
+<span class="nc" id="L261">        BlocklyType resultType = signature.typeCheck(func, paramTypes);</span>
+<span class="nc" id="L262">        return resultType;</span>
+    }
+
+    @Override
+    public BlocklyType visitActionExpr(ActionExpr&lt;BlocklyType&gt; actionExpr) {
+<span class="nc" id="L267">        return null;</span>
+    }
+
+    @Override
+    public BlocklyType visitSensorExpr(SensorExpr&lt;BlocklyType&gt; sensorExpr) {
+<span class="nc" id="L272">        return null;</span>
+    }
+
+    @Override
+    public BlocklyType visitEmptyExpr(EmptyExpr&lt;BlocklyType&gt; emptyExpr) {
+<span class="nc" id="L277">        return null;</span>
+    }
+
+    @Override
+    public BlocklyType visitExprList(ExprList&lt;BlocklyType&gt; exprList) {
+<span class="nc" id="L282">        return null;</span>
+    }
+
+    @Override
+    public BlocklyType visitActionStmt(ActionStmt&lt;BlocklyType&gt; actionStmt) {
+<span class="nc" id="L287">        return null;</span>
+    }
+
+    @Override
+    public BlocklyType visitAssignStmt(AssignStmt&lt;BlocklyType&gt; assignStmt) {
+<span class="nc" id="L292">        return BlocklyType.VOID;</span>
+    }
+
+    @Override
+    public BlocklyType visitExprStmt(ExprStmt&lt;BlocklyType&gt; exprStmt) {
+<span class="nc" id="L297">        return BlocklyType.VOID;</span>
+    }
+
+    @Override
+    public BlocklyType visitIfStmt(IfStmt&lt;BlocklyType&gt; ifStmt) {
+<span class="nc" id="L302">        return null;</span>
+    }
+
+    @Override
+    public BlocklyType visitRepeatStmt(RepeatStmt&lt;BlocklyType&gt; repeatStmt) {
+<span class="nc" id="L307">        return null;</span>
+    }
+
+    @Override
+    public BlocklyType visitSensorStmt(SensorStmt&lt;BlocklyType&gt; sensorStmt) {
+<span class="nc" id="L312">        return null;</span>
+    }
+
+    @Override
+    public BlocklyType visitStmtFlowCon(StmtFlowCon&lt;BlocklyType&gt; stmtFlowCon) {
+<span class="nc" id="L317">        return null;</span>
+    }
+
+    @Override
+    public BlocklyType visitStmtList(StmtList&lt;BlocklyType&gt; stmtList) {
+<span class="nc" id="L322">        return BlocklyType.VOID;</span>
+    }
+
+    @Override
+    public BlocklyType visitDriveAction(DriveAction&lt;BlocklyType&gt; driveAction) {
+<span class="nc" id="L327">        return null;</span>
+    }
+
+    @Override
+    public BlocklyType visitTurnAction(TurnAction&lt;BlocklyType&gt; turnAction) {
+<span class="nc" id="L332">        return null;</span>
+    }
+
+    @Override
+    public BlocklyType visitLightAction(LightAction&lt;BlocklyType&gt; lightAction) {
+<span class="nc" id="L337">        return null;</span>
+    }
+
+    @Override
+    public BlocklyType visitLightStatusAction(LightStatusAction&lt;BlocklyType&gt; lightStatusAction) {
+<span class="nc" id="L342">        return null;</span>
+    }
+
+    @Override
+    public BlocklyType visitMotorGetPowerAction(MotorGetPowerAction&lt;BlocklyType&gt; motorGetPowerAction) {
+<span class="nc" id="L347">        return null;</span>
+    }
+
+    @Override
+    public BlocklyType visitMotorOnAction(MotorOnAction&lt;BlocklyType&gt; motorOnAction) {
+<span class="nc" id="L352">        return null;</span>
+    }
+
+    @Override
+    public BlocklyType visitMotorSetPowerAction(MotorSetPowerAction&lt;BlocklyType&gt; motorSetPowerAction) {
+<span class="nc" id="L357">        return null;</span>
+    }
+
+    @Override
+    public BlocklyType visitMotorStopAction(MotorStopAction&lt;BlocklyType&gt; motorStopAction) {
+<span class="nc" id="L362">        return null;</span>
+    }
+
+    @Override
+    public BlocklyType visitClearDisplayAction(ClearDisplayAction&lt;BlocklyType&gt; clearDisplayAction) {
+<span class="nc" id="L367">        return null;</span>
+    }
+
+    @Override
+    public BlocklyType visitVolumeAction(VolumeAction&lt;BlocklyType&gt; volumeAction) {
+<span class="nc" id="L372">        return null;</span>
+    }
+
+    @Override
+    public BlocklyType visitSetLanguageAction(SetLanguageAction&lt;BlocklyType&gt; setLanguageAction) {
+<span class="nc" id="L377">        return null;</span>
+    }
+
+    @Override
+    public BlocklyType visitSayTextAction(SayTextAction&lt;BlocklyType&gt; sayTextAction) {
+<span class="nc" id="L382">        return null;</span>
+    }
+
+    @Override
+    public BlocklyType visitPlayFileAction(PlayFileAction&lt;BlocklyType&gt; playFileAction) {
+<span class="nc" id="L387">        return null;</span>
+    }
+
+    @Override
+    public BlocklyType visitShowPictureAction(ShowPictureAction&lt;BlocklyType&gt; showPictureAction) {
+<span class="nc" id="L392">        return null;</span>
+    }
+
+    @Override
+    public BlocklyType visitShowTextAction(ShowTextAction&lt;BlocklyType&gt; showTextAction) {
+<span class="nc" id="L397">        return null;</span>
+    }
+
+    @Override
+    public BlocklyType visitMotorDriveStopAction(MotorDriveStopAction&lt;BlocklyType&gt; stopAction) {
+<span class="nc" id="L402">        return null;</span>
+    }
+
+    @Override
+    public BlocklyType visitToneAction(ToneAction&lt;BlocklyType&gt; toneAction) {
+<span class="nc" id="L407">        return null;</span>
+    }
+
+    @Override
+    public BlocklyType visitPlayNoteAction(PlayNoteAction&lt;BlocklyType&gt; playNoteAction) {
+<span class="nc" id="L412">        return null;</span>
+    }
+
+    @Override
+    public BlocklyType visitBrickSensor(BrickSensor&lt;BlocklyType&gt; brickSensor) {
+<span class="nc" id="L417">        return null;</span>
+    }
+
+    @Override
+    public BlocklyType visitColorSensor(ColorSensor&lt;BlocklyType&gt; colorSensor) {
+<span class="nc" id="L422">        return null;</span>
+    }
+
+    @Override
+    public BlocklyType visitEncoderSensor(EncoderSensor&lt;BlocklyType&gt; encoderSensor) {
+<span class="nc" id="L427">        return null;</span>
+    }
+
+    @Override
+    public BlocklyType visitGyroSensor(GyroSensor&lt;BlocklyType&gt; gyroSensor) {
+<span class="nc" id="L432">        return null;</span>
+    }
+
+    @Override
+    public BlocklyType visitInfraredSensor(InfraredSensor&lt;BlocklyType&gt; infraredSensor) {
+<span class="nc" id="L437">        return null;</span>
+    }
+
+    @Override
+    public BlocklyType visitTimerSensor(TimerSensor&lt;BlocklyType&gt; timerSensor) {
+<span class="nc" id="L442">        return null;</span>
+    }
+
+    @Override
+    public BlocklyType visitTouchSensor(TouchSensor&lt;BlocklyType&gt; touchSensor) {
+<span class="nc" id="L447">        return null;</span>
+    }
+
+    @Override
+    public BlocklyType visitUltrasonicSensor(UltrasonicSensor&lt;BlocklyType&gt; ultrasonicSensor) {
+<span class="nc" id="L452">        return null;</span>
+    }
+
+    @Override
+    public BlocklyType visitMainTask(MainTask&lt;BlocklyType&gt; mainTask) {
+<span class="nc" id="L457">        return null;</span>
+    }
+
+    @Override
+    public BlocklyType visitActivityTask(ActivityTask&lt;BlocklyType&gt; activityTask) {
+<span class="nc" id="L462">        return null;</span>
+    }
+
+    @Override
+    public BlocklyType visitStartActivityTask(StartActivityTask&lt;BlocklyType&gt; startActivityTask) {
+<span class="nc" id="L467">        return null;</span>
+    }
+
+    @Override
+    public BlocklyType visitWaitStmt(WaitStmt&lt;BlocklyType&gt; waitStmt) {
+<span class="nc" id="L472">        return null;</span>
+    }
+
+    private List&lt;BlocklyType&gt; typecheckList(List&lt;Expr&lt;BlocklyType&gt;&gt; params) {
+<span class="nc" id="L476">        List&lt;BlocklyType&gt; paramTypes = new ArrayList&lt;&gt;(params.size());</span>
+<span class="nc bnc" id="L477" title="All 2 branches missed.">        for ( Expr&lt;BlocklyType&gt; param : params ) {</span>
+<span class="nc" id="L478">            paramTypes.add(param.visit(this));</span>
+<span class="nc" id="L479">        }</span>
+<span class="nc" id="L480">        return paramTypes;</span>
+    }
+
+    private void checkFor(Phrase&lt;BlocklyType&gt; phrase, boolean condition, String message) {
+<span class="nc bnc" id="L484" title="All 2 branches missed.">        if ( !condition ) {</span>
+<span class="nc bnc" id="L485" title="All 2 branches missed.">            if ( this.errorCount &gt;= this.ERROR_LIMIT_FOR_TYPECHECK ) {</span>
+<span class="nc" id="L486">                throw new RuntimeException(&quot;aborting typecheck. More than &quot; + this.ERROR_LIMIT_FOR_TYPECHECK + &quot; found.&quot;);</span>
+            } else {
+<span class="nc" id="L488">                this.errorCount++;</span>
+<span class="nc" id="L489">                NepoInfo error = NepoInfo.error(message);</span>
+<span class="nc" id="L490">                phrase.addInfo(error);</span>
+            }
+        }
+<span class="nc" id="L493">    }</span>
+
+    private void checkLookupNotNull(Phrase&lt;BlocklyType&gt; phrase, String name, Object supposedToBeNotNull, String message) {
+<span class="nc bnc" id="L496" title="All 2 branches missed.">        if ( supposedToBeNotNull == null ) {</span>
+<span class="nc" id="L497">            checkFor(phrase, false, message + &quot;: &quot; + name);</span>
+        }
+<span class="nc" id="L499">    }</span>
+
+    @Override
+    public BlocklyType visitLocation(Location&lt;BlocklyType&gt; location) {
+        // TODO Auto-generated method stub
+<span class="nc" id="L504">        return null;</span>
+    }
+
+    @Override
+    public BlocklyType visitEmptyList(EmptyList&lt;BlocklyType&gt; emptyList) {
+        // TODO Auto-generated method stub
+<span class="nc" id="L510">        return null;</span>
+    }
+
+    @Override
+    public BlocklyType visitGetSampleSensor(GetSampleSensor&lt;BlocklyType&gt; sensorGetSample) {
+        // TODO Auto-generated method stub
+<span class="nc" id="L516">        return null;</span>
+    }
+
+    @Override
+    public BlocklyType visitTextPrintFunct(TextPrintFunct&lt;BlocklyType&gt; textPrintFunct) {
+        // TODO Auto-generated method stub
+<span class="nc" id="L522">        return null;</span>
+    }
+
+    @Override
+    public BlocklyType visitFunctionStmt(FunctionStmt&lt;BlocklyType&gt; functionStmt) {
+        // TODO Auto-generated method stub
+<span class="nc" id="L528">        return null;</span>
+    }
+
+    @Override
+    public BlocklyType visitFunctionExpr(FunctionExpr&lt;BlocklyType&gt; functionExpr) {
+        // TODO Auto-generated method stub
+<span class="nc" id="L534">        return null;</span>
+    }
+
+    @Override
+    public BlocklyType visitGetSubFunct(GetSubFunct&lt;BlocklyType&gt; getSubFunct) {
+        // TODO Auto-generated method stub
+<span class="nc" id="L540">        return null;</span>
+    }
+
+    @Override
+    public BlocklyType visitIndexOfFunct(IndexOfFunct&lt;BlocklyType&gt; indexOfFunct) {
+        // TODO Auto-generated method stub
+<span class="nc" id="L546">        return null;</span>
+    }
+
+    @Override
+    public BlocklyType visitLengthOfIsEmptyFunct(LengthOfIsEmptyFunct&lt;BlocklyType&gt; lengthOfIsEmptyFunct) {
+        // TODO Auto-generated method stub
+<span class="nc" id="L552">        return null;</span>
+    }
+
+    @Override
+    public BlocklyType visitListCreate(ListCreate&lt;BlocklyType&gt; listCreate) {
+        // TODO Auto-generated method stub
+<span class="nc" id="L558">        return null;</span>
+    }
+
+    @Override
+    public BlocklyType visitListGetIndex(ListGetIndex&lt;BlocklyType&gt; listGetIndex) {
+        // TODO Auto-generated method stub
+<span class="nc" id="L564">        return null;</span>
+    }
+
+    @Override
+    public BlocklyType visitListRepeat(ListRepeat&lt;BlocklyType&gt; listRepeat) {
+        // TODO Auto-generated method stub
+<span class="nc" id="L570">        return null;</span>
+    }
+
+    @Override
+    public BlocklyType visitListSetIndex(ListSetIndex&lt;BlocklyType&gt; listSetIndex) {
+        // TODO Auto-generated method stub
+<span class="nc" id="L576">        return null;</span>
+    }
+
+    @Override
+    public BlocklyType visitMathConstrainFunct(MathConstrainFunct&lt;BlocklyType&gt; mathConstrainFunct) {
+        // TODO Auto-generated method stub
+<span class="nc" id="L582">        return null;</span>
+    }
+
+    @Override
+    public BlocklyType visitMathNumPropFunct(MathNumPropFunct&lt;BlocklyType&gt; mathNumPropFunct) {
+        // TODO Auto-generated method stub
+<span class="nc" id="L588">        return null;</span>
+    }
+
+    @Override
+    public BlocklyType visitMathOnListFunct(MathOnListFunct&lt;BlocklyType&gt; mathOnListFunct) {
+        // TODO Auto-generated method stub
+<span class="nc" id="L594">        return null;</span>
+    }
+
+    @Override
+    public BlocklyType visitMathRandomFloatFunct(MathRandomFloatFunct&lt;BlocklyType&gt; mathRandomFloatFunct) {
+        // TODO Auto-generated method stub
+<span class="nc" id="L600">        return null;</span>
+    }
+
+    @Override
+    public BlocklyType visitMathRandomIntFunct(MathRandomIntFunct&lt;BlocklyType&gt; mathRandomIntFunct) {
+        // TODO Auto-generated method stub
+<span class="nc" id="L606">        return null;</span>
+    }
+
+    @Override
+    public BlocklyType visitMathSingleFunct(MathSingleFunct&lt;BlocklyType&gt; mathSingleFunct) {
+        // TODO Auto-generated method stub
+<span class="nc" id="L612">        return null;</span>
+    }
+
+    @Override
+    public BlocklyType visitTextJoinFunct(TextJoinFunct&lt;BlocklyType&gt; textJoinFunct) {
+        // TODO Auto-generated method stub
+<span class="nc" id="L618">        return null;</span>
+    }
+
+    @Override
+    public BlocklyType visitWaitTimeStmt(WaitTimeStmt&lt;BlocklyType&gt; waitTimeStmt) {
+        // TODO Auto-generated method stub
+<span class="nc" id="L624">        return null;</span>
+    }
+
+    @Override
+    public BlocklyType visitVarDeclaration(VarDeclaration&lt;BlocklyType&gt; var) {
+        // TODO Auto-generated method stub
+<span class="nc" id="L630">        return null;</span>
+    }
+
+    @Override
+    public BlocklyType visitMethodVoid(MethodVoid&lt;BlocklyType&gt; methodVoid) {
+        // TODO Auto-generated method stub
+<span class="nc" id="L636">        return null;</span>
+    }
+
+    @Override
+    public BlocklyType visitMethodReturn(MethodReturn&lt;BlocklyType&gt; methodReturn) {
+        // TODO Auto-generated method stub
+<span class="nc" id="L642">        return null;</span>
+    }
+
+    @Override
+    public BlocklyType visitMethodIfReturn(MethodIfReturn&lt;BlocklyType&gt; methodIfReturn) {
+        // TODO Auto-generated method stub
+<span class="nc" id="L648">        return null;</span>
+    }
+
+    @Override
+    public BlocklyType visitMethodStmt(MethodStmt&lt;BlocklyType&gt; methodStmt) {
+        // TODO Auto-generated method stub
+<span class="nc" id="L654">        return null;</span>
+    }
+
+    @Override
+    public BlocklyType visitMethodCall(MethodCall&lt;BlocklyType&gt; methodCall) {
+        // TODO Auto-generated method stub
+<span class="nc" id="L660">        return null;</span>
+    }
+
+    @Override
+    public BlocklyType visitMethodExpr(MethodExpr&lt;BlocklyType&gt; methodExpr) {
+        // TODO Auto-generated method stub
+<span class="nc" id="L666">        return null;</span>
+    }
+
+    @Override
+    public BlocklyType visitBluetoothReceiveAction(BluetoothReceiveAction&lt;BlocklyType&gt; clearDisplayAction) {
+        // TODO Auto-generated method stub
+<span class="nc" id="L672">        return null;</span>
+    }
+
+    @Override
+    public BlocklyType visitBluetoothConnectAction(BluetoothConnectAction&lt;BlocklyType&gt; clearDisplayAction) {
+        // TODO Auto-generated method stub
+<span class="nc" id="L678">        return null;</span>
+    }
+
+    @Override
+    public BlocklyType visitBluetoothSendAction(BluetoothSendAction&lt;BlocklyType&gt; clearDisplayAction) {
+        // TODO Auto-generated method stub
+<span class="nc" id="L684">        return null;</span>
+    }
+
+    @Override
+    public BlocklyType visitBluetoothWaitForConnectionAction(BluetoothWaitForConnectionAction&lt;BlocklyType&gt; bluetoothWaitForConnection) {
+        // TODO Auto-generated method stub
+<span class="nc" id="L690">        return null;</span>
+    }
+
+    @Override
+    public BlocklyType visitStmtExpr(StmtExpr&lt;BlocklyType&gt; stmtExpr) {
+        // TODO Auto-generated method stub
+<span class="nc" id="L696">        return null;</span>
+    }
+
+    @Override
+    public BlocklyType visitShadowExpr(ShadowExpr&lt;BlocklyType&gt; shadowExpr) {
+        // TODO Auto-generated method stub
+<span class="nc" id="L702">        return null;</span>
+    }
+
+    @Override
+    public BlocklyType visitLightSensor(LightSensor&lt;BlocklyType&gt; lightSensor) {
+        // TODO Auto-generated method stub
+<span class="nc" id="L708">        return null;</span>
+    }
+
+    @Override
+    public BlocklyType visitSoundSensor(SoundSensor&lt;BlocklyType&gt; lightSensor) {
+        // TODO Auto-generated method stub
+<span class="nc" id="L714">        return null;</span>
+    }
+
+    @Override
+    public BlocklyType visitCurveAction(CurveAction&lt;BlocklyType&gt; driveAction) {
+        // TODO Auto-generated method stub
+<span class="nc" id="L720">        return null;</span>
+    }
+
+    @Override
+    public BlocklyType visitCompassSensor(CompassSensor&lt;BlocklyType&gt; compassSensor) {
+        // TODO Auto-generated method stub
+<span class="nc" id="L726">        return null;</span>
+    }
+
+    @Override
+    public BlocklyType visitConnectConst(ConnectConst&lt;BlocklyType&gt; connectConst) {
+        // TODO Auto-generated method stub
+<span class="nc" id="L732">        return null;</span>
+    }
+
+    @Override
+    public BlocklyType visitBluetoothCheckConnectAction(BluetoothCheckConnectAction&lt;BlocklyType&gt; bluetoothCheckConnectAction) {
+        // TODO Auto-generated method stub
+<span class="nc" id="L738">        return null;</span>
+    }
+
+    @Override
+    public BlocklyType visitTemperatureSensor(TemperatureSensor&lt;BlocklyType&gt; temperatureSensor) {
+        // TODO Auto-generated method stub
+<span class="nc" id="L744">        return null;</span>
+    }
+
+    @Override
+    public BlocklyType visitStmtTextComment(StmtTextComment&lt;BlocklyType&gt; stmtTextComment) {
+        // TODO Auto-generated method stub
+<span class="nc" id="L750">        return null;</span>
+    }
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

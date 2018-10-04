@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>AssignStmt.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">OpenRobertaRobot</a> &gt; <a href="index.source.html" class="el_package">de.fhg.iais.roberta.syntax.lang.stmt</a> &gt; <span class="el_source">AssignStmt.java</span></div><h1>AssignStmt.java</h1><pre class="source lang-java linenums">package de.fhg.iais.roberta.syntax.lang.stmt;
+
+import java.util.List;
+
+import de.fhg.iais.roberta.blockly.generated.Block;
+import de.fhg.iais.roberta.blockly.generated.Mutation;
+import de.fhg.iais.roberta.blockly.generated.Value;
+import de.fhg.iais.roberta.syntax.BlockTypeContainer;
+import de.fhg.iais.roberta.syntax.BlocklyBlockProperties;
+import de.fhg.iais.roberta.syntax.BlocklyComment;
+import de.fhg.iais.roberta.syntax.BlocklyConstants;
+import de.fhg.iais.roberta.syntax.Phrase;
+import de.fhg.iais.roberta.syntax.lang.expr.Expr;
+import de.fhg.iais.roberta.syntax.lang.expr.Var;
+import de.fhg.iais.roberta.transformer.ExprParam;
+import de.fhg.iais.roberta.transformer.Jaxb2AstTransformer;
+import de.fhg.iais.roberta.transformer.JaxbTransformerHelper;
+import de.fhg.iais.roberta.typecheck.BlocklyType;
+import de.fhg.iais.roberta.util.dbc.Assert;
+import de.fhg.iais.roberta.visitor.AstVisitor;
+import de.fhg.iais.roberta.visitor.lang.AstLanguageVisitor;
+
+/**
+ * This class represents the &lt;b&gt;variables_set&lt;/b&gt; block from Blockly into the AST (abstract syntax tree). Object from this class will generate code for
+ * assignment a value to a variable.&lt;br/&gt;
+ * &lt;br&gt;
+ * The client must provide the name of the variable and value.&lt;br&gt;
+ * &lt;br&gt;
+ * To create an instance from this class use the method {@link #make(Var, Expr, BlocklyBlockProperties, BlocklyComment)}.&lt;br&gt;
+ */
+public class AssignStmt&lt;V&gt; extends Stmt&lt;V&gt; {
+    private final Var&lt;V&gt; name;
+    private final Expr&lt;V&gt; expr;
+
+    private AssignStmt(Var&lt;V&gt; name, Expr&lt;V&gt; expr, BlocklyBlockProperties properties, BlocklyComment comment) {
+<span class="fc" id="L36">        super(BlockTypeContainer.getByName(&quot;ASSIGN_STMT&quot;), properties, comment);</span>
+<span class="pc bpc" id="L37" title="4 of 8 branches missed.">        Assert.isTrue(name != null &amp;&amp; expr != null &amp;&amp; name.isReadOnly() &amp;&amp; expr.isReadOnly());</span>
+<span class="fc" id="L38">        this.name = name;</span>
+<span class="fc" id="L39">        this.expr = expr;</span>
+<span class="fc" id="L40">        setReadOnly();</span>
+<span class="fc" id="L41">    }</span>
+
+    /**
+     * Create object of the class {@link AssignStmt}.
+     *
+     * @param name of the variable; must be &lt;b&gt;not&lt;/b&gt; null and &lt;b&gt;read only&lt;/b&gt;,,
+     * @param expr that we want to assign to the {@link #name}; must be &lt;b&gt;not&lt;/b&gt; null and &lt;b&gt;read only&lt;/b&gt;,
+     * @param properties of the block (see {@link BlocklyBlockProperties}),
+     * @param comment added from the user,
+     * @return instance of {@link AssignStmt}
+     */
+    public static &lt;V&gt; AssignStmt&lt;V&gt; make(Var&lt;V&gt; name, Expr&lt;V&gt; expr, BlocklyBlockProperties properties, BlocklyComment comment) {
+<span class="fc" id="L53">        return new AssignStmt&lt;V&gt;(name, expr, properties, comment);</span>
+    }
+
+    /**
+     * @return name of the variable.
+     */
+    public final Var&lt;V&gt; getName() {
+<span class="fc" id="L60">        return this.name;</span>
+    }
+
+    /**
+     * @return expression that will be assigned to the variable.
+     */
+    public final Expr&lt;V&gt; getExpr() {
+<span class="fc" id="L67">        return this.expr;</span>
+    }
+
+    @Override
+    public String toString() {
+<span class="fc" id="L72">        StringBuilder sb = new StringBuilder();</span>
+<span class="fc" id="L73">        appendNewLine(sb, 0, null);</span>
+<span class="fc" id="L74">        sb.append(this.name).append(&quot; := &quot;).append(this.expr).append(&quot;\n&quot;);</span>
+<span class="fc" id="L75">        return sb.toString();</span>
+    }
+
+    @Override
+    protected V accept(AstVisitor&lt;V&gt; visitor) {
+<span class="nc" id="L80">        return ((AstLanguageVisitor&lt;V&gt;) visitor).visitAssignStmt(this);</span>
+    }
+
+    /**
+     * Transformation from JAXB object to corresponding AST object.
+     *
+     * @param block for transformation
+     * @param helper class for making the transformation
+     * @return corresponding AST object
+     */
+    public static &lt;V&gt; Phrase&lt;V&gt; jaxbToAst(Block block, Jaxb2AstTransformer&lt;V&gt; helper) {
+<span class="fc" id="L91">        List&lt;Value&gt; values = helper.extractValues(block, (short) 1);</span>
+<span class="fc" id="L92">        Phrase&lt;V&gt; p = helper.extractValue(values, new ExprParam(BlocklyConstants.VALUE, BlocklyType.CAPTURED_TYPE));</span>
+<span class="fc" id="L93">        Expr&lt;V&gt; exprr = helper.convertPhraseToExpr(p);</span>
+<span class="fc" id="L94">        return AssignStmt</span>
+<span class="fc" id="L95">            .make((Var&lt;V&gt;) helper.extractVar(block), helper.convertPhraseToExpr(exprr), helper.extractBlockProperties(block), helper.extractComment(block));</span>
+    }
+
+    @Override
+    public Block astToBlock() {
+<span class="fc" id="L100">        Block jaxbDestination = new Block();</span>
+<span class="fc" id="L101">        JaxbTransformerHelper.setBasicProperties(this, jaxbDestination);</span>
+<span class="fc" id="L102">        String varType = getName().getVarType().getBlocklyName();</span>
+
+<span class="fc" id="L104">        Mutation mutation = new Mutation();</span>
+<span class="fc" id="L105">        mutation.setDatatype(varType);</span>
+<span class="fc" id="L106">        jaxbDestination.setMutation(mutation);</span>
+<span class="fc" id="L107">        JaxbTransformerHelper.addField(jaxbDestination, BlocklyConstants.VAR, getName().getValue());</span>
+<span class="fc" id="L108">        JaxbTransformerHelper.addValue(jaxbDestination, BlocklyConstants.VALUE, getExpr());</span>
+
+<span class="fc" id="L110">        return jaxbDestination;</span>
+    }
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

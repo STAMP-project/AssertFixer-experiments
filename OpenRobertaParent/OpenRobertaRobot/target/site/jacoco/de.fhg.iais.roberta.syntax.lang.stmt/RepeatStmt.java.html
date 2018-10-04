@@ -1,0 +1,310 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>RepeatStmt.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">OpenRobertaRobot</a> &gt; <a href="index.source.html" class="el_package">de.fhg.iais.roberta.syntax.lang.stmt</a> &gt; <span class="el_source">RepeatStmt.java</span></div><h1>RepeatStmt.java</h1><pre class="source lang-java linenums">package de.fhg.iais.roberta.syntax.lang.stmt;
+
+import java.util.List;
+import java.util.Locale;
+
+import de.fhg.iais.roberta.blockly.generated.Block;
+import de.fhg.iais.roberta.blockly.generated.Field;
+import de.fhg.iais.roberta.blockly.generated.Mutation;
+import de.fhg.iais.roberta.blockly.generated.Value;
+import de.fhg.iais.roberta.syntax.BlockTypeContainer;
+import de.fhg.iais.roberta.syntax.BlocklyBlockProperties;
+import de.fhg.iais.roberta.syntax.BlocklyComment;
+import de.fhg.iais.roberta.syntax.BlocklyConstants;
+import de.fhg.iais.roberta.syntax.Phrase;
+import de.fhg.iais.roberta.syntax.lang.expr.Binary;
+import de.fhg.iais.roberta.syntax.lang.expr.BoolConst;
+import de.fhg.iais.roberta.syntax.lang.expr.EmptyExpr;
+import de.fhg.iais.roberta.syntax.lang.expr.Expr;
+import de.fhg.iais.roberta.syntax.lang.expr.ExprList;
+import de.fhg.iais.roberta.syntax.lang.expr.NumConst;
+import de.fhg.iais.roberta.syntax.lang.expr.Unary;
+import de.fhg.iais.roberta.syntax.lang.expr.Unary.Op;
+import de.fhg.iais.roberta.syntax.lang.expr.Var;
+import de.fhg.iais.roberta.syntax.lang.expr.VarDeclaration;
+import de.fhg.iais.roberta.transformer.ExprParam;
+import de.fhg.iais.roberta.transformer.Jaxb2AstTransformer;
+import de.fhg.iais.roberta.transformer.JaxbTransformerHelper;
+import de.fhg.iais.roberta.typecheck.BlocklyType;
+import de.fhg.iais.roberta.util.dbc.Assert;
+import de.fhg.iais.roberta.util.dbc.DbcException;
+import de.fhg.iais.roberta.visitor.AstVisitor;
+import de.fhg.iais.roberta.visitor.lang.AstLanguageVisitor;
+
+/**
+ * This class represents the &lt;b&gt;repeat statement&lt;/b&gt; blocks from Blockly into the AST (abstract syntax tree). Object from this class will generate repeat
+ * statement statement.&lt;br/&gt;
+ * &lt;br&gt;
+ * See {@link #getMode()} for the kind of the repeat statements.
+ */
+public class RepeatStmt&lt;V&gt; extends Stmt&lt;V&gt; {
+    private final Mode mode;
+    private final Expr&lt;V&gt; expr;
+    private final StmtList&lt;V&gt; list;
+
+    private RepeatStmt(Mode mode, Expr&lt;V&gt; expr, StmtList&lt;V&gt; list, BlocklyBlockProperties properties, BlocklyComment comment) {
+<span class="fc" id="L46">        super(BlockTypeContainer.getByName(&quot;REPEAT_STMT&quot;), properties, comment);</span>
+<span class="pc bpc" id="L47" title="5 of 10 branches missed.">        Assert.isTrue(mode != null &amp;&amp; expr != null &amp;&amp; list != null &amp;&amp; expr.isReadOnly() &amp;&amp; list.isReadOnly());</span>
+<span class="fc" id="L48">        this.expr = expr;</span>
+<span class="fc" id="L49">        this.list = list;</span>
+<span class="fc" id="L50">        this.mode = mode;</span>
+<span class="fc" id="L51">        setReadOnly();</span>
+<span class="fc" id="L52">    }</span>
+
+    /**
+     * Create read only object of {@link RepeatStmt}.
+     *
+     * @param mode of the repeat statement; must be &lt;b&gt;not&lt;/b&gt; null; see enum {@link Mode} for all possible modes,
+     * @param expr that should be evaluated; must be &lt;b&gt;not&lt;/b&gt; null and &lt;b&gt;read only&lt;/b&gt;,
+     * @param list of statements; must be &lt;b&gt;not&lt;/b&gt; null and &lt;b&gt;read only&lt;/b&gt;,
+     * @param properties of the block (see {@link BlocklyBlockProperties}),
+     * @param comment added from the user,
+     * @return read only object of {@link RepeatStmt}
+     */
+    public static &lt;V&gt; RepeatStmt&lt;V&gt; make(Mode mode, Expr&lt;V&gt; expr, StmtList&lt;V&gt; list, BlocklyBlockProperties properties, BlocklyComment comment) {
+<span class="fc" id="L65">        return new RepeatStmt&lt;&gt;(mode, expr, list, properties, comment);</span>
+    }
+
+    /**
+     * @return mode of the repeat statement. See enum {@link Mode} for all possible modes
+     */
+    public Mode getMode() {
+<span class="fc" id="L72">        return this.mode;</span>
+    }
+
+    /**
+     * @return expression that should be evaluated
+     */
+    public final Expr&lt;V&gt; getExpr() {
+<span class="fc" id="L79">        return this.expr;</span>
+    }
+
+    /**
+     * @return list of statements
+     */
+    public final StmtList&lt;V&gt; getList() {
+<span class="fc" id="L86">        return this.list;</span>
+    }
+
+    @Override
+    public String toString() {
+<span class="fc" id="L91">        StringBuilder sb = new StringBuilder();</span>
+<span class="fc" id="L92">        appendNewLine(sb, 0, null);</span>
+<span class="fc" id="L93">        sb.append(&quot;(repeat [&quot; + this.mode + &quot;, &quot;).append(this.expr).append(&quot;]&quot;);</span>
+<span class="fc" id="L94">        sb.append(this.list.toString());</span>
+<span class="fc" id="L95">        appendNewLine(sb, 0, &quot;)&quot;);</span>
+<span class="fc" id="L96">        return sb.toString();</span>
+    }
+
+    @Override
+    protected V accept(AstVisitor&lt;V&gt; visitor) {
+<span class="fc" id="L101">        return ((AstLanguageVisitor&lt;V&gt;) visitor).visitRepeatStmt(this);</span>
+    }
+
+    /**
+     * Transformation from JAXB object to corresponding AST object.
+     *
+     * @param block for transformation
+     * @param helper class for making the transformation
+     * @return corresponding AST object
+     */
+    public static &lt;V&gt; Phrase&lt;V&gt; jaxbToAst(Block block, Jaxb2AstTransformer&lt;V&gt; helper) {
+        Phrase&lt;V&gt; exprr;
+        List&lt;Value&gt; values;
+        List&lt;Field&gt; fields;
+        Phrase&lt;V&gt; from;
+        Phrase&lt;V&gt; to;
+        Phrase&lt;V&gt; by;
+        ExprList&lt;V&gt; exprList;
+        Phrase&lt;V&gt; var;
+
+<span class="pc bpc" id="L121" title="11 of 31 branches missed.">        switch ( block.getType() ) {</span>
+            case BlocklyConstants.CONTROLS_REPEAT_EXT:
+            case BlocklyConstants.CONTROLS_REPEAT:
+<span class="fc" id="L124">                values = helper.extractValues(block, (short) 1);</span>
+<span class="fc" id="L125">                exprList = ExprList.make();</span>
+
+                //TODO: replace var, from, to by expressions
+<span class="fc" id="L128">                var = Var.make(BlocklyType.NUMBER_INT, &quot;k&quot; + helper.getVariableCounter(), helper.extractBlockProperties(block), helper.extractComment(block));</span>
+<span class="fc" id="L129">                from = NumConst.make(&quot;0&quot;, helper.extractBlockProperties(block), helper.extractComment(block));</span>
+<span class="fc" id="L130">                to = helper.extractValue(values, new ExprParam(BlocklyConstants.TIMES, BlocklyType.NUMBER_INT));</span>
+<span class="fc bfc" id="L131" title="All 2 branches covered.">                if ( block.getType().equals(BlocklyConstants.CONTROLS_REPEAT) ) {</span>
+<span class="fc" id="L132">                    fields = helper.extractFields(block, (short) 1);</span>
+<span class="fc" id="L133">                    to = NumConst.make(helper.extractField(fields, BlocklyConstants.TIMES), helper.extractBlockProperties(block), helper.extractComment(block));</span>
+                }
+<span class="fc" id="L135">                by = NumConst.make(&quot;1&quot;, helper.extractBlockProperties(block), helper.extractComment(block));</span>
+
+<span class="fc" id="L137">                exprList.addExpr(helper.convertPhraseToExpr(var));</span>
+<span class="fc" id="L138">                exprList.addExpr(helper.convertPhraseToExpr(from));</span>
+<span class="fc" id="L139">                exprList.addExpr(helper.convertPhraseToExpr(to));</span>
+<span class="fc" id="L140">                exprList.addExpr(helper.convertPhraseToExpr(by));</span>
+<span class="fc" id="L141">                exprList.setReadOnly();</span>
+
+<span class="fc" id="L143">                helper.setVariableCounter(helper.getVariableCounter() + 1);</span>
+<span class="fc" id="L144">                return helper.extractRepeatStatement(block, exprList, BlocklyConstants.TIMES);</span>
+
+            case BlocklyConstants.CONTROLS_FOR:
+            case BlocklyConstants.ROB_CONTROLS_FOR:
+<span class="fc" id="L148">                values = helper.extractValues(block, (short) 3);</span>
+<span class="fc" id="L149">                exprList = ExprList.make();</span>
+
+<span class="fc" id="L151">                var = helper.extractVar(block);</span>
+<span class="fc" id="L152">                from = helper.extractValue(values, new ExprParam(BlocklyConstants.FROM, BlocklyType.NUMBER_INT));</span>
+<span class="fc" id="L153">                to = helper.extractValue(values, new ExprParam(BlocklyConstants.TO, BlocklyType.NUMBER_INT));</span>
+<span class="fc" id="L154">                by = helper.extractValue(values, new ExprParam(BlocklyConstants.BY, BlocklyType.NUMBER_INT));</span>
+
+<span class="fc" id="L156">                exprList.addExpr(helper.convertPhraseToExpr(var));</span>
+<span class="fc" id="L157">                exprList.addExpr(helper.convertPhraseToExpr(from));</span>
+<span class="fc" id="L158">                exprList.addExpr(helper.convertPhraseToExpr(to));</span>
+<span class="fc" id="L159">                exprList.addExpr(helper.convertPhraseToExpr(by));</span>
+<span class="fc" id="L160">                exprList.setReadOnly();</span>
+<span class="fc" id="L161">                return helper.extractRepeatStatement(block, exprList, BlocklyConstants.FOR);</span>
+            case BlocklyConstants.ROB_CONTROLS_FOR_EACH:
+            case BlocklyConstants.CONTROLS_FOR_EACH:
+<span class="fc" id="L164">                fields = helper.extractFields(block, (short) 2);</span>
+<span class="fc" id="L165">                String type = fields.get(0).getValue();</span>
+<span class="fc" id="L166">                EmptyExpr&lt;V&gt; empty = EmptyExpr.make(BlocklyType.get(type));</span>
+<span class="fc" id="L167">                var =</span>
+<span class="fc" id="L168">                    VarDeclaration.make(</span>
+<span class="fc" id="L169">                        BlocklyType.get(helper.extractField(fields, BlocklyConstants.TYPE)),</span>
+<span class="fc" id="L170">                        helper.extractField(fields, BlocklyConstants.VAR),</span>
+                        empty,
+                        false,
+                        false,
+<span class="fc" id="L174">                        BlocklyBlockProperties.make(&quot;1&quot;, &quot;1&quot;, false, false, false, false, false, true, false),</span>
+                        null);
+
+<span class="fc" id="L177">                values = helper.extractValues(block, (short) 1);</span>
+<span class="fc" id="L178">                exprr = helper.extractValue(values, new ExprParam(BlocklyConstants.LIST, BlocklyType.ARRAY));</span>
+
+<span class="fc" id="L180">                Binary&lt;V&gt; exprBinary =</span>
+<span class="fc" id="L181">                    Binary.make(</span>
+                        Binary.Op.IN,
+<span class="fc" id="L183">                        helper.convertPhraseToExpr(var),</span>
+<span class="fc" id="L184">                        helper.convertPhraseToExpr(exprr),</span>
+                        &quot;&quot;,
+<span class="fc" id="L186">                        helper.extractBlockProperties(block),</span>
+<span class="fc" id="L187">                        helper.extractComment(block));</span>
+<span class="fc" id="L188">                return helper.extractRepeatStatement(block, exprBinary, BlocklyConstants.FOR_EACH);</span>
+
+            case BlocklyConstants.CONTROLS_WHILE_UNTIL:
+<span class="fc" id="L191">                fields = helper.extractFields(block, (short) 1);</span>
+<span class="fc" id="L192">                String modee = helper.extractField(fields, BlocklyConstants.MODE);</span>
+<span class="fc" id="L193">                values = helper.extractValues(block, (short) 1);</span>
+<span class="pc bpc" id="L194" title="1 of 2 branches missed.">                if ( RepeatStmt.Mode.UNTIL == RepeatStmt.Mode.get(modee) ) {</span>
+<span class="nc" id="L195">                    exprr =</span>
+<span class="nc" id="L196">                        Unary.make(</span>
+                            Op.NOT,
+<span class="nc" id="L198">                            helper.convertPhraseToExpr(helper.extractValue(values, new ExprParam(BlocklyConstants.BOOL, BlocklyType.BOOLEAN))),</span>
+<span class="nc" id="L199">                            helper.extractBlockProperties(block),</span>
+<span class="nc" id="L200">                            helper.extractComment(block));</span>
+                } else {
+<span class="fc" id="L202">                    exprr = helper.extractValue(values, new ExprParam(BlocklyConstants.BOOL, BlocklyType.BOOLEAN));</span>
+                }
+<span class="fc" id="L204">                return helper.extractRepeatStatement(block, exprr, modee);</span>
+            case BlocklyConstants.ROB_CONTROLS_LOOP_FOREVER_ARDU:
+<span class="nc" id="L206">                exprr = BoolConst.make(true, helper.extractBlockProperties(block), helper.extractComment(block));</span>
+<span class="nc" id="L207">                return helper.extractRepeatStatement(block, exprr, RepeatStmt.Mode.FOREVER_ARDU.toString());</span>
+            default:
+<span class="fc" id="L209">                exprr = BoolConst.make(true, helper.extractBlockProperties(block), helper.extractComment(block));</span>
+<span class="fc" id="L210">                return helper.extractRepeatStatement(block, exprr, RepeatStmt.Mode.FOREVER.toString());</span>
+        }
+    }
+
+    @Override
+    public Block astToBlock() {
+<span class="fc" id="L216">        Block jaxbDestination = new Block();</span>
+<span class="fc" id="L217">        JaxbTransformerHelper.setBasicProperties(this, jaxbDestination);</span>
+
+<span class="pc bpc" id="L219" title="2 of 7 branches missed.">        switch ( getMode() ) {</span>
+            case TIMES:
+<span class="fc bfc" id="L221" title="All 2 branches covered.">                if ( getProperty().getBlockType().equals(BlocklyConstants.CONTROLS_REPEAT) ) {</span>
+<span class="fc" id="L222">                    JaxbTransformerHelper</span>
+<span class="fc" id="L223">                        .addField(jaxbDestination, BlocklyConstants.TIMES, ((NumConst&lt;?&gt;) (((ExprList&lt;?&gt;) getExpr()).get().get(2))).getValue());</span>
+                } else {
+<span class="fc" id="L225">                    JaxbTransformerHelper.addValue(jaxbDestination, BlocklyConstants.TIMES, (((ExprList&lt;?&gt;) getExpr()).get().get(2)));</span>
+                }
+<span class="fc" id="L227">                break;</span>
+
+            case WAIT:
+            case UNTIL:
+<span class="nc" id="L231">                JaxbTransformerHelper.addField(jaxbDestination, BlocklyConstants.MODE, getMode().name());</span>
+<span class="nc" id="L232">                JaxbTransformerHelper.addValue(jaxbDestination, BlocklyConstants.BOOL, ((Unary&lt;?&gt;) getExpr()).getExpr());</span>
+<span class="nc" id="L233">                break;</span>
+
+            case WHILE:
+<span class="fc" id="L236">                JaxbTransformerHelper.addField(jaxbDestination, BlocklyConstants.MODE, getMode().name());</span>
+<span class="fc" id="L237">                JaxbTransformerHelper.addValue(jaxbDestination, BlocklyConstants.BOOL, getExpr());</span>
+<span class="fc" id="L238">                break;</span>
+
+            case FOR:
+<span class="fc" id="L241">                ExprList&lt;?&gt; exprList = (ExprList&lt;?&gt;) getExpr();</span>
+<span class="fc" id="L242">                JaxbTransformerHelper.addField(jaxbDestination, BlocklyConstants.VAR, ((Var&lt;?&gt;) exprList.get().get(0)).getValue());</span>
+<span class="fc" id="L243">                JaxbTransformerHelper.addValue(jaxbDestination, BlocklyConstants.FROM, (exprList.get().get(1)));</span>
+<span class="fc" id="L244">                JaxbTransformerHelper.addValue(jaxbDestination, BlocklyConstants.TO, (exprList.get().get(2)));</span>
+<span class="fc" id="L245">                JaxbTransformerHelper.addValue(jaxbDestination, BlocklyConstants.BY, (exprList.get().get(3)));</span>
+<span class="fc" id="L246">                break;</span>
+
+            case FOR_EACH:
+<span class="fc" id="L249">                Binary&lt;?&gt; exprBinary = (Binary&lt;?&gt;) getExpr();</span>
+<span class="fc" id="L250">                Mutation mutation = new Mutation();</span>
+<span class="fc" id="L251">                mutation.setListType(((VarDeclaration&lt;?&gt;) exprBinary.getLeft()).getTypeVar().getBlocklyName());</span>
+<span class="fc" id="L252">                jaxbDestination.setMutation(mutation);</span>
+<span class="fc" id="L253">                JaxbTransformerHelper</span>
+<span class="fc" id="L254">                    .addField(jaxbDestination, BlocklyConstants.TYPE, ((VarDeclaration&lt;?&gt;) exprBinary.getLeft()).getTypeVar().getBlocklyName());</span>
+<span class="fc" id="L255">                JaxbTransformerHelper.addField(jaxbDestination, BlocklyConstants.VAR, ((VarDeclaration&lt;?&gt;) exprBinary.getLeft()).getName());</span>
+<span class="fc" id="L256">                JaxbTransformerHelper.addValue(jaxbDestination, BlocklyConstants.LIST, exprBinary.getRight());</span>
+<span class="fc" id="L257">                break;</span>
+            case FOREVER:
+            case FOREVER_ARDU:
+<span class="fc" id="L260">                break;</span>
+
+            default:
+                break;
+        }
+<span class="fc" id="L265">        JaxbTransformerHelper.addStatement(jaxbDestination, BlocklyConstants.DO, getList());</span>
+
+<span class="fc" id="L267">        return jaxbDestination;</span>
+    }
+
+    /**
+     * Modes in which the repeat statement can be set.
+     *
+     * @author kcvejoski
+     */
+<span class="pc" id="L275">    public static enum Mode {</span>
+<span class="fc" id="L276">        WHILE(), UNTIL(), TIMES(), FOR(), FOR_EACH(), WAIT(), FOREVER(), FOREVER_ARDU();</span>
+
+        private final String[] values;
+
+<span class="fc" id="L280">        private Mode(String... values) {</span>
+<span class="fc" id="L281">            this.values = values;</span>
+<span class="fc" id="L282">        }</span>
+
+        /**
+         * get mode from {@link Mode} from string parameter. It is possible for one mode to have multiple string mappings. Throws exception if the mode does not
+         * exists.
+         *
+         * @param name of the mode
+         * @return mode from the enum {@link Mode}
+         */
+        public static Mode get(String s) {
+<span class="fc bfc" id="L292" title="All 4 branches covered.">            if ( s == null || s.isEmpty() ) {</span>
+<span class="fc" id="L293">                throw new DbcException(&quot;Invalid mode symbol: &quot; + s);</span>
+            }
+<span class="fc" id="L295">            String sUpper = s.trim().toUpperCase(Locale.GERMAN);</span>
+<span class="fc bfc" id="L296" title="All 2 branches covered.">            for ( Mode mo : Mode.values() ) {</span>
+<span class="fc bfc" id="L297" title="All 2 branches covered.">                if ( mo.toString().equals(sUpper) ) {</span>
+<span class="fc" id="L298">                    return mo;</span>
+                }
+<span class="pc bpc" id="L300" title="1 of 2 branches missed.">                for ( String value : mo.values ) {</span>
+<span class="nc bnc" id="L301" title="All 2 branches missed.">                    if ( sUpper.equals(value) ) {</span>
+<span class="nc" id="L302">                        return mo;</span>
+                    }
+                }
+            }
+<span class="fc" id="L306">            throw new DbcException(&quot;Invalid mode symbol: &quot; + s);</span>
+        }
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

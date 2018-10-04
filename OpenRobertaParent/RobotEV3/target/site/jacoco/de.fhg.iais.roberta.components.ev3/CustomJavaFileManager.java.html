@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>CustomJavaFileManager.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">RobotEV3</a> &gt; <a href="index.source.html" class="el_package">de.fhg.iais.roberta.components.ev3</a> &gt; <span class="el_source">CustomJavaFileManager.java</span></div><h1>CustomJavaFileManager.java</h1><pre class="source lang-java linenums">package de.fhg.iais.roberta.components.ev3;
+
+import java.io.IOException;
+import java.security.SecureClassLoader;
+
+import javax.tools.FileObject;
+import javax.tools.ForwardingJavaFileManager;
+import javax.tools.JavaFileManager;
+import javax.tools.JavaFileObject;
+import javax.tools.JavaFileObject.Kind;
+import javax.tools.StandardJavaFileManager;
+
+public class CustomJavaFileManager extends ForwardingJavaFileManager&lt;JavaFileManager&gt; {
+
+    private ClassJavaFileObject classJavaFileObject;
+
+    /**
+     * Instance of ClassJavaFileObject that will store the compiled bytecode of our class
+     */
+    public ClassJavaFileObject getClassJavaFileObject() {
+<span class="nc" id="L21">        return this.classJavaFileObject;</span>
+    }
+
+    /**
+     * Will initialize the manager with the specified standard java file manager
+     *
+     * @param standardManger
+     */
+    public CustomJavaFileManager(StandardJavaFileManager standardManager) {
+<span class="fc" id="L30">        super(standardManager);</span>
+<span class="fc" id="L31">    }</span>
+
+    /**
+     * Will be used by us to get the class loader for our compiled class. It creates an anonymous class extending the SecureClassLoader which uses the byte code
+     * created by the compiler and stored in the JavaClassObject, and returns the Class for it
+     */
+    @Override
+    public ClassLoader getClassLoader(Location location) {
+<span class="fc" id="L39">        return new SecureClassLoader() {</span>
+            @Override
+            protected Class&lt;?&gt; findClass(String name) throws ClassNotFoundException {
+<span class="nc" id="L42">                byte[] b = CustomJavaFileManager.this.classJavaFileObject.getBytes();</span>
+<span class="nc" id="L43">                return super.defineClass(name, CustomJavaFileManager.this.classJavaFileObject.getBytes(), 0, b.length);</span>
+            }
+        };
+    }
+
+    /**
+     * Gives the compiler an instance of the JavaClassObject so that the compiler can write the byte code into it.
+     */
+    @Override
+    public JavaFileObject getJavaFileForOutput(Location location, String className, Kind kind, FileObject sibling) throws IOException {
+<span class="nc" id="L53">        this.classJavaFileObject = new ClassJavaFileObject(className);</span>
+<span class="nc" id="L54">        return this.classJavaFileObject;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

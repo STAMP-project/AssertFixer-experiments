@@ -1,0 +1,178 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>Unary.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">OpenRobertaRobot</a> &gt; <a href="index.source.html" class="el_package">de.fhg.iais.roberta.syntax.lang.expr</a> &gt; <span class="el_source">Unary.java</span></div><h1>Unary.java</h1><pre class="source lang-java linenums">package de.fhg.iais.roberta.syntax.lang.expr;
+
+import java.util.Locale;
+
+import de.fhg.iais.roberta.blockly.generated.Block;
+import de.fhg.iais.roberta.syntax.BlockTypeContainer;
+import de.fhg.iais.roberta.syntax.BlocklyBlockProperties;
+import de.fhg.iais.roberta.syntax.BlocklyComment;
+import de.fhg.iais.roberta.syntax.BlocklyConstants;
+import de.fhg.iais.roberta.syntax.Phrase;
+import de.fhg.iais.roberta.transformer.ExprParam;
+import de.fhg.iais.roberta.transformer.Jaxb2AstTransformer;
+import de.fhg.iais.roberta.transformer.JaxbTransformerHelper;
+import de.fhg.iais.roberta.typecheck.BlocklyType;
+import de.fhg.iais.roberta.util.dbc.Assert;
+import de.fhg.iais.roberta.util.dbc.DbcException;
+import de.fhg.iais.roberta.visitor.AstVisitor;
+import de.fhg.iais.roberta.visitor.lang.AstLanguageVisitor;
+
+/**
+ * This class represents all unary operations from Blockly into the AST (abstract syntax tree).&lt;br&gt;
+ * &lt;br&gt;
+ * Client must provide operation and expression over which operation is executed. &lt;br&gt;
+ * &lt;br&gt;
+ * To create an instance from this class use the method {@link #make(Op, Expr, BlocklyBlockProperties, BlocklyComment)}.&lt;br&gt;
+ * &lt;br&gt;
+ * The enumeration {@link Op} contains all allowed unary operations.
+ */
+public class Unary&lt;V&gt; extends Expr&lt;V&gt; {
+    private final Op op;
+    private final Expr&lt;V&gt; expr;
+
+    private Unary(Op op, Expr&lt;V&gt; expr, BlocklyBlockProperties properties, BlocklyComment comment) {
+<span class="fc" id="L34">        super(BlockTypeContainer.getByName(&quot;UNARY&quot;), properties, comment);</span>
+<span class="pc bpc" id="L35" title="3 of 6 branches missed.">        Assert.isTrue(op != null &amp;&amp; expr != null &amp;&amp; expr.isReadOnly());</span>
+<span class="fc" id="L36">        this.op = op;</span>
+<span class="fc" id="L37">        this.expr = expr;</span>
+<span class="fc" id="L38">        setReadOnly();</span>
+<span class="fc" id="L39">    }</span>
+
+    /**
+     * creates instance of {@link Unary}. This instance is read only and can not be modified.
+     *
+     * @param op operator; ; must be &lt;b&gt;not&lt;/b&gt; null,
+     * @param expr expression over which the operation is performed; must be &lt;b&gt;not&lt;/b&gt; null and &lt;b&gt;read only&lt;/b&gt;,,
+     * @param properties of the block (see {@link BlocklyBlockProperties}),
+     * @param comment added from the user,
+     * @return read only object of class {@link Unary}
+     */
+    public static &lt;V&gt; Unary&lt;V&gt; make(Op op, Expr&lt;V&gt; expr, BlocklyBlockProperties properties, BlocklyComment comment) {
+<span class="fc" id="L51">        return new Unary&lt;V&gt;(op, expr, properties, comment);</span>
+    }
+
+    /**
+     * @return the operation in the binary expression. See enum {@link Op} for all possible operations
+     */
+    public Op getOp() {
+<span class="fc" id="L58">        return this.op;</span>
+    }
+
+    /**
+     * @return the expression on which the operation is performed. Returns subclass of {@link Expr}
+     */
+    public Expr&lt;V&gt; getExpr() {
+<span class="fc" id="L65">        return this.expr;</span>
+    }
+
+    @Override
+    public int getPrecedence() {
+<span class="fc" id="L70">        return this.op.getPrecedence();</span>
+    }
+
+    @Override
+    public Assoc getAssoc() {
+<span class="fc" id="L75">        return this.op.getAssoc();</span>
+    }
+
+    @Override
+    public BlocklyType getVarType() {
+<span class="nc" id="L80">        return BlocklyType.CAPTURED_TYPE;</span>
+    }
+
+    @Override
+    public String toString() {
+<span class="fc" id="L85">        return &quot;Unary [&quot; + this.op + &quot;, &quot; + this.expr + &quot;]&quot;;</span>
+    }
+
+    /**
+     * Operators for the unary expression.
+     */
+<span class="pc" id="L91">    public static enum Op {</span>
+<span class="fc" id="L92">        PLUS( 10, Assoc.LEFT, &quot;+&quot; ),</span>
+<span class="fc" id="L93">        NEG( 10, Assoc.LEFT, &quot;-&quot; ),</span>
+<span class="fc" id="L94">        NOT( 300, Assoc.RIGHT, &quot;!&quot;, &quot;not&quot; ),</span>
+<span class="fc" id="L95">        POSTFIX_INCREMENTS( 1, Assoc.LEFT, &quot;++&quot; ),</span>
+<span class="fc" id="L96">        PREFIX_INCREMENTS( 1, Assoc.RIGHT, &quot;++&quot; );</span>
+
+        private final String[] values;
+        private final int precedence;
+        private final Assoc assoc;
+
+<span class="fc" id="L102">        private Op(int precedence, Assoc assoc, String... values) {</span>
+<span class="fc" id="L103">            this.precedence = precedence;</span>
+<span class="fc" id="L104">            this.assoc = assoc;</span>
+<span class="fc" id="L105">            this.values = values;</span>
+<span class="fc" id="L106">        }</span>
+
+        /**
+         * @return precedence of the operator.
+         */
+        public int getPrecedence() {
+<span class="fc" id="L112">            return this.precedence;</span>
+        }
+
+        /**
+         * @return association of the operator
+         */
+        public Assoc getAssoc() {
+<span class="fc" id="L119">            return this.assoc;</span>
+        }
+
+        /**
+         * get operator from {@link Op} from string parameter. It is possible for one operator to have multiple string mappings. Throws exception if the
+         * operator does not exists.
+         *
+         * @param name of the operator
+         * @return operator from the enum {@link Op}, never null
+         */
+        public static Op get(String s) {
+<span class="fc bfc" id="L130" title="All 4 branches covered.">            if ( s == null || s.isEmpty() ) {</span>
+<span class="fc" id="L131">                throw new DbcException(&quot;Invalid unary operator symbol: &quot; + s);</span>
+            }
+<span class="fc" id="L133">            String sUpper = s.trim().toUpperCase(Locale.GERMAN);</span>
+<span class="fc bfc" id="L134" title="All 2 branches covered.">            for ( Op op : Op.values() ) {</span>
+<span class="fc bfc" id="L135" title="All 2 branches covered.">                if ( op.toString().equals(sUpper) ) {</span>
+<span class="fc" id="L136">                    return op;</span>
+                }
+<span class="fc bfc" id="L138" title="All 2 branches covered.">                for ( String value : op.values ) {</span>
+<span class="pc bpc" id="L139" title="1 of 2 branches missed.">                    if ( sUpper.equals(value) ) {</span>
+<span class="nc" id="L140">                        return op;</span>
+                    }
+                }
+            }
+<span class="fc" id="L144">            throw new DbcException(&quot;Invalid unary operator symbol: &quot; + s);</span>
+        }
+    }
+
+    @Override
+    protected V accept(AstVisitor&lt;V&gt; visitor) {
+<span class="nc" id="L150">        return ((AstLanguageVisitor&lt;V&gt;) visitor).visitUnary(this);</span>
+    }
+
+    /**
+     * Transformation from JAXB object to corresponding AST object.
+     *
+     * @param block for transformation
+     * @param helper class for making the transformation
+     * @return corresponding AST object
+     */
+    public static &lt;V&gt; Phrase&lt;V&gt; jaxbToAst(Block block, Jaxb2AstTransformer&lt;V&gt; helper) {
+<span class="fc" id="L161">        return helper.blockToUnaryExpr(block, new ExprParam(BlocklyConstants.BOOL, BlocklyType.BOOLEAN), BlocklyConstants.NOT);</span>
+    }
+
+    @Override
+    public Block astToBlock() {
+<span class="fc" id="L166">        Block jaxbDestination = new Block();</span>
+<span class="fc" id="L167">        JaxbTransformerHelper.setBasicProperties(this, jaxbDestination);</span>
+<span class="fc bfc" id="L168" title="All 2 branches covered.">        if ( getProperty().getBlockType().equals(BlocklyConstants.MATH_SINGLE) ) {</span>
+<span class="fc" id="L169">            JaxbTransformerHelper.addField(jaxbDestination, BlocklyConstants.OP, getOp().name());</span>
+<span class="fc" id="L170">            JaxbTransformerHelper.addValue(jaxbDestination, BlocklyConstants.NUM, getExpr());</span>
+        } else {
+<span class="fc" id="L172">            JaxbTransformerHelper.addValue(jaxbDestination, BlocklyConstants.BOOL, getExpr());</span>
+        }
+<span class="fc" id="L174">        return jaxbDestination;</span>
+    }
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

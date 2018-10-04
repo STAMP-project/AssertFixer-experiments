@@ -1,0 +1,456 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>AstLanguageVisitor.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">OpenRobertaRobot</a> &gt; <a href="index.source.html" class="el_package">de.fhg.iais.roberta.visitor.lang</a> &gt; <span class="el_source">AstLanguageVisitor.java</span></div><h1>AstLanguageVisitor.java</h1><pre class="source lang-java linenums">package de.fhg.iais.roberta.visitor.lang;
+
+import de.fhg.iais.roberta.syntax.lang.blocksequence.ActivityTask;
+import de.fhg.iais.roberta.syntax.lang.blocksequence.Location;
+import de.fhg.iais.roberta.syntax.lang.blocksequence.MainTask;
+import de.fhg.iais.roberta.syntax.lang.blocksequence.StartActivityTask;
+import de.fhg.iais.roberta.syntax.lang.expr.ActionExpr;
+import de.fhg.iais.roberta.syntax.lang.expr.Binary;
+import de.fhg.iais.roberta.syntax.lang.expr.BoolConst;
+import de.fhg.iais.roberta.syntax.lang.expr.ColorConst;
+import de.fhg.iais.roberta.syntax.lang.expr.ConnectConst;
+import de.fhg.iais.roberta.syntax.lang.expr.EmptyExpr;
+import de.fhg.iais.roberta.syntax.lang.expr.EmptyList;
+import de.fhg.iais.roberta.syntax.lang.expr.ExprList;
+import de.fhg.iais.roberta.syntax.lang.expr.FunctionExpr;
+import de.fhg.iais.roberta.syntax.lang.expr.ListCreate;
+import de.fhg.iais.roberta.syntax.lang.expr.MathConst;
+import de.fhg.iais.roberta.syntax.lang.expr.MethodExpr;
+import de.fhg.iais.roberta.syntax.lang.expr.NullConst;
+import de.fhg.iais.roberta.syntax.lang.expr.NumConst;
+import de.fhg.iais.roberta.syntax.lang.expr.RgbColor;
+import de.fhg.iais.roberta.syntax.lang.expr.SensorExpr;
+import de.fhg.iais.roberta.syntax.lang.expr.ShadowExpr;
+import de.fhg.iais.roberta.syntax.lang.expr.StmtExpr;
+import de.fhg.iais.roberta.syntax.lang.expr.StringConst;
+import de.fhg.iais.roberta.syntax.lang.expr.Unary;
+import de.fhg.iais.roberta.syntax.lang.expr.Var;
+import de.fhg.iais.roberta.syntax.lang.expr.VarDeclaration;
+import de.fhg.iais.roberta.syntax.lang.functions.GetSubFunct;
+import de.fhg.iais.roberta.syntax.lang.functions.IndexOfFunct;
+import de.fhg.iais.roberta.syntax.lang.functions.LengthOfIsEmptyFunct;
+import de.fhg.iais.roberta.syntax.lang.functions.ListGetIndex;
+import de.fhg.iais.roberta.syntax.lang.functions.ListRepeat;
+import de.fhg.iais.roberta.syntax.lang.functions.ListSetIndex;
+import de.fhg.iais.roberta.syntax.lang.functions.MathConstrainFunct;
+import de.fhg.iais.roberta.syntax.lang.functions.MathNumPropFunct;
+import de.fhg.iais.roberta.syntax.lang.functions.MathOnListFunct;
+import de.fhg.iais.roberta.syntax.lang.functions.MathPowerFunct;
+import de.fhg.iais.roberta.syntax.lang.functions.MathRandomFloatFunct;
+import de.fhg.iais.roberta.syntax.lang.functions.MathRandomIntFunct;
+import de.fhg.iais.roberta.syntax.lang.functions.MathSingleFunct;
+import de.fhg.iais.roberta.syntax.lang.functions.TextJoinFunct;
+import de.fhg.iais.roberta.syntax.lang.functions.TextPrintFunct;
+import de.fhg.iais.roberta.syntax.lang.methods.MethodCall;
+import de.fhg.iais.roberta.syntax.lang.methods.MethodIfReturn;
+import de.fhg.iais.roberta.syntax.lang.methods.MethodReturn;
+import de.fhg.iais.roberta.syntax.lang.methods.MethodVoid;
+import de.fhg.iais.roberta.syntax.lang.stmt.ActionStmt;
+import de.fhg.iais.roberta.syntax.lang.stmt.AssignStmt;
+import de.fhg.iais.roberta.syntax.lang.stmt.ExprStmt;
+import de.fhg.iais.roberta.syntax.lang.stmt.FunctionStmt;
+import de.fhg.iais.roberta.syntax.lang.stmt.IfStmt;
+import de.fhg.iais.roberta.syntax.lang.stmt.MethodStmt;
+import de.fhg.iais.roberta.syntax.lang.stmt.RepeatStmt;
+import de.fhg.iais.roberta.syntax.lang.stmt.SensorStmt;
+import de.fhg.iais.roberta.syntax.lang.stmt.StmtFlowCon;
+import de.fhg.iais.roberta.syntax.lang.stmt.StmtList;
+import de.fhg.iais.roberta.syntax.lang.stmt.StmtTextComment;
+import de.fhg.iais.roberta.syntax.lang.stmt.WaitStmt;
+import de.fhg.iais.roberta.syntax.lang.stmt.WaitTimeStmt;
+import de.fhg.iais.roberta.visitor.AstVisitor;
+
+public interface AstLanguageVisitor&lt;V&gt; extends AstVisitor&lt;V&gt; {
+
+    /**
+     * visit a {@link NumConst}.
+     *
+     * @param numConst phrase to be visited
+     */
+    V visitNumConst(NumConst&lt;V&gt; numConst);
+
+    /**
+     * visit a {@link MathConst}.
+     *
+     * @param mathConst to be visited
+     */
+    V visitMathConst(MathConst&lt;V&gt; mathConst);
+
+    /**
+     * visit a {@link BoolConst}.
+     *
+     * @param boolConst to be visited
+     */
+    V visitBoolConst(BoolConst&lt;V&gt; boolConst);
+
+    /**
+     * visit a {@link StringConst}.
+     *
+     * @param stringConst to be visited
+     */
+    V visitStringConst(StringConst&lt;V&gt; stringConst);
+
+    /**
+     * visit a {@link NullConst}.
+     *
+     * @param nullConst to be visited
+     */
+    V visitNullConst(NullConst&lt;V&gt; nullConst);
+
+    /**
+     * visit a {@link ColorConst}.
+     *
+     * @param colorConst to be visited
+     */
+    V visitColorConst(ColorConst&lt;V&gt; colorConst);
+
+    /**
+     * visit a {@link RgbColor}.
+     *
+     * @param rgbColor to be visited
+     */
+    V visitRgbColor(RgbColor&lt;V&gt; rgbColor);
+
+    /**
+     * visit a {@link StmtTextComment}.
+     *
+     * @param stmtTextComment to be visited
+     */
+    V visitStmtTextComment(StmtTextComment&lt;V&gt; stmtTextComment);
+
+    /**
+     * visit a {@link ConnectConst}.
+     *
+     * @param connectConst to be visited
+     */
+    V visitConnectConst(ConnectConst&lt;V&gt; connectConst);
+
+    /**
+     * visit a {@link Var}.
+     *
+     * @param var to be visited
+     */
+    V visitVar(Var&lt;V&gt; var);
+
+    /**
+     * visit a {@link VarDeclaration}.
+     *
+     * @param var to be visited
+     */
+    V visitVarDeclaration(VarDeclaration&lt;V&gt; var);
+
+    /**
+     * visit a {@link Unary}.
+     *
+     * @param unary to be visited
+     */
+    V visitUnary(Unary&lt;V&gt; unary);
+
+    /**
+     * visit a {@link Binary}.
+     *
+     * @param binary to be visited
+     */
+    V visitBinary(Binary&lt;V&gt; binary);
+
+    /**
+     * visit a {@link MathPowerFunct}.
+     *
+     * @param funct to be visited
+     */
+    V visitMathPowerFunct(MathPowerFunct&lt;V&gt; mathPowerFunct);
+
+    /**
+     * visit a {@link EmptyList}.
+     *
+     * @param sensorExpr to be visited
+     */
+    V visitEmptyList(EmptyList&lt;V&gt; emptyList);
+
+    /**
+     * visit a {@link AssignStmt}.
+     *
+     * @param assignStmt to be visited
+     */
+    V visitAssignStmt(AssignStmt&lt;V&gt; assignStmt);
+
+    /**
+     * visit a {@link EmptyExpr}.
+     *
+     * @param emptyExpr to be visited
+     */
+    V visitEmptyExpr(EmptyExpr&lt;V&gt; emptyExpr);
+
+    /**
+     * visit a {@link ExprList}.
+     *
+     * @param exprList to be visited
+     */
+    V visitExprList(ExprList&lt;V&gt; exprList);
+
+    /**
+     * visit a {@link IfStmt}.
+     *
+     * @param ifStmt to be visited
+     */
+    V visitIfStmt(IfStmt&lt;V&gt; ifStmt);
+
+    /**
+     * visit a {@link RepeatStmt}.
+     *
+     * @param repeatStmt to be visited
+     */
+    V visitRepeatStmt(RepeatStmt&lt;V&gt; repeatStmt);
+
+    /**
+     * visit a {@link StmtFlowCon}.
+     *
+     * @param stmtFlowCon to be visited
+     */
+    V visitStmtFlowCon(StmtFlowCon&lt;V&gt; stmtFlowCon);
+
+    /**
+     * visit a {@link StmtList}.
+     *
+     * @param stmtList to be visited
+     */
+    V visitStmtList(StmtList&lt;V&gt; stmtList);
+
+    /**
+     * visit a {@link MainTask}.
+     *
+     * @param MainTask to be visited
+     */
+    V visitMainTask(MainTask&lt;V&gt; mainTask);
+
+    /**
+     * visit a {@link WaitStmt}.
+     *
+     * @param waitStmt to be visited
+     */
+    V visitWaitStmt(WaitStmt&lt;V&gt; waitStmt);
+
+    /**
+     * visit a {@link WaitTimeStmt}.
+     *
+     * @param waitStmt to be visited
+     */
+    V visitWaitTimeStmt(WaitTimeStmt&lt;V&gt; waitTimeStmt);
+
+    /**
+     * visit a {@link TextPrintFunct}.
+     *
+     * @param textPrintFunct to be visited
+     */
+    V visitTextPrintFunct(TextPrintFunct&lt;V&gt; textPrintFunct);
+
+    /**
+     * visit a {@link GetSubFunct}.
+     *
+     * @param getSubFunct to be visited
+     */
+    V visitGetSubFunct(GetSubFunct&lt;V&gt; getSubFunct);
+
+    /**
+     * visit a {@link IndexOfFunct}.
+     *
+     * @param indexOfFunct to be visited
+     */
+    V visitIndexOfFunct(IndexOfFunct&lt;V&gt; indexOfFunct);
+
+    /**
+     * visit a {@link LengthOfIsEmptyFunct}.
+     *
+     * @param lengthOfIsEmptyFunct to be visited
+     */
+    V visitLengthOfIsEmptyFunct(LengthOfIsEmptyFunct&lt;V&gt; lengthOfIsEmptyFunct);
+
+    /**
+     * visit a {@link ListCreate}.
+     *
+     * @param listCreate to be visited
+     */
+    V visitListCreate(ListCreate&lt;V&gt; listCreate);
+
+    /**
+     * visit a {@link ListGetIndex}.
+     *
+     * @param listGetIndex to be visited
+     */
+    V visitListGetIndex(ListGetIndex&lt;V&gt; listGetIndex);
+
+    /**
+     * visit a {@link ListRepeat}.
+     *
+     * @param listRepeat to be visited
+     */
+    V visitListRepeat(ListRepeat&lt;V&gt; listRepeat);
+
+    /**
+     * visit a {@link ListSetIndex}.
+     *
+     * @param listSetIndex to be visited
+     */
+    V visitListSetIndex(ListSetIndex&lt;V&gt; listSetIndex);
+
+    /**
+     * visit a {@link MathConstrainFunct}.
+     *
+     * @param mathConstrainFunct to be visited
+     */
+    V visitMathConstrainFunct(MathConstrainFunct&lt;V&gt; mathConstrainFunct);
+
+    /**
+     * visit a {@link MathNumPropFunct}.
+     *
+     * @param mathNumPropFunct to be visited
+     */
+    V visitMathNumPropFunct(MathNumPropFunct&lt;V&gt; mathNumPropFunct);
+
+    /**
+     * visit a {@link MathOnListFunct}.
+     *
+     * @param mathOnListFunct to be visited
+     */
+    V visitMathOnListFunct(MathOnListFunct&lt;V&gt; mathOnListFunct);
+
+    /**
+     * visit a {@link MathRandomFloatFunct}.
+     *
+     * @param mathOnListFunct to be visited
+     */
+    V visitMathRandomFloatFunct(MathRandomFloatFunct&lt;V&gt; mathRandomFloatFunct);
+
+    /**
+     * visit a {@link MathRandomIntFunct}.
+     *
+     * @param mathRandomIntFunct to be visited
+     */
+    V visitMathRandomIntFunct(MathRandomIntFunct&lt;V&gt; mathRandomIntFunct);
+
+    /**
+     * visit a {@link MathSingleFunct}.
+     *
+     * @param mathSingleFunct to be visited
+     */
+    V visitMathSingleFunct(MathSingleFunct&lt;V&gt; mathSingleFunct);
+
+    /**
+     * visit a {@link TextJoinFunct}.
+     *
+     * @param textJoinFunct to be visited
+     */
+    V visitTextJoinFunct(TextJoinFunct&lt;V&gt; textJoinFunct);
+
+    /**
+     * visit a {@link MethodVoid}. This is a declaration of a void method (not a call of the method)
+     *
+     * @param methodVoid to be visited
+     */
+    V visitMethodVoid(MethodVoid&lt;V&gt; methodVoid);
+
+    /**
+     * visit a {@link MethodReturn}. This is a declaration of a method with a return value (not a call of the method)
+     *
+     * @param methodReturn to be visited
+     */
+    V visitMethodReturn(MethodReturn&lt;V&gt; methodReturn);
+
+    /**
+     * visit a {@link MethodIfReturn}.
+     *
+     * @param methodIfReturn to be visited
+     */
+    V visitMethodIfReturn(MethodIfReturn&lt;V&gt; methodIfReturn);
+
+    /**
+     * visit a {@link MethodStmt}.
+     *
+     * @param methodStmt to be visited
+     */
+    V visitMethodStmt(MethodStmt&lt;V&gt; methodStmt);
+
+    /**
+     * visit a {@link MethodCall}.
+     *
+     * @param methodStmt to be visited
+     */
+    V visitMethodCall(MethodCall&lt;V&gt; methodCall);
+
+    default V visitSensorExpr(SensorExpr&lt;V&gt; sensorExpr) {
+<span class="fc" id="L381">        sensorExpr.getSens().visit(this);</span>
+<span class="fc" id="L382">        return null;</span>
+    }
+
+    default V visitMethodExpr(MethodExpr&lt;V&gt; methodExpr) {
+<span class="nc" id="L386">        methodExpr.getMethod().visit(this);</span>
+<span class="nc" id="L387">        return null;</span>
+    }
+
+    default V visitActionStmt(ActionStmt&lt;V&gt; actionStmt) {
+<span class="fc" id="L391">        actionStmt.getAction().visit(this);</span>
+<span class="fc" id="L392">        return null;</span>
+    }
+
+    /**
+     * visit a {@link ActionExpr}.
+     *
+     * @param actionExpr to be visited
+     */
+    default V visitActionExpr(ActionExpr&lt;V&gt; actionExpr) {
+<span class="nc" id="L401">        actionExpr.getAction().visit(this);</span>
+<span class="nc" id="L402">        return null;</span>
+    }
+
+    default V visitExprStmt(ExprStmt&lt;V&gt; exprStmt) {
+<span class="fc" id="L406">        exprStmt.getExpr().visit(this);</span>
+<span class="fc" id="L407">        return null;</span>
+    }
+
+    default V visitStmtExpr(StmtExpr&lt;V&gt; stmtExpr) {
+<span class="nc" id="L411">        stmtExpr.getStmt().visit(this);</span>
+<span class="nc" id="L412">        return null;</span>
+    }
+
+    default V visitShadowExpr(ShadowExpr&lt;V&gt; shadowExpr) {
+<span class="nc bnc" id="L416" title="All 2 branches missed.">        if ( shadowExpr.getBlock() != null ) {</span>
+<span class="nc" id="L417">            shadowExpr.getBlock().visit(this);</span>
+        } else {
+<span class="nc" id="L419">            shadowExpr.getShadow().visit(this);</span>
+        }
+<span class="nc" id="L421">        return null;</span>
+    }
+
+    default V visitSensorStmt(SensorStmt&lt;V&gt; sensorStmt) {
+<span class="nc" id="L425">        sensorStmt.getSensor().visit(this);</span>
+<span class="nc" id="L426">        return null;</span>
+    }
+
+    /**
+     * visit a {@link ActivityTask}.
+     *
+     * @param activityTask to be visited
+     */
+    default V visitActivityTask(ActivityTask&lt;V&gt; activityTask) {
+<span class="nc" id="L435">        return null;</span>
+    }
+
+    default V visitStartActivityTask(StartActivityTask&lt;V&gt; startActivityTask) {
+<span class="nc" id="L439">        return null;</span>
+    }
+
+    default V visitLocation(Location&lt;V&gt; location) {
+<span class="nc" id="L443">        return null;</span>
+    }
+
+    default V visitFunctionStmt(FunctionStmt&lt;V&gt; functionStmt) {
+<span class="nc" id="L447">        functionStmt.getFunction().visit(this);</span>
+<span class="nc" id="L448">        return null;</span>
+    }
+
+    default V visitFunctionExpr(FunctionExpr&lt;V&gt; functionExpr) {
+<span class="nc" id="L452">        functionExpr.getFunction().visit(this);</span>
+<span class="nc" id="L453">        return null;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

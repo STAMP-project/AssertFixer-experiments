@@ -1,0 +1,192 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>Jaxb2NxtConfigurationTransformer.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">RobotNXT</a> &gt; <a href="index.source.html" class="el_package">de.fhg.iais.roberta.transformer.nxt</a> &gt; <span class="el_source">Jaxb2NxtConfigurationTransformer.java</span></div><h1>Jaxb2NxtConfigurationTransformer.java</h1><pre class="source lang-java linenums">package de.fhg.iais.roberta.transformer.nxt;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+
+import de.fhg.iais.roberta.blockly.generated.Block;
+import de.fhg.iais.roberta.blockly.generated.BlockSet;
+import de.fhg.iais.roberta.blockly.generated.Field;
+import de.fhg.iais.roberta.blockly.generated.Instance;
+import de.fhg.iais.roberta.blockly.generated.Value;
+import de.fhg.iais.roberta.components.Actor;
+import de.fhg.iais.roberta.components.ActorType;
+import de.fhg.iais.roberta.components.Configuration;
+import de.fhg.iais.roberta.components.Sensor;
+import de.fhg.iais.roberta.components.SensorType;
+import de.fhg.iais.roberta.components.nxt.NxtConfiguration;
+import de.fhg.iais.roberta.factory.IRobotFactory;
+import de.fhg.iais.roberta.inter.mode.action.IActorPort;
+import de.fhg.iais.roberta.inter.mode.sensor.ISensorPort;
+import de.fhg.iais.roberta.mode.action.DriveDirection;
+import de.fhg.iais.roberta.mode.action.MotorSide;
+import de.fhg.iais.roberta.util.Pair;
+import de.fhg.iais.roberta.util.Util1;
+import de.fhg.iais.roberta.util.dbc.Assert;
+import de.fhg.iais.roberta.util.dbc.DbcException;
+
+/**
+ * JAXB to brick configuration. Client should provide a tree of jaxb objects. Generates a BrickConfiguration object.
+ */
+public class Jaxb2NxtConfigurationTransformer {
+    IRobotFactory factory;
+
+<span class="fc" id="L34">    public Jaxb2NxtConfigurationTransformer(IRobotFactory factory) {</span>
+<span class="fc" id="L35">        this.factory = factory;</span>
+<span class="fc" id="L36">    }</span>
+
+    public Configuration transform(BlockSet blockSet) {
+<span class="fc" id="L39">        List&lt;Instance&gt; instances = blockSet.getInstance();</span>
+<span class="fc" id="L40">        List&lt;Block&gt; blocks = instances.get(0).getBlock();</span>
+<span class="fc" id="L41">        return blockToBrickConfiguration(blocks.get(0));</span>
+    }
+
+    public BlockSet transformInverse(Configuration conf) {
+<span class="nc" id="L45">        int idCount = 1;</span>
+<span class="nc" id="L46">        BlockSet blockSet = new BlockSet();</span>
+<span class="nc" id="L47">        Instance instance = new Instance();</span>
+<span class="nc" id="L48">        blockSet.getInstance().add(instance);</span>
+<span class="nc" id="L49">        instance.setX(&quot;20&quot;);</span>
+<span class="nc" id="L50">        instance.setY(&quot;20&quot;);</span>
+<span class="nc" id="L51">        Block block = mkBlock(idCount++);</span>
+<span class="nc" id="L52">        block.setType(&quot;robBrick_EV3-Brick&quot;);</span>
+<span class="nc" id="L53">        instance.getBlock().add(block);</span>
+<span class="nc" id="L54">        List&lt;Field&gt; fields = block.getField();</span>
+<span class="nc" id="L55">        fields.add(mkField(&quot;WHEEL_DIAMETER&quot;, Util1.formatDouble1digit(conf.getWheelDiameterCM())));</span>
+<span class="nc" id="L56">        fields.add(mkField(&quot;TRACK_WIDTH&quot;, Util1.formatDouble1digit(conf.getTrackWidthCM())));</span>
+<span class="nc" id="L57">        List&lt;Value&gt; values = block.getValue();</span>
+        {
+<span class="nc" id="L59">            Map&lt;ISensorPort, Sensor&gt; sensors = conf.getSensors();</span>
+<span class="nc bnc" id="L60" title="All 2 branches missed.">            for ( ISensorPort port : sensors.keySet() ) {</span>
+<span class="nc" id="L61">                Sensor sensor = sensors.get(port);</span>
+<span class="nc" id="L62">                Value hardwareComponent = new Value();</span>
+<span class="nc" id="L63">                hardwareComponent.setName(port.getCodeName());</span>
+<span class="nc" id="L64">                Block sensorBlock = mkBlock(idCount++);</span>
+<span class="nc" id="L65">                hardwareComponent.setBlock(sensorBlock);</span>
+<span class="nc" id="L66">                sensorBlock.setType(sensor.getType().blocklyName());</span>
+<span class="nc" id="L67">                values.add(hardwareComponent);</span>
+<span class="nc" id="L68">            }</span>
+        }
+        {
+<span class="nc" id="L71">            Map&lt;IActorPort, Actor&gt; actors = conf.getActors();</span>
+<span class="nc bnc" id="L72" title="All 2 branches missed.">            for ( IActorPort port : actors.keySet() ) {</span>
+<span class="nc" id="L73">                Actor actor = actors.get(port);</span>
+<span class="nc" id="L74">                Value hardwareComponent = new Value();</span>
+<span class="nc" id="L75">                hardwareComponent.setName(port.getOraName());</span>
+<span class="nc" id="L76">                Block actorBlock = mkBlock(idCount++);</span>
+<span class="nc" id="L77">                hardwareComponent.setBlock(actorBlock);</span>
+<span class="nc" id="L78">                actorBlock.setType(actor.getName().blocklyName());</span>
+<span class="nc" id="L79">                List&lt;Field&gt; actorFields = actorBlock.getField();</span>
+<span class="nc" id="L80">                actorFields.add(mkField(&quot;MOTOR_REGULATION&quot;, (&quot;&quot; + actor.isRegulated()).toUpperCase()));</span>
+<span class="nc bnc" id="L81" title="All 2 branches missed.">                String rotation = actor.getRotationDirection() == DriveDirection.FOREWARD ? &quot;OFF&quot; : &quot;ON&quot;;</span>
+<span class="nc" id="L82">                actorFields.add(mkField(&quot;MOTOR_REVERSE&quot;, rotation));</span>
+<span class="nc bnc" id="L83" title="All 2 branches missed.">                if ( !actor.getName().blocklyName().equals(&quot;robBrick_motor_middle&quot;) ) {</span>
+<span class="nc" id="L84">                    actorFields.add(mkField(&quot;MOTOR_DRIVE&quot;, actor.getMotorSide().toString()));</span>
+                }
+<span class="nc" id="L86">                values.add(hardwareComponent);</span>
+<span class="nc" id="L87">            }</span>
+        }
+<span class="nc" id="L89">        return blockSet;</span>
+    }
+
+    private Block mkBlock(int id) {
+<span class="nc" id="L93">        Block block = new Block();</span>
+<span class="nc" id="L94">        block.setId(&quot;&quot; + id);</span>
+<span class="nc" id="L95">        block.setInline(false);</span>
+<span class="nc" id="L96">        block.setDisabled(false);</span>
+<span class="nc" id="L97">        block.setIntask(true);</span>
+<span class="nc" id="L98">        return block;</span>
+    }
+
+    private Field mkField(String name, String value) {
+<span class="nc" id="L102">        Field field = new Field();</span>
+<span class="nc" id="L103">        field.setName(name);</span>
+<span class="nc" id="L104">        field.setValue(value);</span>
+<span class="nc" id="L105">        return field;</span>
+    }
+
+    private Configuration blockToBrickConfiguration(Block block) {
+<span class="pc bpc" id="L109" title="3 of 6 branches missed.">        switch ( block.getType() ) {</span>
+            case &quot;robBrick_EV3-Brick&quot;:
+<span class="fc" id="L111">                List&lt;Pair&lt;ISensorPort, Sensor&gt;&gt; sensors = new ArrayList&lt;&gt;();</span>
+<span class="fc" id="L112">                List&lt;Pair&lt;IActorPort, Actor&gt;&gt; actors = new ArrayList&lt;&gt;();</span>
+<span class="fc" id="L113">                List&lt;Field&gt; fields = extractFields(block, (short) 2);</span>
+<span class="fc" id="L114">                double wheelDiameter = Double.valueOf(extractField(fields, &quot;WHEEL_DIAMETER&quot;, (short) 0)).doubleValue();</span>
+<span class="fc" id="L115">                double trackWidth = Double.valueOf(extractField(fields, &quot;TRACK_WIDTH&quot;, (short) 1)).doubleValue();</span>
+
+<span class="fc" id="L117">                List&lt;Value&gt; values = extractValues(block, (short) 8);</span>
+<span class="fc" id="L118">                extractHardwareComponent(values, sensors, actors);</span>
+
+<span class="fc" id="L120">                return new NxtConfiguration.Builder().setTrackWidth(trackWidth).setWheelDiameter(wheelDiameter).addActors(actors).addSensors(sensors).build();</span>
+            default:
+<span class="nc" id="L122">                throw new DbcException(&quot;There was no correct configuration block found!&quot;);</span>
+        }
+    }
+
+    private void extractHardwareComponent(List&lt;Value&gt; values, List&lt;Pair&lt;ISensorPort, Sensor&gt;&gt; sensors, List&lt;Pair&lt;IActorPort, Actor&gt;&gt; actors) {
+<span class="fc bfc" id="L127" title="All 2 branches covered.">        for ( Value value : values ) {</span>
+<span class="fc bfc" id="L128" title="All 2 branches covered.">            if ( value.getName().startsWith(&quot;S&quot;) ) {</span>
+                // Extract sensor
+<span class="fc" id="L130">                sensors.add(Pair.of(this.factory.getSensorPort(value.getName()), new Sensor(SensorType.get(value.getBlock().getType()))));</span>
+            } else {
+                List&lt;Field&gt; fields;
+                // Extract actor
+<span class="pc bpc" id="L134" title="8 of 14 branches missed.">                switch ( value.getBlock().getType() ) {</span>
+                    case &quot;robBrick_motor_middle&quot;:
+<span class="fc" id="L136">                        fields = extractFields(value.getBlock(), (short) 2);</span>
+<span class="fc" id="L137">                        actors.add(</span>
+<span class="fc" id="L138">                            Pair.of(</span>
+<span class="fc" id="L139">                                this.factory.getActorPort(value.getName()),</span>
+                                new Actor(
+<span class="fc" id="L141">                                    ActorType.get(value.getBlock().getType()),</span>
+<span class="fc" id="L142">                                    extractField(fields, &quot;MOTOR_REGULATION&quot;, 0).equals(&quot;TRUE&quot;),</span>
+<span class="fc" id="L143">                                    this.factory.getDriveDirection(extractField(fields, &quot;MOTOR_REVERSE&quot;, 1)),</span>
+                                    MotorSide.NONE)));
+
+<span class="fc" id="L146">                        break;</span>
+                    case &quot;robBrick_motor_big&quot;:
+
+<span class="fc" id="L149">                        fields = extractFields(value.getBlock(), (short) 3);</span>
+<span class="fc" id="L150">                        actors.add(</span>
+<span class="fc" id="L151">                            Pair.of(</span>
+<span class="fc" id="L152">                                this.factory.getActorPort(value.getName()),</span>
+                                new Actor(
+<span class="fc" id="L154">                                    ActorType.get(value.getBlock().getType()),</span>
+<span class="fc" id="L155">                                    extractField(fields, &quot;MOTOR_REGULATION&quot;, 0).equals(&quot;TRUE&quot;),</span>
+<span class="fc" id="L156">                                    this.factory.getDriveDirection(extractField(fields, &quot;MOTOR_REVERSE&quot;, 1)),</span>
+<span class="fc" id="L157">                                    this.factory.getMotorSide(extractField(fields, &quot;MOTOR_DRIVE&quot;, 2)))));</span>
+<span class="fc" id="L158">                        break;</span>
+                    case &quot;robBrick_actor&quot;:
+<span class="nc" id="L160">                        actors.add(</span>
+<span class="nc" id="L161">                            Pair.of(</span>
+<span class="nc" id="L162">                                this.factory.getActorPort(value.getName()),</span>
+<span class="nc" id="L163">                                new Actor(ActorType.get(value.getBlock().getType()), false, DriveDirection.FOREWARD, MotorSide.NONE)));</span>
+<span class="nc" id="L164">                        break;</span>
+                    default:
+<span class="nc" id="L166">                        throw new DbcException(&quot;Invalid motor type!&quot;);</span>
+                }
+            }
+<span class="fc" id="L169">        }</span>
+<span class="fc" id="L170">    }</span>
+
+    private List&lt;Value&gt; extractValues(Block block, int numOfValues) {
+        List&lt;Value&gt; values;
+<span class="fc" id="L174">        values = block.getValue();</span>
+<span class="pc bpc" id="L175" title="1 of 2 branches missed.">        Assert.isTrue(values.size() &lt;= numOfValues, &quot;Values size is not less or equal to &quot; + numOfValues + &quot;!&quot;);</span>
+<span class="fc" id="L176">        return values;</span>
+    }
+
+    private List&lt;Field&gt; extractFields(Block block, int numOfFields) {
+        List&lt;Field&gt; fields;
+<span class="fc" id="L181">        fields = block.getField();</span>
+<span class="pc bpc" id="L182" title="1 of 2 branches missed.">        Assert.isTrue(fields.size() == numOfFields, &quot;Number of fields is not equal to &quot; + numOfFields + &quot;!&quot;);</span>
+<span class="fc" id="L183">        return fields;</span>
+    }
+
+    private String extractField(List&lt;Field&gt; fields, String name, int fieldLocation) {
+<span class="fc" id="L187">        Field field = fields.get(fieldLocation);</span>
+<span class="fc" id="L188">        Assert.isTrue(field.getName().equals(name), &quot;Field name is not equal to &quot; + name + &quot;!&quot;);</span>
+<span class="fc" id="L189">        return field.getValue();</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

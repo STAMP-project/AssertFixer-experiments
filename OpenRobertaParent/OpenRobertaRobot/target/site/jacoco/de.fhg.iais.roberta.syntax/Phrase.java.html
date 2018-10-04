@@ -1,0 +1,144 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>Phrase.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">OpenRobertaRobot</a> &gt; <a href="index.source.html" class="el_package">de.fhg.iais.roberta.syntax</a> &gt; <span class="el_source">Phrase.java</span></div><h1>Phrase.java</h1><pre class="source lang-java linenums">package de.fhg.iais.roberta.syntax;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import de.fhg.iais.roberta.blockly.generated.Block;
+import de.fhg.iais.roberta.syntax.BlockTypeContainer.BlockType;
+import de.fhg.iais.roberta.typecheck.NepoInfo;
+import de.fhg.iais.roberta.typecheck.NepoInfos;
+import de.fhg.iais.roberta.util.dbc.Assert;
+import de.fhg.iais.roberta.visitor.AstVisitor;
+
+/**
+ * the top class of all class used to represent the AST (abstract syntax tree) of a program. After construction an AST should be immutable. The logic to achieve
+ * that is in this class. An object of a subclass of {@link Phrase} is initially writable, after the construction of the object has finished,
+ * {@link #setReadOnly()} is called. This cannot be undone later. It is expected that all subclasses of {@link #Phrase} do the following:&lt;br&gt;
+ * - if in construction phase, they should use {@link #mayChange()} to assert that.&lt;br&gt;
+ * - if the construction has finished and {@link #setReadOnly()} has been called, they should use {@link #isReadOnly()} to assert their immutability.&lt;br&gt;
+ * &lt;br&gt;
+ * There are two ways for a client to find out which kind a {@link #Phrase}-object is:&lt;br&gt;
+ * - {@link #getKind()}&lt;br&gt;
+ * - {@link #getAs(Class)}&lt;br&gt;
+ */
+abstract public class Phrase&lt;V&gt; {
+    @SuppressWarnings(&quot;unused&quot;)
+<span class="fc" id="L26">    private static final Logger LOG = LoggerFactory.getLogger(Phrase.class);</span>
+
+<span class="fc" id="L28">    private boolean readOnly = false;</span>
+
+    private final BlocklyBlockProperties property;
+    private final BlocklyComment comment;
+    private final BlockType kind;
+
+<span class="fc" id="L34">    private final NepoInfos infos = new NepoInfos(); // the content of the info object is MUTABLE !!!</span>
+
+    /**
+     * This constructor set the kind of the object used in the AST (abstract syntax tree). All possible kinds can be found in {@link BlockType}.
+     *
+     * @param kind of the the object used in AST,
+     * @param disabled,
+     * @param comment that the user added to the block
+     */
+<span class="fc" id="L43">    public Phrase(BlockType kind, BlocklyBlockProperties property, BlocklyComment comment) {</span>
+<span class="pc bpc" id="L44" title="1 of 2 branches missed.">        Assert.isTrue(property != null, &quot;block property is null!&quot;);</span>
+<span class="fc" id="L45">        this.kind = kind;</span>
+<span class="fc" id="L46">        this.property = property;</span>
+<span class="fc" id="L47">        this.comment = comment;</span>
+<span class="fc" id="L48">    }</span>
+
+    /**
+     * @return true, if the object is writable/mutable. This is true, if {@link #setReadOnly()} has not yet been called for this object
+     */
+    public final boolean mayChange() {
+<span class="pc bpc" id="L54" title="1 of 2 branches missed.">        return !this.readOnly;</span>
+    }
+
+    /**
+     * @return true, if the object is read-only/immutable. This is true, if {@link #setReadOnly()} has been called for this object
+     */
+    public final boolean isReadOnly() {
+<span class="fc" id="L61">        return this.readOnly;</span>
+    }
+
+    /**
+     * make this {@link Phrase}-object read-only/immutable. Should be called if the construction phase has finished
+     */
+    public final void setReadOnly() {
+<span class="fc" id="L68">        this.readOnly = true;</span>
+<span class="fc" id="L69">    }</span>
+
+    /**
+     * @return the kind of the expression. See enum {@link BlockType} for all kinds possible&lt;br&gt;
+     */
+    public final BlockType getKind() {
+<span class="fc" id="L75">        return this.kind;</span>
+    }
+
+    public BlocklyBlockProperties getProperty() {
+<span class="fc" id="L79">        return this.property;</span>
+    }
+
+    /**
+     * @return comment that the user added to the block
+     */
+    public final BlocklyComment getComment() {
+<span class="fc" id="L86">        return this.comment;</span>
+    }
+
+    /**
+     * add an info (error, warning e.g.) to this phrase
+     *
+     * @param info to be added
+     */
+    public final void addInfo(NepoInfo info) {
+<span class="fc" id="L95">        this.infos.addInfo(info);</span>
+<span class="fc" id="L96">    }</span>
+
+    public final NepoInfos getInfos() {
+<span class="fc" id="L99">        return this.infos;</span>
+    }
+
+    /**
+     * visit this phrase. Inside this method is a LOG statement, usually commented out. If it is commented in, it will generate a nice trace of the phrases of
+     * the AST when they are visited.
+     *
+     * @param visitor to be used
+     */
+    public final V visit(AstVisitor&lt;V&gt; visitor) {
+        // LOG.info(&quot;{}&quot;, this);
+<span class="pc bpc" id="L110" title="1 of 6 branches missed.">        if ( getProperty().isDisabled() || (getProperty().isInTask() != null &amp;&amp; getProperty().isInTask() == false) ) {</span>
+<span class="fc" id="L111">            return null;</span>
+        }
+<span class="fc" id="L113">        return this.accept(visitor);</span>
+    }
+
+    /**
+     * accept an visitor
+     */
+    protected abstract V accept(AstVisitor&lt;V&gt; visitor);
+
+    /**
+     * @return converts AST representation of block to JAXB representation of block
+     */
+    public abstract Block astToBlock();
+
+    /**
+     * append a newline, then append spaces up to an indentation level, then append an (optional) text&lt;br&gt;
+     * helper for constructing readable {@link #toString()}- and {@link #generateJava(StringBuilder, int)}-methods for statement trees
+     *
+     * @param sb the string builder, to which has to be appended
+     * @param indentation number defining the level of indentation
+     * @param text an (optional) text to append; may be null
+     */
+    protected final void appendNewLine(StringBuilder sb, int indentation, String text) {
+<span class="fc" id="L135">        sb.append(&quot;\n&quot;);</span>
+<span class="pc bpc" id="L136" title="1 of 2 branches missed.">        for ( int i = 0; i &lt; indentation; i++ ) {</span>
+<span class="nc" id="L137">            sb.append(&quot; &quot;);</span>
+        }
+<span class="fc bfc" id="L139" title="All 2 branches covered.">        if ( text != null ) {</span>
+<span class="fc" id="L140">            sb.append(text);</span>
+        }
+<span class="fc" id="L142">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

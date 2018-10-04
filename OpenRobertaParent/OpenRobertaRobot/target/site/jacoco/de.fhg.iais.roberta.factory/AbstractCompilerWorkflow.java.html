@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>AbstractCompilerWorkflow.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">OpenRobertaRobot</a> &gt; <a href="index.source.html" class="el_package">de.fhg.iais.roberta.factory</a> &gt; <span class="el_source">AbstractCompilerWorkflow.java</span></div><h1>AbstractCompilerWorkflow.java</h1><pre class="source lang-java linenums">package de.fhg.iais.roberta.factory;
+
+import java.io.File;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+
+import org.apache.commons.io.FileUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import de.fhg.iais.roberta.components.Configuration;
+import de.fhg.iais.roberta.inter.mode.action.ILanguage;
+import de.fhg.iais.roberta.transformer.BlocklyProgramAndConfigTransformer;
+import de.fhg.iais.roberta.util.Key;
+import de.fhg.iais.roberta.util.dbc.Assert;
+import de.fhg.iais.roberta.util.dbc.DbcException;
+
+<span class="nc" id="L21">public abstract class AbstractCompilerWorkflow implements ICompilerWorkflow {</span>
+<span class="nc" id="L22">    private static final Logger LOG = LoggerFactory.getLogger(AbstractCompilerWorkflow.class);</span>
+
+    @Override
+    public abstract String generateSourceCode(String token, String programName, BlocklyProgramAndConfigTransformer transformer, ILanguage language);
+
+    @Override
+    public abstract Key compileSourceCode(String token, String programName, String sourceCode, ILanguage language, Object flagProvider);
+
+    /*
+     * (non-Javadoc)
+     * some subclasses overwrite this method to return &quot;null&quot; (simulator e.g.)
+     */
+    @Override
+    public Key generateSourceAndCompile(String token, String programName, BlocklyProgramAndConfigTransformer transformer, ILanguage language) {
+<span class="nc" id="L36">        String sourceCode = generateSourceCode(token, programName, transformer, language);</span>
+<span class="nc" id="L37">        return compileSourceCode(token, programName, sourceCode, language, null);</span>
+    }
+
+    @Override
+    public abstract Configuration generateConfiguration(IRobotFactory factory, String blocklyXml) throws Exception;
+
+    @Override
+    public abstract String getCompiledCode();
+
+    protected final void storeGeneratedProgram(String token, String programName, String sourceCode, String pathToCrosscompilerBaseDir, String ext) {
+<span class="nc bnc" id="L47" title="All 6 branches missed.">        Assert.isTrue((token != null) &amp;&amp; (programName != null) &amp;&amp; (sourceCode != null));</span>
+<span class="nc" id="L48">        File sourceFile = new File(pathToCrosscompilerBaseDir + token + &quot;/&quot; + programName + &quot;/src/&quot; + programName + ext);</span>
+<span class="nc" id="L49">        Path path = Paths.get(pathToCrosscompilerBaseDir + token + &quot;/&quot; + programName + &quot;/target/&quot;);</span>
+        try {
+<span class="nc" id="L51">            Files.createDirectories(path);</span>
+<span class="nc" id="L52">            FileUtils.writeStringToFile(sourceFile, sourceCode, StandardCharsets.UTF_8.displayName());</span>
+<span class="nc" id="L53">        } catch ( IOException e ) {</span>
+<span class="nc" id="L54">            String msg = &quot;could not write source code to file system&quot;;</span>
+<span class="nc" id="L55">            LOG.error(msg, e);</span>
+<span class="nc" id="L56">            throw new DbcException(msg, e);</span>
+<span class="nc" id="L57">        }</span>
+<span class="nc" id="L58">        LOG.info(&quot;stored under: &quot; + sourceFile.getPath());</span>
+<span class="nc" id="L59">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

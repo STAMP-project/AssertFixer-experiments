@@ -1,0 +1,697 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>Jaxb2AstTransformer.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">OpenRobertaRobot</a> &gt; <a href="index.source.html" class="el_package">de.fhg.iais.roberta.transformer</a> &gt; <span class="el_source">Jaxb2AstTransformer.java</span></div><h1>Jaxb2AstTransformer.java</h1><pre class="source lang-java linenums">package de.fhg.iais.roberta.transformer;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
+import de.fhg.iais.roberta.blockly.generated.Arg;
+import de.fhg.iais.roberta.blockly.generated.Block;
+import de.fhg.iais.roberta.blockly.generated.Comment;
+import de.fhg.iais.roberta.blockly.generated.Field;
+import de.fhg.iais.roberta.blockly.generated.Mutation;
+import de.fhg.iais.roberta.blockly.generated.Shadow;
+import de.fhg.iais.roberta.blockly.generated.Statement;
+import de.fhg.iais.roberta.blockly.generated.Value;
+import de.fhg.iais.roberta.components.Category;
+import de.fhg.iais.roberta.factory.IRobotFactory;
+import de.fhg.iais.roberta.syntax.BlocklyBlockProperties;
+import de.fhg.iais.roberta.syntax.BlocklyComment;
+import de.fhg.iais.roberta.syntax.BlocklyConstants;
+import de.fhg.iais.roberta.syntax.Phrase;
+import de.fhg.iais.roberta.syntax.action.Action;
+import de.fhg.iais.roberta.syntax.lang.expr.ActionExpr;
+import de.fhg.iais.roberta.syntax.lang.expr.Binary;
+import de.fhg.iais.roberta.syntax.lang.expr.EmptyExpr;
+import de.fhg.iais.roberta.syntax.lang.expr.Expr;
+import de.fhg.iais.roberta.syntax.lang.expr.ExprList;
+import de.fhg.iais.roberta.syntax.lang.expr.FunctionExpr;
+import de.fhg.iais.roberta.syntax.lang.expr.MethodExpr;
+import de.fhg.iais.roberta.syntax.lang.expr.SensorExpr;
+import de.fhg.iais.roberta.syntax.lang.expr.ShadowExpr;
+import de.fhg.iais.roberta.syntax.lang.expr.StmtExpr;
+import de.fhg.iais.roberta.syntax.lang.expr.Unary;
+import de.fhg.iais.roberta.syntax.lang.expr.Var;
+import de.fhg.iais.roberta.syntax.lang.functions.Function;
+import de.fhg.iais.roberta.syntax.lang.methods.Method;
+import de.fhg.iais.roberta.syntax.lang.stmt.ActionStmt;
+import de.fhg.iais.roberta.syntax.lang.stmt.ExprStmt;
+import de.fhg.iais.roberta.syntax.lang.stmt.FunctionStmt;
+import de.fhg.iais.roberta.syntax.lang.stmt.IfStmt;
+import de.fhg.iais.roberta.syntax.lang.stmt.MethodStmt;
+import de.fhg.iais.roberta.syntax.lang.stmt.RepeatStmt;
+import de.fhg.iais.roberta.syntax.lang.stmt.SensorStmt;
+import de.fhg.iais.roberta.syntax.lang.stmt.Stmt;
+import de.fhg.iais.roberta.syntax.lang.stmt.StmtList;
+import de.fhg.iais.roberta.syntax.sensor.Sensor;
+import de.fhg.iais.roberta.typecheck.BlocklyType;
+import de.fhg.iais.roberta.util.dbc.Assert;
+import de.fhg.iais.roberta.util.dbc.DbcException;
+
+abstract public class Jaxb2AstTransformer&lt;V&gt; {
+<span class="fc" id="L51">    protected Jaxb2AstTransformerData&lt;V&gt; data = new Jaxb2AstTransformerData&lt;&gt;();</span>
+
+    public Jaxb2AstTransformerData&lt;V&gt; getData() {
+<span class="fc" id="L54">        return this.data;</span>
+    }
+
+    private final IRobotFactory modeFactory;
+<span class="fc" id="L58">    private int variableCounter = 0;</span>
+
+<span class="fc" id="L60">    protected Jaxb2AstTransformer(IRobotFactory factory) {</span>
+<span class="fc" id="L61">        this.modeFactory = factory;</span>
+
+<span class="fc" id="L63">    }</span>
+
+    public IRobotFactory getModeFactory() {
+<span class="fc" id="L66">        return this.modeFactory;</span>
+    }
+
+    /**
+     * @return abstract syntax tree generated from JAXB objects.
+     */
+    public ArrayList&lt;ArrayList&lt;Phrase&lt;V&gt;&gt;&gt; getTree() {
+<span class="fc" id="L73">        return this.data.getTree();</span>
+    }
+
+    /**
+     * @return the variableCounter
+     */
+    public int getVariableCounter() {
+<span class="fc" id="L80">        return this.variableCounter;</span>
+    }
+
+    /**
+     * @param variableCounter the variableCounter to set
+     */
+    public void setVariableCounter(int variableCounter) {
+<span class="fc" id="L87">        this.variableCounter = variableCounter;</span>
+<span class="fc" id="L88">    }</span>
+
+    @Override
+    public String toString() {
+<span class="fc" id="L92">        return &quot;BlockAST [project=&quot; + this.data.getTree() + &quot;]&quot;;</span>
+    }
+
+    /**
+     * Transforms valid JAXB object to AST object
+     *
+     * @param block to be transformed
+     * @return corresponding AST object
+     */
+    abstract protected Phrase&lt;V&gt; blockToAST(Block block);
+
+    /**
+     * Transforms JAXB object to AST unary object expression.&lt;br&gt;
+     * &lt;br&gt;
+     *
+     * @param block to be transformed
+     * @param exprParam of the unary operation
+     * @param operationType performed on the exprParam
+     * @return AST unary expression object
+     */
+    public Phrase&lt;V&gt; blockToUnaryExpr(Block block, ExprParam exprParam, String operationType) {
+<span class="fc" id="L113">        String op = getOperation(block, operationType);</span>
+<span class="fc" id="L114">        List&lt;Value&gt; values = extractValues(block, (short) 1);</span>
+<span class="fc" id="L115">        Phrase&lt;V&gt; expr = extractValue(values, exprParam);</span>
+<span class="fc" id="L116">        return Unary.make(Unary.Op.get(op), convertPhraseToExpr(expr), extractBlockProperties(block), extractComment(block));</span>
+    }
+
+    /**
+     * Transforms JAXB object to AST binary object expression.&lt;br&gt;
+     * &lt;br&gt;
+     * &lt;b&gt;block&lt;/b&gt; is representation of the block with JAXB classes
+     *
+     * @param block to be transformed
+     * @param leftExpr parameter of the expression
+     * @param rightExpr parameter of the expression
+     * @param operationType of the expression
+     * @return AST binary expression object
+     */
+    public Binary&lt;V&gt; blockToBinaryExpr(Block block, ExprParam leftExpr, ExprParam rightExpr, String operationType) {
+<span class="fc" id="L131">        String op = getOperation(block, operationType);</span>
+<span class="fc" id="L132">        List&lt;Value&gt; values = extractValues(block, (short) 2);</span>
+<span class="fc" id="L133">        Phrase&lt;V&gt; left = extractValue(values, leftExpr);</span>
+<span class="fc" id="L134">        Phrase&lt;V&gt; right = extractValue(values, rightExpr);</span>
+<span class="fc" id="L135">        String operationRange = &quot;&quot;;</span>
+<span class="pc bpc" id="L136" title="3 of 4 branches missed.">        if ( (block.getMutation() != null) &amp;&amp; (block.getMutation().getOperatorRange() != null) ) {</span>
+<span class="nc" id="L137">            operationRange = block.getMutation().getOperatorRange();</span>
+        }
+<span class="fc" id="L139">        return Binary.make(</span>
+<span class="fc" id="L140">            Binary.Op.get(op),</span>
+<span class="fc" id="L141">            convertPhraseToExpr(left),</span>
+<span class="fc" id="L142">            convertPhraseToExpr(right),</span>
+            operationRange,
+<span class="fc" id="L144">            extractBlockProperties(block),</span>
+<span class="fc" id="L145">            extractComment(block));</span>
+    }
+
+    /**
+     * Extracts expression parameters from JAXB {@link Block} class.&lt;br&gt;
+     * &lt;br&gt;
+     * Client must provide the JAXB source block and list of {@link ExprParam} with the correct names of the parameters.&lt;br&gt;
+     * &lt;b&gt;block&lt;/b&gt; is representation of the block with JAXB classes
+     *
+     * @param block as source class
+     * @param exprParams that are extracted from the block
+     * @return list of parameters represented with the {@link Expr} class.
+     */
+    public List&lt;Expr&lt;V&gt;&gt; extractExprParameters(Block block, List&lt;ExprParam&gt; exprParams) {
+<span class="fc" id="L159">        List&lt;Expr&lt;V&gt;&gt; params = new ArrayList&lt;&gt;();</span>
+<span class="fc" id="L160">        List&lt;Value&gt; values = extractValues(block, (short) exprParams.size());</span>
+<span class="fc bfc" id="L161" title="All 2 branches covered.">        for ( ExprParam exprParam : exprParams ) {</span>
+<span class="fc" id="L162">            params.add(convertPhraseToExpr(extractValue(values, exprParam)));</span>
+<span class="fc" id="L163">        }</span>
+<span class="fc" id="L164">        return params;</span>
+    }
+
+    /**
+     * Transforms JAXB object to AST if statement object.&lt;br&gt;
+     * &lt;br&gt;
+     * &lt;b&gt;block&lt;/b&gt; is representation of the block with JAXB classes
+     *
+     * @param block that is transformed
+     * @param _else number else's
+     * @param _elseIf number of else if's
+     * @return if statement object from the AST representation
+     */
+    public Phrase&lt;V&gt; blocksToIfStmt(Block block, int _else, int _elseIf) {
+<span class="fc" id="L178">        List&lt;Expr&lt;V&gt;&gt; exprsList = new ArrayList&lt;&gt;();</span>
+<span class="fc" id="L179">        List&lt;StmtList&lt;V&gt;&gt; thenList = new ArrayList&lt;&gt;();</span>
+<span class="fc" id="L180">        StmtList&lt;V&gt; elseList = null;</span>
+
+<span class="fc" id="L182">        List&lt;Value&gt; values = new ArrayList&lt;&gt;();</span>
+<span class="fc" id="L183">        List&lt;Statement&gt; statements = new ArrayList&lt;&gt;();</span>
+
+<span class="fc bfc" id="L185" title="All 2 branches covered.">        if ( (_else + _elseIf) != 0 ) {</span>
+<span class="fc" id="L186">            List&lt;Object&gt; valAndStmt = block.getRepetitions().getValueAndStatement();</span>
+<span class="pc bpc" id="L187" title="1 of 2 branches missed.">            Assert.isTrue(valAndStmt.size() &lt;= ((2 * _elseIf) + 2 + _else));</span>
+<span class="fc" id="L188">            convertStmtValList(values, statements, valAndStmt);</span>
+<span class="fc" id="L189">        } else {</span>
+<span class="fc" id="L190">            values = extractValues(block, (short) 1);</span>
+<span class="fc" id="L191">            statements = extractStatements(block, (short) 1);</span>
+        }
+
+<span class="fc bfc" id="L194" title="All 2 branches covered.">        for ( int i = 0; i &lt; (_elseIf + _else + 1); i++ ) {</span>
+<span class="pc bpc" id="L195" title="3 of 4 branches missed.">            if ( (_else != 0) &amp;&amp; (i == (_elseIf + _else)) ) {</span>
+<span class="nc" id="L196">                elseList = extractStatement(statements, BlocklyConstants.ELSE);</span>
+            } else {
+<span class="fc" id="L198">                Phrase&lt;V&gt; p = extractValue(values, new ExprParam(BlocklyConstants.IF + i, BlocklyType.BOOLEAN));</span>
+<span class="fc" id="L199">                exprsList.add(convertPhraseToExpr(p));</span>
+<span class="fc" id="L200">                thenList.add(extractStatement(statements, BlocklyConstants.DO + i));</span>
+            }
+        }
+
+<span class="pc bpc" id="L204" title="1 of 2 branches missed.">        if ( _else != 0 ) {</span>
+<span class="nc" id="L205">            return IfStmt.make(exprsList, thenList, elseList, extractBlockProperties(block), extractComment(block), _else, _elseIf);</span>
+        }
+<span class="fc" id="L207">        return IfStmt.make(exprsList, thenList, extractBlockProperties(block), extractComment(block), _else, _elseIf);</span>
+    }
+
+    /**
+     * Converts mixed list of {@link Value} and {@link Statement} into to separated lists
+     *
+     * @param values list for saving values
+     * @param statements list for saving statements
+     * @param valAndStmt list to be separated
+     */
+    public void convertStmtValList(List&lt;Value&gt; values, List&lt;Statement&gt; statements, List&lt;Object&gt; valAndStmt) {
+<span class="fc bfc" id="L218" title="All 2 branches covered.">        for ( int i = 0; i &lt; valAndStmt.size(); i++ ) {</span>
+<span class="fc" id="L219">            Object ob = valAndStmt.get(i);</span>
+<span class="fc bfc" id="L220" title="All 2 branches covered.">            if ( ob.getClass() == Value.class ) {</span>
+<span class="fc" id="L221">                values.add((Value) ob);</span>
+            } else {
+<span class="fc" id="L223">                statements.add((Statement) ob);</span>
+            }
+        }
+<span class="fc" id="L226">    }</span>
+
+    /**
+     * Transforms JAXB {@link Block} to list of expressions.
+     *
+     * @param block to be transformed
+     * @param defVal if the expression is missing
+     * @return list of expressions
+     */
+    public ExprList&lt;V&gt; blockToExprList(Block block, BlocklyType[] defVal) {
+<span class="nc" id="L236">        int items = 0;</span>
+<span class="nc bnc" id="L237" title="All 2 branches missed.">        if ( block.getMutation().getItems() != null ) {</span>
+<span class="nc" id="L238">            items = block.getMutation().getItems().intValue();</span>
+        }
+<span class="nc bnc" id="L240" title="All 2 branches missed.">        Assert.isTrue(defVal.length == items);</span>
+<span class="nc" id="L241">        List&lt;Value&gt; values = block.getValue();</span>
+<span class="nc bnc" id="L242" title="All 2 branches missed.">        Assert.isTrue(values.size() &lt;= items, &quot;Number of values is not less or equal to number of items in mutation!&quot;);</span>
+<span class="nc" id="L243">        return valuesToExprList(values, defVal, items, BlocklyConstants.ADD);</span>
+    }
+
+    /**
+     * Transforms JAXB {@link Block} to list of expressions.
+     *
+     * @param block to be transformed
+     * @param defVal if the expression is missing
+     * @return list of expressions
+     */
+    public ExprList&lt;V&gt; blockToExprList(Block block, BlocklyType defVal) {
+<span class="fc" id="L254">        int items = 0;</span>
+<span class="pc bpc" id="L255" title="1 of 2 branches missed.">        if ( block.getMutation().getItems() != null ) {</span>
+<span class="fc" id="L256">            items = block.getMutation().getItems().intValue();</span>
+        }
+<span class="fc" id="L258">        BlocklyType[] types = new BlocklyType[items];</span>
+<span class="fc" id="L259">        Arrays.fill(types, defVal);</span>
+<span class="fc" id="L260">        List&lt;Value&gt; values = block.getValue();</span>
+<span class="pc bpc" id="L261" title="1 of 2 branches missed.">        Assert.isTrue(values.size() &lt;= items, &quot;Number of values is not less or equal to number of items in mutation!&quot;);</span>
+<span class="fc" id="L262">        return valuesToExprList(values, types, items, BlocklyConstants.ADD);</span>
+    }
+
+    /**
+     * Transforms JAXB list of {@link Arg} objects to list of AST expressions.
+     *
+     * @param arguments to be transformed
+     * @return list of AST expressions
+     */
+    public ExprList&lt;V&gt; argumentsToExprList(List&lt;Arg&gt; arguments) {
+<span class="nc" id="L272">        ExprList&lt;V&gt; parameters = ExprList.make();</span>
+<span class="nc bnc" id="L273" title="All 2 branches missed.">        for ( Arg arg : arguments ) {</span>
+<span class="nc" id="L274">            Var&lt;V&gt; parametar =</span>
+<span class="nc" id="L275">                Var.make(</span>
+<span class="nc" id="L276">                    BlocklyType.get(arg.getType()),</span>
+<span class="nc" id="L277">                    arg.getName(),</span>
+<span class="nc" id="L278">                    BlocklyBlockProperties.make(&quot;1&quot;, &quot;1&quot;, false, false, false, false, false, true, false),</span>
+                    null);
+<span class="nc" id="L280">            parameters.addExpr(parametar);</span>
+<span class="nc" id="L281">        }</span>
+<span class="nc" id="L282">        parameters.setReadOnly();</span>
+<span class="nc" id="L283">        return parameters;</span>
+    }
+
+    /**
+     * Transforms JAXB list of {@link Arg} objects to list of AST parameters type.
+     *
+     * @param arguments to be transformed
+     * @return array of AST expressions
+     */
+    public BlocklyType[] argumentsToParametersType(List&lt;Arg&gt; arguments) {
+<span class="nc" id="L293">        BlocklyType[] types = new BlocklyType[arguments.size()];</span>
+<span class="nc" id="L294">        int i = 0;</span>
+<span class="nc bnc" id="L295" title="All 2 branches missed.">        for ( Arg arg : arguments ) {</span>
+<span class="nc" id="L296">            types[i] = BlocklyType.get(arg.getType());</span>
+<span class="nc" id="L297">            i++;</span>
+<span class="nc" id="L298">        }</span>
+
+<span class="nc" id="L300">        return types;</span>
+    }
+
+    /**
+     * Converts {@link Phrase} to {@link Expr}.
+     *
+     * @param p to be converted to expression
+     * @return
+     */
+    public Expr&lt;V&gt; convertPhraseToExpr(Phrase&lt;V&gt; p) {
+        Expr&lt;V&gt; expr;
+<span class="fc bfc" id="L311" title="All 2 branches covered.">        if ( p.getKind().getCategory() == Category.SENSOR ) {</span>
+<span class="fc" id="L312">            expr = SensorExpr.make((Sensor&lt;V&gt;) p);</span>
+<span class="fc bfc" id="L313" title="All 2 branches covered.">        } else if ( p.getKind().getCategory() == Category.ACTOR ) {</span>
+<span class="fc" id="L314">            expr = ActionExpr.make((Action&lt;V&gt;) p);</span>
+<span class="fc bfc" id="L315" title="All 2 branches covered.">        } else if ( p.getKind().getCategory() == Category.FUNCTION ) {</span>
+<span class="fc" id="L316">            expr = FunctionExpr.make((Function&lt;V&gt;) p);</span>
+<span class="pc bpc" id="L317" title="1 of 2 branches missed.">        } else if ( p.getKind().getCategory() == Category.METHOD ) {</span>
+<span class="nc" id="L318">            expr = MethodExpr.make((Method&lt;V&gt;) p);</span>
+<span class="pc bpc" id="L319" title="3 of 4 branches missed.">        } else if ( p.getKind().hasName(&quot;IF_STMT&quot;) &amp;&amp; ((IfStmt&lt;V&gt;) p).isTernary() ) {</span>
+<span class="nc" id="L320">            expr = StmtExpr.make((Stmt&lt;V&gt;) p);</span>
+        } else {
+<span class="fc" id="L322">            expr = (Expr&lt;V&gt;) p;</span>
+        }
+<span class="fc" id="L324">        return expr;</span>
+    }
+
+    /**
+     * Convert list of values ({@link Values}) to list of expressions ({@link ExprList}).
+     *
+     * @param values to be converted
+     * @param defVal if the value is missing in the JAXB representation
+     * @param nItems that should be conveted
+     * @param name of the values
+     * @return
+     */
+    public ExprList&lt;V&gt; valuesToExprList(List&lt;Value&gt; values, BlocklyType[] parametersTypes, int nItems, String name) {
+<span class="fc" id="L337">        ExprList&lt;V&gt; exprList = ExprList.make();</span>
+<span class="fc bfc" id="L338" title="All 2 branches covered.">        for ( int i = 0; i &lt; nItems; i++ ) {</span>
+<span class="fc" id="L339">            exprList.addExpr(convertPhraseToExpr(extractValue(values, new ExprParam(name + i, parametersTypes[i]))));</span>
+        }
+<span class="fc" id="L341">        exprList.setReadOnly();</span>
+<span class="fc" id="L342">        return exprList;</span>
+    }
+
+    /**
+     * Extract the operation from block.
+     *
+     * @param block
+     * @param operationType name of the xml element where the operation is stored
+     * @return the name of the operation
+     */
+    public String getOperation(Block block, String operationType) {
+<span class="fc" id="L353">        String op = operationType;</span>
+<span class="fc bfc" id="L354" title="All 2 branches covered.">        if ( !block.getField().isEmpty() ) {</span>
+<span class="fc" id="L355">            op = extractOperation(block, operationType);</span>
+        }
+<span class="fc" id="L357">        return op;</span>
+    }
+
+    /**
+     * Extract repeat statement from {@link Block}.
+     *
+     * @param block
+     * @param expr
+     * @param mode
+     * @return
+     */
+    public Phrase&lt;V&gt; extractRepeatStatement(Block block, Phrase&lt;V&gt; expr, String mode) {
+<span class="fc" id="L369">        return extractRepeatStatement(block, expr, mode, BlocklyConstants.DO, 1);</span>
+    }
+
+    /**
+     * Extracts variable from a {@link Block}.
+     *
+     * @param block from which variable is extracted
+     * @return AST object representing variable
+     */
+    public Phrase&lt;V&gt; extractVar(Block block) {
+<span class="fc bfc" id="L379" title="All 2 branches covered.">        String typeVar = block.getMutation() != null ? block.getMutation().getDatatype() : BlocklyConstants.NUMBER;</span>
+<span class="fc" id="L380">        List&lt;Field&gt; fields = extractFields(block, (short) 1);</span>
+<span class="fc" id="L381">        String field = extractField(fields, BlocklyConstants.VAR);</span>
+<span class="fc" id="L382">        return Var.make(BlocklyType.get(typeVar), field, extractBlockProperties(block), extractComment(block));</span>
+    }
+
+    /**
+     * Extract values from a {@link Block}. &lt;br&gt;
+     * &lt;br&gt;
+     * Throws {@link DbcException} if the number of values is not less or equal to the numOfValues
+     *
+     * @param block from which the values are extracted
+     * @param numOfValues to be extracted
+     * @return list of {@link Value}
+     */
+    public List&lt;Value&gt; extractValues(Block block, short numOfValues) {
+        List&lt;Value&gt; values;
+<span class="fc" id="L396">        values = block.getValue();</span>
+<span class="fc bfc" id="L397" title="All 2 branches covered.">        Assert.isTrue(values.size() &lt;= numOfValues, &quot;Values size is not less or equal to &quot; + numOfValues + &quot;!&quot;);</span>
+<span class="fc" id="L398">        return values;</span>
+    }
+
+    /**
+     * Extract specific value from the list of values.
+     *
+     * @param values as a source
+     * @param param with name of the value and default value if the value is missing (see. {@link ExprParam})
+     * @return AST object or {@link EmptyExpr} if the value is missing
+     */
+    public Phrase&lt;V&gt; extractValue(List&lt;Value&gt; values, ExprParam param) {
+<span class="fc bfc" id="L409" title="All 2 branches covered.">        for ( Value value : values ) {</span>
+<span class="fc bfc" id="L410" title="All 2 branches covered.">            if ( value.getName().equals(param.getName()) ) {</span>
+<span class="fc" id="L411">                return extractBlock(value);</span>
+            }
+<span class="fc" id="L413">        }</span>
+<span class="fc" id="L414">        return EmptyExpr.make(param.getDefaultValue());</span>
+    }
+
+    private Phrase&lt;V&gt; extractBlock(Value value) {
+<span class="fc" id="L418">        Shadow shadow = value.getShadow();</span>
+<span class="fc" id="L419">        Block block = value.getBlock();</span>
+<span class="fc bfc" id="L420" title="All 2 branches covered.">        if ( shadow != null ) {</span>
+<span class="fc" id="L421">            Block shadowBlock = shadow2block(shadow);</span>
+<span class="fc bfc" id="L422" title="All 2 branches covered.">            if ( block != null ) {</span>
+<span class="fc" id="L423">                return ShadowExpr.make(convertPhraseToExpr(blockToAST(shadowBlock)), convertPhraseToExpr(blockToAST(block)));</span>
+            }
+<span class="fc" id="L425">            return ShadowExpr.make(convertPhraseToExpr(blockToAST(shadowBlock)));</span>
+        } else {
+<span class="fc" id="L427">            return blockToAST(block);</span>
+        }
+
+    }
+
+    private Block shadow2block(Shadow shadow) {
+<span class="fc" id="L433">        Block block = new Block();</span>
+<span class="fc" id="L434">        block.setId(shadow.getId());</span>
+<span class="fc" id="L435">        block.setType(shadow.getType());</span>
+<span class="fc" id="L436">        block.setIntask(shadow.isIntask());</span>
+<span class="fc" id="L437">        block.getField().add(shadow.getField());</span>
+<span class="fc" id="L438">        block.setShadow(true);</span>
+<span class="fc" id="L439">        return block;</span>
+    }
+
+    /**
+     * Extract {@link Statement} from the list of statements. &lt;br&gt;
+     * &lt;br&gt;
+     * Throws {@link DbcException} if the number of statements is not less or equal to the numOfStatements
+     *
+     * @param block as source
+     * @param numOfStatements to be extracted
+     * @return list of statements
+     */
+    public List&lt;Statement&gt; extractStatements(Block block, short numOfStatements) {
+        List&lt;Statement&gt; statements;
+<span class="fc" id="L453">        statements = block.getStatement();</span>
+<span class="pc bpc" id="L454" title="1 of 2 branches missed.">        Assert.isTrue(statements.size() &lt;= numOfStatements, &quot;Statements size is not less or equal to &quot; + numOfStatements + &quot;!&quot;);</span>
+<span class="fc" id="L455">        return statements;</span>
+    }
+
+    /**
+     * Extract {@link Statement} from list of statements.
+     *
+     * @param statements as source
+     * @param stmtName to be extracted
+     * @return
+     */
+    public StmtList&lt;V&gt; extractStatement(List&lt;Statement&gt; statements, String stmtName) {
+<span class="fc" id="L466">        StmtList&lt;V&gt; stmtList = StmtList.make();</span>
+<span class="fc bfc" id="L467" title="All 2 branches covered.">        for ( Statement statement : statements ) {</span>
+<span class="fc bfc" id="L468" title="All 2 branches covered.">            if ( statement.getName().equals(stmtName) ) {</span>
+<span class="fc" id="L469">                return blocksToStmtList(statement.getBlock());</span>
+            }
+<span class="fc" id="L471">        }</span>
+<span class="fc" id="L472">        stmtList.setReadOnly();</span>
+<span class="fc" id="L473">        return stmtList;</span>
+    }
+
+    /**
+     * Convert list of {@link Statement} to {@link ExprList}.
+     *
+     * @param statements as source
+     * @param stmtName of statement to be extracted
+     * @return
+     */
+    public ExprList&lt;V&gt; statementsToExprs(List&lt;Statement&gt; statements, String stmtName) {
+<span class="nc" id="L484">        ExprList&lt;V&gt; exprList = ExprList.make();</span>
+<span class="nc bnc" id="L485" title="All 2 branches missed.">        for ( Statement statement : statements ) {</span>
+<span class="nc bnc" id="L486" title="All 2 branches missed.">            if ( statement.getName().equals(stmtName) ) {</span>
+<span class="nc" id="L487">                return blocksToExprList(statement.getBlock());</span>
+            }
+<span class="nc" id="L489">        }</span>
+<span class="nc" id="L490">        exprList.setReadOnly();</span>
+<span class="nc" id="L491">        return exprList;</span>
+    }
+
+    /**
+     * Extract {@link Field} from a {@link Block}. &lt;br&gt;
+     * &lt;br&gt;
+     * Throws {@link DbcException} if the number of fields is not less or equal to the numOfFields
+     *
+     * @param block as source
+     * @param numOfFields to be extracted
+     * @return list of fields
+     */
+    public List&lt;Field&gt; extractFields(Block block, short numOfFields) {
+        List&lt;Field&gt; fields;
+<span class="fc" id="L505">        fields = block.getField();</span>
+<span class="pc bpc" id="L506" title="1 of 2 branches missed.">        Assert.isTrue(fields.size() &lt;= numOfFields, &quot;Number of fields is not equal to &quot; + numOfFields + &quot;!&quot;);</span>
+<span class="fc" id="L507">        return fields;</span>
+    }
+
+    /**
+     * Extract field from list of {@link Field}. If the field with the given name is not found it returns the {@link defaultValue}.&lt;br&gt;
+     * &lt;br&gt;
+     * Throws {@link DbcException} if the field is not found and the defaultValue is set to &lt;b&gt;null&lt;/b&gt;.
+     *
+     * @param fields as a source
+     * @param name of the field to be extracted
+     * @param defaultValue if the field is not existent
+     * @return value containing the field
+     */
+    public String extractField(List&lt;Field&gt; fields, String name, String defaultValue) {
+<span class="fc bfc" id="L521" title="All 2 branches covered.">        for ( Field field : fields ) {</span>
+<span class="fc bfc" id="L522" title="All 2 branches covered.">            if ( field.getName().equals(name) ) {</span>
+<span class="fc" id="L523">                return field.getValue();</span>
+            }
+<span class="fc" id="L525">        }</span>
+<span class="pc bpc" id="L526" title="1 of 2 branches missed.">        if ( defaultValue == null ) {</span>
+<span class="nc" id="L527">            throw new DbcException(&quot;There is no field with name &quot; + name);</span>
+        } else {
+<span class="fc" id="L529">            return defaultValue;</span>
+        }
+    }
+
+    /**
+     * Extract field from list of {@link Field}. &lt;br&gt;
+     * &lt;br&gt;
+     * Throws {@link DbcException} if the field is not found
+     *
+     * @param fields as a source
+     * @param name of the field to be extracted
+     * @return value containing the field
+     */
+    public String extractField(List&lt;Field&gt; fields, String name) {
+<span class="pc bpc" id="L543" title="1 of 2 branches missed.">        for ( Field field : fields ) {</span>
+<span class="fc bfc" id="L544" title="All 2 branches covered.">            if ( field.getName().equals(name) ) {</span>
+<span class="fc" id="L545">                return field.getValue();</span>
+            }
+<span class="fc" id="L547">        }</span>
+<span class="nc" id="L548">        throw new DbcException(&quot;There is no field with name &quot; + name);</span>
+    }
+
+    public String extractOperation(Block block, String name) {
+<span class="fc" id="L552">        List&lt;Field&gt; fields = extractFields(block, (short) 1);</span>
+<span class="fc" id="L553">        String operation = extractField(fields, name);</span>
+<span class="fc" id="L554">        return operation;</span>
+    }
+
+    /**
+     * Extracts the comment from {@link Block}
+     *
+     * @param block as source
+     * @return
+     */
+    public BlocklyComment extractComment(Block block) {
+<span class="fc bfc" id="L564" title="All 2 branches covered.">        if ( block.getComment() != null ) {</span>
+<span class="fc" id="L565">            Comment comment = block.getComment();</span>
+<span class="fc" id="L566">            return BlocklyComment.make(comment.getValue(), comment.isPinned(), comment.getH(), comment.getW());</span>
+        }
+<span class="fc" id="L568">        return null;</span>
+    }
+
+    /**
+     * Extracts the visual state of the {@link Block}.
+     *
+     * @param block as a source
+     * @return
+     */
+    public BlocklyBlockProperties extractBlockProperties(Block block) {
+<span class="fc" id="L578">        return BlocklyBlockProperties.make(</span>
+<span class="fc" id="L579">            block.getType(),</span>
+<span class="fc" id="L580">            block.getId(),</span>
+<span class="fc" id="L581">            isDisabled(block),</span>
+<span class="fc" id="L582">            isCollapsed(block),</span>
+<span class="fc" id="L583">            isInline(block),</span>
+<span class="fc" id="L584">            isDeletable(block),</span>
+<span class="fc" id="L585">            isMovable(block),</span>
+<span class="fc" id="L586">            isInTask(block),</span>
+<span class="fc" id="L587">            isShadow(block));</span>
+    }
+
+    public int getElseIf(Mutation mutation) {
+<span class="pc bpc" id="L591" title="1 of 4 branches missed.">        if ( (mutation != null) &amp;&amp; (mutation.getElseif() != null) ) {</span>
+<span class="fc" id="L592">            return mutation.getElseif().intValue();</span>
+        }
+<span class="fc" id="L594">        return 0;</span>
+    }
+
+    public int getElse(Mutation mutation) {
+<span class="pc bpc" id="L598" title="1 of 4 branches missed.">        if ( (mutation != null) &amp;&amp; (mutation.getElse() != null) ) {</span>
+<span class="nc" id="L599">            return mutation.getElse().intValue();</span>
+        }
+<span class="fc" id="L601">        return 0;</span>
+    }
+
+    private StmtList&lt;V&gt; blocksToStmtList(List&lt;Block&gt; statementBolcks) {
+<span class="fc" id="L605">        StmtList&lt;V&gt; stmtList = StmtList.make();</span>
+<span class="fc bfc" id="L606" title="All 2 branches covered.">        for ( Block sb : statementBolcks ) {</span>
+<span class="fc" id="L607">            convertPhraseToStmt(stmtList, sb);</span>
+<span class="fc" id="L608">        }</span>
+<span class="fc" id="L609">        stmtList.setReadOnly();</span>
+<span class="fc" id="L610">        return stmtList;</span>
+    }
+
+    private ExprList&lt;V&gt; blocksToExprList(List&lt;Block&gt; exprBolcks) {
+<span class="nc" id="L614">        ExprList&lt;V&gt; exprList = ExprList.make();</span>
+<span class="nc bnc" id="L615" title="All 2 branches missed.">        for ( Block exb : exprBolcks ) {</span>
+            Phrase&lt;V&gt; p;
+
+<span class="nc" id="L618">            p = blockToAST(exb);</span>
+
+<span class="nc" id="L620">            exprList.addExpr(convertPhraseToExpr(p));</span>
+<span class="nc" id="L621">        }</span>
+<span class="nc" id="L622">        exprList.setReadOnly();</span>
+<span class="nc" id="L623">        return exprList;</span>
+    }
+
+    private void convertPhraseToStmt(StmtList&lt;V&gt; stmtList, Block sb) {
+        Phrase&lt;V&gt; p;
+
+<span class="fc" id="L629">        p = blockToAST(sb);</span>
+
+        Stmt&lt;V&gt; stmt;
+<span class="fc bfc" id="L632" title="All 2 branches covered.">        if ( p.getKind().getCategory() == Category.EXPR ) {</span>
+<span class="fc" id="L633">            stmt = ExprStmt.make((Expr&lt;V&gt;) p);</span>
+<span class="fc bfc" id="L634" title="All 2 branches covered.">        } else if ( p.getKind().getCategory() == Category.ACTOR ) {</span>
+<span class="fc" id="L635">            stmt = ActionStmt.make((Action&lt;V&gt;) p);</span>
+<span class="pc bpc" id="L636" title="1 of 2 branches missed.">        } else if ( p.getKind().getCategory() == Category.SENSOR ) {</span>
+<span class="nc" id="L637">            stmt = SensorStmt.make((Sensor&lt;V&gt;) p);</span>
+<span class="fc bfc" id="L638" title="All 2 branches covered.">        } else if ( p.getKind().getCategory() == Category.FUNCTION ) {</span>
+<span class="fc" id="L639">            stmt = FunctionStmt.make((Function&lt;V&gt;) p);</span>
+<span class="pc bpc" id="L640" title="1 of 2 branches missed.">        } else if ( p.getKind().getCategory() == Category.METHOD ) {</span>
+<span class="nc" id="L641">            stmt = MethodStmt.make((Method&lt;V&gt;) p);</span>
+        } else {
+<span class="fc" id="L643">            stmt = (Stmt&lt;V&gt;) p;</span>
+        }
+<span class="fc" id="L645">        stmtList.addStmt(stmt);</span>
+<span class="fc" id="L646">    }</span>
+
+    private Phrase&lt;V&gt; extractRepeatStatement(Block block, Phrase&lt;V&gt; expr, String mode, String location, int mutation) {
+<span class="fc" id="L649">        List&lt;Statement&gt; statements = extractStatements(block, (short) mutation);</span>
+<span class="fc" id="L650">        StmtList&lt;V&gt; stmtList = extractStatement(statements, location);</span>
+<span class="fc" id="L651">        return RepeatStmt.make(RepeatStmt.Mode.get(mode), convertPhraseToExpr(expr), stmtList, extractBlockProperties(block), extractComment(block));</span>
+    }
+
+    private boolean isDisabled(Block block) {
+<span class="fc bfc" id="L655" title="All 2 branches covered.">        return block.isDisabled() == null ? false : true;</span>
+    }
+
+    private boolean isCollapsed(Block block) {
+<span class="fc bfc" id="L659" title="All 2 branches covered.">        return block.isCollapsed() == null ? false : true;</span>
+    }
+
+    private Boolean isInline(Block block) {
+<span class="fc bfc" id="L663" title="All 2 branches covered.">        if ( block.isInline() == null ) {</span>
+<span class="fc" id="L664">            return null;</span>
+        }
+<span class="fc" id="L666">        return block.isInline();</span>
+    }
+
+    private Boolean isDeletable(Block block) {
+<span class="fc bfc" id="L670" title="All 2 branches covered.">        if ( block.isDeletable() == null ) {</span>
+<span class="fc" id="L671">            return null;</span>
+        }
+<span class="fc" id="L673">        return block.isDeletable();</span>
+    }
+
+    private Boolean isMovable(Block block) {
+<span class="fc bfc" id="L677" title="All 2 branches covered.">        if ( block.isMovable() == null ) {</span>
+<span class="fc" id="L678">            return null;</span>
+        }
+<span class="fc" id="L680">        return block.isMovable();</span>
+    }
+
+    private Boolean isInTask(Block block) {
+<span class="fc bfc" id="L684" title="All 2 branches covered.">        if ( block.isIntask() == null ) {</span>
+<span class="fc" id="L685">            return null;</span>
+        }
+<span class="fc" id="L687">        return block.isIntask();</span>
+    }
+
+    private Boolean isShadow(Block block) {
+<span class="fc bfc" id="L691" title="All 2 branches covered.">        if ( block.isShadow() == null ) {</span>
+<span class="fc" id="L692">            return null;</span>
+        }
+<span class="fc" id="L694">        return block.isShadow();</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>

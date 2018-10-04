@@ -1,0 +1,304 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>Binary.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">OpenRobertaRobot</a> &gt; <a href="index.source.html" class="el_package">de.fhg.iais.roberta.syntax.lang.expr</a> &gt; <span class="el_source">Binary.java</span></div><h1>Binary.java</h1><pre class="source lang-java linenums">package de.fhg.iais.roberta.syntax.lang.expr;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
+
+import de.fhg.iais.roberta.blockly.generated.Block;
+import de.fhg.iais.roberta.blockly.generated.Mutation;
+import de.fhg.iais.roberta.blockly.generated.Value;
+import de.fhg.iais.roberta.syntax.BlockTypeContainer;
+import de.fhg.iais.roberta.syntax.BlocklyBlockProperties;
+import de.fhg.iais.roberta.syntax.BlocklyComment;
+import de.fhg.iais.roberta.syntax.BlocklyConstants;
+import de.fhg.iais.roberta.syntax.Phrase;
+import de.fhg.iais.roberta.syntax.lang.functions.FunctionNames;
+import de.fhg.iais.roberta.syntax.lang.functions.MathPowerFunct;
+import de.fhg.iais.roberta.syntax.lang.stmt.ExprStmt;
+import de.fhg.iais.roberta.transformer.ExprParam;
+import de.fhg.iais.roberta.transformer.Jaxb2AstTransformer;
+import de.fhg.iais.roberta.transformer.JaxbTransformerHelper;
+import de.fhg.iais.roberta.typecheck.BlocklyType;
+import de.fhg.iais.roberta.typecheck.Sig;
+import de.fhg.iais.roberta.util.dbc.Assert;
+import de.fhg.iais.roberta.util.dbc.DbcException;
+import de.fhg.iais.roberta.visitor.AstVisitor;
+import de.fhg.iais.roberta.visitor.lang.AstLanguageVisitor;
+
+/**
+ * This class represents all binary operations from Blockly into the AST (abstract syntax tree).&lt;br&gt;
+ * &lt;br&gt;
+ * To create an instance from this class use the method {@link #make(Op, Expr, Expr, BlocklyBlockProperties, BlocklyComment)}.&lt;br&gt;
+ * The enumeration {@link Op} contains all allowed binary operations.
+ */
+public final class Binary&lt;V&gt; extends Expr&lt;V&gt; {
+    private final Op op;
+    private final Expr&lt;V&gt; left;
+    private final Expr&lt;V&gt; right;
+    private final String operationRange;
+
+    private Binary(Op op, Expr&lt;V&gt; left, Expr&lt;V&gt; right, String operationRange, BlocklyBlockProperties properties, BlocklyComment comment) {
+<span class="fc" id="L41">        super(BlockTypeContainer.getByName(&quot;BINARY&quot;), properties, comment);</span>
+<span class="pc bpc" id="L42" title="5 of 10 branches missed.">        Assert.isTrue(op != null &amp;&amp; left != null &amp;&amp; right != null &amp;&amp; left.isReadOnly() &amp;&amp; right.isReadOnly());</span>
+<span class="fc" id="L43">        this.op = op;</span>
+<span class="fc" id="L44">        this.left = left;</span>
+<span class="fc" id="L45">        this.right = right;</span>
+<span class="fc" id="L46">        this.operationRange = operationRange;</span>
+<span class="fc" id="L47">        this.setReadOnly();</span>
+<span class="fc" id="L48">    }</span>
+
+    /**
+     * Creates instance of {@link Binary}. This instance is read only and can not be modified.
+     *
+     * @param op operator; must be &lt;b&gt;not&lt;/b&gt; null,
+     * @param left expression on the left hand side; must be &lt;b&gt;not&lt;/b&gt; null and &lt;b&gt;read only&lt;/b&gt;,
+     * @param right expression on the right hand side; must be &lt;b&gt;not&lt;/b&gt; null and &lt;b&gt;read only&lt;/b&gt;,
+     * @param properties of the block (see {@link BlocklyBlockProperties}),
+     * @param comment added from the user,
+     * @return Binary expression
+     */
+
+    public static &lt;V&gt; Binary&lt;V&gt; make(Op op, Expr&lt;V&gt; left, Expr&lt;V&gt; right, String operationRange, BlocklyBlockProperties properties, BlocklyComment comment) {
+<span class="fc" id="L62">        return new Binary&lt;&gt;(op, left, right, operationRange, properties, comment);</span>
+    }
+
+    /**
+     * @return the operation in the binary expression. See enum {@link Op} for all possible operations
+     */
+    public Op getOp() {
+<span class="fc" id="L69">        return this.op;</span>
+    }
+
+    /**
+     * @return the expression on the left hand side. Returns subclass of {@link Expr}
+     */
+    public Expr&lt;V&gt; getLeft() {
+<span class="fc" id="L76">        return this.left;</span>
+    }
+
+    /**
+     * @return the expression on the right hand side. Returns subclass of {@link Expr}
+     */
+    public Expr&lt;V&gt; getRight() {
+<span class="fc" id="L83">        return this.right;</span>
+    }
+
+    /**
+     * @return the operationRange
+     */
+    public String getOperationRange() {
+<span class="nc" id="L90">        return this.operationRange;</span>
+    }
+
+    @Override
+    public int getPrecedence() {
+<span class="fc" id="L95">        return this.op.getPrecedence();</span>
+    }
+
+    @Override
+    public Assoc getAssoc() {
+<span class="fc" id="L100">        return this.op.getAssoc();</span>
+    }
+
+    @Override
+    public BlocklyType getVarType() {
+<span class="nc" id="L105">        return BlocklyType.CAPTURED_TYPE;</span>
+    }
+
+    @Override
+    public String toString() {
+<span class="fc" id="L110">        return &quot;Binary [&quot; + this.op + &quot;, &quot; + this.left + &quot;, &quot; + this.right + &quot;]&quot;;</span>
+    }
+
+    @Override
+    protected V accept(AstVisitor&lt;V&gt; visitor) {
+<span class="fc" id="L115">        return ((AstLanguageVisitor&lt;V&gt;) visitor).visitBinary(this);</span>
+    }
+
+    /**
+     * Operators for the binary expression.
+     */
+<span class="pc" id="L121">    public static enum Op {</span>
+<span class="fc" id="L122">        ADD( 100, Assoc.LEFT, Sig.of(BlocklyType.NUMBER, BlocklyType.NUMBER, BlocklyType.NUMBER), &quot;+&quot; ),</span>
+<span class="fc" id="L123">        MINUS( 100, Assoc.LEFT, Sig.of(BlocklyType.NUMBER, BlocklyType.NUMBER, BlocklyType.NUMBER), &quot;-&quot; ),</span>
+<span class="fc" id="L124">        MULTIPLY( 200, Assoc.LEFT, Sig.of(BlocklyType.NUMBER, BlocklyType.NUMBER, BlocklyType.NUMBER), &quot;*&quot; ),</span>
+<span class="fc" id="L125">        DIVIDE( 200, Assoc.LEFT, Sig.of(BlocklyType.NUMBER, BlocklyType.NUMBER, BlocklyType.NUMBER), &quot;/&quot; ),</span>
+<span class="fc" id="L126">        MOD( 200, Assoc.NONE, Sig.of(BlocklyType.NUMBER, BlocklyType.NUMBER, BlocklyType.NUMBER), &quot;%&quot; ),</span>
+<span class="fc" id="L127">        EQ( 80, Assoc.LEFT, Sig.of(BlocklyType.BOOLEAN, BlocklyType.CAPTURED_TYPE, BlocklyType.CAPTURED_TYPE), &quot;==&quot; ),</span>
+<span class="fc" id="L128">        NEQ( 80, Assoc.LEFT, Sig.of(BlocklyType.BOOLEAN, BlocklyType.CAPTURED_TYPE, BlocklyType.CAPTURED_TYPE), &quot;!=&quot;, &quot;&lt;&gt;&quot; ),</span>
+<span class="fc" id="L129">        LT( 90, Assoc.LEFT, Sig.of(BlocklyType.BOOLEAN, BlocklyType.NUMBER, BlocklyType.NUMBER), &quot;&lt;&quot; ),</span>
+<span class="fc" id="L130">        LTE( 90, Assoc.LEFT, Sig.of(BlocklyType.BOOLEAN, BlocklyType.NUMBER, BlocklyType.NUMBER), &quot;&lt;=&quot; ),</span>
+<span class="fc" id="L131">        GT( 90, Assoc.LEFT, Sig.of(BlocklyType.BOOLEAN, BlocklyType.NUMBER, BlocklyType.NUMBER), &quot;&gt;&quot; ),</span>
+<span class="fc" id="L132">        GTE( 90, Assoc.LEFT, Sig.of(BlocklyType.BOOLEAN, BlocklyType.NUMBER, BlocklyType.NUMBER), &quot;&gt;=&quot; ),</span>
+<span class="fc" id="L133">        AND( 70, Assoc.LEFT, Sig.of(BlocklyType.BOOLEAN, BlocklyType.BOOLEAN, BlocklyType.BOOLEAN), &quot;&amp;&amp;&quot;, &quot;and&quot; ),</span>
+<span class="fc" id="L134">        OR( 60, Assoc.LEFT, Sig.of(BlocklyType.BOOLEAN, BlocklyType.BOOLEAN, BlocklyType.BOOLEAN), &quot;||&quot;, &quot;or&quot; ),</span>
+<span class="fc" id="L135">        MATH_CHANGE( 80, Assoc.NONE, Sig.of(BlocklyType.CAPTURED_TYPE, BlocklyType.CAPTURED_TYPE, BlocklyType.CAPTURED_TYPE), &quot;+=&quot; ),</span>
+<span class="fc" id="L136">        TEXT_APPEND( 1, Assoc.LEFT, Sig.of(BlocklyType.STRING, BlocklyType.STRING, BlocklyType.STRING), &quot;+=&quot;, &quot;TEXTAPPEND&quot; ),</span>
+<span class="fc" id="L137">        IN( 1, Assoc.LEFT, Sig.of(BlocklyType.CAPTURED_TYPE, BlocklyType.CAPTURED_TYPE, BlocklyType.CAPTURED_TYPE), &quot;:&quot;, &quot;in&quot; ),</span>
+<span class="fc" id="L138">        ASSIGNMENT( 1, Assoc.RIGHT, Sig.of(BlocklyType.CAPTURED_TYPE, BlocklyType.CAPTURED_TYPE, BlocklyType.CAPTURED_TYPE), &quot;=&quot; ),</span>
+<span class="fc" id="L139">        ADD_ASSIGNMENT( 1, Assoc.RIGHT, Sig.of(BlocklyType.NUMBER, BlocklyType.NUMBER, BlocklyType.NUMBER), &quot;+=&quot; ),</span>
+<span class="fc" id="L140">        MINUS_ASSIGNMENT( 1, Assoc.RIGHT, Sig.of(BlocklyType.NUMBER, BlocklyType.NUMBER, BlocklyType.NUMBER), &quot;-=&quot; ),</span>
+<span class="fc" id="L141">        MULTIPLY_ASSIGNMENT( 1, Assoc.RIGHT, Sig.of(BlocklyType.NUMBER, BlocklyType.NUMBER, BlocklyType.NUMBER), &quot;*=&quot; ),</span>
+<span class="fc" id="L142">        DIVIDE_ASSIGNMENT( 1, Assoc.RIGHT, Sig.of(BlocklyType.NUMBER, BlocklyType.NUMBER, BlocklyType.NUMBER), &quot;/=&quot; ),</span>
+<span class="fc" id="L143">        MOD_ASSIGNMENT( 1, Assoc.RIGHT, Sig.of(BlocklyType.NUMBER, BlocklyType.NUMBER, BlocklyType.NUMBER), &quot;%=&quot; );</span>
+
+        private final String[] values;
+        private final int precedence;
+        private final Assoc assoc;
+        private final Sig sig;
+
+<span class="fc" id="L150">        private Op(int precedence, Assoc assoc, Sig sig, String... values) {</span>
+<span class="fc" id="L151">            this.precedence = precedence;</span>
+<span class="fc" id="L152">            this.assoc = assoc;</span>
+<span class="fc" id="L153">            this.values = values;</span>
+<span class="fc" id="L154">            this.sig = sig;</span>
+<span class="fc" id="L155">        }</span>
+
+        /**
+         * @return precedence of the operator.
+         */
+        public int getPrecedence() {
+<span class="fc" id="L161">            return this.precedence;</span>
+        }
+
+        /**
+         * @return association of the operator
+         */
+        public Assoc getAssoc() {
+<span class="fc" id="L168">            return this.assoc;</span>
+        }
+
+        /**
+         * get the signature. The caller has to check for &lt;code&gt;null&lt;/code&gt;!
+         *
+         * @return the signature; if not found, return &lt;code&gt;null&lt;/code&gt;
+         */
+        public Sig getSignature() {
+<span class="nc" id="L177">            return this.sig;</span>
+        }
+
+        /**
+         * get operator from {@link Op} from string parameter. It is possible for one operator to have multiple string mappings. Throws exception if the
+         * operator does not exists.
+         *
+         * @param name of the operator
+         * @return operator from the enum {@link Op}
+         */
+        public static Op get(String s) {
+<span class="fc bfc" id="L188" title="All 4 branches covered.">            if ( s == null || s.isEmpty() ) {</span>
+<span class="fc" id="L189">                throw new DbcException(&quot;Invalid binary operator symbol: &quot; + s);</span>
+            }
+<span class="fc" id="L191">            String sUpper = s.trim().toUpperCase(Locale.GERMAN);</span>
+<span class="fc bfc" id="L192" title="All 2 branches covered.">            for ( Op op : Op.values() ) {</span>
+<span class="fc bfc" id="L193" title="All 2 branches covered.">                if ( op.toString().equals(sUpper) ) {</span>
+<span class="fc" id="L194">                    return op;</span>
+                }
+<span class="fc bfc" id="L196" title="All 2 branches covered.">                for ( String value : op.values ) {</span>
+<span class="pc bpc" id="L197" title="1 of 2 branches missed.">                    if ( sUpper.equals(value) ) {</span>
+<span class="nc" id="L198">                        return op;</span>
+                    }
+                }
+            }
+<span class="fc" id="L202">            throw new DbcException(&quot;Invalid binary operator symbol: &quot; + s);</span>
+        }
+    }
+
+    /**
+     * Transformation from JAXB object to corresponding AST object.
+     *
+     * @param block for transformation
+     * @param helper class for making the transformation
+     * @return corresponding AST object
+     */
+    public static &lt;V&gt; Phrase&lt;V&gt; jaxbToAst(Block block, Jaxb2AstTransformer&lt;V&gt; helper) {
+
+        List&lt;Value&gt; values;
+        Phrase&lt;V&gt; leftt;
+        Phrase&lt;V&gt; rightt;
+<span class="pc bpc" id="L218" title="7 of 21 branches missed.">        switch ( block.getType() ) {</span>
+            case BlocklyConstants.TEXT_APPEND:
+<span class="fc" id="L220">                values = helper.extractValues(block, (short) 2);</span>
+<span class="fc" id="L221">                leftt = helper.extractValue(values, new ExprParam(BlocklyConstants.VAR, BlocklyType.STRING));</span>
+<span class="fc" id="L222">                rightt = helper.extractValue(values, new ExprParam(BlocklyConstants.TEXT, BlocklyType.STRING));</span>
+<span class="fc" id="L223">                return ExprStmt.make(</span>
+<span class="fc" id="L224">                    Binary.make(</span>
+                        Binary.Op.TEXT_APPEND,
+<span class="fc" id="L226">                        helper.convertPhraseToExpr(leftt),</span>
+<span class="fc" id="L227">                        helper.convertPhraseToExpr(rightt),</span>
+                        &quot;&quot;,
+<span class="fc" id="L229">                        helper.extractBlockProperties(block),</span>
+<span class="fc" id="L230">                        helper.extractComment(block)));</span>
+            case BlocklyConstants.ROB_MATH_CHANGE:
+            case BlocklyConstants.MATH_CHANGE:
+<span class="fc" id="L233">                values = helper.extractValues(block, (short) 2);</span>
+<span class="fc" id="L234">                leftt = helper.extractValue(values, new ExprParam(BlocklyConstants.VAR, BlocklyType.STRING));</span>
+<span class="fc" id="L235">                rightt = helper.extractValue(values, new ExprParam(BlocklyConstants.DELTA, BlocklyType.NUMBER_INT));</span>
+<span class="fc" id="L236">                return ExprStmt.make(</span>
+<span class="fc" id="L237">                    Binary.make(</span>
+                        Binary.Op.MATH_CHANGE,
+<span class="fc" id="L239">                        helper.convertPhraseToExpr(leftt),</span>
+<span class="fc" id="L240">                        helper.convertPhraseToExpr(rightt),</span>
+                        &quot;&quot;,
+<span class="fc" id="L242">                        helper.extractBlockProperties(block),</span>
+<span class="fc" id="L243">                        helper.extractComment(block)));</span>
+
+            case BlocklyConstants.MATH_MODULO:
+<span class="fc" id="L246">                return helper.blockToBinaryExpr(</span>
+                    block,
+                    new ExprParam(BlocklyConstants.DIVIDEND, BlocklyType.NUMBER_INT),
+                    new ExprParam(BlocklyConstants.DIVISOR, BlocklyType.NUMBER_INT),
+                    BlocklyConstants.MOD);
+
+            case BlocklyConstants.MATH_ARITHMETIC:
+<span class="fc" id="L253">                String opp = helper.extractOperation(block, BlocklyConstants.OP);</span>
+<span class="fc bfc" id="L254" title="All 2 branches covered.">                if ( opp.equals(BlocklyConstants.POWER) ) {</span>
+<span class="fc" id="L255">                    ArrayList&lt;ExprParam&gt; exprParams = new ArrayList&lt;&gt;();</span>
+<span class="fc" id="L256">                    exprParams.add(new ExprParam(BlocklyConstants.A, BlocklyType.NUMBER_INT));</span>
+<span class="fc" id="L257">                    exprParams.add(new ExprParam(BlocklyConstants.B, BlocklyType.NUMBER_INT));</span>
+<span class="fc" id="L258">                    List&lt;Expr&lt;V&gt;&gt; params = helper.extractExprParameters(block, exprParams);</span>
+<span class="fc" id="L259">                    return MathPowerFunct.make(FunctionNames.POWER, params, helper.extractBlockProperties(block), helper.extractComment(block));</span>
+                }
+            default:
+<span class="fc" id="L262">                return helper.blockToBinaryExpr(</span>
+                    block,
+                    new ExprParam(BlocklyConstants.A, BlocklyType.NUMBER_INT),
+                    new ExprParam(BlocklyConstants.B, BlocklyType.NUMBER_INT),
+                    BlocklyConstants.OP);
+
+        }
+    }
+
+    @Override
+    public Block astToBlock() {
+<span class="fc" id="L273">        Block jaxbDestination = new Block();</span>
+<span class="fc" id="L274">        JaxbTransformerHelper.setBasicProperties(this, jaxbDestination);</span>
+<span class="pc bpc" id="L275" title="1 of 2 branches missed.">        if ( !this.operationRange.equals(&quot;&quot;) ) {</span>
+<span class="nc" id="L276">            Mutation mutation = new Mutation();</span>
+<span class="nc" id="L277">            mutation.setOperatorRange(this.operationRange);</span>
+<span class="nc" id="L278">            jaxbDestination.setMutation(mutation);</span>
+        }
+<span class="pc bfc" id="L280" title="All 4 branches covered.">        switch ( getOp() ) {</span>
+
+            case MATH_CHANGE:
+<span class="fc" id="L283">                JaxbTransformerHelper.addValue(jaxbDestination, BlocklyConstants.VAR, getLeft());</span>
+<span class="fc" id="L284">                JaxbTransformerHelper.addValue(jaxbDestination, BlocklyConstants.DELTA, getRight());</span>
+<span class="fc" id="L285">                return jaxbDestination;</span>
+            case TEXT_APPEND:
+<span class="fc" id="L287">                JaxbTransformerHelper.addValue(jaxbDestination, BlocklyConstants.VAR, getLeft());</span>
+<span class="fc" id="L288">                JaxbTransformerHelper.addValue(jaxbDestination, BlocklyConstants.TEXT, getRight());</span>
+<span class="fc" id="L289">                return jaxbDestination;</span>
+
+            case MOD:
+<span class="fc" id="L292">                JaxbTransformerHelper.addValue(jaxbDestination, BlocklyConstants.DIVIDEND, getLeft());</span>
+<span class="fc" id="L293">                JaxbTransformerHelper.addValue(jaxbDestination, BlocklyConstants.DIVISOR, getRight());</span>
+<span class="fc" id="L294">                return jaxbDestination;</span>
+
+            default:
+<span class="fc" id="L297">                JaxbTransformerHelper.addField(jaxbDestination, BlocklyConstants.OP, getOp().name());</span>
+<span class="fc" id="L298">                JaxbTransformerHelper.addValue(jaxbDestination, BlocklyConstants.A, getLeft());</span>
+<span class="fc" id="L299">                JaxbTransformerHelper.addValue(jaxbDestination, BlocklyConstants.B, getRight());</span>
+<span class="fc" id="L300">                return jaxbDestination;</span>
+        }
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.5.201505241946</span></div></body></html>
