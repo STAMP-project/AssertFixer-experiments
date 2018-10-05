@@ -1,0 +1,98 @@
+####################################################################################################################
+# Bullet Web-Service settings
+####################################################################################################################
+bullet:
+  max.concurrent.queries: 500
+  backend.status.tick-ms: 30000
+  backend.status.retries: 10
+  backend.status.enabled: true
+  schema:
+    # The fully qualified path to your schema file
+    file: /sample_columns.json
+    version: 0.1
+  pubsub:
+    # The number of subscriber instances (each creates a thread to read) reading responses from the PubSub
+    subscribers: 1
+    # The number of publisher publishing queries to the PubSub
+    publishers: 1
+    # The file containing settings required by the PubSub implementation being used. No need to prepend a /
+    config: pubsub_defaults.yaml
+    # The amount of time to sleep in ms between empty responses reads from the PubSub. Avoids busy waiting
+    sleep-ms: 1
+    # In-memory pubsub settings
+    builtin.rest:
+      # Set to true if you want to turn on the http endpoints for the in-memory pubsub
+      enabled: false
+      # The paths for the endpoints
+      query.path: /pubsub/query
+      result.path: /pubsub/result
+  websocket:
+    # The following configure the STOMP endpoints for the websocket. This is currently used internally in a simple in-memory broker.
+    # The prefix of the server. It should be added before bullet.websocket.server.destination by clients to send messages to the server.
+    server.destination.prefix: /server
+    # The endpoint for clients to send messages to the server. Clients send requests to this prefixed by the bullet.websocket.server.destination.prefix.
+    server.destination: /request
+    # The prefix of the client. It is added before bullet.websocket.client.destination by the server to send messages to specific clients.
+    client.destination.prefix: /client
+    # The endpoint for the server to send messages to clients. If the server prefixes this with the bullet.websocket.client.destination.prefix, it
+    # sends it to a particular client. Otherwise, just sending messages here broadcasts to all clients.
+    client.destination: /response
+    # The maximum amount of data to buffer when sending messages to a WebSocket session.
+    session.buffer.size.kb: 1024
+    # The maximum size for an message between servers and clients.
+    message.size.limit.kb: 64
+    # The time limit (in seconds) when sending messages to a WebSocket session. It should be positive.
+    message.send.time.limit.secs: 10
+  endpoint:
+    http: /http-query
+    sse: /sse-query
+    websocket: /ws-query
+
+####################################################################################################################
+# Spring Boot settings
+####################################################################################################################
+# See https://docs.spring.io/spring-boot/docs/current/reference/html/common-application-properties.html for others
+# When running the embedded jar as a Java app, you can provide properties at runtime using:
+# java -Dloader.path=path/to/pubsub.jar -jar bullet-service-<VERSION>-embedded.jar --bullet.pubsub.config=path/to/pubsub_settings.yaml --server.port=<OVERRIDE> etc.
+# You can also provide a new properties file using --spring.config.location=path/to/new/application.yaml
+####################################################################################################################
+
+spring:
+  mvc:
+    # No timeout
+    async.request-timeout: -1
+
+server:
+  context-path: /api/bullet
+  port: 9901
+
+# To configure SSL, override and change the following settings to your config
+# server:
+#   ssl:
+#     enabled: false
+#     key-store: keystore.p12
+#     key-store-password: mypassword
+#     keyStoreType: PKCS12
+#     keyAlias: spring
+
+# Override the value to "" to enable SSO security
+security.ignored: "/**"
+
+# To configure SSO security, override and change the following settings to your config
+#security:
+#  oauth2:
+#    client:
+#      clientId: myclientid
+#      clientSecret: myclientsecret
+#      accessTokenUri: https://my-access-token-uri
+#      userAuthorizationUri: https://my-user-authorization-uri
+#      clientAuthenticationScheme: form
+#      scope: openid profile email
+#    resource:
+#      userInfoUri: https://my-user-info-uri
+
+logging:
+  level:
+    root: WARN
+    com.yahoo.bullet: INFO
+    org.springframework: ERROR
