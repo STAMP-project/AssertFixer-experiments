@@ -1,0 +1,46 @@
+variables:
+  filename: "/Users/oelbaer/Downloads/germany-latest.osm.bz2"
+  elasticIndex: "http://localhost:9214/osm/osm"
+  elasticMappingLocation: "osm-elastic-mapping.json"
+name: "xml unit testing pipeline"
+reader:
+  name: "XmlReader"
+  clazz: "solrcmdutils.XmlReader"
+  property:
+    filename: "${variables.filename}"
+    transformations:
+      - osm.stx
+
+filter:
+  - name: "Status filter"
+    clazz: "solrcmdutils.StatusTimeFilter"
+  - name: "Grep Filter"
+    clazz: "solrcmdutils.GrepFilter"
+    disabled: false
+    property:
+        fieldName: "tagkey_place"
+        pattern: ".*"
+        #pattern: "^village$|^town$|^suburb$|^city$"
+  - name: "Mapping Filter"
+    clazz: "solrcmdutils.MappingFilter"
+    disabled: false
+    property:
+        appendFields: "true"
+        mapping:
+          - "join:latlon=${lat},${lon}"
+          - "tagkey_place->place"
+          - "tagkey_name->name"
+  - name: "CSV Writer"
+    clazz: "solrcmdutils.CSVWriter"
+    disabled: true
+    property:
+        filename: "osm-output.csv"
+  - name: "Elastic Writer"
+    clazz: "solrcmdutils.ElasticWriter"
+    disabled: false
+    property:
+      type: "elastic"
+      delete: "true"
+      elasticMappingLocation: "${variables.elasticMappingLocation}"
+      location: "${variables.elasticIndex}"
+      bufferSize: "50"
